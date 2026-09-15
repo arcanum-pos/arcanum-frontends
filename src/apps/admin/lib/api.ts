@@ -110,6 +110,31 @@ export function setIdentityProvider(
   return request(`/${encodeURIComponent(orgId)}/identity-provider`, { method: 'PUT', body: JSON.stringify(fields) })
 }
 
+export interface SmtpCredentialsConfig {
+  host: string | null
+  port: number | null
+  username: string | null
+  fromAddress: string | null
+  fromName: string | null
+  hasPassword: boolean
+  updatedAt: string | null
+}
+
+export function getSmtpCredentials(orgId: string): Promise<SmtpCredentialsConfig> {
+  return request(`/${encodeURIComponent(orgId)}/smtp-credentials`)
+}
+
+export function setSmtpCredentials(
+  orgId: string,
+  fields: { host?: string; port?: number; username?: string; password?: string; fromAddress?: string; fromName?: string }
+): Promise<SmtpCredentialsConfig> {
+  return request(`/${encodeURIComponent(orgId)}/smtp-credentials`, { method: 'PUT', body: JSON.stringify(fields) })
+}
+
+export function sendTestEmail(orgId: string): Promise<{ ok: true }> {
+  return request(`/${encodeURIComponent(orgId)}/smtp-credentials/test`, { method: 'POST' })
+}
+
 // questo-bff's own top-level endpoint, not under /api/organizations.
 export interface Whoami {
   sub: string
