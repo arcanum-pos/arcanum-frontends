@@ -1,0 +1,25 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "questo-admin",
+	"main": "worker/index.ts",
+	"compatibility_date": "2026-09-15",
+	"dev": {
+		// Next free port after devicehub's 8790/9790 — see LOCAL_DEV.md in the
+		// questo folder for the full port map across all Workers.
+		"port": 8791,
+		"inspector_port": 9791
+	},
+	"assets": {
+		// Vite's build output (npm run build) — multi-entry (see vite.config.ts):
+		// one HTML file + its own JS/CSS bundle per screen/app, plus whatever
+		// shared chunks Rollup factors out across them.
+		"directory": "./dist",
+		"binding": "ASSETS"
+	},
+	// No custom domain and no public route here, same reasoning as
+	// questo-webapp: reached only through questo-bff via a service binding,
+	// never directly.
+	"observability": {
+		"enabled": true
+	}
+}
