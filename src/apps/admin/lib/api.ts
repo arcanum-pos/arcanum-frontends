@@ -1,0 +1,125 @@
+// Client for questo-bff's /api/organizations/* + /whoami — same contract
+// webapp/src/lib/organizations.ts already uses. Works once this app is
+// deployed behind questo-bff (same-origin, so cookies flow automatically);
+// in local `npm run dev` it needs Vite's dev proxy (see vite.config.ts) to
+// forward these to a real questo-bff dev server.
+
+const ORGANIZATIONS_URL = '/api/organizations';
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${ORGANIZATIONS_URL}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...init,
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((data && data.error) || `status ${res.status}`);
+  return data as T;
+}
+
+export interface Organization {
+  id: string
+  name: string
+  logoUrl: string | null
+  theme: string | null
+  createdAt: string
+}
+
+export function listMyOrganizations(): Promise<Organization[]> {
+  return request('')
+}
+
+export function createOrganization(name: string): Promise<Organization> {
+  return request('', { method: 'POST', body: JSON.stringify({ name }) })
+}
+
+export function getOrganization(orgId: string): Promise<Organization> {
+  return request(`/${encodeURIComponent(orgId)}`)
+}
+
+export interface Member {
+  id: string
+  userSub: string | null
+  invitedEmail: string
+  role: 'admin' | 'cashier'
+  status: 'pending' | 'active'
+  invitedAt: string
+  acceptedAt: string | null
+}
+
+export function listMembers(orgId: string): Promise<Member[]> {
+  return request(`/${encodeURIComponent(orgId)}/members`)
+}
+
+export function inviteMember(orgId: string, email: string, role: 'admin' | 'cashier'): Promise<Member> {
+  return request(`/${encodeURIComponent(orgId)}/members`, {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  })
+}
+
+export function updateMemberRole(orgId: string, membershipId: string, role: 'admin' | 'cashier'): Promise<Member> {
+  return request(`/${encodeURIComponent(orgId)}/members/${encodeURIComponent(membershipId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  })
+}
+
+export function removeMember(orgId: string, membershipId: string): Promise<void> {
+  return request(`/${encodeURIComponent(orgId)}/members/${encodeURIComponent(membershipId)}`, { method: 'DELETE' })
+}
+
+export interface PaymentCredential {
+  provider: 'bancontact' | 'sumup'
+  configured: boolean
+  updatedAt: string
+}
+
+export function listPaymentCredentials(orgId: string): Promise<PaymentCredential[]> {
+  return request(`/${encodeURIComponent(orgId)}/payment-credentials`)
+}
+
+export function setPaymentCredential(
+  orgId: string,
+  provider: PaymentCredential['provider'],
+  config: Record<string, unknown>
+): Promise<PaymentCredential> {
+  return request(`/${encodeURIComponent(orgId)}/payment-credentials/${provider}`, {
+    method: 'PUT',
+    body: JSON.stringify(config),
+  })
+}
+
+export interface IdentityProviderConfig {
+  connectionName: string | null
+  issuerUrl: string | null
+  clientId: string | null
+  hasClientSecret: boolean
+  updatedAt: string | null
+}
+
+export function getIdentityProvider(orgId: string): Promise<IdentityProviderConfig> {
+  return request(`/${encodeURIComponent(orgId)}/identity-provider`)
+}
+
+export function setIdentityProvider(
+  orgId: string,
+  fields: { connectionName?: string; issuerUrl?: string; clientId?: string; clientSecret?: string }
+): Promise<IdentityProviderConfig> {
+  return request(`/${encodeURIComponent(orgId)}/identity-provider`, { method: 'PUT', body: JSON.stringify(fields) })
+}
+
+// questo-bff's own top-level endpoint, not under /api/organizations.
+export interface Whoami {
+  sub: string
+  email: string
+  name: string
+  firstName: string
+  lastName: string
+  username: string
+}
+
+export async function whoami(): Promise<Whoami> {
+  const res = await fetch('/whoami')
+  if (!res.ok) throw new Error(`status ${res.status}`)
+  return res.json()
+}
