@@ -198,11 +198,32 @@ export interface Transaction {
   deviceName: string | null
   userName: string | null
   userEmail: string | null
+  eventId: string | null
   completedAt: string
 }
 
-export async function listTransactions(orgId: string): Promise<Transaction[]> {
-  const res = await fetch(`${WORKER_URL}/transactions?orgId=${encodeURIComponent(orgId)}`)
+export async function listTransactions(orgId: string, eventId?: string): Promise<Transaction[]> {
+  const params = new URLSearchParams({ orgId })
+  if (eventId) params.set('eventId', eventId)
+  const res = await fetch(`${WORKER_URL}/transactions?${params}`)
   if (!res.ok) throw new Error(`status ${res.status}`)
   return res.json()
+}
+
+// worker's per-org events (organizations/events.ts) — first step only:
+// name + date, and something transactions can be tagged with. Doesn't
+// drive kassa menus/catalogues yet.
+export interface Event {
+  id: string
+  name: string
+  date: string
+  createdAt: string
+}
+
+export function listEvents(orgId: string): Promise<Event[]> {
+  return request(`/${encodeURIComponent(orgId)}/events`)
+}
+
+export function createEvent(orgId: string, fields: { name: string; date: string }): Promise<Event> {
+  return request(`/${encodeURIComponent(orgId)}/events`, { method: 'POST', body: JSON.stringify(fields) })
 }
