@@ -7,6 +7,7 @@ import { AppLayout } from './components/app-layout'
 // code, same "only load what's needed" principle applied one level
 // deeper than the kassa-vs-admin entry-point split (see vite.config.ts).
 const DashboardPage = lazy(() => import('./routes/dashboard'))
+const ReportsPage = lazy(() => import('./routes/reports'))
 const EventsPage = lazy(() => import('./routes/events'))
 const DevicesPage = lazy(() => import('./routes/devices'))
 const UsersPage = lazy(() => import('./routes/users'))
@@ -27,6 +28,7 @@ const indexRoute = createRoute({
 })
 
 const dashboardRoute = createRoute({ getParentRoute: () => rootRoute, path: '/dashboard', component: DashboardPage })
+const reportsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/reports', component: ReportsPage })
 const eventsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/events', component: EventsPage })
 const devicesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/devices', component: DevicesPage })
 const usersRoute = createRoute({ getParentRoute: () => rootRoute, path: '/users', component: UsersPage })
@@ -55,6 +57,7 @@ const authenticationRoute = createRoute({
 const routeTree = rootRoute.addChildren([
   indexRoute,
   dashboardRoute,
+  reportsRoute,
   eventsRoute,
   devicesRoute,
   usersRoute,

@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { LayoutDashboard, MonitorSmartphone, Settings, TicketCheck, Users } from 'lucide-react'
+import { LayoutDashboard, MonitorSmartphone, Receipt, Settings, TicketCheck, Users } from 'lucide-react'
 import {
   SidebarGroup,
   SidebarMenu,
@@ -9,6 +9,7 @@ import {
 
 const NAV_ITEMS = [
   { title: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
+  { title: 'Rapporten', to: '/reports', icon: Receipt },
   { title: 'Events', to: '/events', icon: TicketCheck },
   { title: 'Devices', to: '/devices', icon: MonitorSmartphone },
   { title: 'Users', to: '/users', icon: Users },

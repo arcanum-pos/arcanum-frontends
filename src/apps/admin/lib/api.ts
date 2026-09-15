@@ -6,6 +6,7 @@
 
 const ORGANIZATIONS_URL = '/api/organizations';
 const DEVICES_URL = '/api/devices';
+const WORKER_URL = '/api/bancontact';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${ORGANIZATIONS_URL}${path}`, {
@@ -154,4 +155,29 @@ export async function removeDevice(terminalId: string): Promise<void> {
     body: JSON.stringify({ terminal_id: terminalId }),
   })
   if (!res.ok) throw new Error(`status ${res.status}`)
+}
+
+// worker's shared transactions ledger, proxied at /api/bancontact — same
+// contract as webapp/src/scripts/transactions.ts. That page also does a
+// lot of event-specific reporting (bonnen/fietstocht/wandeltocht/fooi
+// counts, tijdvak/slot filtering) tied to one event's own item taxonomy —
+// deliberately not ported here; this is just the plain list for now.
+export interface Transaction {
+  id: string
+  amountCents: number
+  description: string
+  method: string
+  items: Record<string, number>
+  slotId: string | null
+  deviceId: string | null
+  deviceName: string | null
+  userName: string | null
+  userEmail: string | null
+  completedAt: string
+}
+
+export async function listTransactions(orgId: string): Promise<Transaction[]> {
+  const res = await fetch(`${WORKER_URL}/transactions?orgId=${encodeURIComponent(orgId)}`)
+  if (!res.ok) throw new Error(`status ${res.status}`)
+  return res.json()
 }
