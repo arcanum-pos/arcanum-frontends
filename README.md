@@ -39,24 +39,42 @@ entry points, not one Worker per screen type.
 ## Structure
 
 ```
-admin.html                 # one HTML entry per screen
+admin.html                    # one HTML entry per screen
 src/
   apps/
-    admin/                 # this screen's own App.tsx + main.tsx
-  components/ui/           # shadcn/ui components — shared, pulled in per-need
-  lib/                     # shared utils (cn(), etc.)
-  shared/globals.css       # Tailwind + design tokens, imported by every app
-worker/index.ts            # thin ASSETS passthrough — see wrangler.jsonc
+    admin/
+      App.tsx, main.tsx
+      router.tsx             # route tree — every page is React.lazy()
+      components/            # sidebar shell: team-switcher, nav-main,
+                              # nav-user, app-sidebar, app-layout
+      lib/                   # theme (light/dark), org-context, mock-data
+      routes/                # one file per page (see Pages below)
+  components/ui/             # shadcn/ui components — shared, pulled in per-need
+  lib/                       # shared utils (cn(), etc.)
+  shared/globals.css         # Tailwind + design tokens, imported by every app
+worker/index.ts               # thin ASSETS passthrough — see wrangler.jsonc
 ```
+
+## Pages (admin app)
+
+- **Dashboard** — reserved space for a real sales-figures view; not implemented.
+- **Events** — doesn't exist as a backend concept yet; placeholder.
+- **Users** — member list + invite. Real-looking UI, mock data.
+- **Settings** → Appearance (real, functional), Preferences (language,
+  disabled — not supported yet), Profile (whoami, mock data), Payment
+  Providers (mock data), Notifications (disabled preview, waiting on the
+  SMTP work), Authentication (OIDC issuer/client config, mock data).
 
 ## Status
 
-Proof-of-shape only right now: `admin.html` renders a sidebar + card shell
-to confirm Vite + Tailwind v4 + shadcn/ui + the multi-entry build actually
-work end to end. The real panels (organizations, members, devices,
-identity providers, payment credentials) still live in
-`webapp/src/pages/admin-org.astro` and haven't been ported over yet.
-Not yet wired into `questo-bff`'s routing or deployed anywhere.
+Real navigation + routing (TanStack Router), not just a proof-of-shape
+shell. Users/Payment Providers/Authentication/Profile run on clearly
+labeled mock data in `src/apps/admin/lib/mock-data.ts` — each page has a
+TODO comment naming the exact existing `/api/organizations/*` endpoint
+(see `webapp/src/lib/organizations.ts`, `worker/src/organizations/`) it
+should call once this app has a real session/org context. That needs this
+app deployed behind `questo-bff` first — not wired into its routing or
+deployed anywhere yet.
 
 ## Local dev
 
