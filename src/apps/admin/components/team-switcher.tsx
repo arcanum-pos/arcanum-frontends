@@ -12,6 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSkeleton,
   useSidebar,
 } from '@/components/ui/sidebar'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -22,16 +23,36 @@ import { useOrg } from '../lib/org-context'
 
 export function TeamSwitcher() {
   const { isMobile } = useSidebar()
-  const { orgs, currentOrg, setCurrentOrgId, addOrg } = useOrg()
+  const { orgs, currentOrg, loading, setCurrentOrgId, addOrg } = useOrg()
   const [createOpen, setCreateOpen] = useState(false)
   const [newOrgName, setNewOrgName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
 
-  function handleCreate() {
+  async function handleCreate() {
     const name = newOrgName.trim()
     if (!name) return
-    addOrg({ id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name })
-    setNewOrgName('')
-    setCreateOpen(false)
+    setCreating(true)
+    setCreateError(null)
+    try {
+      await addOrg(name)
+      setNewOrgName('')
+      setCreateOpen(false)
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuSkeleton showIcon />
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
   }
 
   return (
@@ -45,7 +66,7 @@ export function TeamSwitcher() {
                   <Building2 className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{currentOrg.name}</span>
+                  <span className="truncate font-semibold">{currentOrg?.name ?? 'Geen organisatie'}</span>
                   <span className="truncate text-xs text-muted-foreground">Organisatie</span>
                 </div>
                 <ChevronsUpDown className="ml-auto" />
@@ -93,9 +114,12 @@ export function TeamSwitcher() {
               placeholder="bv. Scouts Elewijt"
               autoComplete="off"
             />
+            {createError && <p className="text-sm text-destructive">{createError}</p>}
           </div>
           <DialogFooter>
-            <Button onClick={handleCreate}>Aanmaken</Button>
+            <Button onClick={handleCreate} disabled={creating}>
+              {creating ? 'Bezig...' : 'Aanmaken'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -66,7 +66,12 @@ const routeTree = rootRoute.addChildren([
   ]),
 ])
 
-export const router = createRouter({ routeTree })
+// In production this app is reached at questo-bff's /console (see
+// questo-bff/src/index.ts) — the browser's real URL bar needs that prefix
+// so a page reload/deep link resolves correctly, hence the basepath. Local
+// `npm run dev` serves this app at its own root instead (no BFF in front
+// of it), so it must NOT have the prefix there.
+export const router = createRouter({ routeTree, basepath: import.meta.env.PROD ? '/console' : '/' })
 
 declare module '@tanstack/react-router' {
   interface Register {

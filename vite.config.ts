@@ -26,4 +26,22 @@ export default defineConfig({
       input: Object.fromEntries(APPS.map((name) => [name, path.resolve(__dirname, `${name}.html`)])),
     },
   },
+  server: {
+    // Vite's own hot-reload dev server (npm run dev) — separate from, and
+    // not to be confused with, the 8791 in wrangler.jsonc's `dev.port`
+    // (that one's for `wrangler dev`, serving the *built* dist/ through
+    // the actual Worker shape; also what questo-bff's CONSOLE_LOCAL_URL
+    // points at). Left at Vite's own default (5173).
+    //
+    // Forwards API calls to a real local questo-bff (see LOCAL_DEV.md at
+    // the questo folder root for the full port map / setup) — lets
+    // `npm run dev` exercise real data without deploying anything first.
+    // Login/callback/logout/device aren't proxied: this dev server isn't
+    // same-origin with questo-bff, so those flows only work for real once
+    // this app is actually deployed behind it.
+    proxy: {
+      '/api': 'http://localhost:8787',
+      '/whoami': 'http://localhost:8787',
+    },
+  },
 })

@@ -12,14 +12,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSkeleton,
   useSidebar,
 } from '@/components/ui/sidebar'
 import { Link } from '@tanstack/react-router'
-import { mockWhoami } from '../lib/mock-data'
+import { whoami } from '../lib/api'
+import { useAsync } from '../lib/use-async'
 
 function initials(name: string): string {
   return name
     .split(' ')
+    .filter(Boolean)
     .map((part) => part[0])
     .join('')
     .slice(0, 2)
@@ -28,9 +31,19 @@ function initials(name: string): string {
 
 export function NavUser() {
   const { isMobile } = useSidebar()
-  // Placeholder identity — real version comes from questo-bff's /whoami
-  // once this app is deployed behind it and a session actually exists.
-  const user = mockWhoami
+  const { data: user, loading } = useAsync(whoami, [])
+
+  if (loading || !user) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuSkeleton showIcon />
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
+  }
+
+  const displayName = user.name || user.email
 
   return (
     <SidebarMenu>
@@ -39,10 +52,10 @@ export function NavUser() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarFallback className="rounded-lg">{initials(user.name)}</AvatarFallback>
+                <AvatarFallback className="rounded-lg">{initials(displayName)}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
+                <span className="truncate font-medium">{displayName}</span>
                 <span className="truncate text-xs text-muted-foreground">{user.email}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -57,10 +70,10 @@ export function NavUser() {
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarFallback className="rounded-lg">{initials(user.name)}</AvatarFallback>
+                  <AvatarFallback className="rounded-lg">{initials(displayName)}</AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
+                  <span className="truncate font-medium">{displayName}</span>
                   <span className="truncate text-xs text-muted-foreground">{user.email}</span>
                 </div>
               </div>
@@ -73,10 +86,9 @@ export function NavUser() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {/* Real version: navigate to /logout on questo-bff (same-origin
-                once deployed behind it), which clears the session and the
-                identity provider's own SSO cookie — see questo-bff's
-                authroutes.ts. */}
+            {/* /logout lives on questo-bff itself (same-origin once deployed
+                behind it) — clears the session and the identity provider's
+                own SSO cookie. See questo-bff's authroutes.ts. */}
             <DropdownMenuItem variant="destructive" onClick={() => window.location.assign('/logout')}>
               <LogOut />
               Afmelden

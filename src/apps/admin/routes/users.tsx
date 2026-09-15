@@ -27,28 +27,53 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { mockMembers, type MockMember } from '../lib/mock-data'
+import { Skeleton } from '@/components/ui/skeleton'
+import { inviteMember, listMembers, removeMember } from '../lib/api'
+import { useAsync } from '../lib/use-async'
+import { useOrg } from '../lib/org-context'
 
-// TODO: replace mock state with listMembers/inviteMember/updateMemberRole/
-// removeMember calls against /api/organizations/:orgId/members (same
-// endpoints webapp/src/lib/organizations.ts already uses) once this app is
-// deployed behind questo-bff and has a real session + org context.
 export default function UsersPage() {
-  const [members, setMembers] = useState<MockMember[]>(mockMembers)
+  const { currentOrg } = useOrg()
+  const orgId = currentOrg?.id ?? null
+  const { data: members, loading, error, reload } = useAsync(
+    () => (orgId ? listMembers(orgId) : Promise.resolve([])),
+    [orgId]
+  )
+
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteRole, setInviteRole] = useState<'admin' | 'cashier'>('cashier')
+  const [inviting, setInviting] = useState(false)
+  const [inviteError, setInviteError] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
 
-  function handleInvite() {
+  async function handleInvite() {
+    if (!orgId) return
     const email = inviteEmail.trim().toLowerCase()
     if (!email) return
-    setMembers((prev) => [...prev, { id: crypto.randomUUID(), invitedEmail: email, role: inviteRole, status: 'pending' }])
-    setInviteEmail('')
-    setInviteOpen(false)
+    setInviting(true)
+    setInviteError(null)
+    try {
+      await inviteMember(orgId, email, inviteRole)
+      setInviteEmail('')
+      setInviteOpen(false)
+      reload()
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setInviting(false)
+    }
   }
 
-  function handleRemove(id: string) {
-    setMembers((prev) => prev.filter((m) => m.id !== id))
+  async function handleRemove(membershipId: string) {
+    if (!orgId) return
+    setRemovingId(membershipId)
+    try {
+      await removeMember(orgId, membershipId)
+      reload()
+    } finally {
+      setRemovingId(null)
+    }
   }
 
   return (
@@ -56,11 +81,11 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-          <p className="text-muted-foreground">Leden van deze organisatie en hun rol.</p>
+          <p className="text-muted-foreground">Leden van {currentOrg?.name ?? 'deze organisatie'} en hun rol.</p>
         </div>
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button disabled={!orgId}>
               <UserPlus />
               Lid uitnodigen
             </Button>
@@ -93,13 +118,18 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
+              {inviteError && <p className="text-sm text-destructive">{inviteError}</p>}
             </div>
             <DialogFooter>
-              <Button onClick={handleInvite}>Uitnodigen</Button>
+              <Button onClick={handleInvite} disabled={inviting}>
+                {inviting ? 'Bezig...' : 'Uitnodigen'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
+
+      {error && <p className="text-sm text-destructive">Kon leden niet laden: {error}</p>}
 
       <Table>
         <TableHeader>
@@ -111,31 +141,40 @@ export default function UsersPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {members.map((member) => (
-            <TableRow key={member.id}>
-              <TableCell className="font-medium">{member.invitedEmail}</TableCell>
-              <TableCell>{member.role === 'admin' ? 'Beheerder' : 'Kassier'}</TableCell>
-              <TableCell>
-                <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
-                  {member.status === 'active' ? 'Actief' : 'In afwachting'}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="size-8">
-                      <MoreHorizontal />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem variant="destructive" onClick={() => handleRemove(member.id)}>
-                      Verwijderen
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </TableCell>
-            </TableRow>
-          ))}
+          {loading &&
+            Array.from({ length: 3 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell colSpan={4}>
+                  <Skeleton className="h-5 w-full" />
+                </TableCell>
+              </TableRow>
+            ))}
+          {!loading &&
+            members?.map((member) => (
+              <TableRow key={member.id}>
+                <TableCell className="font-medium">{member.invitedEmail}</TableCell>
+                <TableCell>{member.role === 'admin' ? 'Beheerder' : 'Kassier'}</TableCell>
+                <TableCell>
+                  <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
+                    {member.status === 'active' ? 'Actief' : 'In afwachting'}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="size-8" disabled={removingId === member.id}>
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem variant="destructive" onClick={() => handleRemove(member.id)}>
+                        Verwijderen
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
         </TableBody>
       </Table>
     </div>
