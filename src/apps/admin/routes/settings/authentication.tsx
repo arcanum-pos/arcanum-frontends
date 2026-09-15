@@ -5,17 +5,52 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getIdentityProvider, setIdentityProvider } from '../../lib/api'
+import { getIdentityProvider, setIdentityProvider, setOrganizationSlug } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
 
+const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/
+
 export default function AuthenticationPage() {
-  const { currentOrg } = useOrg()
+  const { currentOrg, updateCurrentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const { data: idp, loading, error, reload } = useAsync(
     () => (orgId ? getIdentityProvider(orgId) : Promise.resolve(null)),
     [orgId]
   )
+
+  const [slug, setSlug] = useState('')
+  const [slugSaving, setSlugSaving] = useState(false)
+  const [slugError, setSlugError] = useState<string | null>(null)
+  const [slugSaved, setSlugSaved] = useState(false)
+
+  useEffect(() => {
+    setSlug(currentOrg?.slug ?? '')
+    setSlugError(null)
+    setSlugSaved(false)
+  }, [currentOrg?.id, currentOrg?.slug])
+
+  async function handleSaveSlug() {
+    if (!orgId) return
+    const trimmed = slug.trim().toLowerCase()
+    if (trimmed && !SLUG_RE.test(trimmed)) {
+      setSlugError('Alleen kleine letters, cijfers en koppeltekens, niet aan begin/eind.')
+      return
+    }
+    setSlugSaving(true)
+    setSlugError(null)
+    setSlugSaved(false)
+    try {
+      const updated = await setOrganizationSlug(orgId, trimmed)
+      updateCurrentOrg({ slug: updated.slug })
+      setSlug(updated.slug ?? '')
+      setSlugSaved(true)
+    } catch (err) {
+      setSlugError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setSlugSaving(false)
+    }
+  }
 
   const [issuerUrl, setIssuerUrl] = useState('')
   const [clientId, setClientId] = useState('')
@@ -57,7 +92,7 @@ export default function AuthenticationPage() {
   }
 
   const deviceFlowUrl = orgId
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${orgId}/device`
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${encodeURIComponent(currentOrg?.slug || orgId)}/device`
     : null
 
   return (
@@ -130,8 +165,28 @@ export default function AuthenticationPage() {
             <CardTitle>Aanmeldlink voor toestellen</CardTitle>
             <CardDescription>Deel deze link om een kassa/CFD-toestel voor deze organisatie aan te melden.</CardDescription>
           </CardHeader>
-          <CardContent>
-            <code className="rounded bg-muted px-2 py-1 text-sm">{deviceFlowUrl}</code>
+          <CardContent className="grid gap-4">
+            <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{deviceFlowUrl}</code>
+            <div className="grid gap-2">
+              <Label htmlFor="org-slug">
+                Slug <span className="font-normal text-muted-foreground">(optioneel, maakt de link hierboven leesbaar)</span>
+              </Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  id="org-slug"
+                  className="max-w-64"
+                  placeholder={orgId ?? ''}
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  autoComplete="off"
+                />
+                <Button variant="secondary" onClick={handleSaveSlug} disabled={slugSaving}>
+                  {slugSaving ? 'Bezig...' : 'Opslaan'}
+                </Button>
+              </div>
+              {slugError && <p className="text-sm text-destructive">{slugError}</p>}
+              {slugSaved && !slugError && <p className="text-sm text-muted-foreground">Opgeslagen.</p>}
+            </div>
           </CardContent>
         </Card>
       )}

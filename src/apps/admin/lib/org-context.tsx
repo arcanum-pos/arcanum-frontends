@@ -10,6 +10,10 @@ interface OrgContextValue {
   error: string | null
   setCurrentOrgId: (id: string) => void
   addOrg: (name: string) => Promise<void>
+  // Patches the current org's local copy in place — used after a save (e.g.
+  // Settings > Authentication's slug) so the UI reflects it immediately
+  // without a full org-list refetch.
+  updateCurrentOrg: (patch: Partial<Organization>) => void
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
@@ -48,10 +52,14 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     setCurrentOrgId(org.id)
   }
 
+  function updateCurrentOrg(patch: Partial<Organization>) {
+    setOrgs((prev) => prev.map((o) => (o.id === currentOrgId ? { ...o, ...patch } : o)))
+  }
+
   const currentOrg = orgs.find((o) => o.id === currentOrgId) ?? orgs[0] ?? null
 
   return (
-    <OrgContext.Provider value={{ orgs, currentOrg, loading, error, setCurrentOrgId, addOrg }}>
+    <OrgContext.Provider value={{ orgs, currentOrg, loading, error, setCurrentOrgId, addOrg, updateCurrentOrg }}>
       {children}
     </OrgContext.Provider>
   )

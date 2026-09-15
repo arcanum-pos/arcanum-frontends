@@ -23,6 +23,7 @@ export interface Organization {
   name: string
   logoUrl: string | null
   theme: string | null
+  slug: string | null
   createdAt: string
 }
 
@@ -36,6 +37,11 @@ export function createOrganization(name: string): Promise<Organization> {
 
 export function getOrganization(orgId: string): Promise<Organization> {
   return request(`/${encodeURIComponent(orgId)}`)
+}
+
+// Empty string clears the slug (falls back to the id-only link again).
+export function setOrganizationSlug(orgId: string, slug: string): Promise<Organization> {
+  return request(`/${encodeURIComponent(orgId)}/branding`, { method: 'PATCH', body: JSON.stringify({ slug }) })
 }
 
 export interface Member {
