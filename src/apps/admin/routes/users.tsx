@@ -65,8 +65,9 @@ export default function UsersPage() {
     }
   }
 
-  async function handleRemove(membershipId: string) {
+  async function handleRemove(membershipId: string, email: string) {
     if (!orgId) return
+    if (!window.confirm(`${email} verwijderen uit deze organisatie?`)) return
     setRemovingId(membershipId)
     try {
       await removeMember(orgId, membershipId)
@@ -167,7 +168,7 @@ export default function UsersPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem variant="destructive" onClick={() => handleRemove(member.id)}>
+                      <DropdownMenuItem variant="destructive" onClick={() => handleRemove(member.id, member.invitedEmail)}>
                         Verwijderen
                       </DropdownMenuItem>
                     </DropdownMenuContent>

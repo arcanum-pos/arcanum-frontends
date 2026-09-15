@@ -5,6 +5,7 @@
 // forward these to a real questo-bff dev server.
 
 const ORGANIZATIONS_URL = '/api/organizations';
+const DEVICES_URL = '/api/devices';
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${ORGANIZATIONS_URL}${path}`, {
@@ -122,4 +123,35 @@ export async function whoami(): Promise<Whoami> {
   const res = await fetch('/whoami')
   if (!res.ok) throw new Error(`status ${res.status}`)
   return res.json()
+}
+
+// questo-devicehub, proxied at /api/devices — same contract as
+// webapp/src/lib/terminal.ts's listOrgDevices/removeDevice.
+export type DeviceRole = 'pos' | 'cfd' | 'sim'
+
+export interface OrgDevice {
+  terminal_id: string
+  role: DeviceRole
+  linked_to: string | null
+  created_at: string
+  // Live presence, display-only — an offline device is still fully
+  // registered (and keeps any link it holds); removeDevice is the only
+  // way a row actually goes away. See questo-devicehub's identity_providers
+  // design note in CLAUDE.md for why presence never auto-deletes.
+  online: boolean
+}
+
+export async function listOrgDevices(orgId: string): Promise<OrgDevice[]> {
+  const res = await fetch(`${DEVICES_URL}/by-org/${encodeURIComponent(orgId)}`)
+  if (!res.ok) throw new Error(`status ${res.status}`)
+  return res.json()
+}
+
+export async function removeDevice(terminalId: string): Promise<void> {
+  const res = await fetch(`${DEVICES_URL}/remove`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ terminal_id: terminalId }),
+  })
+  if (!res.ok) throw new Error(`status ${res.status}`)
 }

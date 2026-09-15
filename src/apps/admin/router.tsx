@@ -8,6 +8,7 @@ import { AppLayout } from './components/app-layout'
 // deeper than the kassa-vs-admin entry-point split (see vite.config.ts).
 const DashboardPage = lazy(() => import('./routes/dashboard'))
 const EventsPage = lazy(() => import('./routes/events'))
+const DevicesPage = lazy(() => import('./routes/devices'))
 const UsersPage = lazy(() => import('./routes/users'))
 const SettingsLayout = lazy(() => import('./routes/settings/layout'))
 const AppearancePage = lazy(() => import('./routes/settings/appearance'))
@@ -27,6 +28,7 @@ const indexRoute = createRoute({
 
 const dashboardRoute = createRoute({ getParentRoute: () => rootRoute, path: '/dashboard', component: DashboardPage })
 const eventsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/events', component: EventsPage })
+const devicesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/devices', component: DevicesPage })
 const usersRoute = createRoute({ getParentRoute: () => rootRoute, path: '/users', component: UsersPage })
 
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsLayout })
@@ -54,6 +56,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   dashboardRoute,
   eventsRoute,
+  devicesRoute,
   usersRoute,
   settingsRoute.addChildren([
     settingsIndexRoute,
