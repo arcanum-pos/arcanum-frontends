@@ -4,6 +4,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Separator } from '@/components/ui/separator'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from './app-sidebar'
+import { AppFooter } from './app-footer'
 import { OrgProvider } from '../lib/org-context'
 import { ThemeProvider } from '../lib/theme'
 
@@ -26,6 +27,7 @@ export function AppLayout() {
                   <Outlet />
                 </Suspense>
               </main>
+              <AppFooter />
             </SidebarInset>
           </SidebarProvider>
         </TooltipProvider>
