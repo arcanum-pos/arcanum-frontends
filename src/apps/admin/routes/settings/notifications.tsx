@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,17 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getSmtpCredentials, sendTestEmail, setSmtpCredentials } from '../../lib/api'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  getGmailApiCredentials,
+  getMailProvider,
+  getSmtpCredentials,
+  sendTestEmail,
+  setGmailApiCredentials,
+  setMailProvider,
+  setSmtpCredentials,
+  type MailProvider,
+} from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
 
@@ -18,10 +28,23 @@ const PLANNED_NOTIFICATIONS = [
 export default function NotificationsPage() {
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
-  const { data: smtp, loading, error, reload } = useAsync(
+
+  const { data: providerData, loading: providerLoading, error: providerError, reload: reloadProvider } = useAsync(
+    () => (orgId ? getMailProvider(orgId) : Promise.resolve(null)),
+    [orgId]
+  )
+  const { data: smtp, loading: smtpLoading, reload: reloadSmtp } = useAsync(
     () => (orgId ? getSmtpCredentials(orgId) : Promise.resolve(null)),
     [orgId]
   )
+  const { data: gmailApi, loading: gmailApiLoading, reload: reloadGmailApi } = useAsync(
+    () => (orgId ? getGmailApiCredentials(orgId) : Promise.resolve(null)),
+    [orgId]
+  )
+
+  const loading = providerLoading || smtpLoading || gmailApiLoading
+
+  const [provider, setProvider] = useState<MailProvider>('smtp')
 
   const [host, setHost] = useState('')
   const [port, setPort] = useState('')
@@ -29,6 +52,14 @@ export default function NotificationsPage() {
   const [password, setPassword] = useState('')
   const [fromAddress, setFromAddress] = useState('')
   const [fromName, setFromName] = useState('')
+
+  const [clientEmail, setClientEmail] = useState('')
+  const [privateKey, setPrivateKey] = useState('')
+  const [impersonatedUser, setImpersonatedUser] = useState('')
+  const [gmailFromName, setGmailFromName] = useState('')
+  const [fileError, setFileError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -40,6 +71,10 @@ export default function NotificationsPage() {
   // Re-seed the form whenever a fresh load comes in (org switch, or after
   // a save's reload()) — never while the admin is mid-edit.
   useEffect(() => {
+    if (providerData) setProvider(providerData.provider)
+  }, [providerData])
+
+  useEffect(() => {
     if (!smtp) return
     setHost(smtp.host ?? '')
     setPort(smtp.port ? String(smtp.port) : '')
@@ -49,22 +84,64 @@ export default function NotificationsPage() {
     setFromName(smtp.fromName ?? '')
   }, [smtp])
 
+  useEffect(() => {
+    if (!gmailApi) return
+    setClientEmail(gmailApi.clientEmail ?? '')
+    setPrivateKey('')
+    setImpersonatedUser(gmailApi.impersonatedUser ?? '')
+    setGmailFromName(gmailApi.fromName ?? '')
+  }, [gmailApi])
+
+  function handleServiceAccountFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFileError(null)
+    file
+      .text()
+      .then((text) => {
+        const parsed = JSON.parse(text)
+        if (!parsed.client_email || !parsed.private_key) {
+          throw new Error('Bestand mist client_email of private_key')
+        }
+        setClientEmail(parsed.client_email)
+        setPrivateKey(parsed.private_key)
+      })
+      .catch((err) => {
+        setFileError(err instanceof Error ? err.message : String(err))
+      })
+      .finally(() => {
+        if (fileInputRef.current) fileInputRef.current.value = ''
+      })
+  }
+
   async function handleSave() {
     if (!orgId) return
     setSaving(true)
     setSaveError(null)
     setSaved(false)
     try {
-      await setSmtpCredentials(orgId, {
-        host: host || undefined,
-        port: port ? Number(port) : undefined,
-        username: username || undefined,
-        password: password || undefined,
-        fromAddress: fromAddress || undefined,
-        fromName: fromName || undefined,
-      })
+      await setMailProvider(orgId, provider)
+      if (provider === 'smtp') {
+        await setSmtpCredentials(orgId, {
+          host: host || undefined,
+          port: port ? Number(port) : undefined,
+          username: username || undefined,
+          password: password || undefined,
+          fromAddress: fromAddress || undefined,
+          fromName: fromName || undefined,
+        })
+      } else {
+        await setGmailApiCredentials(orgId, {
+          clientEmail: clientEmail || undefined,
+          privateKey: privateKey || undefined,
+          impersonatedUser: impersonatedUser || undefined,
+          fromName: gmailFromName || undefined,
+        })
+      }
       setSaved(true)
-      reload()
+      reloadProvider()
+      reloadSmtp()
+      reloadGmailApi()
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -97,17 +174,29 @@ export default function NotificationsPage() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-destructive">Kon e-mailconfiguratie niet laden: {error}</p>}
+      {providerError && <p className="text-sm text-destructive">Kon e-mailconfiguratie niet laden: {providerError}</p>}
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-2">
           <div>
-            <CardTitle>SMTP-account</CardTitle>
+            <CardTitle>E-mailaccount</CardTitle>
             <CardDescription>
-              {loading ? 'Laden...' : smtp?.hasPassword ? 'Status: wachtwoord ingesteld' : 'Status: nog geen wachtwoord ingesteld'}
+              {loading
+                ? 'Laden...'
+                : provider === 'smtp'
+                  ? smtp?.hasPassword
+                    ? 'Status: wachtwoord ingesteld'
+                    : 'Status: nog geen wachtwoord ingesteld'
+                  : gmailApi?.hasPrivateKey
+                    ? 'Status: service account ingesteld'
+                    : 'Status: nog geen service account ingesteld'}
             </CardDescription>
           </div>
-          {!loading && <Badge variant={smtp?.host ? 'default' : 'secondary'}>{smtp?.host ? 'Aangepast' : 'Platform-standaard'}</Badge>}
+          {!loading && (
+            <Badge variant={smtp?.host || gmailApi?.hasPrivateKey ? 'default' : 'secondary'}>
+              {smtp?.host || gmailApi?.hasPrivateKey ? 'Aangepast' : 'Platform-standaard'}
+            </Badge>
+          )}
         </CardHeader>
         <CardContent className="grid gap-4">
           {loading ? (
@@ -118,36 +207,82 @@ export default function NotificationsPage() {
             </>
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="smtp-host">Host</Label>
-                  <Input id="smtp-host" placeholder="smtp.gmail.com" value={host} onChange={(e) => setHost(e.target.value)} autoComplete="off" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="smtp-port">Poort</Label>
-                  <Input id="smtp-port" placeholder="587" inputMode="numeric" value={port} onChange={(e) => setPort(e.target.value)} autoComplete="off" />
-                </div>
-              </div>
               <div className="grid gap-2">
-                <Label htmlFor="smtp-username">Gebruikersnaam</Label>
-                <Input id="smtp-username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
+                <Label htmlFor="mail-provider">Verzendmethode</Label>
+                <Select value={provider} onValueChange={(v) => setProvider(v as MailProvider)}>
+                  <SelectTrigger id="mail-provider">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="smtp">SMTP</SelectItem>
+                    <SelectItem value="gmail_api">Gmail API (service account)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="smtp-password">
-                  Wachtwoord <span className="font-normal text-muted-foreground">(app-wachtwoord — alleen invullen om te wijzigen)</span>
-                </Label>
-                <Input id="smtp-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2">
-                  <Label htmlFor="smtp-from-address">Afzenderadres</Label>
-                  <Input id="smtp-from-address" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)} autoComplete="off" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="smtp-from-name">Afzendernaam</Label>
-                  <Input id="smtp-from-name" placeholder="Questo" value={fromName} onChange={(e) => setFromName(e.target.value)} autoComplete="off" />
-                </div>
-              </div>
+
+              {provider === 'smtp' ? (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="smtp-host">Host</Label>
+                      <Input id="smtp-host" placeholder="smtp.gmail.com" value={host} onChange={(e) => setHost(e.target.value)} autoComplete="off" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="smtp-port">Poort</Label>
+                      <Input id="smtp-port" placeholder="587" inputMode="numeric" value={port} onChange={(e) => setPort(e.target.value)} autoComplete="off" />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="smtp-username">Gebruikersnaam</Label>
+                    <Input id="smtp-username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="smtp-password">
+                      Wachtwoord <span className="font-normal text-muted-foreground">(app-wachtwoord — alleen invullen om te wijzigen)</span>
+                    </Label>
+                    <Input id="smtp-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="smtp-from-address">Afzenderadres</Label>
+                      <Input id="smtp-from-address" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)} autoComplete="off" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="smtp-from-name">Afzendernaam</Label>
+                      <Input id="smtp-from-name" placeholder="Questo" value={fromName} onChange={(e) => setFromName(e.target.value)} autoComplete="off" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid gap-2">
+                    <Label htmlFor="gmail-service-account">
+                      Service-account JSON-bestand{' '}
+                      <span className="font-normal text-muted-foreground">(uit Google Cloud Console — alleen invullen om te wijzigen)</span>
+                    </Label>
+                    <Input id="gmail-service-account" ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleServiceAccountFile} />
+                    {fileError && <p className="text-sm text-destructive">{fileError}</p>}
+                    {clientEmail && <p className="text-sm text-muted-foreground">Client e-mail: {clientEmail}</p>}
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="gmail-impersonated-user">
+                      Verzenden als <span className="font-normal text-muted-foreground">(Workspace-adres met domain-wide delegation)</span>
+                    </Label>
+                    <Input
+                      id="gmail-impersonated-user"
+                      placeholder="admin@jouwdomein.be"
+                      value={impersonatedUser}
+                      onChange={(e) => setImpersonatedUser(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="gmail-from-name">Afzendernaam</Label>
+                    <Input id="gmail-from-name" placeholder="Questo" value={gmailFromName} onChange={(e) => setGmailFromName(e.target.value)} autoComplete="off" />
+                  </div>
+                </>
+              )}
+
               {saveError && <p className="text-sm text-destructive">{saveError}</p>}
               {saved && !saveError && <p className="text-sm text-muted-foreground">Opgeslagen.</p>}
             </>

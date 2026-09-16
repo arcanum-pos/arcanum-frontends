@@ -14,7 +14,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
   });
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error((data && data.error) || `status ${res.status}`);
+  if (!res.ok) {
+    const message = data && (data.error || data.details) ? [data.error, data.details].filter(Boolean).join(': ') : `status ${res.status}`;
+    throw new Error(message);
+  }
   return data as T;
 }
 
@@ -137,8 +140,37 @@ export function setSmtpCredentials(
   return request(`/${encodeURIComponent(orgId)}/smtp-credentials`, { method: 'PUT', body: JSON.stringify(fields) })
 }
 
-export function sendTestEmail(orgId: string): Promise<{ ok: true }> {
+export function sendTestEmail(orgId: string): Promise<{ ok: true; provider: MailProvider }> {
   return request(`/${encodeURIComponent(orgId)}/smtp-credentials/test`, { method: 'POST' })
+}
+
+export type MailProvider = 'smtp' | 'gmail_api'
+
+export function getMailProvider(orgId: string): Promise<{ provider: MailProvider }> {
+  return request(`/${encodeURIComponent(orgId)}/mail-provider`)
+}
+
+export function setMailProvider(orgId: string, provider: MailProvider): Promise<{ provider: MailProvider }> {
+  return request(`/${encodeURIComponent(orgId)}/mail-provider`, { method: 'PUT', body: JSON.stringify({ provider }) })
+}
+
+export interface GmailApiCredentialsConfig {
+  clientEmail: string | null
+  impersonatedUser: string | null
+  fromName: string | null
+  hasPrivateKey: boolean
+  updatedAt: string | null
+}
+
+export function getGmailApiCredentials(orgId: string): Promise<GmailApiCredentialsConfig> {
+  return request(`/${encodeURIComponent(orgId)}/gmail-api-credentials`)
+}
+
+export function setGmailApiCredentials(
+  orgId: string,
+  fields: { clientEmail?: string; privateKey?: string; impersonatedUser?: string; fromName?: string }
+): Promise<GmailApiCredentialsConfig> {
+  return request(`/${encodeURIComponent(orgId)}/gmail-api-credentials`, { method: 'PUT', body: JSON.stringify(fields) })
 }
 
 // questo-bff's own top-level endpoint, not under /api/organizations.
