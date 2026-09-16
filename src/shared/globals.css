@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+/* Bold weight only — used just for the "arcanum" wordmark in the header. */
+@import "@fontsource/montserrat/700.css";
 
 @custom-variant dark (&:is(.dark *));
 

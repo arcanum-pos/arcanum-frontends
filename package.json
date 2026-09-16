@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource/montserrat": "^5.3.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.36",
     "class-variance-authority": "^0.7.1",
