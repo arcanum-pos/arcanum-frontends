@@ -100,6 +100,25 @@ export function setPaymentCredential(
   })
 }
 
+// worker's /sumup/readers (payments/sumup.ts) — not under /organizations,
+// so it goes through WORKER_URL like transactions, not the generic
+// `request` helper. Fetched live from SumUp on every call, nothing cached:
+// a reader removed from the SumUp account just disappears here too.
+export interface SumupReader {
+  id: string
+  name: string
+  status: string // unknown | processing | paired | expired
+  model: string | null // solo | virtual-solo
+}
+
+export async function listSumupReaders(orgId: string): Promise<{ configured: boolean; readers: SumupReader[]; error?: string }> {
+  // Always returns a well-formed body, even on its own 502 (a live SumUp API
+  // failure) — that's this org's "readers" state, not a transport error, so
+  // the caller reads `error` off the body instead of a thrown exception.
+  const res = await fetch(`${WORKER_URL}/sumup/readers?org_id=${encodeURIComponent(orgId)}`)
+  return res.json()
+}
+
 export interface IdentityProviderConfig {
   connectionName: string | null
   issuerUrl: string | null

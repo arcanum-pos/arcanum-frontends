@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { listOrgDevices, removeDevice, type DeviceRole } from '../lib/api'
+import { listOrgDevices, listSumupReaders, removeDevice, type DeviceRole, type SumupReader } from '../lib/api'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 
@@ -20,11 +20,33 @@ const ROLE_LABELS: Record<DeviceRole, string> = {
   sim: 'SumUp-simulator',
 }
 
+const READER_MODEL_LABELS: Record<string, string> = {
+  solo: 'SumUp Solo',
+  'virtual-solo': 'SumUp Virtual Solo',
+}
+
+const READER_STATUS_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  paired: { label: 'Gekoppeld', variant: 'default' },
+  processing: { label: 'Bezig', variant: 'outline' },
+  expired: { label: 'Verlopen', variant: 'destructive' },
+  unknown: { label: 'Onbekend', variant: 'secondary' },
+}
+
 export default function DevicesPage() {
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const { data: devices, loading, error, reload } = useAsync(
     () => (orgId ? listOrgDevices(orgId) : Promise.resolve([])),
+    [orgId]
+  )
+  // Fetched live from SumUp, not stored by us — read-only here on purpose:
+  // pairing/unpairing a reader happens in the SumUp app or Instellingen, not
+  // this list.
+  const { data: sumupReaders, error: sumupError } = useAsync(
+    () =>
+      orgId
+        ? listSumupReaders(orgId)
+        : Promise.resolve({ configured: false, readers: [] as SumupReader[], error: undefined as string | undefined }),
     [orgId]
   )
 
@@ -46,11 +68,14 @@ export default function DevicesPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Devices</h1>
         <p className="text-muted-foreground">
-          Alle kassa's, klantschermen en simulatoren gekoppeld aan {currentOrg?.name ?? 'deze organisatie'}.
+          Alle kassa's, klantschermen, simulatoren en SumUp-readers gekoppeld aan {currentOrg?.name ?? 'deze organisatie'}.
         </p>
       </div>
 
       {error && <p className="text-sm text-destructive">Kon toestellen niet laden: {error}</p>}
+      {(sumupError || sumupReaders?.error) && (
+        <p className="text-sm text-destructive">Kon SumUp-readers niet ophalen: {sumupError ?? sumupReaders?.error}</p>
+      )}
 
       <Table>
         <TableHeader>
@@ -72,13 +97,32 @@ export default function DevicesPage() {
                 </TableCell>
               </TableRow>
             ))}
-          {!loading && devices?.length === 0 && (
+          {!loading && devices?.length === 0 && !sumupReaders?.readers.length && (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-muted-foreground">
                 Nog geen toestellen geregistreerd voor deze organisatie.
               </TableCell>
             </TableRow>
           )}
+          {!loading &&
+            sumupReaders?.readers.map((reader) => {
+              const status = READER_STATUS_BADGE[reader.status] ?? READER_STATUS_BADGE.unknown
+              return (
+                <TableRow key={`sumup-${reader.id}`}>
+                  <TableCell>
+                    <div className="font-medium">{reader.name}</div>
+                    <div className="font-mono text-xs text-muted-foreground">{reader.id}</div>
+                  </TableCell>
+                  <TableCell>{(reader.model && READER_MODEL_LABELS[reader.model]) ?? 'SumUp-reader'}</TableCell>
+                  <TableCell className="text-muted-foreground">—</TableCell>
+                  <TableCell className="text-muted-foreground">—</TableCell>
+                  <TableCell>
+                    <Badge variant={status.variant}>{status.label}</Badge>
+                  </TableCell>
+                  <TableCell />
+                </TableRow>
+              )
+            })}
           {!loading &&
             devices?.map((device) => (
               <TableRow key={device.terminal_id}>
@@ -113,7 +157,8 @@ export default function DevicesPage() {
       <p className="text-sm text-muted-foreground">
         Offline betekent enkel dat er nu geen live verbinding is (bv. het scherm staat uit of de kassa toont een
         andere pagina) — het toestel en zijn koppeling blijven bestaan. Gebruik "Verwijderen" enkel voor toestellen
-        die echt niet meer gebruikt worden.
+        die echt niet meer gebruikt worden. SumUp-readers staan hier enkel ter info (live opgehaald uit je SumUp-account)
+        — koppelen of loskoppelen doe je in de SumUp-app of in Instellingen, niet hier.
       </p>
     </div>
   )
