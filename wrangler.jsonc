@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "questo-console",
+	"name": "questo-frontends",
 	"main": "worker/index.ts",
 	"compatibility_date": "2026-09-15",
 	"dev": {
