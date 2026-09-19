@@ -120,7 +120,6 @@ export async function listSumupReaders(orgId: string): Promise<{ configured: boo
 }
 
 export interface IdentityProviderConfig {
-  connectionName: string | null
   issuerUrl: string | null
   clientId: string | null
   hasClientSecret: boolean
@@ -140,7 +139,6 @@ export function getIdentityProvider(orgId: string): Promise<IdentityProviderConf
 export function setIdentityProvider(
   orgId: string,
   fields: {
-    connectionName?: string
     issuerUrl?: string
     clientId?: string
     clientSecret?: string

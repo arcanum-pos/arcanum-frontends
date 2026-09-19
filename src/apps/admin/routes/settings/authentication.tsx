@@ -55,7 +55,6 @@ export default function AuthenticationPage() {
   const [issuerUrl, setIssuerUrl] = useState('')
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
-  const [extraParam, setExtraParam] = useState('')
   const [scopes, setScopes] = useState('')
   const [authCodeClientId, setAuthCodeClientId] = useState('')
   const [authCodeClientSecret, setAuthCodeClientSecret] = useState('')
@@ -70,7 +69,6 @@ export default function AuthenticationPage() {
     setIssuerUrl(idp.issuerUrl ?? '')
     setClientId(idp.clientId ?? '')
     setClientSecret('')
-    setExtraParam(idp.connectionName ?? '')
     setScopes(idp.scopes ?? '')
     setAuthCodeClientId(idp.authCodeClientId ?? '')
     setAuthCodeClientSecret('')
@@ -86,7 +84,6 @@ export default function AuthenticationPage() {
         issuerUrl: issuerUrl || undefined,
         clientId: clientId || undefined,
         clientSecret: clientSecret || undefined,
-        connectionName: extraParam || undefined,
         scopes: scopes || undefined,
         authCodeClientId: authCodeClientId || undefined,
         authCodeClientSecret: authCodeClientSecret || undefined,
@@ -143,40 +140,30 @@ export default function AuthenticationPage() {
                 <Input id="idp-issuer-url" placeholder="https://..." value={issuerUrl} onChange={(e) => setIssuerUrl(e.target.value)} autoComplete="off" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="idp-client-id">Client-ID</Label>
+                <Label htmlFor="idp-client-id">Client-ID voor device code flow</Label>
                 <Input id="idp-client-id" value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="idp-client-secret">
-                  Client-secret <span className="font-normal text-muted-foreground">(alleen invullen om te wijzigen)</span>
-                </Label>
+                <Label htmlFor="idp-client-secret">Client-secret</Label>
                 <Input id="idp-client-secret" type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} autoComplete="new-password" />
+                <p className="text-sm text-muted-foreground">Alleen invullen om te wijzigen.</p>
               </div>
+
               <div className="grid gap-2">
-                <Label htmlFor="idp-authcode-client-id">
-                  Client-ID voor authorization code flow{' '}
-                  <span className="font-normal text-muted-foreground">
-                    (optioneel — alleen nodig als deze identity provider per flow een aparte client vereist, bv. Google:
-                    apparaatcode (.../device) werkt enkel met een "TV and Limited Input"-client, terwijl de
-                    beheerportaal-link (.../console) een gewone "Web application"-client nodig heeft. Leeg = gebruik de
-                    Client-ID hierboven voor beide.)
-                  </span>
-                </Label>
+                <Label htmlFor="idp-authcode-client-id">Client-ID voor authorization code flow (optioneel)</Label>
                 <Input
                   id="idp-authcode-client-id"
                   value={authCodeClientId}
                   onChange={(e) => setAuthCodeClientId(e.target.value)}
                   autoComplete="off"
                 />
+                <p className="text-sm text-muted-foreground">
+                  Alleen nodig als deze identity provider een aparte client per flow vereist. Leeg = gebruik de client
+                  hierboven voor beide.
+                </p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="idp-authcode-client-secret">
-                  Client-secret voor authorization code flow{' '}
-                  <span className="font-normal text-muted-foreground">
-                    (alleen invullen om te wijzigen —{' '}
-                    {idp?.hasAuthCodeClientSecret ? 'momenteel ingesteld' : 'momenteel niet ingesteld'})
-                  </span>
-                </Label>
+                <Label htmlFor="idp-authcode-client-secret">Client-secret</Label>
                 <Input
                   id="idp-authcode-client-secret"
                   type="password"
@@ -184,21 +171,13 @@ export default function AuthenticationPage() {
                   onChange={(e) => setAuthCodeClientSecret(e.target.value)}
                   autoComplete="new-password"
                 />
+                <p className="text-sm text-muted-foreground">
+                  Alleen invullen om te wijzigen ({idp?.hasAuthCodeClientSecret ? 'momenteel ingesteld' : 'momenteel niet ingesteld'}).
+                </p>
               </div>
+
               <div className="grid gap-2">
-                <Label htmlFor="idp-extra-param">
-                  Extra parameter <span className="font-normal text-muted-foreground">(optioneel, providerspecifiek — meestal leeg laten)</span>
-                </Label>
-                <Input id="idp-extra-param" value={extraParam} onChange={(e) => setExtraParam(e.target.value)} autoComplete="off" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="idp-scopes">
-                  Scopes{' '}
-                  <span className="font-normal text-muted-foreground">
-                    (optioneel, spatie-gescheiden — standaard 'openid profile email offline_access'. Google accepteert geen
-                    'offline_access', gebruik dan bv. 'openid profile email')
-                  </span>
-                </Label>
+                <Label htmlFor="idp-scopes">Scopes (optioneel)</Label>
                 <Input
                   id="idp-scopes"
                   placeholder="openid profile email offline_access"
@@ -206,6 +185,10 @@ export default function AuthenticationPage() {
                   onChange={(e) => setScopes(e.target.value)}
                   autoComplete="off"
                 />
+                <p className="text-sm text-muted-foreground">
+                  Spatie-gescheiden — standaard 'openid profile email offline_access'. Google accepteert geen
+                  'offline_access'; gebruik dan bv. 'openid profile email'.
+                </p>
               </div>
               {saveError && <p className="text-sm text-destructive">{saveError}</p>}
               {saved && !saveError && <p className="text-sm text-muted-foreground">Opgeslagen.</p>}
