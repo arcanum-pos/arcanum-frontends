@@ -56,6 +56,7 @@ export default function AuthenticationPage() {
   const [clientId, setClientId] = useState('')
   const [clientSecret, setClientSecret] = useState('')
   const [extraParam, setExtraParam] = useState('')
+  const [scopes, setScopes] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -68,6 +69,7 @@ export default function AuthenticationPage() {
     setClientId(idp.clientId ?? '')
     setClientSecret('')
     setExtraParam(idp.connectionName ?? '')
+    setScopes(idp.scopes ?? '')
   }, [idp])
 
   async function handleSave() {
@@ -81,6 +83,7 @@ export default function AuthenticationPage() {
         clientId: clientId || undefined,
         clientSecret: clientSecret || undefined,
         connectionName: extraParam || undefined,
+        scopes: scopes || undefined,
       })
       setSaved(true)
       reload()
@@ -146,6 +149,22 @@ export default function AuthenticationPage() {
                   Extra parameter <span className="font-normal text-muted-foreground">(optioneel, providerspecifiek — meestal leeg laten)</span>
                 </Label>
                 <Input id="idp-extra-param" value={extraParam} onChange={(e) => setExtraParam(e.target.value)} autoComplete="off" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="idp-scopes">
+                  Scopes{' '}
+                  <span className="font-normal text-muted-foreground">
+                    (optioneel, spatie-gescheiden — standaard 'openid profile email offline_access'. Google accepteert geen
+                    'offline_access', gebruik dan bv. 'openid profile email')
+                  </span>
+                </Label>
+                <Input
+                  id="idp-scopes"
+                  placeholder="openid profile email offline_access"
+                  value={scopes}
+                  onChange={(e) => setScopes(e.target.value)}
+                  autoComplete="off"
+                />
               </div>
               {saveError && <p className="text-sm text-destructive">{saveError}</p>}
               {saved && !saveError && <p className="text-sm text-muted-foreground">Opgeslagen.</p>}

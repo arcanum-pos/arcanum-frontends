@@ -124,6 +124,7 @@ export interface IdentityProviderConfig {
   issuerUrl: string | null
   clientId: string | null
   hasClientSecret: boolean
+  scopes: string | null
   updatedAt: string | null
 }
 
@@ -133,7 +134,7 @@ export function getIdentityProvider(orgId: string): Promise<IdentityProviderConf
 
 export function setIdentityProvider(
   orgId: string,
-  fields: { connectionName?: string; issuerUrl?: string; clientId?: string; clientSecret?: string }
+  fields: { connectionName?: string; issuerUrl?: string; clientId?: string; clientSecret?: string; scopes?: string }
 ): Promise<IdentityProviderConfig> {
   return request(`/${encodeURIComponent(orgId)}/identity-provider`, { method: 'PUT', body: JSON.stringify(fields) })
 }
