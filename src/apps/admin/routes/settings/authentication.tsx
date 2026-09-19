@@ -94,9 +94,11 @@ export default function AuthenticationPage() {
     }
   }
 
-  const deviceFlowUrl = orgId
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${encodeURIComponent(currentOrg?.slug || orgId)}/device`
+  const orgPathPrefix = orgId
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${encodeURIComponent(currentOrg?.slug || orgId)}`
     : null
+  const deviceFlowUrl = orgPathPrefix ? `${orgPathPrefix}/device` : null
+  const consoleFlowUrl = orgPathPrefix ? `${orgPathPrefix}/console` : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -186,6 +188,15 @@ export default function AuthenticationPage() {
           </CardHeader>
           <CardContent className="grid gap-4">
             <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{deviceFlowUrl}</code>
+            {consoleFlowUrl && (
+              <div className="grid gap-1">
+                <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{consoleFlowUrl}</code>
+                <p className="text-sm text-muted-foreground">
+                  Opent het beheerportaal (/console) voor deze organisatie — handig als de identity provider hierboven
+                  geen gewone browser-login ondersteunt (bv. een Google-client van het type "TV and Limited Input").
+                </p>
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="org-slug">
                 Slug <span className="font-normal text-muted-foreground">(optioneel, maakt de link hierboven leesbaar)</span>
