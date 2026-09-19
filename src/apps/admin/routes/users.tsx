@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { inviteMember, listMembers, removeMember } from '../lib/api'
+import { inviteMember, listMembers, removeMember, whoami } from '../lib/api'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 
@@ -39,6 +39,12 @@ export default function UsersPage() {
     () => (orgId ? listMembers(orgId) : Promise.resolve([])),
     [orgId]
   )
+  // Used to hide the "Verwijderen" action on your own row (the backend
+  // rejects it anyway — see worker's removeMember — this just avoids
+  // showing an action that always fails). UI-only: matches on sub alone,
+  // unlike the backend's issuer+sub check, since this is just a hint.
+  const { data: who } = useAsync(() => whoami(), [])
+  const currentUserSub = who?.sub ?? null
 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -161,18 +167,22 @@ export default function UsersPage() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8" disabled={removingId === member.id}>
-                        <MoreHorizontal />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem variant="destructive" onClick={() => handleRemove(member.id, member.invitedEmail)}>
-                        Verwijderen
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {member.userSub && member.userSub === currentUserSub ? (
+                    <span className="text-sm text-muted-foreground">(jij)</span>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-8" disabled={removingId === member.id}>
+                          <MoreHorizontal />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem variant="destructive" onClick={() => handleRemove(member.id, member.invitedEmail)}>
+                          Verwijderen
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </TableCell>
               </TableRow>
             ))}
