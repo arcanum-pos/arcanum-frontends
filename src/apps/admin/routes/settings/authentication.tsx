@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Check, Copy } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +11,27 @@ import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
 
 const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/
+
+function CopyLinkButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // Clipboard API can fail (permissions, insecure context) — the link
+      // is still visible in the <code> block to copy by hand.
+    }
+  }
+
+  return (
+    <Button variant="ghost" size="icon" className="size-7" onClick={handleCopy} title="Kopiëren">
+      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+    </Button>
+  )
+}
 
 export default function AuthenticationPage() {
   const { currentOrg, updateCurrentOrg } = useOrg()
@@ -97,11 +119,15 @@ export default function AuthenticationPage() {
     }
   }
 
-  const orgPathPrefix = orgId
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${encodeURIComponent(currentOrg?.slug || orgId)}`
-    : null
-  const deviceFlowUrl = orgPathPrefix ? `${orgPathPrefix}/device` : null
-  const consoleFlowUrl = orgPathPrefix ? `${orgPathPrefix}/console` : null
+  // Without an org-specific identity provider, an org's members authenticate
+  // against the platform default anyway — so the shared, unprefixed routes
+  // work identically to a slug-prefixed one and are simpler to share. The
+  // slug only matters (and only gets shown) once this org has its own IDP.
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const hasSpecificIdp = Boolean(idp?.issuerUrl)
+  const orgSlugOrId = orgId ? encodeURIComponent(currentOrg?.slug || orgId) : null
+  const deviceFlowUrl = orgId ? (hasSpecificIdp ? `${origin}/${orgSlugOrId}/device` : `${origin}/device`) : null
+  const consoleFlowUrl = orgId ? (hasSpecificIdp ? `${origin}/${orgSlugOrId}/console` : `${origin}/console`) : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -210,34 +236,42 @@ export default function AuthenticationPage() {
           <CardContent className="grid gap-4">
             <div className="grid gap-1">
               <p className="text-sm text-muted-foreground">Gebruik deze link om aan te melden op een toestel:</p>
-              <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{deviceFlowUrl}</code>
+              <div className="flex items-center gap-1">
+                <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{deviceFlowUrl}</code>
+                <CopyLinkButton text={deviceFlowUrl} />
+              </div>
             </div>
             {consoleFlowUrl && (
               <div className="grid gap-1">
                 <p className="text-sm text-muted-foreground">Gebruik deze link om aan te melden in het beheerportaal:</p>
-                <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{consoleFlowUrl}</code>
+                <div className="flex items-center gap-1">
+                  <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{consoleFlowUrl}</code>
+                  <CopyLinkButton text={consoleFlowUrl} />
+                </div>
               </div>
             )}
-            <div className="grid gap-2">
-              <Label htmlFor="org-slug">
-                Slug <span className="font-normal text-muted-foreground">(optioneel, maakt de link hierboven leesbaar)</span>
-              </Label>
-              <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  id="org-slug"
-                  className="max-w-64"
-                  placeholder={orgId ?? ''}
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  autoComplete="off"
-                />
-                <Button variant="secondary" onClick={handleSaveSlug} disabled={slugSaving}>
-                  {slugSaving ? 'Bezig...' : 'Opslaan'}
-                </Button>
+            {hasSpecificIdp && (
+              <div className="grid gap-2">
+                <Label htmlFor="org-slug">
+                  Slug <span className="font-normal text-muted-foreground">(optioneel, maakt de link hierboven leesbaar)</span>
+                </Label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    id="org-slug"
+                    className="max-w-64"
+                    placeholder={orgId ?? ''}
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <Button variant="secondary" onClick={handleSaveSlug} disabled={slugSaving}>
+                    {slugSaving ? 'Bezig...' : 'Opslaan'}
+                  </Button>
+                </div>
+                {slugError && <p className="text-sm text-destructive">{slugError}</p>}
+                {slugSaved && !slugError && <p className="text-sm text-muted-foreground">Opgeslagen.</p>}
               </div>
-              {slugError && <p className="text-sm text-destructive">{slugError}</p>}
-              {slugSaved && !slugError && <p className="text-sm text-muted-foreground">Opgeslagen.</p>}
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
