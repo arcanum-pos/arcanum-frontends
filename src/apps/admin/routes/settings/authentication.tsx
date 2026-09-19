@@ -183,18 +183,17 @@ export default function AuthenticationPage() {
       {deviceFlowUrl && (
         <Card>
           <CardHeader>
-            <CardTitle>Aanmeldlink voor toestellen</CardTitle>
-            <CardDescription>Deel deze link om een kassa/CFD-toestel voor deze organisatie aan te melden.</CardDescription>
+            <CardTitle>Aanmeldlinks</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{deviceFlowUrl}</code>
+            <div className="grid gap-1">
+              <p className="text-sm text-muted-foreground">Gebruik deze link om aan te melden op een toestel:</p>
+              <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{deviceFlowUrl}</code>
+            </div>
             {consoleFlowUrl && (
               <div className="grid gap-1">
+                <p className="text-sm text-muted-foreground">Gebruik deze link om aan te melden in het beheerportaal:</p>
                 <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{consoleFlowUrl}</code>
-                <p className="text-sm text-muted-foreground">
-                  Opent het beheerportaal (/console) voor deze organisatie — handig als de identity provider hierboven
-                  geen gewone browser-login ondersteunt (bv. een Google-client van het type "TV and Limited Input").
-                </p>
               </div>
             )}
             <div className="grid gap-2">
