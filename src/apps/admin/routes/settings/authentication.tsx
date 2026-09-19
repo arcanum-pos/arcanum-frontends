@@ -57,6 +57,8 @@ export default function AuthenticationPage() {
   const [clientSecret, setClientSecret] = useState('')
   const [extraParam, setExtraParam] = useState('')
   const [scopes, setScopes] = useState('')
+  const [authCodeClientId, setAuthCodeClientId] = useState('')
+  const [authCodeClientSecret, setAuthCodeClientSecret] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -70,6 +72,8 @@ export default function AuthenticationPage() {
     setClientSecret('')
     setExtraParam(idp.connectionName ?? '')
     setScopes(idp.scopes ?? '')
+    setAuthCodeClientId(idp.authCodeClientId ?? '')
+    setAuthCodeClientSecret('')
   }, [idp])
 
   async function handleSave() {
@@ -84,6 +88,8 @@ export default function AuthenticationPage() {
         clientSecret: clientSecret || undefined,
         connectionName: extraParam || undefined,
         scopes: scopes || undefined,
+        authCodeClientId: authCodeClientId || undefined,
+        authCodeClientSecret: authCodeClientSecret || undefined,
       })
       setSaved(true)
       reload()
@@ -145,6 +151,39 @@ export default function AuthenticationPage() {
                   Client-secret <span className="font-normal text-muted-foreground">(alleen invullen om te wijzigen)</span>
                 </Label>
                 <Input id="idp-client-secret" type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} autoComplete="new-password" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="idp-authcode-client-id">
+                  Client-ID voor authorization code flow{' '}
+                  <span className="font-normal text-muted-foreground">
+                    (optioneel — alleen nodig als deze identity provider per flow een aparte client vereist, bv. Google:
+                    apparaatcode (.../device) werkt enkel met een "TV and Limited Input"-client, terwijl de
+                    beheerportaal-link (.../console) een gewone "Web application"-client nodig heeft. Leeg = gebruik de
+                    Client-ID hierboven voor beide.)
+                  </span>
+                </Label>
+                <Input
+                  id="idp-authcode-client-id"
+                  value={authCodeClientId}
+                  onChange={(e) => setAuthCodeClientId(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="idp-authcode-client-secret">
+                  Client-secret voor authorization code flow{' '}
+                  <span className="font-normal text-muted-foreground">
+                    (alleen invullen om te wijzigen —{' '}
+                    {idp?.hasAuthCodeClientSecret ? 'momenteel ingesteld' : 'momenteel niet ingesteld'})
+                  </span>
+                </Label>
+                <Input
+                  id="idp-authcode-client-secret"
+                  type="password"
+                  value={authCodeClientSecret}
+                  onChange={(e) => setAuthCodeClientSecret(e.target.value)}
+                  autoComplete="new-password"
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="idp-extra-param">

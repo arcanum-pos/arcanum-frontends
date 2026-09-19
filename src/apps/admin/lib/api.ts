@@ -125,6 +125,11 @@ export interface IdentityProviderConfig {
   clientId: string | null
   hasClientSecret: boolean
   scopes: string | null
+  // Optional override client, used only for the authorization-code flow
+  // (/login, /:orgId/console) — the device grant (/:orgId/device) always
+  // uses clientId/hasClientSecret above. Null/unset: use those for both.
+  authCodeClientId: string | null
+  hasAuthCodeClientSecret: boolean
   updatedAt: string | null
 }
 
@@ -134,7 +139,15 @@ export function getIdentityProvider(orgId: string): Promise<IdentityProviderConf
 
 export function setIdentityProvider(
   orgId: string,
-  fields: { connectionName?: string; issuerUrl?: string; clientId?: string; clientSecret?: string; scopes?: string }
+  fields: {
+    connectionName?: string
+    issuerUrl?: string
+    clientId?: string
+    clientSecret?: string
+    scopes?: string
+    authCodeClientId?: string
+    authCodeClientSecret?: string
+  }
 ): Promise<IdentityProviderConfig> {
   return request(`/${encodeURIComponent(orgId)}/identity-provider`, { method: 'PUT', body: JSON.stringify(fields) })
 }
