@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CheckCircle2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -152,16 +153,22 @@ export default function BrandingPage() {
                     <Button variant="secondary" onClick={handleVerify} disabled={verifying}>
                       {verifying ? 'Bezig...' : 'Verifiëren'}
                     </Button>
-                    <Button variant="ghost" className="text-destructive" onClick={handleRemove} disabled={removing}>
-                      {removing ? 'Bezig...' : 'Verwijderen'}
-                    </Button>
                   </div>
 
-                  {!active && !verifying && verifyErrors.length === 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      Nog niet actief (status: {domain.status ?? '-'} / ssl: {domain.sslStatus ?? '-'}). Dit kan enkele
-                      minuten duren nadat de CNAME zichtbaar is — klik op Verifiëren om de status te vernieuwen.
-                    </p>
+                  {active ? (
+                    <div className="flex items-center gap-2 rounded-md border border-green-600/30 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-950 dark:text-green-400">
+                      <CheckCircle2 className="size-4 shrink-0" />
+                      Domein geverifieerd en actief.
+                    </div>
+                  ) : (
+                    !verifying &&
+                    verifyErrors.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        Nog niet actief (status: {domain.status ?? '-'} / ssl: {domain.sslStatus ?? '-'}). Dit kan
+                        enkele minuten duren nadat de CNAME zichtbaar is — klik op Verifiëren om de status te
+                        vernieuwen.
+                      </p>
+                    )
                   )}
                   {verifyErrors.length > 0 && (
                     <ul className="list-disc pl-5 text-sm text-destructive">
@@ -170,6 +177,12 @@ export default function BrandingPage() {
                       ))}
                     </ul>
                   )}
+
+                  <div className="flex items-center gap-2 border-t pt-4">
+                    <Button variant="ghost" className="text-destructive" onClick={handleRemove} disabled={removing}>
+                      {removing ? 'Bezig...' : 'Verwijderen'}
+                    </Button>
+                  </div>
                 </>
               )}
             </>
