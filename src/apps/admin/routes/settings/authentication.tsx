@@ -181,6 +181,15 @@ export default function AuthenticationPage() {
                 </p>
               </div>
 
+              {currentOrg?.customDomain && (authCodeClientId || idp?.authCodeClientId) && (
+                <p className="rounded-md border border-amber-600/30 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-950 dark:text-amber-300">
+                  Deze organisatie heeft een aangepast domein ({currentOrg.customDomain}) en een eigen client voor
+                  authorization code flow — vergeet niet om{' '}
+                  <code className="rounded bg-muted px-1">https://{currentOrg.customDomain}/callback</code> te
+                  registreren als toegestane redirect-URI bij deze identity provider zelf.
+                </p>
+              )}
+
               <div className="grid gap-2">
                 <Label htmlFor="idp-scopes">Scopes (optioneel)</Label>
                 <Input

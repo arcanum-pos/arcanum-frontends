@@ -28,6 +28,7 @@ export interface Organization {
   theme: string | null
   slug: string | null
   createdAt: string
+  customDomain: string | null
 }
 
 export function listMyOrganizations(): Promise<Organization[]> {
