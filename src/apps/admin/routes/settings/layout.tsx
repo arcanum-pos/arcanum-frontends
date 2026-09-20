@@ -2,6 +2,7 @@ import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 
 const SETTINGS_NAV = [
+  { title: 'Branding', to: '/settings/branding' },
   { title: 'Appearance', to: '/settings/appearance' },
   { title: 'Preferences', to: '/settings/preferences' },
   { title: 'Profile', to: '/settings/profile' },

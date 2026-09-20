@@ -47,6 +47,39 @@ export function setOrganizationSlug(orgId: string, slug: string): Promise<Organi
   return request(`/${encodeURIComponent(orgId)}/branding`, { method: 'PATCH', body: JSON.stringify({ slug }) })
 }
 
+export interface CustomDomainConfig {
+  customDomain: string | null
+  // Mirrors Cloudflare's own `status` ('pending' | 'active' | ...) and
+  // `ssl.status` ('pending_validation' | 'pending_issuance' |
+  // 'pending_deployment' | 'active' | ...) — both must be 'active' before
+  // the domain is actually serving traffic with a valid certificate.
+  status: string | null
+  sslStatus: string | null
+  // The one CNAME target every org points at — identical for all of them.
+  cnameTarget: string
+}
+
+export interface CustomDomainVerifyResult extends CustomDomainConfig {
+  verificationErrors: string[]
+  sslValidationErrors: string[]
+}
+
+export function getCustomDomain(orgId: string): Promise<CustomDomainConfig> {
+  return request(`/${encodeURIComponent(orgId)}/custom-domain`)
+}
+
+export function setCustomDomain(orgId: string, hostname: string): Promise<CustomDomainConfig> {
+  return request(`/${encodeURIComponent(orgId)}/custom-domain`, { method: 'PUT', body: JSON.stringify({ hostname }) })
+}
+
+export function verifyCustomDomain(orgId: string): Promise<CustomDomainVerifyResult> {
+  return request(`/${encodeURIComponent(orgId)}/custom-domain/verify`, { method: 'POST' })
+}
+
+export function removeCustomDomain(orgId: string): Promise<{ ok: boolean }> {
+  return request(`/${encodeURIComponent(orgId)}/custom-domain`, { method: 'DELETE' })
+}
+
 export interface Member {
   id: string
   userSub: string | null

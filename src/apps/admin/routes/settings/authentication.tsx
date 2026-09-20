@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Check, Copy } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,29 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { getIdentityProvider, setIdentityProvider, setOrganizationSlug } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
+import { CopyLinkButton } from '../../components/copy-link-button'
 
 const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/
-
-function CopyLinkButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-
-  async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // Clipboard API can fail (permissions, insecure context) — the link
-      // is still visible in the <code> block to copy by hand.
-    }
-  }
-
-  return (
-    <Button variant="ghost" size="icon" className="size-7" onClick={handleCopy} title="Kopiëren">
-      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-    </Button>
-  )
-}
 
 export default function AuthenticationPage() {
   const { currentOrg, updateCurrentOrg } = useOrg()
