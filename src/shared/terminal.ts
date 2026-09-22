@@ -116,6 +116,11 @@ export interface NotificationSocket {
 // never throws. Never carries real data (no amounts, no QR payloads) — only
 // an event name + id; reacting to an event always means calling back
 // through the BFF, never trusting anything read off the socket directly.
+//
+// Connects to this same origin's /devices/connect (arcanum-bff forwards it
+// to arcanum-devicehub via a service binding) rather than a separate
+// devicehub hostname — that's what lets an org's own custom domain work for
+// the notification channel too, with zero per-org configuration.
 export function connectNotifications(terminalId: string, handlers: NotificationHandlers): NotificationSocket {
   let socket: WebSocket | null = null
   let retryDelayMs = 1000
@@ -126,9 +131,10 @@ export function connectNotifications(terminalId: string, handlers: NotificationH
     try {
       const res = await fetch(`${DEVICES_URL}/ws-token?terminal_id=${encodeURIComponent(terminalId)}`)
       if (!res.ok) throw new Error(`ws-token request failed (${res.status})`)
-      const { token, wsUrl } = (await res.json()) as { token: string; wsUrl: string }
+      const { token } = (await res.json()) as { token: string }
 
-      socket = new WebSocket(`${wsUrl}?token=${encodeURIComponent(token)}`)
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      socket = new WebSocket(`${wsProtocol}//${window.location.host}/devices/connect?token=${encodeURIComponent(token)}`)
 
       socket.onopen = () => {
         retryDelayMs = 1000
