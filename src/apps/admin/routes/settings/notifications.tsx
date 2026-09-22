@@ -249,7 +249,7 @@ export default function NotificationsPage() {
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="smtp-from-name">Afzendernaam</Label>
-                      <Input id="smtp-from-name" placeholder="Questo" value={fromName} onChange={(e) => setFromName(e.target.value)} autoComplete="off" />
+                      <Input id="smtp-from-name" placeholder="Arcanum" value={fromName} onChange={(e) => setFromName(e.target.value)} autoComplete="off" />
                     </div>
                   </div>
                 </>
@@ -278,7 +278,7 @@ export default function NotificationsPage() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="gmail-from-name">Afzendernaam</Label>
-                    <Input id="gmail-from-name" placeholder="Questo" value={gmailFromName} onChange={(e) => setGmailFromName(e.target.value)} autoComplete="off" />
+                    <Input id="gmail-from-name" placeholder="Arcanum" value={gmailFromName} onChange={(e) => setGmailFromName(e.target.value)} autoComplete="off" />
                   </div>
                 </>
               )}
