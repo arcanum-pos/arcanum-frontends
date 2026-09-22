@@ -12,7 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // imports; src/shared/ui is only bundled into whichever entries use it).
 // To add a new screen: add its name here, create <name>.html at the repo
 // root (copy admin.html as a starting point), and add src/apps/<name>/.
-const APPS = ['admin', 'login-prompt', 'device', 'chooser', 'simulator'] as const
+const APPS = ['admin', 'login-prompt', 'device', 'chooser', 'simulator', 'display'] as const
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
