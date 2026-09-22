@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { AppBrand } from '@/shared/app-brand'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { CASH_VIEW_LABELS, STATUS_LABELS } from './lib'
 
@@ -178,15 +177,11 @@ export default function App() {
   return (
     <div className="relative flex min-h-svh flex-col items-center justify-center gap-6 bg-background p-6 text-foreground">
       {viewKind === 'idle' && (
-        <>
-          <AppBrand className="text-3xl" />
-          <p className="max-w-md text-center text-xl text-muted-foreground">Klaar voor de volgende betaling</p>
-        </>
+        <p className="max-w-md text-center text-xl text-muted-foreground">Klaar voor de volgende betaling</p>
       )}
 
       {viewKind === 'qr' && (
         <>
-          <AppBrand className="text-xl" />
           {payment.qrCodeUrl && (
             <img src={payment.qrCodeUrl} alt="QR-code voor betaling" className="size-[min(60vw,420px)]" />
           )}
@@ -207,7 +202,6 @@ export default function App() {
 
       {viewKind === 'cash' && (
         <>
-          <AppBrand className="text-xl" />
           {breakdown.length > 0 && (
             <div className="flex flex-col items-center gap-1">
               {breakdown.map((line, i) => (
