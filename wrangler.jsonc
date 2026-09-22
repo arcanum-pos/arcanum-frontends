@@ -18,7 +18,11 @@
 	},
 	// No custom domain and no public route here, same reasoning as
 	// questo-webapp: reached only through questo-bff via a service binding,
-	// never directly.
+	// never directly. workers_dev defaults to true when unset, so this must
+	// be pinned explicitly — same fix as arcanum-backend's own workers_dev:
+	// false (this repo and arcanum-webapp were both missing it despite the
+	// comment above already claiming the intent).
+	"workers_dev": false,
 	"observability": {
 		"enabled": true
 	}
