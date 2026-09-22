@@ -69,9 +69,6 @@ export default function App() {
               <ChoiceCard key={m.orgId} title={m.orgName} onClick={() => setView({ step: 'role-picker', orgId: m.orgId, orgName: m.orgName })} />
             ))}
           </div>
-          <a href="/console" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-            Naar het beheerportaal
-          </a>
         </div>
       </KioskShell>
     )
@@ -94,9 +91,6 @@ export default function App() {
             />
           ))}
         </div>
-        <a href="/console" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-          Naar het beheerportaal
-        </a>
       </div>
     </KioskShell>
   )
