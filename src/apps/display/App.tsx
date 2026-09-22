@@ -6,7 +6,7 @@ import { CASH_VIEW_LABELS, STATUS_LABELS } from './lib'
 // Customer-facing display. Reacts to a payment two ways, kept in sync
 // manually since arcanum-webapp's kassa (app.ts, not migrated yet) still
 // drives both:
-//  - same-device BroadcastChannel('questo-payment') — kassa and this page
+//  - same-device BroadcastChannel('arcanum-payment') — kassa and this page
 //    open as two tabs/windows on the same machine, origin-scoped so this
 //    still works regardless of which Worker actually serves either page.
 //  - cross-device, via arcanum-devicehub's notification socket — carries
@@ -135,7 +135,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const channel = new BroadcastChannel('questo-payment')
+    const channel = new BroadcastChannel('arcanum-payment')
     channelRef.current = channel
 
     channel.onmessage = (event) => {

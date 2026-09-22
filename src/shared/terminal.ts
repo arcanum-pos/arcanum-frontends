@@ -20,7 +20,7 @@ export interface Terminal {
   orgName?: string
 }
 
-const TERMINAL_KEY = 'questo-terminal'
+const TERMINAL_KEY = 'arcanum-terminal'
 
 function getStoredTerminal(): Terminal | null {
   try {

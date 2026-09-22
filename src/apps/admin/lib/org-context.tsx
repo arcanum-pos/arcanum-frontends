@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { createOrganization, listMyOrganizations, type Organization } from './api'
 
-const CURRENT_ORG_KEY = 'questo-admin-current-org'
+const CURRENT_ORG_KEY = 'arcanum-admin-current-org'
 
 interface OrgContextValue {
   orgs: Organization[]

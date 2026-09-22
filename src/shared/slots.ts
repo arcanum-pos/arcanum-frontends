@@ -2,7 +2,7 @@
 // (never sent anywhere except as an opaque slotId field on every
 // transaction/payment payload) time-bucketing for later reporting/filtering
 // by shift. Same localStorage key, byte-compatible.
-const SLOTS_KEY = 'questo-slots'
+const SLOTS_KEY = 'arcanum-slots'
 
 export interface Slot {
   id: string

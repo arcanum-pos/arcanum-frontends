@@ -2,7 +2,7 @@
 // id/name used for transaction attribution ("which physical till made this
 // sale"), distinct from terminal.ts's role-based POS/CFD/sim identity. Same
 // localStorage keys, byte-compatible.
-const DEVICE_KEY = 'questo-device'
+const DEVICE_KEY = 'arcanum-device'
 
 export interface Device {
   id: string
@@ -51,7 +51,7 @@ export function setDeviceName(name: string): void {
 // charges to via the Cloud API — set from Settings' readers panel. No reader
 // selected means SumUp charges keep using the local pending-queue flow
 // (simulator / iOS bridge). Per-browser, not synced to the backend.
-const SUMUP_READER_KEY = 'questo-sumup-reader'
+const SUMUP_READER_KEY = 'arcanum-sumup-reader'
 
 export interface SumupReaderSelection {
   id: string

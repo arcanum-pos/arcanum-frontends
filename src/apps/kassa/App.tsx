@@ -379,7 +379,7 @@ export default function App() {
         }
       }
 
-      displayWindowRef.current = window.open(`/display.html?terminal=${encodeURIComponent(cfdTerminalId)}`, 'questo-display', features)
+      displayWindowRef.current = window.open(`/display.html?terminal=${encodeURIComponent(cfdTerminalId)}`, 'arcanum-display', features)
     } catch (err) {
       console.error('Kon klantscherm niet koppelen/openen', err)
       setError('Kon klantscherm niet openen.')
@@ -456,7 +456,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const channel = new BroadcastChannel('questo-payment')
+    const channel = new BroadcastChannel('arcanum-payment')
     channelRef.current = channel
     channel.onmessage = (event) => {
       const msg = event.data
