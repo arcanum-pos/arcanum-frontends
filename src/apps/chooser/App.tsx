@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { KioskShell } from '@/shared/kiosk-shell'
 import { ChoiceCard } from './ChoiceCard'
-import { getStoredTerminalInfo, listMyMemberships, PAGE_FOR_ROLE, registerNewTerminal, type Membership, type Role } from './lib'
+import { listMyMemberships, type Membership } from './lib'
+import { getStoredTerminalInfo, PAGE_FOR_ROLE, registerNewTerminal, type Role } from '@/shared/terminal'
 
 const ROLE_OPTIONS: { role: Role; title: string; hint: string }[] = [
   { role: 'pos', title: 'Kassa', hint: 'Bonnen verkopen en betalingen aanmaken' },
