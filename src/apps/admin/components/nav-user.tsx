@@ -86,9 +86,9 @@ export function NavUser() {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            {/* /logout lives on questo-bff itself (same-origin once deployed
+            {/* /logout lives on arcanum-bff itself (same-origin once deployed
                 behind it) — clears the session and the identity provider's
-                own SSO cookie. See questo-bff's authroutes.ts. */}
+                own SSO cookie. See arcanum-bff's authroutes.ts. */}
             <DropdownMenuItem variant="destructive" onClick={() => window.location.assign('/logout')}>
               <LogOut />
               Afmelden

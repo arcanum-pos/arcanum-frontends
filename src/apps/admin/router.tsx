@@ -75,8 +75,8 @@ const routeTree = rootRoute.addChildren([
   ]),
 ])
 
-// In production this app is reached at questo-bff's /console (see
-// questo-bff/src/index.ts) — the browser's real URL bar needs that prefix
+// In production this app is reached at arcanum-bff's /console (see
+// arcanum-bff/src/index.ts) — the browser's real URL bar needs that prefix
 // so a page reload/deep link resolves correctly, hence the basepath. Local
 // `npm run dev` serves this app at its own root instead (no BFF in front
 // of it), so it must NOT have the prefix there.

@@ -1,8 +1,8 @@
-// Client for questo-bff's /api/organizations/* + /whoami — same contract
+// Client for arcanum-bff's /api/organizations/* + /whoami — same contract
 // webapp/src/lib/organizations.ts already uses. Works once this app is
-// deployed behind questo-bff (same-origin, so cookies flow automatically);
+// deployed behind arcanum-bff (same-origin, so cookies flow automatically);
 // in local `npm run dev` it needs Vite's dev proxy (see vite.config.ts) to
-// forward these to a real questo-bff dev server.
+// forward these to a real arcanum-bff dev server.
 
 const ORGANIZATIONS_URL = '/api/organizations';
 const DEVICES_URL = '/api/devices';
@@ -232,7 +232,7 @@ export function setGmailApiCredentials(
   return request(`/${encodeURIComponent(orgId)}/gmail-api-credentials`, { method: 'PUT', body: JSON.stringify(fields) })
 }
 
-// questo-bff's own top-level endpoint, not under /api/organizations.
+// arcanum-bff's own top-level endpoint, not under /api/organizations.
 export interface Whoami {
   sub: string
   email: string
@@ -248,7 +248,7 @@ export async function whoami(): Promise<Whoami> {
   return res.json()
 }
 
-// questo-devicehub, proxied at /api/devices — same contract as
+// arcanum-devicehub, proxied at /api/devices — same contract as
 // webapp/src/lib/terminal.ts's listOrgDevices/removeDevice.
 export type DeviceRole = 'pos' | 'cfd' | 'sim'
 
@@ -259,7 +259,7 @@ export interface OrgDevice {
   created_at: string
   // Live presence, display-only — an offline device is still fully
   // registered (and keeps any link it holds); removeDevice is the only
-  // way a row actually goes away. See questo-devicehub's identity_providers
+  // way a row actually goes away. See arcanum-devicehub's identity_providers
   // design note in CLAUDE.md for why presence never auto-deletes.
   online: boolean
 }
