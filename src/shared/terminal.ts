@@ -1,9 +1,7 @@
 // Local counterpart of arcanum-webapp's src/lib/terminal.ts (device-identity
-// storage + notification channel) — only the pieces the chooser/device/
-// simulator screens need (not the kassa-Settings-only link/unlink helpers,
-// which stay in arcanum-webapp until kassa itself migrates). kassa/display/
-// simulator's *webapp* copy still reads/writes this same localStorage key,
-// so the key and stored shape must stay byte-for-byte compatible.
+// storage + notification channel + CFD/sim link management). Same
+// localStorage key/shape — kept byte-for-byte compatible in case any
+// not-yet-migrated screen still reads it directly.
 
 export type Role = 'pos' | 'cfd' | 'sim'
 
@@ -67,6 +65,44 @@ export async function getRegisteredTerminal(expectedRole: Role): Promise<Termina
   if (!stored || stored.role !== expectedRole || !stored.orgId) return null
   await callRegister(stored)
   return stored
+}
+
+// Spawning a linked CFD in a second window ("Klantscherm openen") —
+// deliberately does NOT use registerNewTerminal/localStorage: localStorage
+// is shared across every window on this origin, so writing this new CFD's
+// identity there would silently overwrite the POS's own stored terminal in
+// the window that's opening it. The spawned window is instead handed its
+// terminal id directly (as a URL query param), and only ever API-registers
+// it, never stores it.
+export async function registerRemoteTerminal(role: Role, orgId: string): Promise<string> {
+  const terminalId = crypto.randomUUID()
+  await callRegister({ terminalId, role, orgId })
+  return terminalId
+}
+
+export async function getLinkedDevice(posTerminalId: string, role: 'cfd' | 'sim'): Promise<{ terminal_id: string } | null> {
+  try {
+    const res = await fetch(`${DEVICES_URL}/${encodeURIComponent(posTerminalId)}/linked?role=${role}`)
+    return res.ok ? await res.json() : null
+  } catch {
+    return null
+  }
+}
+
+export async function unlinkTerminal(terminalId: string): Promise<void> {
+  await fetch(`${DEVICES_URL}/unlink`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ terminal_id: terminalId }),
+  })
+}
+
+export async function linkTerminals(posTerminalId: string, terminalId: string): Promise<void> {
+  await fetch(`${DEVICES_URL}/link`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ pos_terminal_id: posTerminalId, terminal_id: terminalId }),
+  })
 }
 
 export type NotificationHandlers = Record<string, (msg: Record<string, any>) => void>
