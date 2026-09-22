@@ -190,9 +190,8 @@ export default function BrandingPage() {
         </CardContent>
         <CardFooter>
           <p className="text-sm text-muted-foreground">
-            Werkt voorlopig alleen voor organisaties die het platform-standaard identity provider gebruiken (zie
-            Authentication) — een eigen identity provider herkent deze organisatie voorlopig nog via de aanmeldlink met
-            slug, niet via dit domein.
+            Vereist een eigen identity provider voor deze organisatie (zie Authentication) — leden melden zich na het
+            instellen aan via dit domein zelf, niet meer via arcanum.kaboutersoft.be.
           </p>
         </CardFooter>
       </Card>

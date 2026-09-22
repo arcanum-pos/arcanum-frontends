@@ -5,53 +5,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getIdentityProvider, setIdentityProvider, setOrganizationSlug } from '../../lib/api'
+import { getIdentityProvider, setIdentityProvider } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
 import { CopyLinkButton } from '../../components/copy-link-button'
 
-const SLUG_RE = /^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/
-
 export default function AuthenticationPage() {
-  const { currentOrg, updateCurrentOrg } = useOrg()
+  const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const { data: idp, loading, error, reload } = useAsync(
     () => (orgId ? getIdentityProvider(orgId) : Promise.resolve(null)),
     [orgId]
   )
-
-  const [slug, setSlug] = useState('')
-  const [slugSaving, setSlugSaving] = useState(false)
-  const [slugError, setSlugError] = useState<string | null>(null)
-  const [slugSaved, setSlugSaved] = useState(false)
-
-  useEffect(() => {
-    setSlug(currentOrg?.slug ?? '')
-    setSlugError(null)
-    setSlugSaved(false)
-  }, [currentOrg?.id, currentOrg?.slug])
-
-  async function handleSaveSlug() {
-    if (!orgId) return
-    const trimmed = slug.trim().toLowerCase()
-    if (trimmed && !SLUG_RE.test(trimmed)) {
-      setSlugError('Alleen kleine letters, cijfers en koppeltekens, niet aan begin/eind.')
-      return
-    }
-    setSlugSaving(true)
-    setSlugError(null)
-    setSlugSaved(false)
-    try {
-      const updated = await setOrganizationSlug(orgId, trimmed)
-      updateCurrentOrg({ slug: updated.slug })
-      setSlug(updated.slug ?? '')
-      setSlugSaved(true)
-    } catch (err) {
-      setSlugError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setSlugSaving(false)
-    }
-  }
 
   const [issuerUrl, setIssuerUrl] = useState('')
   const [clientId, setClientId] = useState('')
@@ -98,15 +63,17 @@ export default function AuthenticationPage() {
     }
   }
 
-  // Without an org-specific identity provider, an org's members authenticate
-  // against the platform default anyway — so the shared, unprefixed routes
-  // work identically to a slug-prefixed one and are simpler to share. The
-  // slug only matters (and only gets shown) once this org has its own IDP.
+  // Login links carry no org identifier at all — a custom domain (which
+  // requires this org to have its own identity provider, see Branding)
+  // identifies the org by Host header alone, and an org on the shared
+  // platform domain uses the exact same bare link as every other one
+  // (org context comes from the admin-portal org picker / device
+  // registration prompt afterward). window.location.origin is already
+  // whichever domain this settings page itself was reached on, so it's
+  // always the right one to show here.
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
-  const hasSpecificIdp = Boolean(idp?.issuerUrl)
-  const orgSlugOrId = orgId ? encodeURIComponent(currentOrg?.slug || orgId) : null
-  const deviceFlowUrl = orgId ? (hasSpecificIdp ? `${origin}/${orgSlugOrId}/device` : `${origin}/device`) : null
-  const consoleFlowUrl = orgId ? (hasSpecificIdp ? `${origin}/${orgSlugOrId}/console` : `${origin}/console`) : null
+  const deviceFlowUrl = orgId ? `${origin}/device` : null
+  const consoleFlowUrl = orgId ? `${origin}/console` : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -236,28 +203,6 @@ export default function AuthenticationPage() {
                   <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{consoleFlowUrl}</code>
                   <CopyLinkButton text={consoleFlowUrl} />
                 </div>
-              </div>
-            )}
-            {hasSpecificIdp && (
-              <div className="grid gap-2">
-                <Label htmlFor="org-slug">
-                  Slug <span className="font-normal text-muted-foreground">(optioneel, maakt de link hierboven leesbaar)</span>
-                </Label>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    id="org-slug"
-                    className="max-w-64"
-                    placeholder={orgId ?? ''}
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value)}
-                    autoComplete="off"
-                  />
-                  <Button variant="secondary" onClick={handleSaveSlug} disabled={slugSaving}>
-                    {slugSaving ? 'Bezig...' : 'Opslaan'}
-                  </Button>
-                </div>
-                {slugError && <p className="text-sm text-destructive">{slugError}</p>}
-                {slugSaved && !slugError && <p className="text-sm text-muted-foreground">Opgeslagen.</p>}
               </div>
             )}
           </CardContent>
