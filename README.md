@@ -1,5 +1,6 @@
 # arcanum-frontends
 
+
 Every UI screen the platform serves — the admin portal (`admin`, at
 `/console`), kassa, settings, the customer display, the SumUp simulator, the
 org/device chooser, the login prompt, and the device-grant QR page, all
