@@ -1,4 +1,4 @@
-# questo-console
+# arcanum-frontends
 
 Questo's admin portal (the `admin` app, reached at `/console` behind
 `questo-bff`), and the eventual home for every other on-screen interface
