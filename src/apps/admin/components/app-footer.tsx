@@ -1,4 +1,4 @@
-import kabouterLogo from '../assets/kabouter.png'
+import kabouterLogo from '@/shared/assets/kabouter.png'
 
 export function AppFooter() {
   return (
