@@ -91,3 +91,30 @@ npm run dev       # Vite dev server — proxies /api, /whoami to a local
 npm run build     # -> dist/, multi-entry
 npx wrangler dev  # serve the built dist/ through the Worker shape
 ```
+
+## Tests
+
+Every change ships with its tests in the same commit — new behavior gets a
+test, a fixed bug gets the test that would have caught it.
+
+```
+npm test          # unit tests (Vitest) — fast, no browser; src/**/*.test.ts
+npm run test:e2e  # kassa E2E (Playwright) — builds, serves dist/ via
+                  # `vite preview`, drives Chromium; e2e/*.spec.ts
+```
+
+- **Unit** (`src/**/*.test.ts`): pure logic, e.g. `src/apps/kassa/lib.ts`
+  (draft merging, totals, breakdown lines, amount parsing). This is the
+  layer meant for the deploy gate.
+- **E2E** (`e2e/`): real screens, real clicks, but **no real backend** —
+  `e2e/fake-backend.ts` answers every `/api` call inside the browser
+  (`page.route`) and mirrors the backend's rules (amount must equal
+  outstanding, one pending payment per tab, closed tabs refuse orders, …)
+  with the same status codes and messages. So these test *UI behavior*,
+  including how the kassa handles a 409; the rules themselves are tested
+  against the real implementation in `arcanum-backend`'s own suite. Keep
+  the fake in step when the tabs/charges API changes. `push` in
+  `e2e/fixtures.ts` sends a devicehub notification to the page.
+- Uses Playwright's Chromium from `~/Library/Caches/ms-playwright`; on a
+  fresh machine run `npx playwright install chromium` once. On failure,
+  `npx playwright show-report` has the trace.
