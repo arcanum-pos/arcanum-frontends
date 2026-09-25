@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { formatEuro } from '@/shared/format'
 import { STATUS_LABELS } from '@/shared/payment-labels'
-import { MANUAL_METHOD_LABELS, type CurrentPayment } from './lib'
+import { isPaymentResolved, MANUAL_METHOD_LABELS, type CurrentPayment } from './lib'
 
 export function PaymentStatus({
   current,
@@ -11,6 +11,7 @@ export function PaymentStatus({
   showConfirmButton,
   onConfirm,
   onCancel,
+  onNext,
 }: {
   current: CurrentPayment
   manualStatusText: string
@@ -18,6 +19,7 @@ export function PaymentStatus({
   showConfirmButton: boolean
   onConfirm: () => void
   onCancel: () => void
+  onNext: () => void
 }) {
   const isManual = current.method === 'cash' || current.method === 'sumup'
 
@@ -52,9 +54,13 @@ export function PaymentStatus({
           </>
         )}
 
-        <Button variant="secondary" onClick={onCancel}>
-          Opnieuw beginnen
-        </Button>
+        {isPaymentResolved(current) ? (
+          <Button onClick={onNext}>Volgende klant</Button>
+        ) : (
+          <Button variant="secondary" onClick={onCancel}>
+            Terug naar rekening
+          </Button>
+        )}
       </CardContent>
     </Card>
   )

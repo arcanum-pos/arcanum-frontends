@@ -1,19 +1,13 @@
-import { formatEuro, pluralize } from '@/shared/format'
+import { formatEuro } from '@/shared/format'
+import type { DraftLine, TabDetail } from './tabs-api'
+import { netQuantity } from './tabs-api'
 
 // NOTE: this catalogue (bonnen/fietstocht/wandeltocht/fooi) is one specific
 // org's item taxonomy, hardcoded — same as it was in arcanum-webapp. Only
-// the *prices* are org-configurable (via worker's /settings); the shape of
-// the catalogue itself is not data-driven. Ported verbatim, not genericized
-// — that would be a real scope change, not a styling port.
-
-export interface OrderItems {
-  bon?: number
-  fietstocht?: number
-  fietstochtMember?: number
-  wandeltocht?: number
-  wandeltochtMember?: number
-  fooi?: number
-}
+// the *prices* are org-configurable (via worker's /settings). It's replaced
+// by a real catalog in step 3 (see DOMAIN_MODEL.md); until then the item
+// codes below must stay the legacy `items` JSON keys, since the backend
+// derives transactions.items from them and every report reads that.
 
 export interface Pricing {
   amountPerBonCents: number
@@ -31,6 +25,61 @@ export const DEFAULT_PRICING: Pricing = {
   wandeltochtNonMemberCents: 600,
 }
 
+export interface PickerItem {
+  itemCode: string
+  name: string
+  unitPriceCents: number
+}
+
+export function pickerItems(pricing: Pricing): PickerItem[] {
+  return [
+    { itemCode: 'bon', name: 'Bon', unitPriceCents: pricing.amountPerBonCents },
+    { itemCode: 'fietstocht', name: 'Fietstocht', unitPriceCents: pricing.fietstochtNonMemberCents },
+    { itemCode: 'fietstochtMember', name: 'Fietstocht (lid)', unitPriceCents: pricing.fietstochtMemberCents },
+    { itemCode: 'wandeltocht', name: 'Wandeltocht', unitPriceCents: pricing.wandeltochtNonMemberCents },
+    { itemCode: 'wandeltochtMember', name: 'Wandeltocht (lid)', unitPriceCents: pricing.wandeltochtMemberCents },
+  ]
+}
+
+// Fooi stays an order line until the catalog step (DOMAIN_MODEL.md
+// decisions) — one line per tab, its "unit price" is the tip amount.
+export const FOOI_CODE = 'fooi'
+
+// Adds to a draft, merging with an existing line for the same item at the
+// same price (fooi merges by adding to the amount instead).
+export function addToDraft(draft: DraftLine[], item: PickerItem, quantity: number): DraftLine[] {
+  const i = draft.findIndex((l) => l.itemCode === item.itemCode && (item.itemCode === FOOI_CODE || l.unitPriceCents === item.unitPriceCents))
+  if (i === -1) return [...draft, { ...item, quantity }]
+  const next = [...draft]
+  next[i] =
+    item.itemCode === FOOI_CODE
+      ? { ...next[i], unitPriceCents: next[i].unitPriceCents + item.unitPriceCents }
+      : { ...next[i], quantity: next[i].quantity + quantity }
+  return next
+}
+
+export function draftTotalCents(draft: DraftLine[]): number {
+  return draft.reduce((sum, l) => sum + l.unitPriceCents * l.quantity, 0)
+}
+
+function breakdownLine(name: string, itemCode: string | null, quantity: number, unitPriceCents: number): string {
+  if (itemCode === FOOI_CODE) return `Fooi = ${formatEuro(unitPriceCents * quantity)}`
+  return `${quantity} × ${name} à ${formatEuro(unitPriceCents)} = ${formatEuro(quantity * unitPriceCents)}`
+}
+
+// What the payment view and the customer display list above the amount —
+// the tab's net lines (voids subtracted, fully voided lines left out).
+export function tabBreakdownLines(tab: TabDetail): string[] {
+  return tab.lines
+    .filter((l) => !l.voidsLineId && netQuantity(l) > 0)
+    .map((l) => breakdownLine(l.name, l.itemCode, netQuantity(l), l.unitPriceCents))
+}
+
+export function readAmountCents(value: string): number {
+  const euros = parseFloat(value.replace(',', '.'))
+  return Number.isFinite(euros) && euros > 0 ? Math.round(euros * 100) : 0
+}
+
 export type PaymentMethod = 'bancontact' | 'cash' | 'sumup'
 
 export interface CurrentPayment {
@@ -41,65 +90,19 @@ export interface CurrentPayment {
   status: string
   amountCents: number
   description?: string
-  items?: OrderItems
   breakdown: string[]
   qrCodeUrl?: string
   expiresAt?: string
-  chargeId?: string | null
+  chargeId: string
+  tabId: string
+  // True once a SumUp charge was actually sent to a physical reader — then
+  // cancelling here can't stop the customer from still paying on it, so
+  // the charge is left for the reader/poller to resolve.
+  dispatchedToReader?: boolean
 }
 
-export function buildBreakdownLines(items: OrderItems, pricing: Pricing): string[] {
-  const lines: string[] = []
-  if (items.bon) {
-    lines.push(
-      `${items.bon} ${pluralize(items.bon, 'bon', 'bonnen')} × ${formatEuro(pricing.amountPerBonCents)} = ${formatEuro(items.bon * pricing.amountPerBonCents)}`
-    )
-  }
-  if (items.fietstocht) {
-    lines.push(
-      `${items.fietstocht} ${pluralize(items.fietstocht, 'fietstocht', 'fietstochten')} × ${formatEuro(pricing.fietstochtNonMemberCents)} = ${formatEuro(items.fietstocht * pricing.fietstochtNonMemberCents)}`
-    )
-  }
-  if (items.fietstochtMember) {
-    lines.push(
-      `${items.fietstochtMember} ${pluralize(items.fietstochtMember, 'fietstocht', 'fietstochten')} (lid) × ${formatEuro(pricing.fietstochtMemberCents)} = ${formatEuro(items.fietstochtMember * pricing.fietstochtMemberCents)}`
-    )
-  }
-  if (items.wandeltocht) {
-    lines.push(
-      `${items.wandeltocht} ${pluralize(items.wandeltocht, 'wandeltocht', 'wandeltochten')} × ${formatEuro(pricing.wandeltochtNonMemberCents)} = ${formatEuro(items.wandeltocht * pricing.wandeltochtNonMemberCents)}`
-    )
-  }
-  if (items.wandeltochtMember) {
-    lines.push(
-      `${items.wandeltochtMember} ${pluralize(items.wandeltochtMember, 'wandeltocht', 'wandeltochten')} (lid) × ${formatEuro(pricing.wandeltochtMemberCents)} = ${formatEuro(items.wandeltochtMember * pricing.wandeltochtMemberCents)}`
-    )
-  }
-  if (items.fooi) {
-    lines.push(`Fooi = ${formatEuro(items.fooi)}`)
-  }
-  return lines
-}
-
-export function itemsTotalCents(items: OrderItems, pricing: Pricing): number {
-  return (
-    (items.bon || 0) * pricing.amountPerBonCents +
-    (items.fietstocht || 0) * pricing.fietstochtNonMemberCents +
-    (items.fietstochtMember || 0) * pricing.fietstochtMemberCents +
-    (items.wandeltocht || 0) * pricing.wandeltochtNonMemberCents +
-    (items.wandeltochtMember || 0) * pricing.wandeltochtMemberCents +
-    (items.fooi || 0)
-  )
-}
-
-export function readCount(value: string): number {
-  const n = Math.round(Number(value))
-  return Number.isFinite(n) && n > 0 ? n : 0
-}
-
-export function readAmountCents(value: string): number {
-  const euros = parseFloat(value)
-  return Number.isFinite(euros) && euros > 0 ? Math.round(euros * 100) : 0
+export function isPaymentResolved(current: CurrentPayment): boolean {
+  return current.status === 'RESOLVED' || current.status === 'SUCCEEDED'
 }
 
 export const MANUAL_METHOD_LABELS: Record<'cash' | 'sumup', { waiting: string; confirmBtn: string; paid: string }> = {
@@ -114,3 +117,9 @@ export const MANUAL_METHOD_LABELS: Record<'cash' | 'sumup', { waiting: string; c
     paid: 'Betaald (SumUp)',
   },
 }
+
+export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: 'bancontact', label: 'Bancontact' },
+  { value: 'cash', label: 'Contant' },
+  { value: 'sumup', label: 'SumUp' },
+]

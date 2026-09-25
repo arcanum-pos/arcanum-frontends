@@ -12,13 +12,36 @@ import {
   unlinkTerminal,
 } from '@/shared/terminal'
 import { getCurrentSlotId } from '@/shared/slots'
-import { buildBreakdownLines, DEFAULT_PRICING, MANUAL_METHOD_LABELS, type CurrentPayment, type OrderItems, type PaymentMethod, type Pricing } from './lib'
-import { OrderBuilder } from './OrderBuilder'
+import {
+  addToDraft,
+  DEFAULT_PRICING,
+  isPaymentResolved,
+  MANUAL_METHOD_LABELS,
+  tabBreakdownLines,
+  type CurrentPayment,
+  type PaymentMethod,
+  type PickerItem,
+  type Pricing,
+} from './lib'
+import { ItemPicker } from './ItemPicker'
 import { PaymentStatus } from './PaymentStatus'
+import { NameDialog, VoidDialog } from './TabDialogs'
+import { TabPanel } from './TabPanel'
+import { QUICK_SALE_LABEL, TabStrip, type ActiveKey } from './TabStrip'
+import * as tabsApi from './tabs-api'
+import { TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
 
 const WORKER_URL = '/api/bancontact'
 const DEVICES_URL = '/api/devices'
 
+type NameDialogMode = 'new' | 'park' | 'rename'
+
+// Every sale goes through a tab (DOMAIN_MODEL.md: "a counter sale is a tab
+// that is paid immediately"). The Toog button is a local draft that becomes
+// a brand-new tab only when paid or parked; named tabs live on the server
+// and are shared by every kassa of the org. No live sync between kassas yet
+// — the open-tab list reloads on focus, on switching and after every
+// action, and the server refuses anything based on a stale view (409).
 export default function App() {
   const [pricing, setPricing] = useState<Pricing>(DEFAULT_PRICING)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bancontact')
@@ -27,21 +50,34 @@ export default function App() {
   const [countdownText, setCountdownText] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [builderKey, setBuilderKey] = useState(0)
   const [terminalIdLabel, setTerminalIdLabel] = useState('')
   const [userLabel, setUserLabel] = useState('')
   const [openingDisplay, setOpeningDisplay] = useState(false)
 
+  const [orgId, setOrgId] = useState<string | null>(null)
+  const [tabs, setTabs] = useState<TabSummary[]>([])
+  const [active, setActive] = useState<ActiveKey>('quick')
+  const [activeTab, setActiveTab] = useState<TabDetail | null>(null)
+  // Unsubmitted lines per tab ('quick' = the Toog draft), kept per tab so
+  // switching away and back doesn't lose them. Local to this kassa only.
+  const [drafts, setDrafts] = useState<Record<string, DraftLine[]>>({})
+  const [nameDialog, setNameDialog] = useState<NameDialogMode | null>(null)
+  const [voidTarget, setVoidTarget] = useState<TabLine | null>(null)
+
   const currentRef = useRef<CurrentPayment | null>(null)
+  const activeRef = useRef<ActiveKey>('quick')
+  activeRef.current = active
   const posTerminalIdRef = useRef<string | null>(null)
   const posOrgIdRef = useRef<string | null>(null)
-  const userNameRef = useRef('')
-  const userEmailRef = useRef('')
   const channelRef = useRef<BroadcastChannel | null>(null)
   const displayWindowRef = useRef<Window | null>(null)
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const pricingRef = useRef(pricing)
-  pricingRef.current = pricing
+
+  const draft = drafts[active] || []
+  // Only the tab that's actually selected — never a previous one still in
+  // state while the new one loads.
+  const shownTab = active !== 'quick' && activeTab?.id === active ? activeTab : null
+  const tabLoading = active !== 'quick' && !shownTab
 
   function setCurrentBoth(value: CurrentPayment | null) {
     currentRef.current = value
@@ -69,51 +105,247 @@ export default function App() {
     }, 1000)
   }
 
-  function reset() {
-    stopCountdown()
-    setCurrentBoth(null)
-    setManualStatusText('')
-    setError('')
-    setBusy(false)
-    setBuilderKey((k) => k + 1)
-    broadcastCurrent()
+  // --- Tabs ---
 
-    if (posTerminalIdRef.current) {
-      fetch(`${DEVICES_URL}/reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pos_terminal_id: posTerminalIdRef.current }),
-      }).catch((err) => console.error('Kon klantscherm niet resetten', err))
+  function setDraftFor(key: ActiveKey, lines: DraftLine[]) {
+    setDrafts((prev) => {
+      const next = { ...prev }
+      if (lines.length > 0) next[key] = lines
+      else delete next[key]
+      return next
+    })
+  }
+
+  function showError(err: unknown) {
+    setError(err instanceof Error ? err.message : String(err))
+    // A 409 means this kassa's view was stale — pull the current state.
+    if (err instanceof TabApiError && err.status === 409) refreshAll()
+  }
+
+  async function refreshTabs(): Promise<TabSummary[] | null> {
+    const org = posOrgIdRef.current
+    if (!org) return null
+    try {
+      const list = await tabsApi.listOpenTabs(org)
+      setTabs(list)
+      return list
+    } catch (err) {
+      console.error('Kon open rekeningen niet laden', err)
+      return null
     }
   }
 
-  async function recordSucceededTransaction(amountCents: number, description: string | undefined, method: string, items: OrderItems | undefined) {
-    if (!posOrgIdRef.current) {
-      console.error('Kon transactie niet opslaan: organisatie van dit toestel nog niet bekend')
+  async function loadTab(key: ActiveKey) {
+    const org = posOrgIdRef.current
+    if (!org || key === 'quick') {
+      setActiveTab(null)
       return
     }
     try {
-      const res = await fetch(`${WORKER_URL}/transactions`, {
+      const tab = await tabsApi.getTab(org, key)
+      // Ignore a slow response for a tab the cashier already switched away from.
+      if (activeRef.current === key) setActiveTab(tab)
+    } catch (err) {
+      showError(err)
+    }
+  }
+
+  // Also notices a tab that was closed or cancelled on another kassa in the
+  // meantime and falls back to Toog.
+  async function refreshAll() {
+    const list = await refreshTabs()
+    const key = activeRef.current
+    if (list && key !== 'quick' && !list.some((t) => t.id === key) && !currentRef.current) {
+      setError('Deze rekening is intussen afgesloten, mogelijk op een andere kassa.')
+      setDraftFor(key, [])
+      selectTab('quick')
+      return
+    }
+    await loadTab(key)
+  }
+
+  function selectTab(key: ActiveKey) {
+    setActive(key)
+    activeRef.current = key
+    setActiveTab(null)
+    loadTab(key)
+    refreshTabs()
+  }
+
+  function addItem(item: PickerItem, quantity: number) {
+    setError('')
+    setDraftFor(active, addToDraft(draft, item, quantity))
+  }
+
+  function setDraftQuantity(index: number, quantity: number) {
+    const next = [...draft]
+    if (quantity <= 0) next.splice(index, 1)
+    else next[index] = { ...next[index], quantity }
+    setDraftFor(active, next)
+  }
+
+  async function runTabAction(action: (org: string) => Promise<void>) {
+    const org = posOrgIdRef.current
+    if (!org) {
+      setError('Organisatie van dit toestel nog niet bekend.')
+      return
+    }
+    setError('')
+    setBusy(true)
+    try {
+      await action(org)
+    } catch (err) {
+      showError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function submitOrder() {
+    if (active === 'quick' || draft.length === 0) return
+    const key = active
+    runTabAction(async (org) => {
+      setActiveTab(await tabsApi.addOrder(org, key, draft))
+      setDraftFor(key, [])
+      refreshTabs()
+    })
+  }
+
+  function confirmNameDialog(name: string) {
+    const mode = nameDialog
+    setNameDialog(null)
+    runTabAction(async (org) => {
+      if (mode === 'rename' && shownTab) {
+        setActiveTab(await tabsApi.renameTab(org, shownTab.id, name))
+        refreshTabs()
+        return
+      }
+      // 'park' moves the Toog draft onto a new named tab as its first order.
+      const lines = mode === 'park' ? drafts.quick || [] : []
+      const tab = await tabsApi.createTab(org, name, getCurrentSlotId(), lines)
+      if (mode === 'park') setDraftFor('quick', [])
+      await refreshTabs()
+      setActive(tab.id)
+      activeRef.current = tab.id
+      setActiveTab(tab)
+    })
+  }
+
+  function confirmVoid(line: TabLine, reason: string, quantity: number) {
+    setVoidTarget(null)
+    if (!shownTab) return
+    const tabId = shownTab.id
+    runTabAction(async (org) => {
+      setActiveTab(await tabsApi.voidLine(org, tabId, line.id, reason, quantity))
+      refreshTabs()
+    })
+  }
+
+  function cancelEmptyTab() {
+    if (!shownTab) return
+    const tabId = shownTab.id
+    runTabAction(async (org) => {
+      await tabsApi.cancelTab(org, tabId)
+      selectTab('quick')
+    })
+  }
+
+  // --- Payment ---
+
+  // Submits whatever's still in the draft first (for Toog: creates the tab
+  // with it), then charges exactly what's outstanding — the server refuses
+  // any other amount.
+  function pay() {
+    const key = active
+    runTabAction(async (org) => {
+      let tab: TabDetail
+      if (key === 'quick') {
+        tab = await tabsApi.createTab(org, QUICK_SALE_LABEL, getCurrentSlotId(), draft)
+        setDraftFor('quick', [])
+        // From here on it's a real tab: if the payment fails or is
+        // cancelled, it stays open in the strip to retry, void or close.
+        setActive(tab.id)
+        activeRef.current = tab.id
+      } else if (draft.length > 0) {
+        tab = await tabsApi.addOrder(org, key, draft)
+        setDraftFor(key, [])
+      } else {
+        tab = await tabsApi.getTab(org, key)
+      }
+      setActiveTab(tab)
+      refreshTabs()
+
+      if (tab.outstandingCents < 1) {
+        setError('Niets te betalen op deze rekening.')
+        return
+      }
+      await startCharge(org, tab)
+    })
+  }
+
+  async function startCharge(org: string, tab: TabDetail) {
+    const amountCents = tab.outstandingCents
+    const breakdown = tabBreakdownLines(tab)
+    const common = {
+      amount: amountCents,
+      orgId: org,
+      tabId: tab.id,
+      posTerminalId: posTerminalIdRef.current || undefined,
+      slotId: getCurrentSlotId(),
+      deviceId: getDeviceId(),
+      deviceName: getDeviceName(),
+    }
+
+    if (paymentMethod === 'bancontact') {
+      const res = await fetch(`${WORKER_URL}/payments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amountCents,
-          description: description || '',
-          method: method || 'bancontact',
-          items: items || {},
-          slotId: getCurrentSlotId(),
-          deviceId: getDeviceId(),
-          deviceName: getDeviceName(),
-          userName: userNameRef.current,
-          userEmail: userEmailRef.current,
-          orgId: posOrgIdRef.current,
-          completedAt: new Date().toISOString(),
-        }),
+        body: JSON.stringify(common),
       })
-      if (!res.ok) throw new Error(`status ${res.status}`)
-    } catch (err) {
-      console.error('Kon transactie niet opslaan', err)
+      const data = await res.json()
+      if (!res.ok) throw new TabApiError(data.error ? `${data.error}${data.details ? `: ${JSON.stringify(data.details)}` : ''}` : 'Onbekende fout', res.status)
+
+      setCurrentBoth({
+        method: 'bancontact',
+        chargeId: data.chargeId,
+        tabId: tab.id,
+        qrCodeUrl: data.qrCodeUrl,
+        expiresAt: data.expiresAt,
+        status: data.status,
+        amountCents: data.amount,
+        breakdown,
+      })
+      broadcastCurrent()
+      startCountdown(data.expiresAt)
+      checkBancontactStatus(data.chargeId) // one immediate check, in case it resolves before the push arrives
+      return
     }
+
+    // Cash and SumUp are both "manual confirm" flows: the cashier collects
+    // payment outside the app (or the linked reader resolves it) and
+    // confirms here so it's recorded under the right method.
+    const method = paymentMethod
+    const readerId = method === 'sumup' ? getSumupReader()?.id : undefined
+    const res = await fetch(`${WORKER_URL}/sumup/charge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...common, method, readerId }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data.chargeId) throw new TabApiError(data.error || 'Kon betaling niet registreren', res.status)
+
+    setCurrentBoth({
+      method,
+      status: 'AWAITING_MANUAL',
+      chargeId: data.chargeId,
+      tabId: tab.id,
+      amountCents,
+      breakdown,
+      dispatchedToReader: !!readerId,
+    })
+    setManualStatusText(MANUAL_METHOD_LABELS[method].waiting)
+    broadcastCurrent()
+    if (method === 'sumup') checkSumupStatus(data.chargeId)
   }
 
   async function checkBancontactStatus(chargeId: string) {
@@ -130,131 +362,14 @@ export default function App() {
       // collapsed pending/succeeded/failed the backend actually acts on.
       const displayStatus = data.providerStatus || (data.status === 'succeeded' ? 'SUCCEEDED' : data.status === 'failed' ? 'FAILED' : 'PENDING')
       setCurrentBoth({ ...cur, status: displayStatus })
-      // No recordSucceededTransaction here — the backend already recorded
-      // the sale when it resolved this charge.
+      // Nothing to record here — the backend recorded the sale and closed
+      // the tab when it resolved this charge.
       channelRef.current?.postMessage({ type: 'status', status: displayStatus })
 
       if (data.status === 'succeeded' || data.status === 'failed') stopCountdown()
     } catch (err) {
       console.error('Kon Bancontact status niet ophalen', err)
     }
-  }
-
-  // Cash and SumUp are both "manual confirm" flows for now: the cashier
-  // collects payment outside the app and just confirms here so it's
-  // recorded under the right method for reconciliation.
-  async function createTrackedCharge(
-    amountCents: number,
-    description: string | undefined,
-    method: string,
-    items: OrderItems | undefined
-  ): Promise<string | null> {
-    if (!posOrgIdRef.current) {
-      console.error('Kon betaling niet registreren: organisatie van dit toestel nog niet bekend')
-      return null
-    }
-    try {
-      const res = await fetch(`${WORKER_URL}/sumup/charge`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: amountCents,
-          description: description || undefined,
-          method,
-          posTerminalId: posTerminalIdRef.current || undefined,
-          items: items || {},
-          slotId: getCurrentSlotId(),
-          deviceId: getDeviceId(),
-          deviceName: getDeviceName(),
-          orgId: posOrgIdRef.current,
-          readerId: method === 'sumup' ? getSumupReader()?.id : undefined,
-        }),
-      })
-      const data = await res.json()
-      return res.ok ? data.chargeId || null : null
-    } catch (err) {
-      console.error('Kon betaling niet registreren voor kassascherm-melding', err)
-      return null
-    }
-  }
-
-  async function confirmTrackedCharge(chargeId: string | null | undefined) {
-    if (!chargeId) return
-    try {
-      await fetch(`${WORKER_URL}/sumup/confirm`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chargeId, success: true }),
-      })
-    } catch (err) {
-      console.error('Kon kassascherm niet melden', err)
-    }
-  }
-
-  function startManualPayment(amountCents: number, description: string, items: OrderItems, method: 'cash' | 'sumup') {
-    setError('')
-    if (!Number.isInteger(amountCents) || amountCents < 1) {
-      setError('Voer een geldig bedrag groter dan 0 in.')
-      return
-    }
-
-    const payment: CurrentPayment = {
-      method,
-      status: 'AWAITING_MANUAL',
-      amountCents,
-      description,
-      items,
-      breakdown: buildBreakdownLines(items || {}, pricingRef.current),
-    }
-    setCurrentBoth(payment)
-    setManualStatusText(MANUAL_METHOD_LABELS[method].waiting)
-    broadcastCurrent()
-
-    // 'sumup' creates its own tracked charge in startSumupPayment (it also
-    // checks it); cash has no other server-side record, so create one here.
-    if (method === 'cash') {
-      createTrackedCharge(amountCents, description, method, items).then((chargeId) => {
-        if (currentRef.current && currentRef.current.method === method) {
-          setCurrentBoth({ ...currentRef.current, chargeId })
-        }
-      })
-    }
-  }
-
-  function confirmManualPayment() {
-    // Guards against the SumUp poll and this manual tap both trying to
-    // complete the same transaction.
-    const cur = currentRef.current
-    if (!cur || (cur.method !== 'cash' && cur.method !== 'sumup') || cur.status === 'RESOLVED') return
-    stopCountdown()
-    setCurrentBoth({ ...cur, status: 'RESOLVED' })
-    setManualStatusText(MANUAL_METHOD_LABELS[cur.method].paid)
-    channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
-
-    if (cur.chargeId) {
-      // Backend records the sale once it resolves the charge.
-      confirmTrackedCharge(cur.chargeId)
-    } else {
-      // No server-side charge exists yet — record here so the sale isn't
-      // silently lost.
-      recordSucceededTransaction(cur.amountCents, cur.description, cur.method, cur.items)
-    }
-  }
-
-  // SumUp gets the manual "confirm" flow above (fallback for using the
-  // standalone SumUp app + reader directly) PLUS a push-driven check: the
-  // notification socket tells this POS the moment the reader/simulator
-  // resolves it — no polling.
-  async function startSumupPayment(amountCents: number, description: string, items: OrderItems) {
-    startManualPayment(amountCents, description, items, 'sumup')
-    if (!currentRef.current || currentRef.current.method !== 'sumup') return // rejected an invalid amount
-
-    const chargeId = await createTrackedCharge(amountCents, description, 'sumup', items)
-    if (!chargeId) return // manual confirm is still available as fallback
-    if (currentRef.current && currentRef.current.method === 'sumup') {
-      setCurrentBoth({ ...currentRef.current, chargeId })
-    }
-    checkSumupStatus(chargeId) // one immediate check, in case it resolves before the socket delivers
   }
 
   async function checkSumupStatus(chargeId: string) {
@@ -267,8 +382,6 @@ export default function App() {
       if (!res.ok) return
 
       if (data.status === 'succeeded') {
-        // No recordSucceededTransaction here — the backend already recorded
-        // the sale when it resolved this charge.
         setCurrentBoth({ ...cur, status: 'RESOLVED' })
         setManualStatusText(MANUAL_METHOD_LABELS.sumup.paid)
         channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
@@ -282,68 +395,68 @@ export default function App() {
     }
   }
 
-  // Bancontact used to be polled directly by this browser every 2s — now
-  // it's backend-tracked exactly like SumUp: the notification socket pushes
-  // the moment a callback or the ChargePoller DO's fallback sweep resolves
-  // it. checkBancontactStatus is the same "one immediate check + react to
-  // the push" pattern checkSumupStatus uses.
-  async function generatePayment(amountCents: number, description: string, items: OrderItems) {
-    setError('')
-    if (!Number.isInteger(amountCents) || amountCents < 1) {
-      setError('Voer een geldig bedrag groter dan 0 in.')
-      return
-    }
-    if (!posOrgIdRef.current) {
-      setError('Organisatie van dit toestel nog niet bekend.')
-      return
-    }
-
-    setBusy(true)
+  async function resolveTrackedCharge(chargeId: string, success: boolean) {
     try {
-      const res = await fetch(`${WORKER_URL}/payments`, {
+      await fetch(`${WORKER_URL}/sumup/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: amountCents,
-          description: description || undefined,
-          orgId: posOrgIdRef.current,
-          posTerminalId: posTerminalIdRef.current || undefined,
-          items: items || {},
-          slotId: getCurrentSlotId(),
-          deviceId: getDeviceId(),
-          deviceName: getDeviceName(),
-        }),
+        body: JSON.stringify({ chargeId, success }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error ? `${data.error}: ${JSON.stringify(data.details)}` : 'Onbekende fout')
-
-      const payment: CurrentPayment = {
-        method: 'bancontact',
-        chargeId: data.chargeId,
-        qrCodeUrl: data.qrCodeUrl,
-        expiresAt: data.expiresAt,
-        status: data.status,
-        amountCents: data.amount,
-        description,
-        items,
-        breakdown: buildBreakdownLines(items || {}, pricingRef.current),
-      }
-      setCurrentBoth(payment)
-      broadcastCurrent()
-      startCountdown(data.expiresAt)
-      checkBancontactStatus(data.chargeId) // one immediate check, in case it resolves before the push arrives
     } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setBusy(false)
+      console.error('Kon betaling niet bijwerken', err)
     }
   }
 
-  function startTransaction(amountCents: number, description: string, items: OrderItems) {
-    if (paymentMethod === 'bancontact') generatePayment(amountCents, description, items)
-    else if (paymentMethod === 'sumup') startSumupPayment(amountCents, description, items)
-    else startManualPayment(amountCents, description, items, 'cash')
+  function confirmManualPayment() {
+    // Guards against the SumUp push and this manual tap both trying to
+    // complete the same payment.
+    const cur = currentRef.current
+    if (!cur || (cur.method !== 'cash' && cur.method !== 'sumup') || cur.status === 'RESOLVED') return
+    stopCountdown()
+    setCurrentBoth({ ...cur, status: 'RESOLVED' })
+    setManualStatusText(MANUAL_METHOD_LABELS[cur.method].paid)
+    channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
+    // Backend records the sale and closes the tab once it resolves the charge.
+    resolveTrackedCharge(cur.chargeId, true)
   }
+
+  function clearPaymentView() {
+    stopCountdown()
+    setCurrentBoth(null)
+    setManualStatusText('')
+    setError('')
+    broadcastCurrent()
+
+    if (posTerminalIdRef.current) {
+      fetch(`${DEVICES_URL}/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pos_terminal_id: posTerminalIdRef.current }),
+      }).catch((err) => console.error('Kon klantscherm niet resetten', err))
+    }
+  }
+
+  // Paid — back to Toog for the next customer.
+  function finishPayment() {
+    clearPaymentView()
+    selectTab('quick')
+  }
+
+  // Back to the tab without paying. A cash (or reader-less SumUp) charge is
+  // failed right away so the tab isn't blocked until it times out; a
+  // Bancontact QR or a charge already sent to a real reader is left
+  // pending — the customer could still complete it, and failing it here
+  // would then lose a real payment. The poller times those out.
+  async function cancelPayment() {
+    const cur = currentRef.current
+    if (cur && !isPaymentResolved(cur) && (cur.method === 'cash' || (cur.method === 'sumup' && !cur.dispatchedToReader))) {
+      await resolveTrackedCharge(cur.chargeId, false)
+    }
+    clearPaymentView()
+    selectTab(cur?.tabId || 'quick')
+  }
+
+  // --- Customer display ---
 
   async function openDisplay() {
     if (displayWindowRef.current && !displayWindowRef.current.closed) {
@@ -388,6 +501,8 @@ export default function App() {
     }
   }
 
+  // --- Effects ---
+
   useEffect(() => {
     fetch(`${WORKER_URL}/settings`)
       .then((res) => res.json())
@@ -418,8 +533,6 @@ export default function App() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data) return
-        userNameRef.current = data.name || ''
-        userEmailRef.current = data.email || ''
         setUserLabel(`Ingelogd als ${data.name || data.email}`)
       })
       .catch(() => {})
@@ -438,6 +551,7 @@ export default function App() {
 
       posTerminalIdRef.current = terminal.terminalId
       posOrgIdRef.current = terminal.orgId
+      setOrgId(terminal.orgId)
       setTerminalIdLabel(`POS-ID: ${terminal.terminalId}`)
 
       // Replaces polling: the notification socket pushes payment_updated
@@ -455,6 +569,23 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // The only cross-kassa sync for now: reload when this kassa is looked at
+  // again. A live tab_updated push comes later (DOMAIN_MODEL.md).
+  useEffect(() => {
+    if (!orgId) return
+    refreshTabs()
+    function onVisible() {
+      if (document.visibilityState === 'visible') refreshAll()
+    }
+    window.addEventListener('focus', refreshAll)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('focus', refreshAll)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId])
+
   useEffect(() => {
     const channel = new BroadcastChannel('arcanum-payment')
     channelRef.current = channel
@@ -462,16 +593,19 @@ export default function App() {
       const msg = event.data
       if (!msg) return
       if (msg.type === 'request-state') broadcastCurrent()
-      else if (msg.type === 'reset-requested') reset()
+      // The CFD's success overlay was tapped — only meaningful once paid.
+      else if (msg.type === 'reset-requested' && currentRef.current && isPaymentResolved(currentRef.current)) finishPayment()
     }
     return () => channel.close()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const showConfirmButton = current !== null && current.status !== 'RESOLVED'
+  const draftKeys = new Set(Object.keys(drafts))
+  const panelTitle = active === 'quick' ? `${QUICK_SALE_LABEL} — direct afrekenen` : shownTab ? tabTitle(shownTab) : 'Laden…'
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4">
+    <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
       <OrgBadge />
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
@@ -496,30 +630,60 @@ export default function App() {
         </div>
       </div>
 
+      <TabStrip tabs={tabs} active={active} draftKeys={draftKeys} disabled={busy || current !== null} onSelect={selectTab} onNew={() => setNameDialog('new')} />
+
       {error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
       {!current && (
-        <OrderBuilder
-          key={builderKey}
-          pricing={pricing}
-          paymentMethod={paymentMethod}
-          onPaymentMethodChange={setPaymentMethod}
-          onGenerate={startTransaction}
-          onError={setError}
-          busy={busy}
-        />
+        <div className="grid items-start gap-4 md:grid-cols-[1fr_420px]">
+          <ItemPicker pricing={pricing} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} />
+          <div className="md:sticky md:top-4">
+            <TabPanel
+              title={panelTitle}
+              tab={shownTab}
+              draft={draft}
+              paymentMethod={paymentMethod}
+              busy={busy || tabLoading}
+              onPaymentMethodChange={setPaymentMethod}
+              onDraftQuantity={setDraftQuantity}
+              onClearDraft={() => setDraftFor(active, [])}
+              onVoid={setVoidTarget}
+              onSubmitOrder={submitOrder}
+              onPay={pay}
+              onPark={() => setNameDialog('park')}
+              onRename={() => setNameDialog('rename')}
+              onCancelTab={cancelEmptyTab}
+              onRefresh={refreshAll}
+            />
+          </div>
+        </div>
       )}
 
       {current && (
-        <PaymentStatus
-          current={current}
-          manualStatusText={manualStatusText}
-          countdownText={countdownText}
-          showConfirmButton={showConfirmButton}
-          onConfirm={confirmManualPayment}
-          onCancel={reset}
-        />
+        <div className="mx-auto w-full max-w-2xl">
+          <PaymentStatus
+            current={current}
+            manualStatusText={manualStatusText}
+            countdownText={countdownText}
+            showConfirmButton={showConfirmButton}
+            onConfirm={confirmManualPayment}
+            onCancel={cancelPayment}
+            onNext={finishPayment}
+          />
+        </div>
       )}
+
+      <NameDialog
+        key={nameDialog ?? 'closed'}
+        open={nameDialog !== null}
+        title={nameDialog === 'rename' ? 'Naam wijzigen' : nameDialog === 'park' ? 'Op rekening zetten' : 'Nieuwe rekening'}
+        description={nameDialog === 'park' ? 'De bestelling komt op een nieuwe rekening die open blijft tot ze betaald wordt.' : undefined}
+        confirmLabel={nameDialog === 'rename' ? 'Opslaan' : 'Rekening openen'}
+        initialValue={nameDialog === 'rename' ? shownTab?.label || '' : ''}
+        onConfirm={confirmNameDialog}
+        onClose={() => setNameDialog(null)}
+      />
+      <VoidDialog key={voidTarget?.id ?? 'closed'} line={voidTarget} onConfirm={confirmVoid} onClose={() => setVoidTarget(null)} />
     </div>
   )
 }
