@@ -30,6 +30,8 @@ export interface Organization {
   theme: string | null
   createdAt: string
   customDomain: string | null
+  // 'importing' while an org import (org-transfer.ts) isn't finished yet.
+  importStatus?: string | null
 }
 
 export function listMyOrganizations(): Promise<Organization[]> {

@@ -83,7 +83,17 @@ worker/index.ts               # thin ASSETS passthrough — see wrangler.jsonc
   Preferences (language — disabled, not supported yet), Profile (real
   `/whoami`), Payment Providers (real, incl. Bancontact prod/preprod),
   Notifications (disabled preview, waiting on the SMTP work), Authentication
-  (real OIDC issuer/client config + the org's device-flow link).
+  (real OIDC issuer/client config + the org's device-flow link), Gegevens
+  (org data export/import, below).
+- **Gegevens** (Instellingen) — export all of the org's data as one JSON
+  file (secrets only when asked, with a warning), and import such a file as
+  a **new** org — also offered from the team switcher's "Nieuwe
+  organisatie". The browser drives the import (`lib/org-transfer.ts`):
+  start → chunks per table in the server's order (each retried up to 3×;
+  chunks are idempotent server-side) → finish, which compares every table's
+  count; a mismatch offers retry or abort. An org whose import never
+  finished shows a banner (`components/import-banner.tsx`) to resume with
+  the same file or cancel. Backend: arcanum-backend `src/org-transfer.ts`.
 
 ## Status
 

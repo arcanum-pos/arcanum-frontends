@@ -9,6 +9,7 @@ const SETTINGS_NAV = [
   { title: 'Notifications', to: '/settings/notifications' },
   { title: 'Branding', to: '/settings/branding' },
   { title: 'Authentication', to: '/settings/authentication' },
+  { title: 'Gegevens', to: '/settings/data' },
 ] as const
 
 export default function SettingsLayout() {

@@ -14,6 +14,9 @@ interface OrgContextValue {
   // Branding's custom domain) so the UI reflects it immediately without a
   // full org-list refetch.
   updateCurrentOrg: (patch: Partial<Organization>) => void
+  // Refetches the org list (e.g. after an import created or removed one),
+  // optionally selecting `selectId` afterwards.
+  reloadOrgs: (selectId?: string) => Promise<void>
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
@@ -52,6 +55,15 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     setCurrentOrgId(org.id)
   }
 
+  async function reloadOrgs(selectId?: string) {
+    const result = await listMyOrganizations()
+    setOrgs(result)
+    const keep = selectId ?? currentOrgId
+    const next = result.some((o) => o.id === keep) ? keep : (result[0]?.id ?? null)
+    if (next) setCurrentOrgId(next)
+    else setCurrentOrgIdState(null)
+  }
+
   function updateCurrentOrg(patch: Partial<Organization>) {
     setOrgs((prev) => prev.map((o) => (o.id === currentOrgId ? { ...o, ...patch } : o)))
   }
@@ -59,7 +71,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const currentOrg = orgs.find((o) => o.id === currentOrgId) ?? orgs[0] ?? null
 
   return (
-    <OrgContext.Provider value={{ orgs, currentOrg, loading, error, setCurrentOrgId, addOrg, updateCurrentOrg }}>
+    <OrgContext.Provider value={{ orgs, currentOrg, loading, error, setCurrentOrgId, addOrg, updateCurrentOrg, reloadOrgs }}>
       {children}
     </OrgContext.Provider>
   )

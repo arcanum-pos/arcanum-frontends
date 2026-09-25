@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test as base, expect, type Page } from '@playwright/test'
-import { FakeCatalogAdmin } from './fake-catalog-admin'
+import { FakeCatalogAdmin, type FakeResponse } from './fake-catalog-admin'
+import { FakeOrgTransfer } from './fake-org-transfer'
 
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 
@@ -10,9 +11,11 @@ const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist
 // the /console basepath (router.tsx), which `vite preview` can't route to
 // admin.html on its own — every /console/* document request is answered
 // with dist/admin.html here, the way arcanum-bff serves it in production.
-// Every /api call and /whoami is answered by an in-memory FakeCatalogAdmin.
+// Every /api call and /whoami is answered in memory: FakeOrgTransfer first
+// (org list + export/import), then FakeCatalogAdmin for everything else.
 type Fixtures = {
   catalogAdmin: FakeCatalogAdmin
+  orgTransfer: FakeOrgTransfer
   console: (path: string) => Promise<Page>
 }
 
@@ -24,8 +27,12 @@ export const test = base.extend<Fixtures>({
   catalogAdmin: async ({}, provide) => {
     await provide(new FakeCatalogAdmin())
   },
+  // eslint-disable-next-line no-empty-pattern
+  orgTransfer: async ({}, provide) => {
+    await provide(new FakeOrgTransfer())
+  },
 
-  console: async ({ page, catalogAdmin }, provide) => {
+  console: async ({ page, catalogAdmin, orgTransfer }, provide) => {
     const pageErrors: string[] = []
     page.on('pageerror', (err) => pageErrors.push(err.message))
 
@@ -36,8 +43,10 @@ export const test = base.extend<Fixtures>({
     await page.route(/\/(api\/|whoami)/, async (route) => {
       const req = route.request()
       const url = new URL(req.url())
-      const { status, body } = catalogAdmin.handle(req.method(), url.pathname + url.search, req.postDataJSON?.() ?? null)
-      await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+      const postData = req.postDataJSON?.() ?? null
+      const res: FakeResponse & { headers?: Record<string, string>; raw?: string } =
+        orgTransfer.handle(req.method(), url.pathname + url.search, postData) ?? catalogAdmin.handle(req.method(), url.pathname + url.search, postData)
+      await route.fulfill({ status: res.status, contentType: 'application/json', headers: res.headers, body: res.raw ?? JSON.stringify(res.body) })
     })
 
     await provide(async (target: string) => {

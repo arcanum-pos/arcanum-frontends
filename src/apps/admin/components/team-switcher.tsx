@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useOrg } from '../lib/org-context'
+import { OrgImportDialog } from './org-import-dialog'
 
 export function TeamSwitcher() {
   const { isMobile } = useSidebar()
@@ -28,6 +29,7 @@ export function TeamSwitcher() {
   const [newOrgName, setNewOrgName] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
 
   async function handleCreate() {
     const name = newOrgName.trim()
@@ -115,6 +117,16 @@ export function TeamSwitcher() {
               autoComplete="off"
             />
             {createError && <p className="text-sm text-destructive">{createError}</p>}
+            <button
+              type="button"
+              className="justify-self-start text-sm text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => {
+                setCreateOpen(false)
+                setImportOpen(true)
+              }}
+            >
+              of importeer uit een exportbestand
+            </button>
           </div>
           <DialogFooter>
             <Button onClick={handleCreate} disabled={creating}>
@@ -123,6 +135,7 @@ export function TeamSwitcher() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <OrgImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </>
   )
 }
