@@ -66,10 +66,14 @@ worker/index.ts               # thin ASSETS passthrough — see wrangler.jsonc
 - **Dashboard** — reserved space for a real sales-figures view; not implemented.
 - **Events** — doesn't exist as a backend concept yet; placeholder.
 - **Users** — real member list + invite (`/api/organizations/:orgId/members`).
+- **Producten** — categories (what it is, for reports), stations (who
+  prepares it: Bar, Keuken, …; optional per product) and products with
+  variants. A Groep (where a button sits on the kassa) is set per menukaart.
 - **Menukaarten** — catalogs, groups and prices; plus **import/export**: one
   `.xlsx`/`.csv` file = one menukaart, one row = one kassa button (headers
-  Groep, Product, Variant, Prijs, Categorie, BTW, Code, Snelknoppen,
-  Zichtbaar — see DOMAIN_MODEL.md in the arcanum folder). The browser only
+  Groep, Product, Variant, Prijs, Categorie, Station, BTW, Code,
+  Snelknoppen, Zichtbaar; Station is optional so older files still import —
+  see DOMAIN_MODEL.md in the arcanum folder). The browser only
   finds the header, maps columns and sends raw cells with their sheet row
   numbers (`lib/menu-sheet.ts`); the backend interprets them, previews
   (dry run) and applies all-or-nothing. The spreadsheet libraries

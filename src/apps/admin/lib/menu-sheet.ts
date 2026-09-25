@@ -15,6 +15,8 @@ export const COLUMNS = [
   { key: 'variant', header: 'Variant', required: false },
   { key: 'prijs', header: 'Prijs', required: true },
   { key: 'categorie', header: 'Categorie', required: false },
+  // Optional so files from before stations existed still import.
+  { key: 'station', header: 'Station', required: false },
   { key: 'btw', header: 'BTW', required: false },
   { key: 'code', header: 'Code', required: false },
   { key: 'snelknoppen', header: 'Snelknoppen', required: false },
@@ -32,7 +34,7 @@ export type ImportRow = { row: number } & Record<ColumnKey, RawCell>
 export interface ParsedSheet {
   // Missing required headers or too many rows — don't call the backend.
   errors: string[]
-  // Header cells that aren't one of the 9 columns (ignored, shown as a notice).
+  // Header cells that aren't one of the known columns (ignored, shown as a notice).
   ignoredHeaders: string[]
   rows: ImportRow[]
 }
@@ -174,6 +176,7 @@ export interface ExportRow {
   variant: string
   prijsCents: number
   categorie: string | null
+  station: string | null
   btwBp: number | null
   code: string | null
   snelknoppen: number[] | null
@@ -189,6 +192,7 @@ export function exportRowCells(row: ExportRow): (string | number)[] {
     row.variant,
     row.prijsCents / 100,
     row.categorie ?? '',
+    row.station ?? '',
     row.btwBp === null ? '' : row.btwBp / 100,
     row.code ?? '',
     row.snelknoppen?.length ? row.snelknoppen.join(', ') : '',
@@ -214,9 +218,9 @@ export function exportCsvRows(rows: ExportRow[]): string[][] {
 }
 
 export const TEMPLATE_ROWS: ExportRow[] = [
-  { groep: 'Drank', product: 'Pintje', variant: '', prijsCents: 250, categorie: 'Drank', btwBp: null, code: null, snelknoppen: null, zichtbaar: true },
-  { groep: 'Eten', product: 'Steak', variant: 'volwassene', prijsCents: 1800, categorie: 'Eten', btwBp: null, code: null, snelknoppen: null, zichtbaar: true },
-  { groep: 'Eten', product: 'Steak', variant: 'kind', prijsCents: 1200, categorie: 'Eten', btwBp: null, code: null, snelknoppen: null, zichtbaar: true },
+  { groep: 'Drank', product: 'Pintje', variant: '', prijsCents: 250, categorie: 'Drank', station: 'Bar', btwBp: null, code: null, snelknoppen: null, zichtbaar: true },
+  { groep: 'Eten', product: 'Steak', variant: 'volwassene', prijsCents: 1800, categorie: 'Eten', station: 'Keuken', btwBp: null, code: null, snelknoppen: null, zichtbaar: true },
+  { groep: 'Eten', product: 'Steak', variant: 'kind', prijsCents: 1200, categorie: 'Eten', station: 'Keuken', btwBp: null, code: null, snelknoppen: null, zichtbaar: true },
 ]
 
 // Text of the "Uitleg" sheet — same rules as DOMAIN_MODEL.md.
@@ -229,7 +233,8 @@ export function explanationRows(title: string): [string, string][] {
     ['Product', 'Het product. Hetzelfde product mag op meerdere rijen staan (één rij per variant).'],
     ['Variant', 'Leeg = product zonder varianten. Anders bv. normaal / jeugd / kind of niet-lid / lid.'],
     ['Prijs', 'Prijs op deze menukaart, in euro (8,50 of 8.50 of € 8,50). Nooit overgenomen van de rij erboven.'],
-    ['Categorie', 'Wat het product is (Drank, Eten, …) — voor rapporten en later keuken/bar. Hoort bij het product: op één rij invullen volstaat. Leeg bij een bestaand product = ongewijzigd, bij een nieuw product = niet ingesteld.'],
+    ['Categorie', 'Wat het product is (Drank, Eten, …) — voor rapporten. Hoort bij het product: op één rij invullen volstaat. Leeg bij een bestaand product = ongewijzigd, bij een nieuw product = niet ingesteld.'],
+    ['Station', 'Wie het klaarmaakt — Bar, Keuken, … Hoort bij het product: op één rij invullen volstaat. Leeg bij een bestaand product = ongewijzigd, bij een nieuw product = geen station.'],
     ['BTW', 'Tarief in % (0, 6, 12, 21). Hoort bij het product: op één rij invullen volstaat. Leeg bij een bestaand product = ongewijzigd, bij een nieuw product = niet ingesteld. Tarieven nog te bevestigen door de boekhouder.'],
     ['Code', 'Optioneel, uniek. Blijft de code gelijk, dan wordt een gewijzigde naam als hernoeming gezien. Leeg bij een bestaande variant = ongewijzigd.'],
     ['Snelknoppen', 'Optioneel, bv. 5, 10, 20 — knoppen om in één tik meerdere stuks te verkopen.'],
@@ -237,13 +242,14 @@ export function explanationRows(title: string): [string, string][] {
     ['', ''],
     ['Regel', ''],
     ['Lege cel', 'Groep en Product: leeg = waarde van de rij erboven.'],
-    ['', 'Categorie en BTW: horen bij het product — op één rij van dat product invullen volstaat (maakt niet uit welke). Overal leeg: bij een bestaand product blijft de waarde ongewijzigd, bij een nieuw product is ze niet ingesteld.'],
-    ['', 'Producten horen bij de hele organisatie en kunnen op meerdere menukaarten staan: een import wist nooit hun categorie, BTW of code — dat doe je in de console.'],
+    ['', 'Categorie, Station en BTW: horen bij het product — op één rij van dat product invullen volstaat (maakt niet uit welke). Overal leeg: bij een bestaand product blijft de waarde ongewijzigd, bij een nieuw product is ze niet ingesteld.'],
+    ['', 'Producten horen bij de hele organisatie en kunnen op meerdere menukaarten staan: een import wist nooit hun categorie, station, BTW of code — dat doe je in de console.'],
+    ['Drie begrippen', 'Groep = plaats op de kassa (per menukaart). Categorie = wat het is (rapporten). Station = wie het klaarmaakt (bar, keuken).'],
     ['', 'Prijs, Variant, Code, Snelknoppen en Zichtbaar worden nooit overgenomen.'],
     ['Sorteren', 'Een export vult altijd alles in, zodat sorteren/filteren in Excel veilig is. Met lege cellen: niet sorteren.'],
     ['Importeren', 'Eerst een voorbeeld van alle wijzigingen (nieuw, prijswijzigingen, verwijderde lijnen, fouten per rij), pas daarna Toepassen.'],
     ['', 'De import vervangt indeling en prijzen van deze menukaart. Producten worden nooit verwijderd — ze kunnen op andere menukaarten staan.'],
-    ['Tegenstrijdig', 'Zelfde product met verschillende Categorie of BTW op twee rijen = fout, met rijnummers.'],
+    ['Tegenstrijdig', 'Zelfde product met verschillende Categorie, Station of BTW op twee rijen = fout, met rijnummers.'],
   ]
 }
 
@@ -271,6 +277,7 @@ export function isCsvFile(fileName: string): boolean {
 
 export interface PreviewSummary {
   newCategories: string[]
+  newStations?: string[]
   newProducts: string[]
   newVariants: string[]
   updatedProducts: { name: string; changes: string[] }[]
@@ -287,6 +294,7 @@ function euro(cents: number): string {
 export function previewSections(summary: PreviewSummary): { title: string; items: string[] }[] {
   return [
     { title: 'Nieuwe categorieën', items: summary.newCategories },
+    { title: 'Nieuwe stations', items: summary.newStations ?? [] },
     { title: 'Nieuwe producten', items: summary.newProducts },
     { title: 'Nieuwe varianten', items: summary.newVariants },
     { title: 'Productwijzigingen', items: summary.updatedProducts.map((p) => `${p.name}: ${p.changes.join(', ')}`) },

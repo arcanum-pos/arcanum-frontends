@@ -14,15 +14,20 @@ import { PromptDialog } from '../components/prompt-dialog'
 import {
   createCategory,
   createProduct,
+  createStation,
   createVariant,
   deleteCategory,
+  deleteStation,
   listCategories,
   listProducts,
+  listStations,
   updateCategory,
   updateProduct,
+  updateStation,
   updateVariant,
   type Category,
   type Product,
+  type Station,
 } from '../lib/catalog-api'
 import { VAT_OPTIONS, vatLabel } from '../lib/catalog-helpers'
 import { useOrg } from '../lib/org-context'
@@ -37,13 +42,16 @@ function errorText(err: unknown): string {
 
 // Products are defined once per org (DOMAIN_MODEL.md) — prices live on each
 // menukaart, not here. Every product has at least one variant; a
-// single-version product has one with an empty name.
+// single-version product has one with an empty name. Categorie (what it is,
+// for reports) and Station (who prepares it) are separate on purpose: coffee
+// is a drink in the report but made at the CoffeeCorner.
 export default function ProductsPage() {
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const [showArchived, setShowArchived] = useState(false)
 
   const categories = useAsync(() => (orgId ? listCategories(orgId) : Promise.resolve([])), [orgId])
+  const stations = useAsync(() => (orgId ? listStations(orgId) : Promise.resolve([])), [orgId])
   const products = useAsync(() => (orgId ? listProducts(orgId, showArchived) : Promise.resolve([])), [orgId, showArchived])
 
   const [editing, setEditing] = useState<Product | 'new' | null>(null)
@@ -60,6 +68,7 @@ export default function ProductsPage() {
   }
 
   const categoryName = (id: string | null) => categories.data?.find((c) => c.id === id)?.name ?? '—'
+  const stationName = (id: string | null) => stations.data?.find((c) => c.id === id)?.name ?? '—'
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,7 +77,46 @@ export default function ProductsPage() {
         <p className="text-muted-foreground">Wat {currentOrg?.name ?? 'deze organisatie'} verkoopt. Prijzen stel je per menukaart in.</p>
       </div>
 
-      {orgId && <CategoriesCard orgId={orgId} categories={categories.data} loading={categories.loading} error={categories.error} onChanged={categories.reload} />}
+      <p className="text-sm text-muted-foreground" data-testid="concepts-hint">
+        <strong>Categorie</strong> = wat het is, voor rapporten (Drank, Eten). <strong>Station</strong> = wie het klaarmaakt (Bar, Keuken). <strong>Groep</strong> = waar
+        de knop op de kassa staat — dat stel je per menukaart in.
+      </p>
+
+      {orgId && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <NamedListCard
+            kind="category"
+            title="Categorieën"
+            description="Wat een product is (Drank, Eten, Inschrijvingen) — voor rapporten."
+            singular="categorie"
+            placeholder="Nieuwe categorie, bv. Drank"
+            items={categories.data}
+            loading={categories.loading}
+            error={categories.error}
+            onCreate={(name) => createCategory(orgId, name)}
+            onRename={(id, name) => updateCategory(orgId, id, { name })}
+            onDelete={(id) => deleteCategory(orgId, id)}
+            onChanged={categories.reload}
+          />
+          <NamedListCard
+            kind="station"
+            title="Stations"
+            description="Wie het klaarmaakt (Bar, Keuken, CoffeeCorner). Geen station = niets klaar te maken, bv. bonnen."
+            singular="station"
+            placeholder="Nieuw station, bv. Keuken"
+            items={stations.data}
+            loading={stations.loading}
+            error={stations.error}
+            onCreate={(name) => createStation(orgId, name)}
+            onRename={(id, name) => updateStation(orgId, id, { name })}
+            onDelete={(id) => deleteStation(orgId, id)}
+            onChanged={() => {
+              stations.reload()
+              products.reload()
+            }}
+          />
+        </div>
+      )}
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -91,6 +139,7 @@ export default function ProductsPage() {
             <TableRow>
               <TableHead>Naam</TableHead>
               <TableHead>Categorie</TableHead>
+              <TableHead>Station</TableHead>
               <TableHead>BTW</TableHead>
               <TableHead>Varianten</TableHead>
               <TableHead className="text-right">Acties</TableHead>
@@ -99,14 +148,14 @@ export default function ProductsPage() {
           <TableBody>
             {products.loading && (
               <TableRow>
-                <TableCell colSpan={5}>
+                <TableCell colSpan={6}>
                   <Skeleton className="h-5 w-full" />
                 </TableCell>
               </TableRow>
             )}
             {!products.loading && products.data?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   <div className="flex flex-col items-center gap-2 py-6">
                     <Package className="size-6" />
                     Nog geen producten.
@@ -126,6 +175,7 @@ export default function ProductsPage() {
                     )}
                   </TableCell>
                   <TableCell>{categoryName(product.categoryId)}</TableCell>
+                  <TableCell>{stationName(product.prepStationId)}</TableCell>
                   <TableCell>{vatLabel(product.vatRateBp)}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
@@ -166,6 +216,7 @@ export default function ProductsPage() {
           orgId={orgId}
           product={editing === 'new' ? null : editing}
           categories={categories.data ?? []}
+          stations={stations.data ?? []}
           onSaved={products.reload}
           onClose={() => setEditing(null)}
         />
@@ -174,22 +225,39 @@ export default function ProductsPage() {
   )
 }
 
-function CategoriesCard({
-  orgId,
-  categories,
+// Categorieën and Stations are both a plain, org-wide list of names with
+// the same add / rename / delete (refused while a product still uses it).
+function NamedListCard({
+  kind,
+  title,
+  description,
+  singular,
+  placeholder,
+  items,
   loading,
   error,
+  onCreate,
+  onRename,
+  onDelete,
   onChanged,
 }: {
-  orgId: string
-  categories: Category[] | null
+  kind: 'category' | 'station'
+  title: string
+  description: string
+  singular: string
+  placeholder: string
+  items: (Category | Station)[] | null
   loading: boolean
   error: string | null
+  onCreate: (name: string) => Promise<unknown>
+  onRename: (id: string, name: string) => Promise<unknown>
+  onDelete: (id: string) => Promise<unknown>
   onChanged: () => void
 }) {
   const [name, setName] = useState('')
-  const [renaming, setRenaming] = useState<Category | null>(null)
+  const [renaming, setRenaming] = useState<Category | Station | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+  const Singular = singular.charAt(0).toUpperCase() + singular.slice(1)
 
   async function run(action: () => Promise<unknown>) {
     setActionError(null)
@@ -202,24 +270,28 @@ function CategoriesCard({
   }
 
   return (
-    <Card>
+    <Card data-testid={kind === 'category' ? 'categories-card' : 'stations-card'}>
       <CardHeader>
-        <CardTitle className="text-base">Categorieën</CardTitle>
-        <p className="text-sm text-muted-foreground">Wat een product is (Drank, Eten, Inschrijvingen) — voor rapporten, later ook voor keuken/bar.</p>
+        <CardTitle className="text-base">{title}</CardTitle>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </CardHeader>
       <CardContent className="flex flex-col gap-3">
         {loading && <Skeleton className="h-5 w-full" />}
-        {error && <p className="text-sm text-destructive">Kon categorieën niet laden: {error}</p>}
-        {!loading && categories?.length === 0 && <p className="text-sm text-muted-foreground">Nog geen categorieën.</p>}
+        {error && (
+          <p className="text-sm text-destructive">
+            Kon {title.toLowerCase()} niet laden: {error}
+          </p>
+        )}
+        {!loading && items?.length === 0 && <p className="text-sm text-muted-foreground">Nog geen {title.toLowerCase()}.</p>}
         <div className="flex flex-col">
-          {categories?.map((c) => (
-            <div key={c.id} data-testid={`category-${c.name}`} className="flex items-center justify-between gap-2 border-b py-2 last:border-b-0">
-              <span className="font-medium">{c.name}</span>
+          {items?.map((item) => (
+            <div key={item.id} data-testid={`${kind}-${item.name}`} className="flex items-center justify-between gap-2 border-b py-2 last:border-b-0">
+              <span className="font-medium">{item.name}</span>
               <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => setRenaming(c)}>
+                <Button variant="ghost" size="sm" onClick={() => setRenaming(item)}>
                   Hernoemen
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => run(() => deleteCategory(orgId, c.id))}>
+                <Button variant="ghost" size="sm" onClick={() => run(() => onDelete(item.id))}>
                   Verwijderen
                 </Button>
               </div>
@@ -232,13 +304,15 @@ function CategoriesCard({
           onSubmit={(e) => {
             e.preventDefault()
             if (!name.trim()) return
+            const submitted = name
             run(async () => {
-              await createCategory(orgId, name.trim())
-              setName('')
+              await onCreate(submitted.trim())
+              // Only clear what was saved — not something typed meanwhile.
+              setName((current) => (current === submitted ? '' : current))
             })
           }}
         >
-          <Input aria-label="Nieuwe categorie" placeholder="Nieuwe categorie, bv. Drank" maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
+          <Input aria-label={`Nieuw${kind === 'category' ? 'e' : ''} ${singular}`} placeholder={placeholder} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
           <Button type="submit" variant="outline" disabled={!name.trim()}>
             Toevoegen
           </Button>
@@ -247,12 +321,12 @@ function CategoriesCard({
       {renaming && (
         <PromptDialog
           key={renaming.id}
-          title="Categorie hernoemen"
+          title={`${Singular} hernoemen`}
           label="Naam"
           initialValue={renaming.name}
           confirmLabel="Opslaan"
           onConfirm={async (value) => {
-            await updateCategory(orgId, renaming.id, { name: value })
+            await onRename(renaming.id, value)
             onChanged()
           }}
           onClose={() => setRenaming(null)}
@@ -274,17 +348,20 @@ function ProductDialog({
   orgId,
   product,
   categories,
+  stations,
   onSaved,
   onClose,
 }: {
   orgId: string
   product: Product | null
   categories: Category[]
+  stations: Station[]
   onSaved: () => void
   onClose: () => void
 }) {
   const [name, setName] = useState(product?.name ?? '')
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? NONE)
+  const [stationId, setStationId] = useState(product?.prepStationId ?? NONE)
   const [vat, setVat] = useState(product?.vatRateBp != null ? String(product.vatRateBp) : NONE)
   const [newVariants, setNewVariants] = useState<VariantDraft[]>(product ? [] : [{ name: '', code: '' }])
   const [variantEdits, setVariantEdits] = useState<Record<string, VariantDraft>>(() =>
@@ -309,6 +386,7 @@ function ProductDialog({
   const fields = () => ({
     name: name.trim(),
     categoryId: categoryId === NONE ? null : categoryId,
+    prepStationId: stationId === NONE ? null : stationId,
     vatRateBp: vat === NONE ? null : Number(vat),
   })
 
@@ -336,14 +414,14 @@ function ProductDialog({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{current ? 'Product bewerken' : 'Nieuw product'}</DialogTitle>
-          <DialogDescription>Prijzen stel je per menukaart in, niet hier.</DialogDescription>
+          <DialogDescription>Prijzen stel je per menukaart in, niet hier. Categorie = voor rapporten, Station = wie het klaarmaakt.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4">
           <div className="grid gap-2">
             <Label htmlFor="product-name">Naam</Label>
             <Input id="product-name" autoComplete="off" maxLength={100} placeholder="bv. Fietstocht" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="grid gap-2">
               <Label htmlFor="product-category">Categorie</Label>
               <Select value={categoryId} onValueChange={setCategoryId}>
@@ -355,6 +433,22 @@ function ProductDialog({
                   {categories.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="product-station">Station</Label>
+              <Select value={stationId} onValueChange={setStationId}>
+                <SelectTrigger id="product-station" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>Geen</SelectItem>
+                  {stations.map((st) => (
+                    <SelectItem key={st.id} value={st.id}>
+                      {st.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

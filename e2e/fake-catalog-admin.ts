@@ -16,6 +16,8 @@ interface Category {
   name: string
   position: number
 }
+// Stations have the same shape as categories (who prepares it vs. what it is).
+type Station = Category
 interface Variant {
   id: string
   productId: string
@@ -28,6 +30,7 @@ interface Product {
   id: string
   name: string
   categoryId: string | null
+  prepStationId: string | null
   vatRateBp: number | null
   archived: boolean
 }
@@ -69,6 +72,7 @@ export function emptySalesReport(): any {
 
 export class FakeCatalogAdmin {
   categories: Category[] = []
+  stations: Station[] = []
   products: Product[] = []
   variants: Variant[] = []
   catalogs: Catalog[] = []
@@ -116,7 +120,7 @@ export class FakeCatalogAdmin {
     return m[1] === 'catalog' ? this.catalogRoute(method, parts, query, body || {}) : this.catalogsRoute(method, parts, body || {})
   }
 
-  // --- /catalog/{categories,products,variants} ---
+  // --- /catalog/{categories,stations,products,variants} ---
 
   private catalogRoute(method: string, [kind, id, sub]: string[], query: string, body: any): FakeResponse {
     if (kind === 'categories' && !id) {
@@ -138,6 +142,32 @@ export class FakeCatalogAdmin {
       this.categories = this.categories.filter((c) => c !== category)
       return ok({ ok: true })
     }
+    if (kind === 'stations' && !id) {
+      if (method === 'GET') return ok([...this.stations].sort((a, b) => a.position - b.position))
+      const name = trimmed(body.name, 60)
+      if (!name) return bad('name is required (max 60 characters)')
+      if (this.stationNamed(name)) return conflict('Er bestaat al een station met deze naam')
+      const station = { id: this.id('station'), name, position: this.stations.length }
+      this.stations.push(station)
+      return created(station)
+    }
+    if (kind === 'stations' && id) {
+      const station = this.stations.find((c) => c.id === id)
+      if (!station) return notFound('Station niet gevonden')
+      if (method === 'PATCH') {
+        if (body.name !== undefined) {
+          const name = trimmed(body.name, 60)
+          if (!name) return bad('name is required (max 60 characters)')
+          const other = this.stationNamed(name)
+          if (other && other !== station) return conflict('Er bestaat al een station met deze naam')
+          station.name = name
+        }
+        return ok(station)
+      }
+      if (this.products.some((p) => p.prepStationId === id)) return conflict('Dit station wordt nog gebruikt door producten')
+      this.stations = this.stations.filter((c) => c !== station)
+      return ok({ ok: true })
+    }
     if (kind === 'products' && !id) {
       if (method === 'GET') {
         const all = query.includes('includeArchived')
@@ -147,7 +177,15 @@ export class FakeCatalogAdmin {
       if (!name) return bad('name is required (max 100 characters)')
       const variants: { name?: string; code?: string | null }[] = body.variants?.length ? body.variants : [{ name: '' }]
       for (const v of variants) if (v.code && this.codeTaken(v.code)) return conflict('Deze code wordt al gebruikt')
-      const product = { id: this.id('prod'), name, categoryId: body.categoryId ?? null, vatRateBp: body.vatRateBp ?? null, archived: false }
+      if (body.prepStationId && !this.stations.some((x) => x.id === body.prepStationId)) return bad('Onbekend station')
+      const product = {
+        id: this.id('prod'),
+        name,
+        categoryId: body.categoryId ?? null,
+        prepStationId: body.prepStationId ?? null,
+        vatRateBp: body.vatRateBp ?? null,
+        archived: false,
+      }
       this.products.push(product)
       variants.forEach((v, i) =>
         this.variants.push({ id: this.id('var'), productId: product.id, name: (v.name || '').trim(), code: v.code || null, position: i, archived: false })
@@ -159,6 +197,10 @@ export class FakeCatalogAdmin {
       if (!product) return notFound('Product niet gevonden')
       if (body.name !== undefined) product.name = trimmed(body.name, 100) || product.name
       if (body.categoryId !== undefined) product.categoryId = body.categoryId
+      if (body.prepStationId !== undefined) {
+        if (body.prepStationId && !this.stations.some((x) => x.id === body.prepStationId)) return bad('Onbekend station')
+        product.prepStationId = body.prepStationId
+      }
       if (body.vatRateBp !== undefined) product.vatRateBp = body.vatRateBp
       if (body.archived !== undefined) {
         product.archived = !!body.archived
@@ -330,6 +372,7 @@ export class FakeCatalogAdmin {
             variant: e.variantName,
             prijsCents: e.priceCents,
             categorie: e.categoryName,
+            station: this.stations.find((x) => x.id === product.prepStationId)?.name ?? null,
             btwBp: product.vatRateBp,
             code: e.code,
             snelknoppen: e.quickQuantities,
@@ -349,7 +392,7 @@ export class FakeCatalogAdmin {
     if (!body.catalogId && !trimmed(body.name, 60)) return bad('name is required (max 60 characters)')
 
     const errors: { row: number | null; message: string }[] = []
-    const lines: { groep: string; product: string; variant: string; priceCents: number; categorie: string | null; visible: boolean }[] = []
+    const lines: { groep: string; product: string; variant: string; priceCents: number; categorie: string | null; station: string | null; visible: boolean }[] = []
     let groep: string | null = null
     let productName: string | null = null
     for (const r of rows) {
@@ -363,7 +406,15 @@ export class FakeCatalogAdmin {
       const zichtbaar = text(r.zichtbaar)?.toLowerCase()
       if (zichtbaar && !['ja', 'nee', 'x', 'true', 'false', '1', '0'].includes(zichtbaar)) errors.push({ row: r.row, message: `Zichtbaar "${r.zichtbaar}" moet ja of nee zijn` })
       if (groep && productName && Number.isFinite(price)) {
-        lines.push({ groep, product: productName, variant: text(r.variant) ?? '', priceCents: Math.round(price * 100), categorie: text(r.categorie), visible: !['nee', 'false', '0'].includes(zichtbaar ?? '') })
+        lines.push({
+          groep,
+          product: productName,
+          variant: text(r.variant) ?? '',
+          priceCents: Math.round(price * 100),
+          categorie: text(r.categorie),
+          station: text(r.station),
+          visible: !['nee', 'false', '0'].includes(zichtbaar ?? ''),
+        })
       }
     }
 
@@ -376,6 +427,7 @@ export class FakeCatalogAdmin {
       rows: rows.length,
       groups: new Set(lines.map((l) => l.groep)).size,
       newCategories: [...new Set(lines.map((l) => l.categorie).filter((c): c is string => !!c && !this.categories.some((x) => x.name.toLowerCase() === c.toLowerCase())))],
+      newStations: [...new Set(lines.map((l) => l.station).filter((c): c is string => !!c && !this.stationNamed(c)))],
       newProducts: [...new Set(lines.filter((l) => !findProduct(l.product)).map((l) => l.product))],
       newVariants: lines.filter((l) => findProduct(l.product) && !findVariant(findProduct(l.product)!.id, l.variant)).map(displayName),
       updatedProducts: [] as { name: string; changes: string[] }[],
@@ -391,8 +443,17 @@ export class FakeCatalogAdmin {
       else summary.unchanged++
     }
     summary.removed = current.filter((e) => !lines.some((l) => displayName(l).toLowerCase() === e.displayName.toLowerCase())).map((e) => e.displayName)
+    // Station on an existing product: empty = unchanged, a different name = a change.
+    for (const l of lines) {
+      const product = findProduct(l.product)
+      if (!product || !l.station) continue
+      const from = this.stations.find((x) => x.id === product.prepStationId)?.name ?? null
+      if (from?.toLowerCase() === l.station.toLowerCase() || summary.updatedProducts.some((u) => u.name === product.name)) continue
+      summary.updatedProducts.push({ name: product.name, changes: [`station: ${from ?? '(geen)'} → ${l.station}`] })
+    }
 
-    const result = { ok: errors.length === 0, errors, summary }
+    // Like the backend: no summary while the file has errors.
+    const result = { ok: errors.length === 0, errors, summary: errors.length === 0 ? summary : null }
     if (body.dryRun) return ok(result)
     if (errors.length > 0) return { status: 400, body: result }
 
@@ -407,11 +468,16 @@ export class FakeCatalogAdmin {
         category = { id: this.id('cat'), name: l.categorie, position: this.categories.length }
         this.categories.push(category)
       }
+      let station = l.station ? this.stationNamed(l.station) : undefined
+      if (l.station && !station) {
+        station = { id: this.id('station'), name: l.station, position: this.stations.length }
+        this.stations.push(station)
+      }
       let product = findProduct(l.product)
       if (!product) {
-        product = { id: this.id('prod'), name: l.product, categoryId: category?.id ?? null, vatRateBp: null, archived: false }
+        product = { id: this.id('prod'), name: l.product, categoryId: category?.id ?? null, prepStationId: station?.id ?? null, vatRateBp: null, archived: false }
         this.products.push(product)
-      }
+      } else if (station) product.prepStationId = station.id
       let variant = findVariant(product.id, l.variant)
       if (!variant) {
         variant = { id: this.id('var'), productId: product.id, name: l.variant, code: null, position: this.variants.filter((v) => v.productId === product!.id).length, archived: false }
@@ -437,6 +503,10 @@ export class FakeCatalogAdmin {
   }
 
   // --- Shapes, as the real backend returns them ---
+
+  private stationNamed(name: string) {
+    return this.stations.find((x) => x.name.toLowerCase() === name.trim().toLowerCase())
+  }
 
   private codeTaken(code: string) {
     return this.variants.some((v) => v.code === code && !v.archived)

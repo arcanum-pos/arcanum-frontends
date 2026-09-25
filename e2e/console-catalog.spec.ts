@@ -40,11 +40,12 @@ const entryNames = (page: Page, section: string) => page.getByTestId(`section-${
 test.describe('Producten', () => {
   test('manages categories, and shows the server refusal for a category in use', async ({ console: open, catalogAdmin }) => {
     const page = await open('/products')
+    const card = page.getByTestId('categories-card')
     await page.getByLabel('Nieuwe categorie').fill('Drank')
-    await page.getByRole('button', { name: 'Toevoegen', exact: true }).click()
+    await card.getByRole('button', { name: 'Toevoegen', exact: true }).click()
     await expect(page.getByTestId('category-Drank')).toBeVisible()
     await page.getByLabel('Nieuwe categorie').fill('Etn')
-    await page.getByRole('button', { name: 'Toevoegen', exact: true }).click()
+    await card.getByRole('button', { name: 'Toevoegen', exact: true }).click()
 
     await page.getByTestId('category-Etn').getByRole('button', { name: 'Hernoemen' }).click()
     await page.getByLabel('Naam').fill('Eten')
@@ -58,6 +59,61 @@ test.describe('Producten', () => {
     await page.getByTestId('category-Eten').getByRole('button', { name: 'Verwijderen' }).click()
     await expect(page.getByTestId('category-Eten')).toHaveCount(0)
     expect(catalogAdmin.categories.map((c) => c.name)).toEqual(['Drank'])
+  })
+
+  test('manages stations next to categories, and refuses deleting a station in use', async ({ console: open, catalogAdmin }) => {
+    const page = await open('/products')
+    await expect(page.getByTestId('concepts-hint')).toContainText('Station')
+    const card = page.getByTestId('stations-card')
+    await page.getByLabel('Nieuw station').fill('Bar')
+    await card.getByRole('button', { name: 'Toevoegen', exact: true }).click()
+    await expect(page.getByTestId('station-Bar')).toBeVisible()
+    await page.getByLabel('Nieuw station').fill('Kitchen')
+    await card.getByRole('button', { name: 'Toevoegen', exact: true }).click()
+    await expect(page.getByTestId('station-Kitchen')).toBeVisible()
+
+    await page.getByTestId('station-Kitchen').getByRole('button', { name: 'Hernoemen' }).click()
+    await expect(page.getByRole('dialog')).toContainText('Station hernoemen')
+    await page.getByLabel('Naam').fill('Keuken')
+    await page.getByRole('button', { name: 'Opslaan' }).click()
+    await expect(page.getByTestId('station-Keuken')).toBeVisible()
+
+    // A duplicate name is refused by the server (409), shown as-is.
+    await page.getByLabel('Nieuw station').fill('bar')
+    await card.getByRole('button', { name: 'Toevoegen', exact: true }).click()
+    await expect(card.getByText('Er bestaat al een station met deze naam')).toBeVisible()
+
+    call(catalogAdmin, 'POST', '/catalog/products', { name: 'Pils', prepStationId: catalogAdmin.stations[0].id })
+    await page.getByTestId('station-Bar').getByRole('button', { name: 'Verwijderen' }).click()
+    await expect(card.getByText('Dit station wordt nog gebruikt door producten')).toBeVisible()
+    await page.getByTestId('station-Keuken').getByRole('button', { name: 'Verwijderen' }).click()
+    await expect(page.getByTestId('station-Keuken')).toHaveCount(0)
+    expect(catalogAdmin.stations.map((c) => c.name)).toEqual(['Bar'])
+  })
+
+  test('assigns a station to a product separately from its category', async ({ console: open, catalogAdmin }) => {
+    call(catalogAdmin, 'POST', '/catalog/categories', { name: 'Drank' })
+    call(catalogAdmin, 'POST', '/catalog/stations', { name: 'CoffeeCorner' })
+    call(catalogAdmin, 'POST', '/catalog/stations', { name: 'Bar' })
+    const page = await open('/products')
+    await page.getByRole('button', { name: 'Nieuw product' }).click()
+    await page.getByLabel('Naam', { exact: true }).fill('Koffie')
+    await pick(page, 'Categorie', 'Drank')
+    await pick(page, 'Station', 'CoffeeCorner')
+    await page.getByRole('button', { name: 'Aanmaken' }).click()
+
+    const row = page.getByTestId('product-Koffie')
+    await expect(row).toContainText('Drank')
+    await expect(row).toContainText('CoffeeCorner')
+    const koffie = catalogAdmin.products.find((p) => p.name === 'Koffie')!
+    expect(koffie.prepStationId).toBe(catalogAdmin.stations[0].id)
+
+    // Back to "geen": nothing to prepare.
+    await row.getByRole('button', { name: 'Bewerken' }).click()
+    await pick(page, 'Station', 'Geen')
+    await page.getByRole('button', { name: 'Opslaan' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(catalogAdmin.products.find((p) => p.name === 'Koffie')!.prepStationId).toBeNull()
   })
 
   test('creates a product with a category, BTW and two variants', async ({ console: open, catalogAdmin }) => {

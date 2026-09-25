@@ -1,11 +1,21 @@
 // Client for arcanum-backend's catalog API (src/catalog.ts): categories,
-// products + variants (org-level) and catalogs (menukaarten) with sections
-// (groepen) and priced entries. Reads are open to any member, every write
+// stations, products + variants (org-level) and catalogs (menukaarten) with
+// sections (groepen) and priced entries. Three separate ideas: a Groep is
+// where a button sits on the kassa (per menukaart), a Categorie is what a
+// product is (reports), a Station is who prepares it (bar, keuken). Reads are open to any member, every write
 // is admin-only — a cashier just gets the server's 403 back as an error.
 import { request } from './api'
 import type { ExportRow, ImportRow } from './menu-sheet'
 
 export interface Category {
+  id: string
+  name: string
+  position: number
+}
+
+// Who prepares a product (Bar, Keuken, CoffeeCorner). Optional per product:
+// none = nothing to prepare (bonnen, inschrijvingen).
+export interface Station {
   id: string
   name: string
   position: number
@@ -23,6 +33,7 @@ export interface Product {
   id: string
   name: string
   categoryId: string | null
+  prepStationId: string | null
   vatRateBp: number | null
   archived: boolean
   variants: Variant[]
@@ -91,6 +102,24 @@ export function deleteCategory(orgId: string, categoryId: string): Promise<{ ok:
   return request(`${org(orgId)}/catalog/categories/${id(categoryId)}`, { method: 'DELETE' })
 }
 
+// --- Stations ---
+
+export function listStations(orgId: string): Promise<Station[]> {
+  return request(`${org(orgId)}/catalog/stations`)
+}
+
+export function createStation(orgId: string, name: string): Promise<Station> {
+  return request(`${org(orgId)}/catalog/stations`, { method: 'POST', body: body({ name }) })
+}
+
+export function updateStation(orgId: string, stationId: string, fields: { name?: string; position?: number }): Promise<Station> {
+  return request(`${org(orgId)}/catalog/stations/${id(stationId)}`, { method: 'PATCH', body: body(fields) })
+}
+
+export function deleteStation(orgId: string, stationId: string): Promise<{ ok: true }> {
+  return request(`${org(orgId)}/catalog/stations/${id(stationId)}`, { method: 'DELETE' })
+}
+
 // --- Products & variants ---
 
 export function listProducts(orgId: string, includeArchived = false): Promise<Product[]> {
@@ -99,7 +128,13 @@ export function listProducts(orgId: string, includeArchived = false): Promise<Pr
 
 export function createProduct(
   orgId: string,
-  fields: { name: string; categoryId: string | null; vatRateBp: number | null; variants: { name: string; code: string | null }[] }
+  fields: {
+    name: string
+    categoryId: string | null
+    prepStationId: string | null
+    vatRateBp: number | null
+    variants: { name: string; code: string | null }[]
+  }
 ): Promise<Product> {
   return request(`${org(orgId)}/catalog/products`, { method: 'POST', body: body(fields) })
 }
@@ -107,7 +142,7 @@ export function createProduct(
 export function updateProduct(
   orgId: string,
   productId: string,
-  fields: { name?: string; categoryId?: string | null; vatRateBp?: number | null; archived?: boolean }
+  fields: { name?: string; categoryId?: string | null; prepStationId?: string | null; vatRateBp?: number | null; archived?: boolean }
 ): Promise<Product> {
   return request(`${org(orgId)}/catalog/products/${id(productId)}`, { method: 'PATCH', body: body(fields) })
 }
@@ -210,6 +245,8 @@ export interface ImportSummary {
   rows: number
   groups: number
   newCategories: string[]
+  // Optional: absent from a backend that predates stations.
+  newStations?: string[]
   newProducts: string[]
   // Variants added to products that already exist (a new product's
   // variants are covered by newProducts).
@@ -224,7 +261,8 @@ export interface ImportSummary {
 export interface ImportResult {
   ok: boolean
   errors: { row: number | null; message: string }[]
-  summary: ImportSummary
+  // null when the file has errors (nothing to summarize yet).
+  summary: ImportSummary | null
   catalog?: { id: string; name: string }
 }
 
@@ -242,7 +280,7 @@ export async function importCatalog(
     body: body(fields),
   })
   const data = await res.json().catch(() => null)
-  if (data && Array.isArray(data.errors) && data.summary) return data as ImportResult
+  if (data && Array.isArray(data.errors) && typeof data.ok === 'boolean') return data as ImportResult
   if (!res.ok) throw new Error((data && data.error) || `status ${res.status}`)
   return data as ImportResult
 }

@@ -87,7 +87,8 @@ export function MenuImportDialog({
     if (picked && target.kind === 'new' && !name.trim()) setName(nameFromFileName(picked.name))
   }
 
-  const sections = preview?.ok ? previewSections(preview.summary) : []
+  const summary = preview?.ok ? preview.summary : null
+  const sections = summary ? previewSections(summary) : []
   const canPreview = !!file && (target.kind === 'replace' || !!name.trim()) && !busy
 
   return (
@@ -97,7 +98,7 @@ export function MenuImportDialog({
           <DialogTitle>{target.kind === 'replace' ? `Importeren in ${target.catalogName}` : 'Menukaart importeren'}</DialogTitle>
           <DialogDescription>
             {target.kind === 'replace'
-              ? 'Het bestand vervangt de groepen, de volgorde en de prijzen van deze menukaart. Producten worden nooit verwijderd — ze kunnen op andere menukaarten staan — en een lege Categorie, BTW of Code laat een bestaand product ongewijzigd.'
+              ? 'Het bestand vervangt de groepen, de volgorde en de prijzen van deze menukaart. Producten worden nooit verwijderd — ze kunnen op andere menukaarten staan — en een lege Categorie, Station, BTW of Code laat een bestaand product ongewijzigd.'
               : 'Maakt een nieuwe menukaart uit het bestand. Bestaande producten worden herkend op code of naam en hergebruikt.'}
           </DialogDescription>
         </DialogHeader>
@@ -142,10 +143,10 @@ export function MenuImportDialog({
           </div>
         )}
 
-        {preview?.ok && (
+        {summary && (
           <div className="grid gap-3 text-sm" data-testid="import-preview">
             <p>
-              {preview.summary.rows} rijen in {preview.summary.groups} groep{preview.summary.groups === 1 ? '' : 'en'}.
+              {summary.rows} rijen in {summary.groups} groep{summary.groups === 1 ? '' : 'en'}.
               {sections.length === 0 && ' Geen wijzigingen.'}
             </p>
             {sections.map((section) => (
@@ -160,7 +161,7 @@ export function MenuImportDialog({
                 </ul>
               </div>
             ))}
-            {preview.summary.unchanged > 0 && <p className="text-muted-foreground">{preview.summary.unchanged} lijnen ongewijzigd.</p>}
+            {summary.unchanged > 0 && <p className="text-muted-foreground">{summary.unchanged} lijnen ongewijzigd.</p>}
           </div>
         )}
 

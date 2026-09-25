@@ -14,12 +14,19 @@ function call(admin: FakeCatalogAdmin, method: string, path: string, body?: unkn
   return res.body
 }
 
-// "Kaas & wijn": Drank (Pils €2,50) and Eten (Steak volwassene €18, kind €12).
+// "Kaas & wijn": Drank (Pils €2,50, station Bar) and Eten (Steak volwassene €18, kind €12, station Keuken).
 function seed(admin: FakeCatalogAdmin) {
   const drank = call(admin, 'POST', '/catalog/categories', { name: 'Drank' })
   const eten = call(admin, 'POST', '/catalog/categories', { name: 'Eten' })
-  const pils = call(admin, 'POST', '/catalog/products', { name: 'Pils', categoryId: drank.id, vatRateBp: 2100 })
-  const steak = call(admin, 'POST', '/catalog/products', { name: 'Steak', categoryId: eten.id, variants: [{ name: 'volwassene' }, { name: 'kind' }] })
+  const bar = call(admin, 'POST', '/catalog/stations', { name: 'Bar' })
+  const keuken = call(admin, 'POST', '/catalog/stations', { name: 'Keuken' })
+  const pils = call(admin, 'POST', '/catalog/products', { name: 'Pils', categoryId: drank.id, prepStationId: bar.id, vatRateBp: 2100 })
+  const steak = call(admin, 'POST', '/catalog/products', {
+    name: 'Steak',
+    categoryId: eten.id,
+    prepStationId: keuken.id,
+    variants: [{ name: 'volwassene' }, { name: 'kind' }],
+  })
   const catalog = call(admin, 'POST', '/catalogs', { name: 'Kaas & wijn' })
   const sDrank = call(admin, 'POST', `/catalogs/${catalog.id}/sections`, { name: 'Drank' })
   const sEten = call(admin, 'POST', `/catalogs/${catalog.id}/sections`, { name: 'Eten' })
@@ -51,10 +58,10 @@ test.describe('Menukaart export', () => {
 
     const buffer = readFileSync(await download.path())
     expect(await readSheet(buffer)).toEqual([
-      ['Groep', 'Product', 'Variant', 'Prijs', 'Categorie', 'BTW', 'Code', 'Snelknoppen', 'Zichtbaar'],
-      ['Drank', 'Pils', null, 2.5, 'Drank', 21, null, '6, 12', 'ja'],
-      ['Eten', 'Steak', 'volwassene', 18, 'Eten', null, null, null, 'ja'],
-      ['Eten', 'Steak', 'kind', 12, 'Eten', null, null, null, 'ja'],
+      ['Groep', 'Product', 'Variant', 'Prijs', 'Categorie', 'Station', 'BTW', 'Code', 'Snelknoppen', 'Zichtbaar'],
+      ['Drank', 'Pils', null, 2.5, 'Drank', 'Bar', 21, null, '6, 12', 'ja'],
+      ['Eten', 'Steak', 'volwassene', 18, 'Eten', 'Keuken', null, null, null, 'ja'],
+      ['Eten', 'Steak', 'kind', 12, 'Eten', 'Keuken', null, null, null, 'ja'],
     ])
     const uitleg = await readSheet(buffer, 'Uitleg')
     expect(uitleg[0][1]).toContain('Kaas & wijn')
@@ -69,7 +76,7 @@ test.describe('Menukaart export', () => {
     expect(download.suggestedFilename()).toBe('menukaart-Kaas & wijn.csv')
     const text = readFileSync(await download.path(), 'utf8')
     expect(text.charCodeAt(0)).toBe(0xfeff)
-    expect(parseCsv(text)[1]).toEqual(['Drank', 'Pils', '', '2,50', 'Drank', '21', '', '6, 12', 'ja'])
+    expect(parseCsv(text)[1]).toEqual(['Drank', 'Pils', '', '2,50', 'Drank', 'Bar', '21', '', '6, 12', 'ja'])
   })
 
   test('downloads a template with the headers', async ({ console: open }) => {
@@ -77,7 +84,7 @@ test.describe('Menukaart export', () => {
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Sjabloon downloaden' }).click()])
     expect(download.suggestedFilename()).toBe('menukaart-sjabloon.xlsx')
     const rows = await readSheet(readFileSync(await download.path()))
-    expect(rows[0]).toEqual(['Groep', 'Product', 'Variant', 'Prijs', 'Categorie', 'BTW', 'Code', 'Snelknoppen', 'Zichtbaar'])
+    expect(rows[0]).toEqual(['Groep', 'Product', 'Variant', 'Prijs', 'Categorie', 'Station', 'BTW', 'Code', 'Snelknoppen', 'Zichtbaar'])
     expect(rows.length).toBeGreaterThan(1)
   })
 })
@@ -153,6 +160,36 @@ test.describe('Menukaart import', () => {
     await page.getByRole('button', { name: 'Voorbeeld bekijken' }).click()
     await expect(page.getByTestId('import-errors')).toContainText('Verplichte kolommen ontbreekt: Groep, Product, Prijs')
     expect(catalogAdmin.importRequests).toHaveLength(0)
+  })
+
+  test('shows new stations and station changes in the preview, and applies them', async ({ console: open, catalogAdmin }) => {
+    const catalog = seed(catalogAdmin)
+    const page = await open(`/catalogs/${catalog.id}`)
+    await page.getByRole('button', { name: 'Importeren' }).click()
+    await expect(page.getByRole('dialog')).toContainText('Categorie, Station, BTW of Code')
+    // Koffie is new at a new station; Pils moves from Bar to it; Steak's
+    // empty Station leaves it at Keuken.
+    await pickFile(
+      page,
+      'stations.csv',
+      Buffer.from('Groep;Product;Variant;Prijs;Categorie;Station\nDrank;Pils;;2,50;Drank;CoffeeCorner\n;Koffie;;2,20;Drank;CoffeeCorner\nEten;Steak;volwassene;18;Eten;\n'),
+      'text/csv'
+    )
+    await page.getByRole('button', { name: 'Voorbeeld bekijken' }).click()
+
+    const preview = page.getByTestId('import-preview')
+    await expect(preview).toContainText('Nieuwe stations (1)')
+    await expect(preview).toContainText('CoffeeCorner')
+    await expect(preview).toContainText('Pils: station: Bar → CoffeeCorner')
+    expect(catalogAdmin.importRequests[0].rows[0]).toMatchObject({ categorie: 'Drank', station: 'CoffeeCorner' })
+
+    await page.getByRole('button', { name: 'Toepassen' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    const coffee = catalogAdmin.stations.find((x) => x.name === 'CoffeeCorner')!
+    const product = (name: string) => catalogAdmin.products.find((p) => p.name === name)!
+    expect(product('Koffie').prepStationId).toBe(coffee.id)
+    expect(product('Pils').prepStationId).toBe(coffee.id)
+    expect(product('Steak').prepStationId).toBe(catalogAdmin.stations.find((x) => x.name === 'Keuken')!.id)
   })
 
   test('imports a file as a new menukaart, named after the file', async ({ console: open, catalogAdmin }) => {

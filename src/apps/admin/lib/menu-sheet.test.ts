@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  explanationRows,
   exportCsvRows,
   exportFileName,
   exportRowCells,
@@ -21,6 +22,7 @@ const steak: ExportRow = {
   variant: 'kind',
   prijsCents: 1250,
   categorie: 'Eten',
+  station: 'Keuken',
   btwBp: 1200,
   code: 'steak-kind',
   snelknoppen: [5, 10],
@@ -28,15 +30,32 @@ const steak: ExportRow = {
 }
 
 describe('parseSheetRows: header mapping', () => {
-  it('maps the 9 headers case- and whitespace-insensitively, in any order', () => {
+  it('maps the headers case- and whitespace-insensitively, in any order', () => {
     const parsed = parseSheetRows([
       ['  prijs', 'GROEP', 'Product ', 'Snel knoppen', 'btw'],
       [8.5, 'Eten', 'Steak', '5, 10', 21],
     ])
     expect(parsed.errors).toEqual([])
     expect(parsed.rows).toEqual([
-      { row: 2, groep: 'Eten', product: 'Steak', variant: null, prijs: 8.5, categorie: null, btw: 21, code: null, snelknoppen: '5, 10', zichtbaar: null },
+      { row: 2, groep: 'Eten', product: 'Steak', variant: null, prijs: 8.5, categorie: null, station: null, btw: 21, code: null, snelknoppen: '5, 10', zichtbaar: null },
     ])
+  })
+
+  it('reads an optional Station column, and still reads files without one', () => {
+    const withStation = parseSheetRows([
+      ['Groep', 'Product', 'Prijs', 'Categorie', ' station '],
+      ['Drank', 'Koffie', 2.5, 'Drank', 'CoffeeCorner'],
+    ])
+    expect(withStation.errors).toEqual([])
+    expect(withStation.ignoredHeaders).toEqual([])
+    expect(withStation.rows[0]).toMatchObject({ categorie: 'Drank', station: 'CoffeeCorner' })
+
+    const without = parseSheetRows([
+      ['Groep', 'Product', 'Prijs', 'Categorie'],
+      ['Drank', 'Koffie', 2.5, 'Drank'],
+    ])
+    expect(without.errors).toEqual([])
+    expect(without.rows[0].station).toBeNull()
   })
 
   it('refuses a file without the required Groep, Product or Prijs header', () => {
@@ -129,27 +148,20 @@ describe('parseCsv', () => {
 })
 
 describe('export', () => {
-  it('writes one row per line in column order: € number, BTW as percentage, ja/nee', () => {
-    expect(exportRowCells(steak)).toEqual(['Eten', 'Steak', 'kind', 12.5, 'Eten', 12, 'steak-kind', '5, 10', 'ja'])
-    expect(exportRowCells({ ...steak, variant: '', categorie: null, btwBp: null, code: null, snelknoppen: null, zichtbaar: false })).toEqual([
-      'Eten',
-      'Steak',
-      '',
-      12.5,
-      '',
-      '',
-      '',
-      '',
-      'nee',
-    ])
+  it('writes one row per line in column order: € number, Station after Categorie, BTW as percentage, ja/nee', () => {
+    expect(HEADERS).toEqual(['Groep', 'Product', 'Variant', 'Prijs', 'Categorie', 'Station', 'BTW', 'Code', 'Snelknoppen', 'Zichtbaar'])
+    expect(exportRowCells(steak)).toEqual(['Eten', 'Steak', 'kind', 12.5, 'Eten', 'Keuken', 12, 'steak-kind', '5, 10', 'ja'])
+    expect(
+      exportRowCells({ ...steak, variant: '', categorie: null, station: null, btwBp: null, code: null, snelknoppen: null, zichtbaar: false })
+    ).toEqual(['Eten', 'Steak', '', 12.5, '', '', '', '', '', 'nee'])
   })
 
   it('writes CSV for Belgian Excel: header row, decimal comma, ; delimiter, BOM, quoting', () => {
     const rows = exportCsvRows([steak, { ...steak, product: 'Steak; XL', prijsCents: 1800, btwBp: 550 }])
     expect(rows[0]).toEqual(HEADERS)
-    expect(rows[1]).toEqual(['Eten', 'Steak', 'kind', '12,50', 'Eten', '12', 'steak-kind', '5, 10', 'ja'])
+    expect(rows[1]).toEqual(['Eten', 'Steak', 'kind', '12,50', 'Eten', 'Keuken', '12', 'steak-kind', '5, 10', 'ja'])
     expect(rows[2][3]).toBe('18,00')
-    expect(rows[2][5]).toBe('5,50')
+    expect(rows[2][6]).toBe('5,50')
     const csv = toCsv(rows)
     expect(csv.startsWith('﻿Groep;Product;')).toBe(true)
     expect(csv).toContain(';"Steak; XL";')
@@ -164,6 +176,7 @@ describe('export', () => {
       variant: 'kind',
       prijs: '12,50',
       categorie: 'Eten',
+      station: 'Keuken',
       btw: '12',
       code: 'steak-kind',
       snelknoppen: '5, 10',
@@ -205,6 +218,18 @@ describe('preview', () => {
       { title: 'Toegevoegd aan deze menukaart', items: ['Cola'] },
       { title: 'Verwijderd van deze menukaart', items: ['Steak (kind)'] },
     ])
+  })
+
+  it('shows new stations right after new categories, and copes with a summary without them', () => {
+    const base = { newCategories: ['Drank'], newProducts: [], newVariants: [], updatedProducts: [], priceChanges: [], added: [], removed: [] }
+    expect(previewSections({ ...base, newStations: ['Bar', 'Keuken'] }).map((x) => x.title)).toEqual(['Nieuwe categorieën', 'Nieuwe stations'])
+    expect(previewSections({ ...base, newStations: ['Bar'] })[1].items).toEqual(['Bar'])
+    expect(previewSections(base).map((x) => x.title)).toEqual(['Nieuwe categorieën'])
+  })
+
+  it('explains Station in the Uitleg sheet', () => {
+    const station = explanationRows('x').find(([a]) => a === 'Station')
+    expect(station?.[1]).toContain('Leeg bij een bestaand product = ongewijzigd')
   })
 
   it('prefixes errors with their row number when there is one', () => {

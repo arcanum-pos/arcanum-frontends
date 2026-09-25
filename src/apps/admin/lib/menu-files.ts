@@ -20,7 +20,8 @@ import {
   type ParsedSheet,
 } from './menu-sheet'
 
-const WIDTHS = [14, 18, 14, 10, 16, 7, 18, 22, 11]
+// One per COLUMNS entry: Groep, Product, Variant, Prijs, Categorie, Station, BTW, Code, Snelknoppen, Zichtbaar.
+const WIDTHS = [14, 18, 14, 10, 16, 14, 7, 18, 22, 11]
 const HEADER_STYLE = { fontWeight: 'bold', textColor: '#FFFFFF', backgroundColor: '#1F2937' } as const
 
 function menuSheetData(rows: ExportRow[]): SheetData {
@@ -75,7 +76,7 @@ export async function downloadTemplate() {
   download(await xlsxBlob(TEMPLATE_ROWS, title), 'menukaart-sjabloon.xlsx')
 }
 
-// First sheet of an .xlsx, or a .csv, as raw cells mapped to the 9 columns.
+// First sheet of an .xlsx, or a .csv, as raw cells mapped to the known columns.
 export async function readMenuFile(file: File): Promise<ParsedSheet> {
   if (isCsvFile(file.name)) return parseSheetRows(parseCsv(await file.text()))
   try {
