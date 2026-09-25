@@ -1,11 +1,12 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { BookOpen, LayoutDashboard, MonitorSmartphone, Package, Receipt, Settings, TicketCheck, Users } from 'lucide-react'
+import { BookOpen, LayoutDashboard, MonitorSmartphone, Package, Receipt, Server, Settings, TicketCheck, Users } from 'lucide-react'
 import {
   SidebarGroup,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
+import { useVersionInfo } from '@/shared/source-url'
 
 const NAV_ITEMS = [
   { title: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
 
 export function NavMain() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const { installer } = useVersionInfo()
 
   return (
     <SidebarGroup>
@@ -34,6 +36,18 @@ export function NavMain() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         ))}
+        {installer && (
+          // arcanum-installer behind arcanum-bff (self-hosted installations
+          // only) — its own page, not a console route: a full page load.
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Installatie">
+              <a href="/installer/">
+                <Server />
+                <span>Installatie</span>
+              </a>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        )}
       </SidebarMenu>
     </SidebarGroup>
   )
