@@ -86,7 +86,7 @@ export default function BrandingPage() {
       <div>
         <h2 className="text-lg font-medium">Branding</h2>
         <p className="text-sm text-muted-foreground">
-          Optioneel: maak deze organisatie bereikbaar op een eigen domeinnaam in plaats van arcanum.kaboutersoft.be.
+          Optioneel: maak deze organisatie bereikbaar op een eigen domeinnaam in plaats van het standaardadres van dit platform.
         </p>
       </div>
 
@@ -191,7 +191,7 @@ export default function BrandingPage() {
         <CardFooter>
           <p className="text-sm text-muted-foreground">
             Vereist een eigen identity provider voor deze organisatie (zie Authentication) — leden melden zich na het
-            instellen aan via dit domein zelf, niet meer via arcanum.kaboutersoft.be.
+            instellen aan via dit domein zelf, niet meer via het standaardadres van dit platform.
           </p>
         </CardFooter>
       </Card>
