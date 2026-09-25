@@ -8,7 +8,9 @@ const ORGANIZATIONS_URL = '/api/organizations';
 const DEVICES_URL = '/api/devices';
 const WORKER_URL = '/api/bancontact';
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// Exported for sibling clients (catalog-api.ts) that talk to the same
+// /api/organizations prefix.
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${ORGANIZATIONS_URL}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...init,
