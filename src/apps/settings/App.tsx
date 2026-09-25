@@ -9,8 +9,10 @@ import { LinkPanel } from './LinkPanel'
 import { ReaderPanel } from './ReaderPanel'
 import { CatalogPanel } from './CatalogPanel'
 import { SlotPanel } from './SlotPanel'
+import { useSourceUrl } from '@/shared/source-url'
 
 export default function App() {
+  const sourceUrl = useSourceUrl()
   const [deviceNameInput, setDeviceNameInput] = useState(() => getDevice().name || '')
   const [deviceSaved, setDeviceSaved] = useState(false)
   const [posTerminalId, setPosTerminalId] = useState<string | null>(null)
@@ -128,6 +130,13 @@ export default function App() {
           <SlotPanel />
         </CardContent>
       </Card>
+
+      <p className="text-center text-xs text-muted-foreground">
+        Arcanum is vrije software (AGPL-3.0) ·{' '}
+        <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">
+          Broncode
+        </a>
+      </p>
     </div>
   )
 }
