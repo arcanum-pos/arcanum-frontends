@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SOURCE_URL, pickSourceUrl, pickVersionInfo } from './source-url'
+import { DEFAULT_SOURCE_URL, pickRelease, pickSourceUrl, pickVersionInfo, versionLabel } from './source-url'
 
 describe('pickSourceUrl', () => {
   it("uses the installation's SOURCE_URL from /version", () => {
@@ -16,13 +16,29 @@ describe('pickSourceUrl', () => {
 
 describe('pickVersionInfo', () => {
   it('reads the installer flag', () => {
-    expect(pickVersionInfo({ source_url: 'https://example.test/src', installer: true })).toEqual({ sourceUrl: 'https://example.test/src', installer: true })
-    expect(pickVersionInfo({ installer: false })).toEqual({ sourceUrl: DEFAULT_SOURCE_URL, installer: false })
+    expect(pickVersionInfo({ source_url: 'https://example.test/src', installer: true })).toMatchObject({ sourceUrl: 'https://example.test/src', installer: true })
+    expect(pickVersionInfo({ installer: false })).toMatchObject({ sourceUrl: DEFAULT_SOURCE_URL, installer: false })
   })
 
   it('no installer unless /version says exactly true', () => {
     for (const body of [null, {}, { installer: 'true' }, { installer: 1 }]) {
-      expect(pickVersionInfo(body)).toEqual({ sourceUrl: DEFAULT_SOURCE_URL, installer: false })
+      expect(pickVersionInfo(body)).toMatchObject({ sourceUrl: DEFAULT_SOURCE_URL, installer: false })
     }
+  })
+})
+
+describe('release', () => {
+  it('reads the installed release; null when deployed from main; undefined when /version gave nothing', () => {
+    expect(pickRelease({ release: '0.1.4' })).toBe('0.1.4')
+    expect(pickRelease({ release: null })).toBeNull()
+    expect(pickRelease({ version: 'cd238aaf-dc11' })).toBeNull()
+    expect(pickRelease({ release: '<script>' })).toBeNull()
+    expect(pickRelease(null)).toBeUndefined()
+  })
+
+  it('labels it for the footer', () => {
+    expect(versionLabel(pickVersionInfo({ release: '0.1.4' }))).toBe('Arcanum 0.1.4')
+    expect(versionLabel(pickVersionInfo({ release: null }))).toBe('Arcanum main')
+    expect(versionLabel(pickVersionInfo(null))).toBeNull()
   })
 })
