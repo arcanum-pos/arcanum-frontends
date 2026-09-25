@@ -3,47 +3,37 @@ import type { KassaCatalog, KassaEntry } from './catalog-api'
 import type { DraftLine, TabDetail } from './tabs-api'
 import { netQuantity } from './tabs-api'
 
-// A tappable item: a catalog entry (variantId set — the server prices it
-// from the catalog and ignores the price here, which is display-only), or
-// a free line (fooi, until it moves onto the payment in step 3d).
+// A tappable item: a catalog entry. The server prices it from the catalog
+// and ignores the price here, which is display-only.
 export interface PickerItem {
   itemCode: string | null
   name: string
   unitPriceCents: number
-  variantId?: string
+  variantId: string
 }
 
 export function entryToPickerItem(entry: KassaEntry): PickerItem {
   return { itemCode: entry.code, name: entry.name, unitPriceCents: entry.priceCents, variantId: entry.variantId }
 }
 
-// Fooi stays an order line until step 3d (DOMAIN_MODEL.md) — one line per
-// tab, its "unit price" is the tip amount.
+// Fooi used to be an order line (until step 3d); it's now a tip on the
+// payment (tipCents). Old tabs may still carry such a line — display only.
 export const FOOI_CODE = 'fooi'
 
-// Adds to a draft, merging with an existing line for the same catalog
-// variant (or, for free lines, the same item at the same price; fooi
-// merges by adding to the amount instead).
+// Adds to a draft, merging with an existing line for the same catalog variant.
 export function addToDraft(draft: DraftLine[], item: PickerItem, quantity: number): DraftLine[] {
-  const i = draft.findIndex((l) =>
-    item.variantId
-      ? l.variantId === item.variantId
-      : !l.variantId && l.itemCode === item.itemCode && (item.itemCode === FOOI_CODE || l.unitPriceCents === item.unitPriceCents)
-  )
+  const i = draft.findIndex((l) => l.variantId === item.variantId)
   if (i === -1) return [...draft, { ...item, quantity }]
   const next = [...draft]
-  next[i] =
-    item.itemCode === FOOI_CODE && !item.variantId
-      ? { ...next[i], unitPriceCents: next[i].unitPriceCents + item.unitPriceCents }
-      : { ...next[i], quantity: next[i].quantity + quantity }
+  next[i] = { ...next[i], quantity: next[i].quantity + quantity }
   return next
 }
 
 // Lines every draft up with a (re)loaded catalog: catalog lines take the
 // catalog's current name/price (display only — the server prices them
 // anyway). With `dropMissing` (the kassa switched to a different catalog),
-// catalog lines whose variant isn't on it are removed; free lines always
-// stay. Returns how many lines were dropped so the kassa can say so.
+// catalog lines whose variant isn't on it are removed. Returns how many
+// lines were dropped so the kassa can say so.
 export function reconcileDrafts(
   drafts: Record<string, DraftLine[]>,
   catalog: KassaCatalog | null,
@@ -55,15 +45,11 @@ export function reconcileDrafts(
   for (const [key, lines] of Object.entries(drafts)) {
     const kept: DraftLine[] = []
     for (const line of lines) {
-      const entry = line.variantId ? entries.get(line.variantId) : undefined
-      if (line.variantId && !entry) {
-        if (dropMissing) {
-          dropped++
-          continue
-        }
-        kept.push(line)
-      } else if (entry) {
+      const entry = entries.get(line.variantId)
+      if (entry) {
         kept.push({ ...line, name: entry.name, unitPriceCents: entry.priceCents, itemCode: entry.code })
+      } else if (dropMissing) {
+        dropped++
       } else {
         kept.push(line)
       }
@@ -83,11 +69,33 @@ function breakdownLine(name: string, itemCode: string | null, quantity: number, 
 }
 
 // What the payment view and the customer display list above the amount —
-// the tab's net lines (voids subtracted, fully voided lines left out).
-export function tabBreakdownLines(tab: TabDetail): string[] {
-  return tab.lines
+// the tab's net lines (voids subtracted, fully voided lines left out),
+// plus the tip given with this payment, if any.
+export function tabBreakdownLines(tab: TabDetail, tipCents = 0): string[] {
+  const lines = tab.lines
     .filter((l) => !l.voidsLineId && netQuantity(l) > 0)
     .map((l) => breakdownLine(l.name, l.itemCode, netQuantity(l), l.unitPriceCents))
+  if (tipCents > 0) lines.push(`Fooi = ${formatEuro(tipCents)}`)
+  return lines
+}
+
+// Max tip the backend accepts (tipCents 0..100000).
+export const MAX_TIP_CENTS = 100_000
+
+// The tip that rounds amount + tip up to the next whole euro (0 when the
+// amount already is one).
+export function roundUpTipCents(amountCents: number): number {
+  const rest = amountCents % 100
+  return rest === 0 ? 0 : 100 - rest
+}
+
+export function clampTip(cents: number): number {
+  return Math.min(Math.max(0, Math.round(cents)), MAX_TIP_CENTS)
+}
+
+// Cents back to the kassa's comma input ("2,50"), '' for no tip.
+export function centsToInput(cents: number): string {
+  return cents > 0 ? (cents / 100).toFixed(2).replace('.', ',') : ''
 }
 
 export function readAmountCents(value: string): number {
@@ -110,6 +118,8 @@ export interface CurrentPayment {
   expiresAt?: string
   chargeId: string
   tabId: string
+  // Part of amountCents — paid by the customer, but not revenue.
+  tipCents: number
   // True once a SumUp charge was actually sent to a physical reader — then
   // cancelling here can't stop the customer from still paying on it, so
   // the charge is left for the reader/poller to resolve.

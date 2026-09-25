@@ -14,8 +14,10 @@ import {
 import { getCurrentSlotId } from '@/shared/slots'
 import {
   addToDraft,
+  clampTip,
   isPaymentResolved,
   MANUAL_METHOD_LABELS,
+  readAmountCents,
   reconcileDrafts,
   tabBreakdownLines,
   type CurrentPayment,
@@ -48,6 +50,9 @@ export default function App() {
   const [catalogState, setCatalogState] = useState<CatalogState>({ status: 'loading' })
   const [notice, setNotice] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bancontact')
+  // Fooi for the next payment, as typed (comma input). Added on top of the
+  // outstanding amount; reset once a payment completes.
+  const [tipInput, setTipInput] = useState('')
   const [current, setCurrent] = useState<CurrentPayment | null>(null)
   const [manualStatusText, setManualStatusText] = useState('')
   const [countdownText, setCountdownText] = useState('')
@@ -304,10 +309,11 @@ export default function App() {
   // --- Payment ---
 
   // Submits whatever's still in the draft first (for Toog: creates the tab
-  // with it), then charges exactly what's outstanding — the server refuses
-  // any other amount.
+  // with it), then charges exactly what's outstanding plus the tip — the
+  // server refuses any other amount.
   function pay() {
     const key = active
+    const tipCents = clampTip(readAmountCents(tipInput))
     runTabAction(async (org) => {
       let tab: TabDetail
       if (key === 'quick') {
@@ -330,15 +336,16 @@ export default function App() {
         setError('Niets te betalen op deze rekening.')
         return
       }
-      await startCharge(org, tab)
+      await startCharge(org, tab, tipCents)
     })
   }
 
-  async function startCharge(org: string, tab: TabDetail) {
-    const amountCents = tab.outstandingCents
-    const breakdown = tabBreakdownLines(tab)
+  async function startCharge(org: string, tab: TabDetail, tipCents: number) {
+    const amountCents = tab.outstandingCents + tipCents
+    const breakdown = tabBreakdownLines(tab, tipCents)
     const common = {
       amount: amountCents,
+      tipCents,
       orgId: org,
       tabId: tab.id,
       posTerminalId: posTerminalIdRef.current || undefined,
@@ -360,6 +367,7 @@ export default function App() {
         method: 'bancontact',
         chargeId: data.chargeId,
         tabId: tab.id,
+        tipCents,
         qrCodeUrl: data.qrCodeUrl,
         expiresAt: data.expiresAt,
         status: data.status,
@@ -390,6 +398,7 @@ export default function App() {
       status: 'AWAITING_MANUAL',
       chargeId: data.chargeId,
       tabId: tab.id,
+      tipCents,
       amountCents,
       breakdown,
       dispatchedToReader: !!readerId,
@@ -487,8 +496,9 @@ export default function App() {
     }
   }
 
-  // Paid — back to Toog for the next customer.
+  // Paid — back to Toog for the next customer (without the tip).
   function finishPayment() {
+    setTipInput('')
     clearPaymentView()
     selectTab('quick')
   }
@@ -678,6 +688,8 @@ export default function App() {
               tab={shownTab}
               draft={draft}
               paymentMethod={paymentMethod}
+              tipInput={tipInput}
+              onTipInputChange={setTipInput}
               busy={busy || tabLoading}
               onPaymentMethodChange={setPaymentMethod}
               onDraftQuantity={setDraftQuantity}

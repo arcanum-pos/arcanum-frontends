@@ -75,14 +75,15 @@ test('an archived device catalog falls back to the default, with a notice', asyn
   expect(await kassa.evaluate(() => localStorage.getItem('arcanum-catalog'))).toBeNull()
 })
 
-test('no catalog at all: a clear empty state, fooi still works', async ({ kassa, backend }) => {
+test('no catalog at all: a clear empty state and nothing to sell', async ({ kassa, backend }) => {
   backend.catalogs = []
   await kassa.reload()
 
   await expect(kassa.getByText('Nog geen menukaart — een beheerder maakt er een in de console.')).toBeVisible()
-  await kassa.getByPlaceholder('Bedrag, bv. 2,50').fill('2')
-  await kassa.getByRole('button', button('Toevoegen')).click()
-  await expect(kassa.getByRole('button', button('Afrekenen € 2,00'))).toBeEnabled()
+  // Fooi is no longer something you can sell on its own (since 3d it's a
+  // tip on a payment), so there's nothing to pay and no tip to give.
+  await expect(kassa.getByRole('button', button('Afrekenen'))).toBeDisabled()
+  await expect(kassa.getByLabel('Fooi')).toBeDisabled()
 })
 
 test('an entry removed since loading: refused, draft kept, catalog reloaded', async ({ kassa, backend }) => {

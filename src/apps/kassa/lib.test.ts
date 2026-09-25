@@ -1,10 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
-import { addToDraft, draftTotalCents, entryToPickerItem, FOOI_CODE, isPaymentResolved, readAmountCents, reconcileDrafts, tabBreakdownLines, type CurrentPayment } from './lib'
+import {
+  addToDraft,
+  centsToInput,
+  clampTip,
+  draftTotalCents,
+  entryToPickerItem,
+  FOOI_CODE,
+  isPaymentResolved,
+  MAX_TIP_CENTS,
+  readAmountCents,
+  reconcileDrafts,
+  roundUpTipCents,
+  tabBreakdownLines,
+  type CurrentPayment,
+} from './lib'
 import { netQuantity, tabTitle, toLineInputs, type DraftLine, type TabDetail, type TabLine } from './tabs-api'
 
-const bon = { itemCode: 'bon', name: 'Bon', unitPriceCents: 100 }
-const fooi = (cents: number) => ({ itemCode: FOOI_CODE, name: 'Fooi', unitPriceCents: cents })
+const bon = { itemCode: 'bon', name: 'Bon', unitPriceCents: 100, variantId: 'v-bon' }
 
 function entry(variantId: string, name: string, priceCents: number, code: string | null = null): KassaEntry {
   return { entryId: `e-${variantId}`, variantId, name, priceCents, code, categoryName: null, quickQuantities: null }
@@ -63,29 +76,17 @@ describe('addToDraft', () => {
     expect(addToDraft([], bon, 10)).toEqual([{ ...bon, quantity: 10 }])
   })
 
-  it('merges the same item at the same price by adding quantity', () => {
+  it('merges the same variant by adding quantity', () => {
     expect(addToDraft([{ ...bon, quantity: 10 }], bon, 5)).toEqual([{ ...bon, quantity: 15 }])
   })
 
-  it('keeps the same item at a different price as a separate line', () => {
-    const draft = addToDraft([{ ...bon, quantity: 1 }], { ...bon, unitPriceCents: 120 }, 1)
-    expect(draft).toHaveLength(2)
-  })
-
-  it('merges fooi by adding to the amount, not the quantity', () => {
-    const draft = addToDraft(addToDraft([], fooi(150), 1), fooi(250), 1)
-    expect(draft).toEqual([{ ...fooi(400), quantity: 1 }])
-  })
-
-  it('merges catalog lines by variant, never with a free line or another variant', () => {
+  it('keeps different variants of one product as separate lines', () => {
     let draft = addToDraft([], entryToPickerItem(fiets), 1)
     draft = addToDraft(draft, entryToPickerItem(fiets), 2)
     draft = addToDraft(draft, entryToPickerItem(fietsLid), 1)
-    draft = addToDraft(draft, { itemCode: 'fietstocht', name: 'Fietstocht', unitPriceCents: 800 }, 1)
-    expect(draft.map((l) => [l.variantId ?? null, l.quantity])).toEqual([
+    expect(draft.map((l) => [l.variantId, l.quantity])).toEqual([
       ['v-fiets', 3],
       ['v-fiets-lid', 1],
-      [null, 1],
     ])
   })
 
@@ -98,7 +99,7 @@ describe('addToDraft', () => {
 
 describe('draftTotalCents', () => {
   it('sums price × quantity', () => {
-    expect(draftTotalCents([{ ...bon, quantity: 10 }, { ...fooi(150), quantity: 1 }])).toBe(1150)
+    expect(draftTotalCents([{ ...bon, quantity: 10 }, { ...entryToPickerItem(fiets), quantity: 2 }])).toBe(2600)
   })
 
   it('is 0 for an empty draft', () => {
@@ -110,7 +111,7 @@ describe('reconcileDrafts', () => {
   const drafts = (): Record<string, DraftLine[]> => ({
     quick: [
       { ...entryToPickerItem(fiets), quantity: 2 },
-      { ...fooi(150), quantity: 1 },
+      { ...bon, quantity: 5 },
     ],
     t1: [{ ...entryToPickerItem(fietsLid), quantity: 1 }],
   })
@@ -128,38 +129,71 @@ describe('reconcileDrafts', () => {
     expect(next.t1).toHaveLength(1)
   })
 
-  it('drops lines not on a different catalog, keeps free lines, and removes tabs left empty', () => {
+  it('drops lines not on a different catalog and removes tabs left empty', () => {
     const { drafts: next, dropped } = reconcileDrafts(drafts(), catalog('c2', [fiets]), true)
-    expect(dropped).toBe(1)
-    expect(next.quick.map((l) => l.itemCode)).toEqual(['fietstocht', FOOI_CODE])
+    expect(dropped).toBe(2)
+    expect(next.quick.map((l) => l.itemCode)).toEqual(['fietstocht'])
     expect(next.t1).toBeUndefined()
   })
 
-  it('drops every catalog line when there is no catalog at all', () => {
+  it('drops every line when there is no catalog at all', () => {
     const { drafts: next, dropped } = reconcileDrafts(drafts(), null, true)
-    expect(dropped).toBe(2)
-    expect(next.quick.map((l) => l.itemCode)).toEqual([FOOI_CODE])
+    expect(dropped).toBe(3)
+    expect(next).toEqual({})
   })
 })
 
 describe('toLineInputs', () => {
-  it('sends only variant + quantity for catalog lines, the full line for free lines', () => {
-    expect(toLineInputs([{ ...entryToPickerItem(fiets), quantity: 2 }, { ...fooi(150), quantity: 1 }])).toEqual([
+  it('sends only variant + quantity — the server prices every line', () => {
+    expect(toLineInputs([{ ...entryToPickerItem(fiets), quantity: 2 }, { ...bon, quantity: 1 }])).toEqual([
       { variantId: 'v-fiets', quantity: 2 },
-      { itemCode: FOOI_CODE, name: 'Fooi', unitPriceCents: 150, quantity: 1 },
+      { variantId: 'v-bon', quantity: 1 },
     ])
   })
 })
 
 describe('tabBreakdownLines', () => {
+  const lines = [
+    line({ id: 'a', name: 'Wandeltocht', itemCode: 'wandeltocht', unitPriceCents: 600, quantity: 2, voidedQuantity: 1 }),
+    line({ id: 'v', name: 'Wandeltocht', itemCode: 'wandeltocht', unitPriceCents: 600, quantity: -1, voidsLineId: 'a', voidReason: 'x' }),
+    line({ id: 'b', name: 'Bon', quantity: 5, voidedQuantity: 5 }),
+  ]
+
   it('lists net quantities and leaves out void lines and fully voided lines', () => {
-    const lines = [
-      line({ id: 'a', name: 'Wandeltocht', itemCode: 'wandeltocht', unitPriceCents: 600, quantity: 2, voidedQuantity: 1 }),
-      line({ id: 'v', name: 'Wandeltocht', itemCode: 'wandeltocht', unitPriceCents: 600, quantity: -1, voidsLineId: 'a', voidReason: 'x' }),
-      line({ id: 'b', name: 'Bon', quantity: 5, voidedQuantity: 5 }),
-      line({ id: 'f', name: 'Fooi', itemCode: FOOI_CODE, unitPriceCents: 250 }),
-    ]
-    expect(tabBreakdownLines(tab(lines))).toEqual(['1 × Wandeltocht à € 6,00 = € 6,00', 'Fooi = € 2,50'])
+    expect(tabBreakdownLines(tab(lines))).toEqual(['1 × Wandeltocht à € 6,00 = € 6,00'])
+  })
+
+  it('adds the tip of this payment as a last line', () => {
+    expect(tabBreakdownLines(tab(lines), 150)).toEqual(['1 × Wandeltocht à € 6,00 = € 6,00', 'Fooi = € 1,50'])
+  })
+
+  it('still shows an old fooi line (from before 3d) as "Fooi"', () => {
+    const old = [line({ id: 'f', name: 'Fooi', itemCode: FOOI_CODE, unitPriceCents: 250 })]
+    expect(tabBreakdownLines(tab(old))).toEqual(['Fooi = € 2,50'])
+  })
+})
+
+describe('tip helpers', () => {
+  it.each([
+    [1850, 50],
+    [1801, 99],
+    [1899, 1],
+    [1800, 0],
+  ])('roundUpTipCents(%i) = %i (rounds up to the next whole euro)', (amount, tip) => {
+    expect(roundUpTipCents(amount)).toBe(tip)
+  })
+
+  it('clamps a tip to 0..the backend maximum', () => {
+    expect(clampTip(-50)).toBe(0)
+    expect(clampTip(250)).toBe(250)
+    expect(clampTip(MAX_TIP_CENTS + 1)).toBe(MAX_TIP_CENTS)
+  })
+
+  it('turns cents back into the comma input, empty for no tip', () => {
+    expect(centsToInput(250)).toBe('2,50')
+    expect(centsToInput(100)).toBe('1,00')
+    expect(centsToInput(0)).toBe('')
+    expect(readAmountCents(centsToInput(1234))).toBe(1234)
   })
 })
 
@@ -178,7 +212,7 @@ describe('readAmountCents', () => {
 })
 
 describe('isPaymentResolved', () => {
-  const base: CurrentPayment = { method: 'cash', status: 'AWAITING_MANUAL', amountCents: 100, breakdown: [], chargeId: 'c', tabId: 't' }
+  const base: CurrentPayment = { method: 'cash', status: 'AWAITING_MANUAL', amountCents: 100, breakdown: [], chargeId: 'c', tabId: 't', tipCents: 0 }
 
   it('is true for a confirmed manual payment and a succeeded Bancontact payment', () => {
     expect(isPaymentResolved({ ...base, status: 'RESOLVED' })).toBe(true)

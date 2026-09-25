@@ -8,7 +8,7 @@ import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { LinkPanel } from './LinkPanel'
 import { ReaderPanel } from './ReaderPanel'
 import { CatalogPanel } from './CatalogPanel'
-import { PricingPanel } from './PricingPanel'
+import { SlotPanel } from './SlotPanel'
 
 export default function App() {
   const [deviceNameInput, setDeviceNameInput] = useState(() => getDevice().name || '')
@@ -125,7 +125,7 @@ export default function App() {
 
       <Card>
         <CardContent className="pt-6">
-          <PricingPanel />
+          <SlotPanel />
         </CardContent>
       </Card>
     </div>

@@ -1,7 +1,8 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { formatEuro } from '@/shared/format'
-import { draftTotalCents, FOOI_CODE, PAYMENT_METHOD_OPTIONS, type PaymentMethod } from './lib'
+import { centsToInput, clampTip, draftTotalCents, FOOI_CODE, PAYMENT_METHOD_OPTIONS, readAmountCents, roundUpTipCents, type PaymentMethod } from './lib'
 import { netQuantity, type DraftLine, type TabDetail, type TabLine } from './tabs-api'
 
 // Right half of the kassa: the active tab (or the Toog quick-sale draft
@@ -10,13 +11,18 @@ import { netQuantity, type DraftLine, type TabDetail, type TabLine } from './tab
 //
 // Submitted lines are read-only — the only correction is a void with a
 // reason. Draft lines (not yet sent) can still be freely changed.
+//
+// Fooi is entered here, at payment time: it's added to the charged amount
+// (tipCents) but isn't a line on the tab, so it stays out of revenue.
 export function TabPanel({
   title,
   tab,
   draft,
   paymentMethod,
+  tipInput,
   busy,
   onPaymentMethodChange,
+  onTipInputChange,
   onDraftQuantity,
   onClearDraft,
   onVoid,
@@ -31,8 +37,10 @@ export function TabPanel({
   tab: TabDetail | null
   draft: DraftLine[]
   paymentMethod: PaymentMethod
+  tipInput: string
   busy: boolean
   onPaymentMethodChange: (method: PaymentMethod) => void
+  onTipInputChange: (value: string) => void
   onDraftQuantity: (index: number, quantity: number) => void
   onClearDraft: () => void
   onVoid: (line: TabLine) => void
@@ -46,6 +54,7 @@ export function TabPanel({
   const submitted = (tab?.lines || []).filter((l) => !l.voidsLineId)
   const draftTotal = draftTotalCents(draft)
   const toPay = (tab?.outstandingCents || 0) + draftTotal
+  const tipCents = toPay > 0 ? clampTip(readAmountCents(tipInput)) : 0
   const locked = busy || !!tab?.paymentPending
 
   return (
@@ -105,27 +114,19 @@ export function TabPanel({
               </Button>
             </div>
             {draft.map((line, i) => (
-              <div key={`${line.itemCode}-${i}`} className="flex items-center justify-between gap-3 border-b py-2 last:border-b-0">
+              <div key={line.variantId} className="flex items-center justify-between gap-3 border-b py-2 last:border-b-0">
                 <div>
-                  <p className="font-medium">{line.itemCode === FOOI_CODE ? 'Fooi' : line.name}</p>
-                  {line.itemCode !== FOOI_CODE && <p className="text-xs text-muted-foreground">{formatEuro(line.unitPriceCents)}</p>}
+                  <p className="font-medium">{line.name}</p>
+                  <p className="text-xs text-muted-foreground">{formatEuro(line.unitPriceCents)}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {line.itemCode !== FOOI_CODE ? (
-                    <>
-                      <Button variant="outline" size="icon-sm" aria-label={`minder ${line.name}`} disabled={busy} onClick={() => onDraftQuantity(i, line.quantity - 1)}>
-                        −
-                      </Button>
-                      <span className="w-8 text-center tabular-nums">{line.quantity}</span>
-                      <Button variant="outline" size="icon-sm" aria-label={`meer ${line.name}`} disabled={busy} onClick={() => onDraftQuantity(i, line.quantity + 1)}>
-                        +
-                      </Button>
-                    </>
-                  ) : (
-                    <Button variant="ghost" size="sm" disabled={busy} onClick={() => onDraftQuantity(i, 0)}>
-                      Verwijderen
-                    </Button>
-                  )}
+                  <Button variant="outline" size="icon-sm" aria-label={`minder ${line.name}`} disabled={busy} onClick={() => onDraftQuantity(i, line.quantity - 1)}>
+                    −
+                  </Button>
+                  <span className="w-8 text-center tabular-nums">{line.quantity}</span>
+                  <Button variant="outline" size="icon-sm" aria-label={`meer ${line.name}`} disabled={busy} onClick={() => onDraftQuantity(i, line.quantity + 1)}>
+                    +
+                  </Button>
                   <span className="w-20 text-right tabular-nums">{formatEuro(line.unitPriceCents * line.quantity)}</span>
                 </div>
               </div>
@@ -156,9 +157,47 @@ export function TabPanel({
         </div>
 
         <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="tip-input" className="text-sm">
+              Fooi
+            </label>
+            <Input
+              id="tip-input"
+              type="text"
+              inputMode="decimal"
+              placeholder="0,00"
+              className="w-24"
+              value={tipInput}
+              disabled={locked || toPay < 1}
+              onChange={(e) => onTipInputChange(e.target.value)}
+            />
+            <Button variant="outline" size="sm" disabled={locked || toPay < 1} onClick={() => onTipInputChange(centsToInput(clampTip(tipCents + 100)))}>
+              +€1
+            </Button>
+            <Button variant="outline" size="sm" disabled={locked || toPay < 1} onClick={() => onTipInputChange(centsToInput(clampTip(tipCents + 200)))}>
+              +€2
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={locked || toPay < 1 || roundUpTipCents(toPay) === 0}
+              onClick={() => onTipInputChange(centsToInput(roundUpTipCents(toPay)))}
+            >
+              Afronden
+            </Button>
+            {tipCents > 0 && (
+              <Button variant="ghost" size="sm" disabled={locked} onClick={() => onTipInputChange('')}>
+                Geen fooi
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2">
           <Button className="h-12 text-base" disabled={locked || toPay < 1} onClick={onPay}>
-            Afrekenen {toPay > 0 && formatEuro(toPay)}
+            Afrekenen {toPay > 0 && formatEuro(toPay + tipCents)}
           </Button>
+          {tipCents > 0 && <p className="text-center text-sm text-muted-foreground">waarvan {formatEuro(tipCents)} fooi</p>}
           {tab && draft.length > 0 && (
             <Button variant="outline" disabled={locked} onClick={onSubmitOrder}>
               Bestelling toevoegen aan rekening

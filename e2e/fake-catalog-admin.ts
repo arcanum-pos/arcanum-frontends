@@ -1,9 +1,11 @@
 // In-memory stand-in for arcanum-backend's catalog API (src/catalog.ts)
 // plus the few calls the console shell makes on load (/whoami, the org
-// list). Enforces the same rules and returns the same status codes and
-// Dutch messages as the real backend, so the console's error handling is
-// exercised — the backend's own rules are tested for real in
-// arcanum-backend's suite.
+// list) and what the Rapporten page reads (the sales report, the payment
+// list, events) — those three just return whatever a test put in
+// `salesReport` / `transactions` / `events`. The catalog part enforces the
+// same rules and returns the same status codes and Dutch messages as the
+// real backend, so the console's error handling is exercised — the
+// backend's own rules are tested for real in arcanum-backend's suite.
 export interface FakeResponse {
   status: number
   body: unknown
@@ -54,6 +56,17 @@ interface Entry {
 
 export const ORG_ID = 'org-e2e'
 
+export function emptySalesReport(): any {
+  return {
+    from: '',
+    to: '',
+    payments: { count: 0, amountCents: 0, tipCents: 0, byMethod: [] },
+    sales: { tabCount: 0, revenueCents: 0, byCategory: [], byProduct: [], byVat: [] },
+    legacy: { count: 0, amountCents: 0, items: {} },
+    openTabs: { count: 0, outstandingCents: 0 },
+  }
+}
+
 export class FakeCatalogAdmin {
   categories: Category[] = []
   products: Product[] = []
@@ -64,6 +77,13 @@ export class FakeCatalogAdmin {
   // Test hook: the next layout call is refused as if another admin edited
   // the catalog in between.
   failNextLayout = false
+  // Rapporten page: served as-is. `reportStatus: 403` answers like the
+  // backend does for a non-admin; every report query is recorded.
+  salesReport: any = emptySalesReport()
+  reportStatus = 200
+  reportQueries: { from: string; to: string }[] = []
+  transactions: any[] = []
+  events: any[] = []
   private seq = 0
 
   private id(prefix: string) {
@@ -76,6 +96,16 @@ export class FakeCatalogAdmin {
     if (path === '/api/organizations' && method === 'GET') {
       return ok([{ id: ORG_ID, name: 'E2E', logoUrl: null, theme: null, createdAt: '2026-01-01', customDomain: null }])
     }
+
+    if (/^\/api\/organizations\/[^/]+\/reports\/sales$/.test(path) && method === 'GET') {
+      const params = new URLSearchParams(query)
+      const range = { from: params.get('from') || '', to: params.get('to') || '' }
+      this.reportQueries.push(range)
+      if (this.reportStatus === 403) return { status: 403, body: { error: 'Forbidden' } }
+      return ok({ ...this.salesReport, ...range })
+    }
+    if (path === '/api/bancontact/transactions' && method === 'GET') return ok(this.transactions)
+    if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'GET') return ok(this.events)
 
     const m = path.match(/^\/api\/organizations\/[^/]+\/(catalog|catalogs)(?:\/(.*))?$/)
     if (!m) return { status: 404, body: { error: 'Not found' } }

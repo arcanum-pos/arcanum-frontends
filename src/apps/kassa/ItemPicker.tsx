@@ -1,10 +1,8 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { formatEuro } from '@/shared/format'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
-import { entryToPickerItem, FOOI_CODE, readAmountCents, type PickerItem } from './lib'
+import { entryToPickerItem, type PickerItem } from './lib'
 
 export type CatalogState = { status: 'loading' } | { status: 'none' } | { status: 'error'; message: string } | { status: 'ok'; catalog: KassaCatalog }
 
@@ -21,15 +19,6 @@ export function ItemPicker({
   disabled: boolean
   onAdd: (item: PickerItem, quantity: number) => void
 }) {
-  const [fooiInput, setFooiInput] = useState('')
-
-  function addFooi() {
-    const amount = readAmountCents(fooiInput)
-    if (amount < 1) return
-    onAdd({ itemCode: FOOI_CODE, name: 'Fooi', unitPriceCents: amount }, 1)
-    setFooiInput('')
-  }
-
   return (
     <div className="flex flex-col gap-4">
       {catalogState.status === 'loading' && <p className="py-6 text-center text-sm text-muted-foreground">Menukaart laden…</p>}
@@ -75,32 +64,6 @@ export function ItemPicker({
           )
         })}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Fooi</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            className="flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              addFooi()
-            }}
-          >
-            <Input
-              type="text"
-              inputMode="decimal"
-              placeholder="Bedrag, bv. 2,50"
-              value={fooiInput}
-              onChange={(e) => setFooiInput(e.target.value)}
-              disabled={disabled}
-            />
-            <Button type="submit" variant="outline" disabled={disabled || readAmountCents(fooiInput) < 1}>
-              Toevoegen
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
     </div>
   )
 }

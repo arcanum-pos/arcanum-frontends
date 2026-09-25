@@ -45,7 +45,8 @@ export interface DraftLine {
   name: string
   unitPriceCents: number
   quantity: number
-  variantId?: string
+  // Every line comes from the catalog (free lines are refused since 3d).
+  variantId: string
 }
 
 // Carries the server's own error message (already Dutch, user-facing) and,
@@ -77,9 +78,7 @@ function device() {
 }
 
 export function toLineInputs(lines: DraftLine[]) {
-  return lines.map((l) =>
-    l.variantId ? { variantId: l.variantId, quantity: l.quantity } : { itemCode: l.itemCode, name: l.name, unitPriceCents: l.unitPriceCents, quantity: l.quantity }
-  )
+  return lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }))
 }
 
 export function listOpenTabs(orgId: string) {

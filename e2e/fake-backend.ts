@@ -1,9 +1,10 @@
 // In-memory stand-in for the parts of arcanum-backend the kassa talks to
 // (tabs API, catalogs' kassa view + list, charge endpoints), so the E2E suite runs with no Worker, no
 // D1 and no login. It mirrors the rules arcanum-backend/src/tabs.ts
-// enforces — amount must equal outstanding, one pending charge per tab,
-// closed tabs refuse orders, cancel only when empty, catalog lines priced
-// by the server from a visible entry of a non-archived catalog — with the same
+// enforces — amount must equal outstanding + tip (the tip is charged but
+// never counts as paid), one pending charge per tab, closed tabs refuse
+// orders, cancel only when empty, every line priced by the server from a
+// visible entry of a non-archived catalog (free lines refused) — with the same
 // status codes and Dutch error messages, so the UI's error handling is
 // exercised. It is NOT a test of those rules: arcanum-backend's own suite
 // covers the real implementation. Keep the two in step when the API
@@ -16,9 +17,11 @@ export interface FakeLineInput {
   quantity: number
 }
 
-// A line as the kassa sends it: a catalog line (variantId + quantity, any
-// name/price ignored) or a free line.
+// A line as the kassa sends it: variantId + quantity (any name/price is
+// ignored). Anything else is a free line, which the backend refuses since 3d.
 type OrderLineInput = FakeLineInput | { variantId: string; quantity: number }
+
+export const FREE_LINE_REFUSAL = 'Elke lijn moet van de menukaart komen'
 
 export interface FakeEntry {
   entryId: string
@@ -96,6 +99,9 @@ export interface FakeCharge {
   method: string
   status: 'pending' | 'succeeded' | 'failed'
   amountCents: number
+  tipCents: number
+  // Every charge body as the kassa sent it, for assertions.
+  body?: any
 }
 
 export interface FakeResponse {
@@ -140,7 +146,7 @@ export class FakeBackend {
   }
 
   startCharge(tabId: string, method = 'cash'): FakeCharge {
-    const charge: FakeCharge = { id: nextId('charge'), tabId, method, status: 'pending', amountCents: this.summary(this.tab(tabId)!).outstandingCents }
+    const charge: FakeCharge = { id: nextId('charge'), tabId, method, status: 'pending', amountCents: this.summary(this.tab(tabId)!).outstandingCents, tipCents: 0 }
     this.charges.push(charge)
     return charge
   }
@@ -190,7 +196,8 @@ export class FakeBackend {
     const lines = this.tabLines(tab.id)
     const totalCents = lines.reduce((s, l) => s + l.unitPriceCents * l.quantity, 0)
     const charges = this.charges.filter((c) => c.tabId === tab.id)
-    const paidCents = charges.filter((c) => c.status === 'succeeded').reduce((s, c) => s + c.amountCents, 0)
+    // The tip is part of what the customer paid, but never of the tab.
+    const paidCents = charges.filter((c) => c.status === 'succeeded').reduce((s, c) => s + c.amountCents - c.tipCents, 0)
     return {
       ...tab,
       totalCents,
@@ -240,7 +247,6 @@ export class FakeBackend {
     const p = url.pathname
 
     if (p === '/whoami') return { status: 200, body: { name: 'Test Kassier', email: 'kassier@example.test' } }
-    if (p === '/api/bancontact/settings') return { status: 200, body: {} }
     if (p.startsWith('/api/devices/')) {
       if (p.endsWith('/ws-token')) return { status: 200, body: { token: 'test-token' } }
       return { status: 200, body: { ok: true } }
@@ -269,6 +275,7 @@ export class FakeBackend {
           status: c.status,
           providerStatus: c.method === 'bancontact' ? { pending: 'PENDING', succeeded: 'SUCCEEDED', failed: 'FAILED' }[c.status] : null,
           amountCents: c.amountCents,
+          tipCents: c.tipCents,
           method: c.method,
           qrCodeUrl: c.method === 'bancontact' ? QR_URL : null,
           expiresAt: null,
@@ -302,15 +309,12 @@ export class FakeBackend {
     }
   }
 
-  // Catalog lines get name/price/code from the entry (client values
-  // ignored); free lines pass through. A string is the 400 error.
+  // Lines get name/price/code from the catalog entry (client values
+  // ignored); free lines are refused. A string is the 400 error.
   private priceLines(lines: OrderLineInput[], catalogId: string | undefined): FakeLineInput[] | string {
     const priced: FakeLineInput[] = []
     for (const l of lines) {
-      if (!('variantId' in l)) {
-        priced.push(l)
-        continue
-      }
+      if (!('variantId' in l) || !l.variantId) return FREE_LINE_REFUSAL
       if (!catalogId) return 'catalogId is required for lines with a variantId'
       const catalog = this.catalogs.find((c) => c.id === catalogId && !c.archived)
       if (!catalog) return 'Onbekende of gearchiveerde menukaart'
@@ -400,15 +404,17 @@ export class FakeBackend {
       hook()
     }
     const tabId: string | null = body.tabId || null
+    const tipCents = body.tipCents ?? 0
+    if (!Number.isInteger(tipCents) || tipCents < 0 || tipCents > 100_000) return { status: 400, body: { error: 'tipCents must be an integer between 0 and 100000' } }
     if (tabId) {
       const tab = this.tab(tabId)
       if (!tab) return { status: 404, body: { error: 'Rekening niet gevonden' } }
       const s = this.summary(tab)
       if (tab.status !== 'open') return { status: 409, body: { error: 'Rekening is niet meer open', tab: s } }
       if (s.paymentPending) return { status: 409, body: { error: 'Er loopt al een betaling voor deze rekening', tab: s } }
-      if (body.amount !== s.outstandingCents) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', tab: s } }
+      if (body.amount !== s.outstandingCents + tipCents) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', tab: s } }
     }
-    const charge: FakeCharge = { id: nextId('charge'), tabId, method, status: 'pending', amountCents: body.amount }
+    const charge: FakeCharge = { id: nextId('charge'), tabId, method, status: 'pending', amountCents: body.amount, tipCents, body }
     this.charges.push(charge)
     if (method === 'bancontact') {
       return { status: 201, body: { chargeId: charge.id, status: 'PENDING', amount: body.amount, expiresAt: new Date(Date.now() + 120_000).toISOString(), qrCodeUrl: QR_URL } }

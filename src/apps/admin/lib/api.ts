@@ -281,11 +281,9 @@ export async function removeDevice(terminalId: string): Promise<void> {
   if (!res.ok) throw new Error(`status ${res.status}`)
 }
 
-// worker's shared transactions ledger, proxied at /api/bancontact — same
-// contract as webapp/src/scripts/transactions.ts. That page also does a
-// lot of event-specific reporting (bonnen/fietstocht/wandeltocht/fooi
-// counts, tijdvak/slot filtering) tied to one event's own item taxonomy —
-// deliberately not ported here; this is just the plain list for now.
+// worker's shared transactions ledger (one row per recorded payment),
+// proxied at /api/bancontact — members of the org only. Aggregated sales
+// reporting lives in reports.ts (the /reports/sales endpoint).
 export interface Transaction {
   id: string
   amountCents: number
@@ -298,6 +296,9 @@ export interface Transaction {
   userName: string | null
   userEmail: string | null
   eventId: string | null
+  // Part of amountCents: paid by the customer, not revenue (since step 3d).
+  tipCents: number
+  tabId: string | null
   completedAt: string
 }
 
