@@ -1,8 +1,9 @@
 // In-memory stand-in for the parts of arcanum-backend the kassa talks to
-// (tabs API + charge endpoints), so the E2E suite runs with no Worker, no
+// (tabs API, catalogs' kassa view + list, charge endpoints), so the E2E suite runs with no Worker, no
 // D1 and no login. It mirrors the rules arcanum-backend/src/tabs.ts
 // enforces — amount must equal outstanding, one pending charge per tab,
-// closed tabs refuse orders, cancel only when empty — with the same
+// closed tabs refuse orders, cancel only when empty, catalog lines priced
+// by the server from a visible entry of a non-archived catalog — with the same
 // status codes and Dutch error messages, so the UI's error handling is
 // exercised. It is NOT a test of those rules: arcanum-backend's own suite
 // covers the real implementation. Keep the two in step when the API
@@ -14,6 +15,58 @@ export interface FakeLineInput {
   unitPriceCents: number
   quantity: number
 }
+
+// A line as the kassa sends it: a catalog line (variantId + quantity, any
+// name/price ignored) or a free line.
+type OrderLineInput = FakeLineInput | { variantId: string; quantity: number }
+
+export interface FakeEntry {
+  entryId: string
+  variantId: string
+  name: string
+  priceCents: number
+  code: string | null
+  categoryName: string | null
+  quickQuantities: number[] | null
+  visible: boolean
+}
+
+export interface FakeCatalog {
+  id: string
+  name: string
+  isDefault: boolean
+  archived: boolean
+  sections: { id: string; name: string; entries: FakeEntry[] }[]
+}
+
+export function fakeEntry(variantId: string, name: string, priceCents: number, code: string | null, quickQuantities: number[] | null = null): FakeEntry {
+  return { entryId: `e-${variantId}`, variantId, name, priceCents, code, categoryName: null, quickQuantities, visible: true }
+}
+
+// Same items and prices as the Scouts Elewijt seed (migration 0013).
+function standardCatalog(): FakeCatalog {
+  return {
+    id: 'cat-standaard',
+    name: 'Standaard',
+    isDefault: true,
+    archived: false,
+    sections: [
+      { id: 's-bonnen', name: 'Bonnen', entries: [fakeEntry('v-bon', 'Bon', 100, 'bon', [5, 10, 15, 20, 25, 30, 35, 40])] },
+      {
+        id: 's-tochten',
+        name: 'Tochten',
+        entries: [
+          fakeEntry('v-fiets', 'Fietstocht (niet-lid)', 800, 'fietstocht'),
+          fakeEntry('v-fiets-lid', 'Fietstocht (lid)', 500, 'fietstochtMember'),
+          fakeEntry('v-wandel', 'Wandeltocht (niet-lid)', 600, 'wandeltocht'),
+          fakeEntry('v-wandel-lid', 'Wandeltocht (lid)', 300, 'wandeltochtMember'),
+        ],
+      },
+    ],
+  }
+}
+
+const MENUKAART_REFUSAL = 'Dit product staat niet (meer) op de menukaart — herlaad de kassa'
 
 interface Line {
   id: string
@@ -57,6 +110,7 @@ export class FakeBackend {
   tabs: Tab[] = []
   lines: Line[] = []
   charges: FakeCharge[] = []
+  catalogs: FakeCatalog[] = [standardCatalog()]
   private tabCounter = 0
   private receiptCounter = 0
   // Runs right before the next charge is validated — simulates another
@@ -101,6 +155,23 @@ export class FakeBackend {
   tabByLabel(label: string): Tab | undefined {
     return this.tabs.find((t) => t.label === label)
   }
+
+  addCatalog(id: string, name: string, sections: FakeCatalog['sections']): FakeCatalog {
+    const catalog: FakeCatalog = { id, name, isDefault: false, archived: false, sections }
+    this.catalogs.push(catalog)
+    return catalog
+  }
+
+  entry(variantId: string, catalogId = 'cat-standaard'): FakeEntry | undefined {
+    return this.catalogs.find((c) => c.id === catalogId)?.sections.flatMap((s) => s.entries).find((e) => e.variantId === variantId)
+  }
+
+  removeEntry(variantId: string, catalogId = 'cat-standaard') {
+    for (const section of this.catalogs.find((c) => c.id === catalogId)?.sections || []) {
+      section.entries = section.entries.filter((e) => e.variantId !== variantId)
+    }
+  }
+
 
   // --- Internals ---
 
@@ -175,6 +246,9 @@ export class FakeBackend {
       return { status: 200, body: { ok: true } }
     }
 
+    const catalogs = p.match(/^\/api\/organizations\/[^/]+\/catalogs(?:\/([^/]+)\/(kassa))?$/)
+    if (catalogs && method === 'GET') return this.handleCatalogs(catalogs[1], catalogs[2])
+
     const tabs = p.match(/^\/api\/organizations\/[^/]+\/tabs(?:\/([^/]+))?(?:\/(orders|cancel|lines\/([^/]+)\/void))?$/)
     if (tabs) return this.handleTabs(method, url, body, tabs[1], tabs[2], tabs[3])
 
@@ -205,6 +279,48 @@ export class FakeBackend {
     return { status: 404, body: { error: `fake backend: no route for ${method} ${p}` } }
   }
 
+  private handleCatalogs(catalogId?: string, action?: string): FakeResponse {
+    if (!catalogId) {
+      return { status: 200, body: this.catalogs.filter((c) => !c.archived).map((c) => ({ id: c.id, name: c.name, isDefault: c.isDefault })) }
+    }
+    const catalog = this.catalogs.find((c) => !c.archived && (catalogId === 'default' ? c.isDefault : c.id === catalogId))
+    if (!catalog || action !== 'kassa') return { status: 404, body: { error: 'Geen menukaart gevonden' } }
+    return {
+      status: 200,
+      body: {
+        id: catalog.id,
+        name: catalog.name,
+        updatedAt: '2026-09-25T00:00:00.000Z',
+        sections: catalog.sections
+          .map((s) => ({
+            id: s.id,
+            name: s.name,
+            entries: s.entries.filter((e) => e.visible).map(({ visible: _visible, ...e }) => e),
+          }))
+          .filter((s) => s.entries.length > 0),
+      },
+    }
+  }
+
+  // Catalog lines get name/price/code from the entry (client values
+  // ignored); free lines pass through. A string is the 400 error.
+  private priceLines(lines: OrderLineInput[], catalogId: string | undefined): FakeLineInput[] | string {
+    const priced: FakeLineInput[] = []
+    for (const l of lines) {
+      if (!('variantId' in l)) {
+        priced.push(l)
+        continue
+      }
+      if (!catalogId) return 'catalogId is required for lines with a variantId'
+      const catalog = this.catalogs.find((c) => c.id === catalogId && !c.archived)
+      if (!catalog) return 'Onbekende of gearchiveerde menukaart'
+      const e = catalog.sections.flatMap((s) => s.entries).find((x) => x.variantId === l.variantId && x.visible)
+      if (!e) return MENUKAART_REFUSAL
+      priced.push({ itemCode: e.code, name: e.name, unitPriceCents: e.priceCents, quantity: l.quantity })
+    }
+    return priced
+  }
+
   private handleTabs(method: string, url: URL, body: any, tabId?: string, action?: string, lineId?: string): FakeResponse {
     if (!tabId) {
       if (method === 'GET') {
@@ -212,9 +328,11 @@ export class FakeBackend {
         return { status: 200, body: this.tabs.filter((t) => t.status === status).sort((a, b) => b.number - a.number).map((t) => this.summary(t)) }
       }
       if (method === 'POST') {
+        const priced = body.lines?.length ? this.priceLines(body.lines, body.catalogId) : []
+        if (typeof priced === 'string') return { status: 400, body: { error: priced } }
         const tab = this.openTab(body.label || '')
         tab.openedDeviceName = body.deviceName || null
-        if (body.lines?.length) this.addOrder(tab.id, body.lines)
+        if (priced.length) this.addOrder(tab.id, priced)
         return { status: 201, body: this.detail(tab) }
       }
     }
@@ -229,8 +347,10 @@ export class FakeBackend {
     }
     if (action === 'orders' && method === 'POST') {
       if (!Array.isArray(body.lines) || body.lines.length === 0) return { status: 400, body: { error: 'lines must be a non-empty array' } }
+      const priced = this.priceLines(body.lines, body.catalogId)
+      if (typeof priced === 'string') return { status: 400, body: { error: priced } }
       if (!this.writable(tab.id)) return this.refusal(tab.id)
-      this.addOrder(tab.id, body.lines)
+      this.addOrder(tab.id, priced)
       return { status: 201, body: this.detail(tab) }
     }
     if (action === 'cancel' && method === 'POST') {

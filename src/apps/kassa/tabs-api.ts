@@ -37,11 +37,15 @@ export interface TabDetail extends TabSummary {
 }
 
 // A line as the kassa builds it, before it's submitted as part of an order.
+// With a variantId it's a catalog line: only variantId + quantity are sent
+// and the server prices it; name/price here are for display. Without one
+// it's a free line (fooi) sent as-is.
 export interface DraftLine {
-  itemCode: string
+  itemCode: string | null
   name: string
   unitPriceCents: number
   quantity: number
+  variantId?: string
 }
 
 // Carries the server's own error message (already Dutch, user-facing) and,
@@ -72,8 +76,10 @@ function device() {
   return { deviceId: getDeviceId(), deviceName: getDeviceName() }
 }
 
-function toLineInputs(lines: DraftLine[]) {
-  return lines.map((l) => ({ itemCode: l.itemCode, name: l.name, unitPriceCents: l.unitPriceCents, quantity: l.quantity }))
+export function toLineInputs(lines: DraftLine[]) {
+  return lines.map((l) =>
+    l.variantId ? { variantId: l.variantId, quantity: l.quantity } : { itemCode: l.itemCode, name: l.name, unitPriceCents: l.unitPriceCents, quantity: l.quantity }
+  )
 }
 
 export function listOpenTabs(orgId: string) {
@@ -84,15 +90,20 @@ export function getTab(orgId: string, tabId: string) {
   return request<TabDetail>(orgId, `/${encodeURIComponent(tabId)}`)
 }
 
-export function createTab(orgId: string, label: string, slotId: string, lines: DraftLine[] = []) {
+// catalogId: the catalog the draft's catalog lines were picked from — the
+// server prices them from it.
+export function createTab(orgId: string, label: string, slotId: string, lines: DraftLine[] = [], catalogId: string | null = null) {
   return request<TabDetail>(orgId, '', {
     method: 'POST',
-    body: { label, slotId, ...device(), lines: lines.length > 0 ? toLineInputs(lines) : undefined },
+    body: { label, slotId, ...device(), lines: lines.length > 0 ? toLineInputs(lines) : undefined, catalogId: catalogId || undefined },
   })
 }
 
-export function addOrder(orgId: string, tabId: string, lines: DraftLine[]) {
-  return request<TabDetail>(orgId, `/${encodeURIComponent(tabId)}/orders`, { method: 'POST', body: { ...device(), lines: toLineInputs(lines) } })
+export function addOrder(orgId: string, tabId: string, lines: DraftLine[], catalogId: string | null) {
+  return request<TabDetail>(orgId, `/${encodeURIComponent(tabId)}/orders`, {
+    method: 'POST',
+    body: { ...device(), lines: toLineInputs(lines), catalogId: catalogId || undefined },
+  })
 }
 
 export function voidLine(orgId: string, tabId: string, lineId: string, reason: string, quantity?: number) {

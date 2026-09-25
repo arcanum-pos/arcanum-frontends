@@ -7,8 +7,8 @@ import { expect, panel, test } from './fixtures'
 const button = (name: string | RegExp) => ({ name, exact: typeof name === 'string' })
 
 test('Toog quick sale: build a draft, pay cash, back to Toog for the next customer', async ({ kassa, backend }) => {
-  await kassa.getByRole('button', button('10')).click()
-  await kassa.getByRole('button', button(/^Fietstocht €/)).click()
+  await kassa.getByRole('button', button('10 × Bon')).click()
+  await kassa.getByRole('button', button(/^Fietstocht \(niet-lid\)/)).click()
   await expect(panel(kassa).getByText('Te betalen').locator('..')).toContainText('€ 18,00')
 
   await kassa.getByLabel('Contant').check()
@@ -29,8 +29,8 @@ test('named tab: open, add an order, void part of a line with a reason', async (
   await kassa.getByRole('button', button('Rekening openen')).click()
   await expect(kassa.getByRole('button', button(/^#1 Tafel 4/))).toBeVisible()
 
-  await kassa.getByRole('button', button(/^Wandeltocht €/)).click()
-  await kassa.getByRole('button', button(/^Wandeltocht €/)).click()
+  await kassa.getByRole('button', button(/^Wandeltocht \(niet-lid\)/)).click()
+  await kassa.getByRole('button', button(/^Wandeltocht \(niet-lid\)/)).click()
   await expect(panel(kassa).getByText('Nieuw — nog niet toegevoegd')).toBeVisible()
   await kassa.getByRole('button', button('Bestelling toevoegen aan rekening')).click()
   await expect(panel(kassa).getByText('2 × Wandeltocht')).toBeVisible()
@@ -50,7 +50,7 @@ test('named tab: open, add an order, void part of a line with a reason', async (
 })
 
 test('park a Toog draft on a new named tab', async ({ kassa, backend }) => {
-  await kassa.getByRole('button', button('5')).click()
+  await kassa.getByRole('button', button('5 × Bon')).click()
   await kassa.getByRole('button', button('Op rekening zetten')).click()
   await kassa.getByLabel('Naam of tafel').fill('Jan')
   await kassa.getByRole('button', button('Rekening openen')).click()
@@ -70,7 +70,7 @@ test('drafts are kept per tab while switching, and marked in the strip', async (
 
   await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
   await expect(panel(kassa).getByText('1 × Wandeltocht')).toBeVisible()
-  await kassa.getByRole('button', button('15')).click()
+  await kassa.getByRole('button', button('15 × Bon')).click()
 
   await kassa.getByRole('button', button(/^#2 Jan/)).click()
   await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
@@ -85,7 +85,7 @@ test('paying a tab submits the pending draft first, then closes the tab', async 
   const tab = backend.openTab('Tafel 4', [{ itemCode: 'wandeltocht', name: 'Wandeltocht', unitPriceCents: 600, quantity: 1 }])
   await kassa.reload()
   await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
-  await kassa.getByRole('button', button('15')).click()
+  await kassa.getByRole('button', button('15 × Bon')).click()
 
   await kassa.getByLabel('Contant').check()
   await kassa.getByRole('button', button('Afrekenen € 21,00')).click()
@@ -114,7 +114,7 @@ test('cancelling a cash payment fails it, so the tab can be paid again right awa
 })
 
 test('Bancontact: shows the QR and completes on the devicehub push', async ({ kassa, backend, push }) => {
-  await kassa.getByRole('button', button('10')).click()
+  await kassa.getByRole('button', button('10 × Bon')).click()
   await kassa.getByRole('button', button(/^Afrekenen/)).click() // Bancontact is the default method
 
   await expect(kassa.getByAltText('QR-code voor betaling')).toBeVisible()
@@ -132,7 +132,7 @@ test('Bancontact: shows the QR and completes on the devicehub push', async ({ ka
 })
 
 test('Bancontact: going back leaves the charge pending and the tab locked', async ({ kassa, backend }) => {
-  await kassa.getByRole('button', button('10')).click()
+  await kassa.getByRole('button', button('10 × Bon')).click()
   await kassa.getByRole('button', button(/^Afrekenen/)).click()
   await kassa.getByRole('button', button('Terug naar rekening')).click()
 

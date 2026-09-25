@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AppBrand } from '@/shared/app-brand'
 import { OrgBadge } from '@/shared/org-badge'
-import { getDeviceId, getDeviceName, getSumupReader } from '@/shared/device'
+import { getCatalogSelection, getDeviceId, getDeviceName, getSumupReader, setCatalogSelection } from '@/shared/device'
 import {
   connectNotifications,
   getLinkedDevice,
@@ -14,16 +14,16 @@ import {
 import { getCurrentSlotId } from '@/shared/slots'
 import {
   addToDraft,
-  DEFAULT_PRICING,
   isPaymentResolved,
   MANUAL_METHOD_LABELS,
+  reconcileDrafts,
   tabBreakdownLines,
   type CurrentPayment,
   type PaymentMethod,
   type PickerItem,
-  type Pricing,
 } from './lib'
-import { ItemPicker } from './ItemPicker'
+import { fetchKassaCatalog, type KassaCatalog } from './catalog-api'
+import { ItemPicker, type CatalogState } from './ItemPicker'
 import { PaymentStatus } from './PaymentStatus'
 import { NameDialog, VoidDialog } from './TabDialogs'
 import { TabPanel } from './TabPanel'
@@ -43,7 +43,10 @@ type NameDialogMode = 'new' | 'park' | 'rename'
 // — the open-tab list reloads on focus, on switching and after every
 // action, and the server refuses anything based on a stale view (409).
 export default function App() {
-  const [pricing, setPricing] = useState<Pricing>(DEFAULT_PRICING)
+  // What this kassa sells from: the device's chosen catalog, else the org
+  // default (see loadCatalog).
+  const [catalogState, setCatalogState] = useState<CatalogState>({ status: 'loading' })
+  const [notice, setNotice] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bancontact')
   const [current, setCurrent] = useState<CurrentPayment | null>(null)
   const [manualStatusText, setManualStatusText] = useState('')
@@ -65,6 +68,8 @@ export default function App() {
   const [voidTarget, setVoidTarget] = useState<TabLine | null>(null)
 
   const currentRef = useRef<CurrentPayment | null>(null)
+  const catalogRef = useRef<KassaCatalog | null>(null)
+  const draftsRef = useRef<Record<string, DraftLine[]>>({})
   const activeRef = useRef<ActiveKey>('quick')
   activeRef.current = active
   const posTerminalIdRef = useRef<string | null>(null)
@@ -73,6 +78,7 @@ export default function App() {
   const displayWindowRef = useRef<Window | null>(null)
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  draftsRef.current = drafts
   const draft = drafts[active] || []
   // Only the tab that's actually selected — never a previous one still in
   // state while the new one loads.
@@ -120,6 +126,50 @@ export default function App() {
     setError(err instanceof Error ? err.message : String(err))
     // A 409 means this kassa's view was stale — pull the current state.
     if (err instanceof TabApiError && err.status === 409) refreshAll()
+    // An entry vanished from the catalog since it was loaded — reload it
+    // (the draft stays, so the cashier can see and fix what's refused).
+    else if (err instanceof TabApiError && err.status === 400 && /menukaart/i.test(err.message)) loadCatalog()
+  }
+
+  // --- Catalog ---
+
+  // Device override first (Instellingen → Menukaart); if that one is gone
+  // (archived), forget it and fall back to the org default. Drafts are
+  // lined up with the result: current catalog prices, and — only when the
+  // kassa ended up on a *different* catalog — lines not on it are dropped.
+  async function loadCatalog() {
+    const org = posOrgIdRef.current
+    if (!org) return
+    try {
+      let catalog: KassaCatalog | null = null
+      const selection = getCatalogSelection()
+      if (selection) {
+        catalog = await fetchKassaCatalog(org, selection.id)
+        if (!catalog) {
+          setCatalogSelection(null)
+          setNotice(`De gekozen menukaart "${selection.name}" is niet meer beschikbaar — de standaardmenukaart wordt gebruikt.`)
+        }
+      }
+      if (!catalog) catalog = await fetchKassaCatalog(org, null)
+
+      const previousId = catalogRef.current?.id ?? null
+      catalogRef.current = catalog
+      setCatalogState(catalog ? { status: 'ok', catalog } : { status: 'none' })
+
+      const switched = previousId !== null && previousId !== (catalog?.id ?? null)
+      const { drafts: next, dropped } = reconcileDrafts(draftsRef.current, catalog, switched)
+      setDrafts(next)
+      if (dropped > 0) {
+        setNotice(
+          dropped === 1
+            ? 'Andere menukaart geladen — 1 lijn die er niet op staat, is uit de bestelling gehaald.'
+            : `Andere menukaart geladen — ${dropped} lijnen die er niet op staan, zijn uit de bestelling gehaald.`
+        )
+      }
+    } catch (err) {
+      console.error('Kon menukaart niet laden', err)
+      if (!catalogRef.current) setCatalogState({ status: 'error', message: 'Kon de menukaart niet laden. Probeer opnieuw.' })
+    }
   }
 
   async function refreshTabs(): Promise<TabSummary[] | null> {
@@ -153,6 +203,7 @@ export default function App() {
   // Also notices a tab that was closed or cancelled on another kassa in the
   // meantime and falls back to Toog.
   async function refreshAll() {
+    loadCatalog()
     const list = await refreshTabs()
     const key = activeRef.current
     if (list && key !== 'quick' && !list.some((t) => t.id === key) && !currentRef.current) {
@@ -205,7 +256,7 @@ export default function App() {
     if (active === 'quick' || draft.length === 0) return
     const key = active
     runTabAction(async (org) => {
-      setActiveTab(await tabsApi.addOrder(org, key, draft))
+      setActiveTab(await tabsApi.addOrder(org, key, draft, catalogRef.current?.id ?? null))
       setDraftFor(key, [])
       refreshTabs()
     })
@@ -222,7 +273,7 @@ export default function App() {
       }
       // 'park' moves the Toog draft onto a new named tab as its first order.
       const lines = mode === 'park' ? drafts.quick || [] : []
-      const tab = await tabsApi.createTab(org, name, getCurrentSlotId(), lines)
+      const tab = await tabsApi.createTab(org, name, getCurrentSlotId(), lines, catalogRef.current?.id ?? null)
       if (mode === 'park') setDraftFor('quick', [])
       await refreshTabs()
       setActive(tab.id)
@@ -260,14 +311,14 @@ export default function App() {
     runTabAction(async (org) => {
       let tab: TabDetail
       if (key === 'quick') {
-        tab = await tabsApi.createTab(org, QUICK_SALE_LABEL, getCurrentSlotId(), draft)
+        tab = await tabsApi.createTab(org, QUICK_SALE_LABEL, getCurrentSlotId(), draft, catalogRef.current?.id ?? null)
         setDraftFor('quick', [])
         // From here on it's a real tab: if the payment fails or is
         // cancelled, it stays open in the strip to retry, void or close.
         setActive(tab.id)
         activeRef.current = tab.id
       } else if (draft.length > 0) {
-        tab = await tabsApi.addOrder(org, key, draft)
+        tab = await tabsApi.addOrder(org, key, draft, catalogRef.current?.id ?? null)
         setDraftFor(key, [])
       } else {
         tab = await tabsApi.getTab(org, key)
@@ -504,31 +555,6 @@ export default function App() {
   // --- Effects ---
 
   useEffect(() => {
-    fetch(`${WORKER_URL}/settings`)
-      .then((res) => res.json())
-      .then((data) => {
-        setPricing((prev) => ({
-          amountPerBonCents: Number.isInteger(data.amountPerBonCents) && data.amountPerBonCents > 0 ? data.amountPerBonCents : prev.amountPerBonCents,
-          fietstochtMemberCents:
-            Number.isInteger(data.fietstochtMemberCents) && data.fietstochtMemberCents > 0 ? data.fietstochtMemberCents : prev.fietstochtMemberCents,
-          fietstochtNonMemberCents:
-            Number.isInteger(data.fietstochtNonMemberCents) && data.fietstochtNonMemberCents > 0
-              ? data.fietstochtNonMemberCents
-              : prev.fietstochtNonMemberCents,
-          wandeltochtMemberCents:
-            Number.isInteger(data.wandeltochtMemberCents) && data.wandeltochtMemberCents > 0
-              ? data.wandeltochtMemberCents
-              : prev.wandeltochtMemberCents,
-          wandeltochtNonMemberCents:
-            Number.isInteger(data.wandeltochtNonMemberCents) && data.wandeltochtNonMemberCents > 0
-              ? data.wandeltochtNonMemberCents
-              : prev.wandeltochtNonMemberCents,
-        }))
-      })
-      .catch((err) => console.error('Kon prijsinstellingen niet laden, gebruik standaardwaarden.', err))
-  }, [])
-
-  useEffect(() => {
     fetch('/whoami')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -574,6 +600,7 @@ export default function App() {
   useEffect(() => {
     if (!orgId) return
     refreshTabs()
+    loadCatalog()
     function onVisible() {
       if (document.visibilityState === 'visible') refreshAll()
     }
@@ -633,10 +660,18 @@ export default function App() {
       <TabStrip tabs={tabs} active={active} draftKeys={draftKeys} disabled={busy || current !== null} onSelect={selectTab} onNew={() => setNameDialog('new')} />
 
       {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+      {notice && (
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-muted px-3 py-2 text-sm">
+          <p>{notice}</p>
+          <Button variant="ghost" size="sm" onClick={() => setNotice('')}>
+            Sluiten
+          </Button>
+        </div>
+      )}
 
       {!current && (
         <div className="grid items-start gap-4 md:grid-cols-[1fr_420px]">
-          <ItemPicker pricing={pricing} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} />
+          <ItemPicker catalogState={catalogState} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} />
           <div className="md:sticky md:top-4">
             <TabPanel
               title={panelTitle}

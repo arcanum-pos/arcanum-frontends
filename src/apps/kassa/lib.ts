@@ -1,61 +1,76 @@
 import { formatEuro } from '@/shared/format'
+import type { KassaCatalog, KassaEntry } from './catalog-api'
 import type { DraftLine, TabDetail } from './tabs-api'
 import { netQuantity } from './tabs-api'
 
-// NOTE: this catalogue (bonnen/fietstocht/wandeltocht/fooi) is one specific
-// org's item taxonomy, hardcoded — same as it was in arcanum-webapp. Only
-// the *prices* are org-configurable (via worker's /settings). It's replaced
-// by a real catalog in step 3 (see DOMAIN_MODEL.md); until then the item
-// codes below must stay the legacy `items` JSON keys, since the backend
-// derives transactions.items from them and every report reads that.
-
-export interface Pricing {
-  amountPerBonCents: number
-  fietstochtMemberCents: number
-  fietstochtNonMemberCents: number
-  wandeltochtMemberCents: number
-  wandeltochtNonMemberCents: number
-}
-
-export const DEFAULT_PRICING: Pricing = {
-  amountPerBonCents: 100,
-  fietstochtMemberCents: 600,
-  fietstochtNonMemberCents: 800,
-  wandeltochtMemberCents: 400,
-  wandeltochtNonMemberCents: 600,
-}
-
+// A tappable item: a catalog entry (variantId set — the server prices it
+// from the catalog and ignores the price here, which is display-only), or
+// a free line (fooi, until it moves onto the payment in step 3d).
 export interface PickerItem {
-  itemCode: string
+  itemCode: string | null
   name: string
   unitPriceCents: number
+  variantId?: string
 }
 
-export function pickerItems(pricing: Pricing): PickerItem[] {
-  return [
-    { itemCode: 'bon', name: 'Bon', unitPriceCents: pricing.amountPerBonCents },
-    { itemCode: 'fietstocht', name: 'Fietstocht', unitPriceCents: pricing.fietstochtNonMemberCents },
-    { itemCode: 'fietstochtMember', name: 'Fietstocht (lid)', unitPriceCents: pricing.fietstochtMemberCents },
-    { itemCode: 'wandeltocht', name: 'Wandeltocht', unitPriceCents: pricing.wandeltochtNonMemberCents },
-    { itemCode: 'wandeltochtMember', name: 'Wandeltocht (lid)', unitPriceCents: pricing.wandeltochtMemberCents },
-  ]
+export function entryToPickerItem(entry: KassaEntry): PickerItem {
+  return { itemCode: entry.code, name: entry.name, unitPriceCents: entry.priceCents, variantId: entry.variantId }
 }
 
-// Fooi stays an order line until the catalog step (DOMAIN_MODEL.md
-// decisions) — one line per tab, its "unit price" is the tip amount.
+// Fooi stays an order line until step 3d (DOMAIN_MODEL.md) — one line per
+// tab, its "unit price" is the tip amount.
 export const FOOI_CODE = 'fooi'
 
-// Adds to a draft, merging with an existing line for the same item at the
-// same price (fooi merges by adding to the amount instead).
+// Adds to a draft, merging with an existing line for the same catalog
+// variant (or, for free lines, the same item at the same price; fooi
+// merges by adding to the amount instead).
 export function addToDraft(draft: DraftLine[], item: PickerItem, quantity: number): DraftLine[] {
-  const i = draft.findIndex((l) => l.itemCode === item.itemCode && (item.itemCode === FOOI_CODE || l.unitPriceCents === item.unitPriceCents))
+  const i = draft.findIndex((l) =>
+    item.variantId
+      ? l.variantId === item.variantId
+      : !l.variantId && l.itemCode === item.itemCode && (item.itemCode === FOOI_CODE || l.unitPriceCents === item.unitPriceCents)
+  )
   if (i === -1) return [...draft, { ...item, quantity }]
   const next = [...draft]
   next[i] =
-    item.itemCode === FOOI_CODE
+    item.itemCode === FOOI_CODE && !item.variantId
       ? { ...next[i], unitPriceCents: next[i].unitPriceCents + item.unitPriceCents }
       : { ...next[i], quantity: next[i].quantity + quantity }
   return next
+}
+
+// Lines every draft up with a (re)loaded catalog: catalog lines take the
+// catalog's current name/price (display only — the server prices them
+// anyway). With `dropMissing` (the kassa switched to a different catalog),
+// catalog lines whose variant isn't on it are removed; free lines always
+// stay. Returns how many lines were dropped so the kassa can say so.
+export function reconcileDrafts(
+  drafts: Record<string, DraftLine[]>,
+  catalog: KassaCatalog | null,
+  dropMissing: boolean
+): { drafts: Record<string, DraftLine[]>; dropped: number } {
+  const entries = new Map((catalog?.sections || []).flatMap((s) => s.entries).map((e) => [e.variantId, e]))
+  let dropped = 0
+  const next: Record<string, DraftLine[]> = {}
+  for (const [key, lines] of Object.entries(drafts)) {
+    const kept: DraftLine[] = []
+    for (const line of lines) {
+      const entry = line.variantId ? entries.get(line.variantId) : undefined
+      if (line.variantId && !entry) {
+        if (dropMissing) {
+          dropped++
+          continue
+        }
+        kept.push(line)
+      } else if (entry) {
+        kept.push({ ...line, name: entry.name, unitPriceCents: entry.priceCents, itemCode: entry.code })
+      } else {
+        kept.push(line)
+      }
+    }
+    if (kept.length > 0) next[key] = kept
+  }
+  return { drafts: next, dropped }
 }
 
 export function draftTotalCents(draft: DraftLine[]): number {

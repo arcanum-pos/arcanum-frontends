@@ -41,7 +41,7 @@ test('a tab closed on another kassa: adding to it is refused and the kassa falls
   const charge = backend.startCharge(tab.id)
   backend.resolveCharge(charge.id, true)
 
-  await kassa.getByRole('button', { name: '10', exact: true }).click()
+  await kassa.getByRole('button', { name: '10 × Bon', exact: true }).click()
   await kassa.getByRole('button', { name: 'Bestelling toevoegen aan rekening' }).click()
 
   await expect(kassa.getByText('Deze rekening is intussen afgesloten, mogelijk op een andere kassa.')).toBeVisible()

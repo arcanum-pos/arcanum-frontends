@@ -7,6 +7,7 @@ import { getDevice, getDeviceId, setDeviceName } from '@/shared/device'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { LinkPanel } from './LinkPanel'
 import { ReaderPanel } from './ReaderPanel'
+import { CatalogPanel } from './CatalogPanel'
 import { PricingPanel } from './PricingPanel'
 
 export default function App() {
@@ -79,6 +80,16 @@ export default function App() {
 
       {posTerminalId && posOrgId && (
         <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Menukaart</CardTitle>
+              <p className="text-sm text-muted-foreground">Welke menukaart deze kassa verkoopt.</p>
+            </CardHeader>
+            <CardContent>
+              <CatalogPanel posOrgId={posOrgId} />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Klantscherm koppelen</CardTitle>

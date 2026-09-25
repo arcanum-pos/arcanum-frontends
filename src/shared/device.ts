@@ -74,3 +74,31 @@ export function setSumupReader(reader: SumupReaderSelection | null): void {
     localStorage.removeItem(SUMUP_READER_KEY)
   }
 }
+
+// Which catalog (menukaart) this kassa sells from — set from Settings'
+// Menukaart panel. None selected means the org's default catalog. A
+// per-device choice for now; a Register takes this over later
+// (DOMAIN_MODEL.md "Step 3 decisions"). Per-browser, not synced.
+const CATALOG_KEY = 'arcanum-catalog'
+
+export interface CatalogSelection {
+  id: string
+  name: string
+}
+
+export function getCatalogSelection(): CatalogSelection | null {
+  try {
+    return JSON.parse(localStorage.getItem(CATALOG_KEY) || 'null')
+  } catch (err) {
+    console.error('Kon gekozen menukaart niet laden', err)
+    return null
+  }
+}
+
+export function setCatalogSelection(selection: CatalogSelection | null): void {
+  if (selection) {
+    localStorage.setItem(CATALOG_KEY, JSON.stringify(selection))
+  } else {
+    localStorage.removeItem(CATALOG_KEY)
+  }
+}

@@ -3,25 +3,25 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { formatEuro } from '@/shared/format'
-import { FOOI_CODE, pickerItems, readAmountCents, type PickerItem, type Pricing } from './lib'
+import type { KassaCatalog, KassaEntry } from './catalog-api'
+import { entryToPickerItem, FOOI_CODE, readAmountCents, type PickerItem } from './lib'
 
-const BON_QUANTITIES = [5, 10, 15, 20, 25, 30, 35, 40]
+export type CatalogState = { status: 'loading' } | { status: 'none' } | { status: 'error'; message: string } | { status: 'ok'; catalog: KassaCatalog }
 
-// Left half of the kassa: taps add to the active tab's draft. Becomes the
-// catalog button grid in step 3 (DOMAIN_MODEL.md) — the tab panel on the
-// right only ever sees generic lines, so it doesn't change when this does.
+// Left half of the kassa: the loaded catalog, one card per section, taps
+// add to the active tab's draft. The tab panel on the right only ever sees
+// generic lines. An entry with quick quantities (e.g. 5/10/…/40 bonnen)
+// gets a row of "sell N at once" buttons instead of a single button.
 export function ItemPicker({
-  pricing,
+  catalogState,
   disabled,
   onAdd,
 }: {
-  pricing: Pricing
+  catalogState: CatalogState
   disabled: boolean
   onAdd: (item: PickerItem, quantity: number) => void
 }) {
   const [fooiInput, setFooiInput] = useState('')
-  const items = pickerItems(pricing)
-  const bon = items[0]
 
   function addFooi() {
     const amount = readAmountCents(fooiInput)
@@ -32,40 +32,48 @@ export function ItemPicker({
 
   return (
     <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Bonnen</CardTitle>
-          <p className="text-sm text-muted-foreground">{formatEuro(pricing.amountPerBonCents)} per bon</p>
-        </CardHeader>
-        <CardContent className="grid grid-cols-4 gap-2">
-          {BON_QUANTITIES.map((n) => (
-            <Button key={n} type="button" variant="outline" className="h-12" disabled={disabled} onClick={() => onAdd(bon, n)}>
-              {n}
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
+      {catalogState.status === 'loading' && <p className="py-6 text-center text-sm text-muted-foreground">Menukaart laden…</p>}
+      {catalogState.status === 'none' && (
+        <Card>
+          <CardContent className="py-6 text-center text-sm text-muted-foreground">Nog geen menukaart — een beheerder maakt er een in de console.</CardContent>
+        </Card>
+      )}
+      {catalogState.status === 'error' && <p className="text-sm font-medium text-destructive">{catalogState.message}</p>}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Producten</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-2">
-          {items.map((item) => (
-            <Button
-              key={item.itemCode}
-              type="button"
-              variant="outline"
-              className="h-auto flex-col items-start gap-0.5 py-3 text-left"
-              disabled={disabled}
-              onClick={() => onAdd(item, 1)}
-            >
-              <span className="font-medium">{item.name}</span>
-              <span className="text-sm text-muted-foreground">{formatEuro(item.unitPriceCents)}</span>
-            </Button>
-          ))}
-        </CardContent>
-      </Card>
+      {catalogState.status === 'ok' &&
+        catalogState.catalog.sections.map((section) => {
+          const quick = section.entries.filter((e) => e.quickQuantities?.length)
+          const plain = section.entries.filter((e) => !e.quickQuantities?.length)
+          return (
+            <Card key={section.id}>
+              <CardHeader>
+                <CardTitle className="text-base">{section.name}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                {quick.map((entry) => (
+                  <QuickEntry key={entry.entryId} entry={entry} disabled={disabled} onAdd={onAdd} />
+                ))}
+                {plain.length > 0 && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {plain.map((entry) => (
+                      <Button
+                        key={entry.entryId}
+                        type="button"
+                        variant="outline"
+                        className="h-auto flex-col items-start gap-0.5 py-3 text-left whitespace-normal"
+                        disabled={disabled}
+                        onClick={() => onAdd(entryToPickerItem(entry), 1)}
+                      >
+                        <span className="font-medium">{entry.name}</span>
+                        <span className="text-sm text-muted-foreground">{formatEuro(entry.priceCents)}</span>
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )
+        })}
 
       <Card>
         <CardHeader>
@@ -93,6 +101,24 @@ export function ItemPicker({
           </form>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+function QuickEntry({ entry, disabled, onAdd }: { entry: KassaEntry; disabled: boolean; onAdd: (item: PickerItem, quantity: number) => void }) {
+  const item = entryToPickerItem(entry)
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm text-muted-foreground">
+        {entry.name} · {formatEuro(entry.priceCents)} per stuk
+      </p>
+      <div className="grid grid-cols-4 gap-2">
+        {entry.quickQuantities!.map((n) => (
+          <Button key={n} type="button" variant="outline" className="h-12" aria-label={`${n} × ${entry.name}`} disabled={disabled} onClick={() => onAdd(item, n)}>
+            {n}
+          </Button>
+        ))}
+      </div>
     </div>
   )
 }
