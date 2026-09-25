@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { MenuExportButton } from '../components/menu-export-button'
+import { MenuImportDialog } from '../components/menu-import-dialog'
 import { ConfirmDialog, PromptDialog } from '../components/prompt-dialog'
 import {
   createEntry,
@@ -36,7 +38,7 @@ import {
 import { useOrg } from '../lib/org-context'
 import { useAsync } from '../lib/use-async'
 
-type Prompt = { kind: 'new-section' } | { kind: 'rename-section'; section: CatalogSection } | { kind: 'delete-section'; section: CatalogSection }
+type Prompt = { kind: 'new-section' } | { kind: 'import' } | { kind: 'rename-section'; section: CatalogSection } | { kind: 'delete-section'; section: CatalogSection }
 
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
@@ -86,9 +88,15 @@ export default function CatalogEditorPage() {
             <h1 className="text-2xl font-semibold tracking-tight">{data?.name ?? 'Menukaart'}</h1>
             {data?.isDefault && <Badge>Standaard</Badge>}
           </div>
-          <Button disabled={!data} onClick={() => setPrompt({ kind: 'new-section' })}>
-            Groep toevoegen
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {orgId && data && <MenuExportButton orgId={orgId} catalogId={data.id} onError={setActionError} />}
+            <Button variant="outline" disabled={!data} onClick={() => setPrompt({ kind: 'import' })}>
+              Importeren
+            </Button>
+            <Button disabled={!data} onClick={() => setPrompt({ kind: 'new-section' })}>
+              Groep toevoegen
+            </Button>
+          </div>
         </div>
         <p className="text-muted-foreground">Groepen zijn de knoppenblokken op de kassa. Prijzen gelden alleen op deze menukaart.</p>
       </div>
@@ -154,6 +162,18 @@ export default function CatalogEditorPage() {
           </Card>
         ))}
 
+      {orgId && data && prompt?.kind === 'import' && (
+        <MenuImportDialog
+          orgId={orgId}
+          target={{ kind: 'replace', catalogId: data.id, catalogName: data.name }}
+          onClose={() => setPrompt(null)}
+          onApplied={() => {
+            setPrompt(null)
+            catalog.reload()
+            products.reload()
+          }}
+        />
+      )}
       {orgId && prompt?.kind === 'new-section' && (
         <PromptDialog
           key="new-section"

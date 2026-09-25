@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { MenuExportButton } from '../components/menu-export-button'
+import { MenuImportDialog } from '../components/menu-import-dialog'
 import { PromptDialog } from '../components/prompt-dialog'
 import {
   archiveCatalog,
@@ -18,7 +20,7 @@ import {
 import { useOrg } from '../lib/org-context'
 import { useAsync } from '../lib/use-async'
 
-type Prompt = { kind: 'new' } | { kind: 'rename'; catalog: CatalogSummary } | { kind: 'duplicate'; catalog: CatalogSummary }
+type Prompt = { kind: 'new' } | { kind: 'import' } | { kind: 'rename'; catalog: CatalogSummary } | { kind: 'duplicate'; catalog: CatalogSummary }
 
 // Menukaarten: a selection of products with a price each, plus the kassa
 // layout. Independent of events; exactly one is the org's standaard — what
@@ -48,9 +50,17 @@ export default function CatalogsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">Menukaarten</h1>
           <p className="text-muted-foreground">Welke producten de kassa verkoopt, aan welke prijs en in welke groepen.</p>
         </div>
-        <Button disabled={!orgId} onClick={() => setPrompt({ kind: 'new' })}>
-          Nieuwe menukaart
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="ghost" onClick={() => run(async () => (await import('../lib/menu-files')).downloadTemplate())}>
+            Sjabloon downloaden
+          </Button>
+          <Button variant="outline" disabled={!orgId} onClick={() => setPrompt({ kind: 'import' })}>
+            Importeren
+          </Button>
+          <Button disabled={!orgId} onClick={() => setPrompt({ kind: 'new' })}>
+            Nieuwe menukaart
+          </Button>
+        </div>
       </div>
 
       {(error || actionError) && <p className="text-sm text-destructive">{actionError ?? `Kon menukaarten niet laden: ${error}`}</p>}
@@ -97,6 +107,7 @@ export default function CatalogsPage() {
                       Bewerken
                     </Link>
                   </Button>
+                  {orgId && <MenuExportButton orgId={orgId} catalogId={catalog.id} variant="ghost" size="sm" onError={setActionError} />}
                   <Button variant="ghost" size="sm" onClick={() => setPrompt({ kind: 'rename', catalog })}>
                     Hernoemen
                   </Button>
@@ -129,6 +140,18 @@ export default function CatalogsPage() {
             navigate({ to: '/catalogs/$catalogId', params: { catalogId: created.id } })
           }}
           onClose={() => setPrompt(null)}
+        />
+      )}
+      {orgId && prompt?.kind === 'import' && (
+        <MenuImportDialog
+          orgId={orgId}
+          target={{ kind: 'new' }}
+          onClose={() => setPrompt(null)}
+          onApplied={(created) => {
+            setPrompt(null)
+            if (created.id) navigate({ to: '/catalogs/$catalogId', params: { catalogId: created.id } })
+            else reload()
+          }}
         />
       )}
       {orgId && prompt?.kind === 'rename' && (

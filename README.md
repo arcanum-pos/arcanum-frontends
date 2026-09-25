@@ -66,6 +66,15 @@ worker/index.ts               # thin ASSETS passthrough — see wrangler.jsonc
 - **Dashboard** — reserved space for a real sales-figures view; not implemented.
 - **Events** — doesn't exist as a backend concept yet; placeholder.
 - **Users** — real member list + invite (`/api/organizations/:orgId/members`).
+- **Menukaarten** — catalogs, groups and prices; plus **import/export**: one
+  `.xlsx`/`.csv` file = one menukaart, one row = one kassa button (headers
+  Groep, Product, Variant, Prijs, Categorie, BTW, Code, Snelknoppen,
+  Zichtbaar — see DOMAIN_MODEL.md in the arcanum folder). The browser only
+  finds the header, maps columns and sends raw cells with their sheet row
+  numbers (`lib/menu-sheet.ts`); the backend interprets them, previews
+  (dry run) and applies all-or-nothing. The spreadsheet libraries
+  (read-excel-file / write-excel-file, MIT) live only in `lib/menu-files.ts`,
+  loaded with a dynamic `import()` on first export/import.
 - **Settings** → Appearance (real, functional light/dark/system toggle),
   Preferences (language — disabled, not supported yet), Profile (real
   `/whoami`), Payment Providers (real, incl. Bancontact prod/preprod),
@@ -118,7 +127,8 @@ npm run test:e2e  # kassa + console E2E (Playwright) — builds, serves dist/ vi
   the fake in step when the tabs/charges API changes. `push` in
   `e2e/fixtures.ts` sends a devicehub notification to the page. The
   console specs use `e2e/console-fixtures.ts` + `e2e/fake-catalog-admin.ts`
-  (catalog rules, plus canned data for the Rapporten page).
+  (catalog rules, a simplified menukaart import/export, plus canned data for
+  the Rapporten page).
 - Uses Playwright's Chromium from `~/Library/Caches/ms-playwright`; on a
   fresh machine run `npx playwright install chromium` once. On failure,
   `npx playwright show-report` has the trace.

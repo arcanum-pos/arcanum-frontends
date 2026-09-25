@@ -84,6 +84,9 @@ export class FakeCatalogAdmin {
   reportQueries: { from: string; to: string }[] = []
   transactions: any[] = []
   events: any[] = []
+  // Every import call (dry run or apply) as received — tests assert on the
+  // raw rows the browser sent.
+  importRequests: any[] = []
   private seq = 0
 
   private id(prefix: string) {
@@ -211,9 +214,11 @@ export class FakeCatalogAdmin {
       this.catalogs.push(catalog)
       return created(this.detail(catalog))
     }
+    if (catalogId === 'import' && method === 'POST') return this.importRoute(body)
     const catalog = this.catalogs.find((c) => c.id === catalogId)
     if (!catalog) return notFound('Menukaart niet gevonden')
 
+    if (action === 'export' && method === 'GET') return ok(this.exportJson(catalog))
     if (!action) {
       if (method === 'GET') return ok(this.detail(catalog))
       catalog.name = trimmed(body.name, 60) || catalog.name
@@ -309,6 +314,126 @@ export class FakeCatalogAdmin {
       return ok(this.entryJson(entry))
     }
     return notFound('Not found')
+  }
+
+  // --- Import / export (simplified version of the backend's rules) ---
+
+  private exportJson(c: Catalog) {
+    const rows = this.detail(c).sections.flatMap((s) =>
+      s.entries
+        .filter((e) => e.sellable)
+        .map((e) => {
+          const product = this.products.find((p) => p.id === e.productId)!
+          return {
+            groep: s.name,
+            product: e.productName,
+            variant: e.variantName,
+            prijsCents: e.priceCents,
+            categorie: e.categoryName,
+            btwBp: product.vatRateBp,
+            code: e.code,
+            snelknoppen: e.quickQuantities,
+            zichtbaar: e.visible,
+          }
+        })
+    )
+    return { catalog: { id: c.id, name: c.name }, rows }
+  }
+
+  private importRoute(body: any): FakeResponse {
+    this.importRequests.push(body)
+    const rows: any[] = Array.isArray(body.rows) ? body.rows : []
+    if (rows.length === 0 || rows.length > 500) return bad('rows must be 1–500 rows')
+    const target = body.catalogId ? this.catalogs.find((c) => c.id === body.catalogId && !c.archived) : null
+    if (body.catalogId && !target) return notFound('Menukaart niet gevonden')
+    if (!body.catalogId && !trimmed(body.name, 60)) return bad('name is required (max 60 characters)')
+
+    const errors: { row: number | null; message: string }[] = []
+    const lines: { groep: string; product: string; variant: string; priceCents: number; categorie: string | null; visible: boolean }[] = []
+    let groep: string | null = null
+    let productName: string | null = null
+    for (const r of rows) {
+      const text = (v: unknown) => (v === null || v === undefined ? null : String(v).trim() || null)
+      groep = text(r.groep) ?? groep
+      productName = text(r.product) ?? productName
+      const price = typeof r.prijs === 'number' ? r.prijs : parseFloat(String(r.prijs ?? '').replace(/[€\s]/g, '').replace(',', '.'))
+      if (!groep) errors.push({ row: r.row, message: 'Groep ontbreekt' })
+      if (!productName) errors.push({ row: r.row, message: 'Product ontbreekt' })
+      if (!Number.isFinite(price) || price < 0) errors.push({ row: r.row, message: 'Prijs ontbreekt of is ongeldig' })
+      const zichtbaar = text(r.zichtbaar)?.toLowerCase()
+      if (zichtbaar && !['ja', 'nee', 'x', 'true', 'false', '1', '0'].includes(zichtbaar)) errors.push({ row: r.row, message: `Zichtbaar "${r.zichtbaar}" moet ja of nee zijn` })
+      if (groep && productName && Number.isFinite(price)) {
+        lines.push({ groep, product: productName, variant: text(r.variant) ?? '', priceCents: Math.round(price * 100), categorie: text(r.categorie), visible: !['nee', 'false', '0'].includes(zichtbaar ?? '') })
+      }
+    }
+
+    const findProduct = (name: string) => this.products.find((p) => p.name.toLowerCase() === name.toLowerCase())
+    const findVariant = (productId: string, name: string) => this.variants.find((v) => v.productId === productId && v.name.toLowerCase() === name.toLowerCase())
+    const displayName = (l: { product: string; variant: string }) => (l.variant ? `${l.product} (${l.variant})` : l.product)
+    const current = target ? this.entries.filter((e) => e.catalogId === target.id).map((e) => this.entryJson(e)) : []
+
+    const summary = {
+      rows: rows.length,
+      groups: new Set(lines.map((l) => l.groep)).size,
+      newCategories: [...new Set(lines.map((l) => l.categorie).filter((c): c is string => !!c && !this.categories.some((x) => x.name.toLowerCase() === c.toLowerCase())))],
+      newProducts: [...new Set(lines.filter((l) => !findProduct(l.product)).map((l) => l.product))],
+      newVariants: lines.filter((l) => findProduct(l.product) && !findVariant(findProduct(l.product)!.id, l.variant)).map(displayName),
+      updatedProducts: [] as { name: string; changes: string[] }[],
+      priceChanges: [] as { name: string; fromCents: number; toCents: number }[],
+      added: [] as string[],
+      removed: [] as string[],
+      unchanged: 0,
+    }
+    for (const l of lines) {
+      const existing = current.find((e) => e.displayName.toLowerCase() === displayName(l).toLowerCase())
+      if (!existing) summary.added.push(displayName(l))
+      else if (existing.priceCents !== l.priceCents) summary.priceChanges.push({ name: displayName(l), fromCents: existing.priceCents, toCents: l.priceCents })
+      else summary.unchanged++
+    }
+    summary.removed = current.filter((e) => !lines.some((l) => displayName(l).toLowerCase() === e.displayName.toLowerCase())).map((e) => e.displayName)
+
+    const result = { ok: errors.length === 0, errors, summary }
+    if (body.dryRun) return ok(result)
+    if (errors.length > 0) return { status: 400, body: result }
+
+    // Apply: create what's missing, then replace the menukaart's layout.
+    const catalog = target ?? { id: this.id('menu'), name: trimmed(body.name, 60), isDefault: !this.catalogs.some((c) => c.isDefault), archived: false }
+    if (!target) this.catalogs.push(catalog)
+    this.entries = this.entries.filter((e) => e.catalogId !== catalog.id)
+    this.sections = this.sections.filter((s) => s.catalogId !== catalog.id)
+    for (const l of lines) {
+      let category = l.categorie ? this.categories.find((c) => c.name.toLowerCase() === l.categorie!.toLowerCase()) : undefined
+      if (l.categorie && !category) {
+        category = { id: this.id('cat'), name: l.categorie, position: this.categories.length }
+        this.categories.push(category)
+      }
+      let product = findProduct(l.product)
+      if (!product) {
+        product = { id: this.id('prod'), name: l.product, categoryId: category?.id ?? null, vatRateBp: null, archived: false }
+        this.products.push(product)
+      }
+      let variant = findVariant(product.id, l.variant)
+      if (!variant) {
+        variant = { id: this.id('var'), productId: product.id, name: l.variant, code: null, position: this.variants.filter((v) => v.productId === product!.id).length, archived: false }
+        this.variants.push(variant)
+      }
+      let section = this.sections.find((s) => s.catalogId === catalog.id && s.name === l.groep)
+      if (!section) {
+        section = { id: this.id('sec'), catalogId: catalog.id, name: l.groep, position: this.sections.filter((s) => s.catalogId === catalog.id).length }
+        this.sections.push(section)
+      }
+      this.entries.push({
+        id: this.id('entry'),
+        catalogId: catalog.id,
+        sectionId: section.id,
+        variantId: variant.id,
+        priceCents: l.priceCents,
+        visible: l.visible,
+        position: this.entries.filter((e) => e.sectionId === section!.id).length,
+        quickQuantities: null,
+      })
+    }
+    return ok({ ...result, catalog: { id: catalog.id, name: catalog.name } })
   }
 
   // --- Shapes, as the real backend returns them ---
