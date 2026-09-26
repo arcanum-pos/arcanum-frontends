@@ -6,6 +6,9 @@ import {
   clampTip,
   draftTotalCents,
   entryToPickerItem,
+  filterSections,
+  normalizeSearch,
+  searchPick,
   FOOI_CODE,
   isPaymentResolved,
   MAX_TIP_CENTS,
@@ -237,5 +240,49 @@ describe('tabTitle', () => {
 describe('netQuantity', () => {
   it('subtracts what is already voided', () => {
     expect(netQuantity(line({ quantity: 3, voidedQuantity: 2 }))).toBe(1)
+  })
+})
+
+describe('product search and group filter', () => {
+  const sections: KassaCatalog['sections'] = [
+    { id: 's-drank', name: 'Drank', entries: [entry('v-duvel', 'Duvel', 400, 'duvel'), entry('v-pint', 'Pintje', 250, 'P1'), entry('v-cava', 'Glas cava', 450)] },
+    { id: 's-menu', name: 'Menu', entries: [entry('v-steak-n', 'Steak (normaal)', 3400), entry('v-steak-k', 'Steak (kind)', 2600), entry('v-vav', 'Vol-au-vent (kind)', 2200)] },
+  ]
+  const names = (s: KassaCatalog['sections']) => s.flatMap((x) => x.entries.map((e) => e.name))
+
+  it('normalizes case, accents and punctuation', () => {
+    expect(normalizeSearch('  VOL-AU-VÉNT ')).toBe('vol au vent')
+  })
+
+  it('no query and no group: everything', () => {
+    expect(filterSections(sections, '', null)).toEqual(sections)
+    expect(filterSections(sections, '   ', null)).toEqual(sections)
+  })
+
+  it('every word must match the name or the code', () => {
+    expect(names(filterSections(sections, 'steak', null))).toEqual(['Steak (normaal)', 'Steak (kind)'])
+    expect(names(filterSections(sections, 'kind steak', null))).toEqual(['Steak (kind)'])
+    expect(names(filterSections(sections, 'vol au vent', null))).toEqual(['Vol-au-vent (kind)'])
+    expect(names(filterSections(sections, 'p1', null))).toEqual(['Pintje'])
+    expect(filterSections(sections, 'pizza', null)).toEqual([])
+  })
+
+  it('a group narrows to that section, and combines with the search', () => {
+    expect(names(filterSections(sections, '', 's-drank'))).toEqual(['Duvel', 'Pintje', 'Glas cava'])
+    expect(names(filterSections(sections, 'kind', 's-drank'))).toEqual([])
+    expect(filterSections(sections, 'kind', 's-menu').map((s) => s.id)).toEqual(['s-menu'])
+  })
+
+  it('leaves empty groups out', () => {
+    expect(filterSections(sections, 'duvel', null).map((s) => s.id)).toEqual(['s-drank'])
+  })
+
+  it('Enter picks an exact code, or the only match — never a guess', () => {
+    expect(searchPick(sections, 'P1')?.name).toBe('Pintje')
+    expect(searchPick(sections, 'duvel')?.name).toBe('Duvel')
+    expect(searchPick(sections, 'steak kind')?.name).toBe('Steak (kind)')
+    expect(searchPick(sections, 'steak')).toBeNull()
+    expect(searchPick(sections, '')).toBeNull()
+    expect(searchPick(sections, 'pizza')).toBeNull()
   })
 })

@@ -8,8 +8,8 @@ import { expect, panel, test } from './fixtures'
 const button = (name: string | RegExp) => ({ name, exact: typeof name === 'string' })
 
 test('sells from the catalog: sections, quick quantities, variants', async ({ kassa, backend }) => {
-  await expect(kassa.getByText('Bonnen', { exact: true })).toBeVisible()
-  await expect(kassa.getByText('Tochten', { exact: true })).toBeVisible()
+  await expect(kassa.getByRole('heading', { name: 'Bonnen' })).toBeVisible()
+  await expect(kassa.getByRole('heading', { name: 'Tochten' })).toBeVisible()
 
   await kassa.getByRole('button', button('10 × Bon')).click()
   await kassa.getByRole('button', button(/^Fietstocht \(lid\)/)).click()
@@ -50,8 +50,8 @@ test('a catalog picked in Instellingen is used by this kassa', async ({ kassa, b
   await expect(kassa.getByText('Actief: Fuif')).toBeVisible()
 
   await kassa.goto('/kassa.html')
-  await expect(kassa.getByText('Bar', { exact: true })).toBeVisible()
-  await expect(kassa.getByText('Tochten', { exact: true })).toHaveCount(0)
+  await expect(kassa.getByRole('heading', { name: 'Bar' })).toBeVisible()
+  await expect(kassa.getByRole('heading', { name: 'Tochten' })).toHaveCount(0)
 
   await kassa.getByRole('button', button(/^Pils/)).click()
   await kassa.getByLabel('Contant').check()
@@ -71,7 +71,7 @@ test('an archived device catalog falls back to the default, with a notice', asyn
   await kassa.reload()
 
   await expect(kassa.getByText('De gekozen menukaart "Fuif" is niet meer beschikbaar — de standaardmenukaart wordt gebruikt.')).toBeVisible()
-  await expect(kassa.getByText('Tochten', { exact: true })).toBeVisible()
+  await expect(kassa.getByRole('heading', { name: 'Tochten' })).toBeVisible()
   expect(await kassa.evaluate(() => localStorage.getItem('arcanum-catalog'))).toBeNull()
 })
 

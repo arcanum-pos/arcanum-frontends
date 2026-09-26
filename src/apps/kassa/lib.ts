@@ -148,3 +148,46 @@ export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] =
   { value: 'cash', label: 'Contant' },
   { value: 'sumup', label: 'SumUp' },
 ]
+
+// --- Search and group filter (kassa product picker) ---
+
+// "Vol-au-vent", "vol au vent" and "VOL-AU-VÉNT" are the same search.
+export function normalizeSearch(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+// Every word of the query must appear in the product's name or code
+// ("steak kind" finds "Steak (kind)"); a section filter (null = all)
+// narrows it to one group. Empty sections are left out.
+export function filterSections(sections: KassaCatalog['sections'], query: string, sectionId: string | null): KassaCatalog['sections'] {
+  const words = normalizeSearch(query).split(' ').filter(Boolean)
+  return sections
+    .filter((s) => !sectionId || s.id === sectionId)
+    .map((s) => ({
+      ...s,
+      entries: words.length
+        ? s.entries.filter((e) => {
+            const haystack = `${normalizeSearch(e.name)} ${normalizeSearch(e.code ?? '')}`
+            return words.every((w) => haystack.includes(w))
+          })
+        : s.entries,
+    }))
+    .filter((s) => s.entries.length > 0)
+}
+
+// Enter in the search field adds a product when it's unambiguous: an exact
+// code ("typ een code") or the only product left.
+export function searchPick(sections: KassaCatalog['sections'], query: string): KassaEntry | null {
+  const q = normalizeSearch(query)
+  if (!q) return null
+  const all = sections.flatMap((s) => s.entries)
+  const byCode = all.filter((e) => e.code && normalizeSearch(e.code) === q)
+  if (byCode.length === 1) return byCode[0]
+  const matches = filterSections(sections, query, null).flatMap((s) => s.entries)
+  return matches.length === 1 ? matches[0] : null
+}
