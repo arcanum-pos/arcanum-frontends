@@ -57,7 +57,7 @@ export const test = base.extend<Fixtures>({
 
 export { expect }
 
-// The right-hand tab panel (the card with the "Te betalen" total).
+// The right-hand tab panel: the ticket, how it's paid, and its actions.
 export function panel(page: Page) {
-  return page.locator('[data-slot=card]').filter({ hasText: 'Te betalen' })
+  return page.getByTestId('tab-panel')
 }

@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+/* Amounts and counts on the kassa (the design uses Geist Mono for figures). */
+@import "@fontsource-variable/geist-mono";
 /* Bold weight only — used just for the "arcanum" wordmark in the header. */
 @import "@fontsource/montserrat/700.css";
 
@@ -10,6 +12,7 @@
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Geist Variable', sans-serif;
+    --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

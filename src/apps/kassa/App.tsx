@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { AppBrand } from '@/shared/app-brand'
-import { OrgBadge } from '@/shared/org-badge'
+import kabouterLogo from '@/shared/assets/kabouter.png'
 import { getCatalogSelection, getDeviceId, getDeviceName, getSumupReader, setCatalogSelection } from '@/shared/device'
 import {
   connectNotifications,
   getLinkedDevice,
   getRegisteredTerminal,
+  getStoredTerminalInfo,
   linkTerminals,
   registerRemoteTerminal,
   unlinkTerminal,
@@ -15,6 +15,7 @@ import { getCurrentSlotId } from '@/shared/slots'
 import {
   addToDraft,
   clampTip,
+  draftTotalCents,
   isPaymentResolved,
   MANUAL_METHOD_LABELS,
   readAmountCents,
@@ -31,7 +32,7 @@ import { NameDialog, VoidDialog } from './TabDialogs'
 import { TabPanel } from './TabPanel'
 import { QUICK_SALE_LABEL, TabStrip, type ActiveKey } from './TabStrip'
 import * as tabsApi from './tabs-api'
-import { TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
+import { netQuantity, TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
 
 const WORKER_URL = '/api/bancontact'
 const DEVICES_URL = '/api/devices'
@@ -59,7 +60,8 @@ export default function App() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [terminalIdLabel, setTerminalIdLabel] = useState('')
-  const [userLabel, setUserLabel] = useState('')
+  const [user, setUser] = useState<{ name: string; email: string } | null>(null)
+  const [orgName] = useState(() => getStoredTerminalInfo()?.orgName || '')
   const [openingDisplay, setOpeningDisplay] = useState(false)
 
   const [orgId, setOrgId] = useState<string | null>(null)
@@ -569,7 +571,7 @@ export default function App() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data) return
-        setUserLabel(`Ingelogd als ${data.name || data.email}`)
+        setUser({ name: data.name || data.email || '', email: data.email || '' })
       })
       .catch(() => {})
   }, [])
@@ -588,7 +590,7 @@ export default function App() {
       posTerminalIdRef.current = terminal.terminalId
       posOrgIdRef.current = terminal.orgId
       setOrgId(terminal.orgId)
-      setTerminalIdLabel(`POS-ID: ${terminal.terminalId}`)
+      setTerminalIdLabel(terminal.terminalId)
 
       // Replaces polling: the notification socket pushes payment_updated
       // the moment a linked reader/simulator resolves a charge this POS
@@ -640,85 +642,113 @@ export default function App() {
   const showConfirmButton = current !== null && current.status !== 'RESOLVED'
   const draftKeys = new Set(Object.keys(drafts))
   const panelTitle = active === 'quick' ? `${QUICK_SALE_LABEL} — direct afrekenen` : shownTab ? tabTitle(shownTab) : 'Laden…'
+  const itemCount = draft.reduce((n, l) => n + l.quantity, 0) + (shownTab?.lines || []).filter((l) => !l.voidsLineId).reduce((n, l) => n + netQuantity(l), 0)
+  const panelSubtitle = `${active === 'quick' ? 'Nieuwe rekening bij afrekenen' : 'Open rekening'} · ${itemCount === 1 ? '1 item' : `${itemCount} items`}`
+  const draftQuantities = Object.fromEntries(draft.map((l) => [l.variantId, l.quantity]))
+  const catalogName = catalogState.status === 'ok' ? catalogState.catalog.name : null
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-4 p-4">
-      <OrgBadge />
-
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
-        <div className="flex items-center gap-3">
-          <AppBrand className="text-xl" />
-          <div className="text-sm text-muted-foreground">
-            <p>{getDeviceName()}</p>
-            <p>{terminalIdLabel}</p>
+    <div className="flex min-h-svh flex-col bg-muted/40">
+      {/* Header: where this kassa is (org · device · menukaart), who's on it, and the open tabs. */}
+      <header className="border-b bg-card">
+        <div className="flex flex-wrap items-center gap-3.5 px-5 pt-3 pb-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <div className="flex size-[34px] shrink-0 items-center justify-center rounded-[9px] bg-foreground text-[11px] font-bold tracking-tight text-background" aria-hidden="true">
+              {initials(orgName) || <img src={kabouterLogo} alt="" className="size-4 invert dark:invert-0" />}
+            </div>
+            <div className="flex min-w-0 flex-col gap-px">
+              <span className="truncate text-[14.5px] font-semibold tracking-tight">{orgName || 'Kassa'}</span>
+              <span className="truncate text-[11.5px] text-muted-foreground">
+                {[getDeviceName(), catalogName && `Menukaart ${catalogName}`, terminalIdLabel && `POS ${terminalIdLabel.slice(0, 8)}`].filter(Boolean).join(' · ')}
+              </span>
+            </div>
+          </div>
+          <div className="min-w-5 flex-1" />
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={openingDisplay} onClick={openDisplay}>
+              Klantscherm openen
+            </Button>
+            <Button variant="outline" className="h-[34px] px-3 text-[13px]" asChild>
+              <a href="/settings.html">Instellingen</a>
+            </Button>
+            {user && (
+              <div className="flex items-center gap-2 border-l pl-2.5">
+                <div className="flex size-7 items-center justify-center rounded-full border bg-muted text-[10.5px] font-semibold text-foreground/75" aria-hidden="true">
+                  {initials(user.name)}
+                </div>
+                <div className="flex flex-col leading-tight">
+                  <span className="text-xs font-medium">{user.name}</span>
+                  <a href="/logout" className="text-[10.5px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                    Uitloggen
+                  </a>
+                </div>
+              </div>
+            )}
+            {!user && (
+              <a href="/logout" className="text-[13px] text-muted-foreground underline-offset-4 hover:underline">
+                Uitloggen
+              </a>
+            )}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-muted-foreground">{userLabel}</span>
-          <Button variant="outline" size="sm" disabled={openingDisplay} onClick={openDisplay}>
-            Klantscherm openen
-          </Button>
-          <a href="/settings.html" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-            Instellingen
-          </a>
-          <a href="/logout" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-            Uitloggen
-          </a>
+        <div className="px-5 pb-2.5">
+          <TabStrip tabs={tabs} active={active} draftKeys={draftKeys} quickTotalCents={draftTotalCents(drafts.quick || [])} disabled={busy || current !== null} onSelect={selectTab} onNew={() => setNameDialog('new')} />
         </div>
-      </div>
+      </header>
 
-      <TabStrip tabs={tabs} active={active} draftKeys={draftKeys} disabled={busy || current !== null} onSelect={selectTab} onNew={() => setNameDialog('new')} />
+      <main className="flex flex-1 flex-col gap-3 px-5 pt-4 pb-6">
+        {error && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
+        {notice && (
+          <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
+            <p>{notice}</p>
+            <Button variant="ghost" size="sm" onClick={() => setNotice('')}>
+              Sluiten
+            </Button>
+          </div>
+        )}
 
-      {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-      {notice && (
-        <div className="flex items-center justify-between gap-3 rounded-lg bg-muted px-3 py-2 text-sm">
-          <p>{notice}</p>
-          <Button variant="ghost" size="sm" onClick={() => setNotice('')}>
-            Sluiten
-          </Button>
-        </div>
-      )}
+        {!current && (
+          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_392px]">
+            <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} />
+            <div className="lg:sticky lg:top-4">
+              <TabPanel
+                title={panelTitle}
+                subtitle={panelSubtitle}
+                tab={shownTab}
+                draft={draft}
+                paymentMethod={paymentMethod}
+                tipInput={tipInput}
+                onTipInputChange={setTipInput}
+                busy={busy || tabLoading}
+                onPaymentMethodChange={setPaymentMethod}
+                onDraftQuantity={setDraftQuantity}
+                onClearDraft={() => setDraftFor(active, [])}
+                onVoid={setVoidTarget}
+                onSubmitOrder={submitOrder}
+                onPay={pay}
+                onPark={() => setNameDialog('park')}
+                onRename={() => setNameDialog('rename')}
+                onCancelTab={cancelEmptyTab}
+                onRefresh={refreshAll}
+              />
+            </div>
+          </div>
+        )}
 
-      {!current && (
-        <div className="grid items-start gap-4 md:grid-cols-[1fr_420px]">
-          <ItemPicker catalogState={catalogState} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} />
-          <div className="md:sticky md:top-4">
-            <TabPanel
-              title={panelTitle}
-              tab={shownTab}
-              draft={draft}
-              paymentMethod={paymentMethod}
-              tipInput={tipInput}
-              onTipInputChange={setTipInput}
-              busy={busy || tabLoading}
-              onPaymentMethodChange={setPaymentMethod}
-              onDraftQuantity={setDraftQuantity}
-              onClearDraft={() => setDraftFor(active, [])}
-              onVoid={setVoidTarget}
-              onSubmitOrder={submitOrder}
-              onPay={pay}
-              onPark={() => setNameDialog('park')}
-              onRename={() => setNameDialog('rename')}
-              onCancelTab={cancelEmptyTab}
-              onRefresh={refreshAll}
+        {current && (
+          <div className="flex flex-1 items-start justify-center pt-6">
+            <PaymentStatus
+              current={current}
+              manualStatusText={manualStatusText}
+              countdownText={countdownText}
+              showConfirmButton={showConfirmButton}
+              onConfirm={confirmManualPayment}
+              onCancel={cancelPayment}
+              onNext={finishPayment}
             />
           </div>
-        </div>
-      )}
-
-      {current && (
-        <div className="mx-auto w-full max-w-2xl">
-          <PaymentStatus
-            current={current}
-            manualStatusText={manualStatusText}
-            countdownText={countdownText}
-            showConfirmButton={showConfirmButton}
-            onConfirm={confirmManualPayment}
-            onCancel={cancelPayment}
-            onNext={finishPayment}
-          />
-        </div>
-      )}
+        )}
+      </main>
 
       <NameDialog
         key={nameDialog ?? 'closed'}
@@ -733,4 +763,15 @@ export default function App() {
       <VoidDialog key={voidTarget?.id ?? 'closed'} line={voidTarget} onConfirm={confirmVoid} onClose={() => setVoidTarget(null)} />
     </div>
   )
+}
+
+// "Scouts Elewijt" → "SE", "Bert Hekman" → "BH" (the design's avatar tiles).
+function initials(name: string): string {
+  return name
+    .replace(/@.*/, '')
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('')
 }
