@@ -15,6 +15,7 @@ import { getCurrentSlotId } from '@/shared/slots'
 import {
   addToDraft,
   clampTip,
+  customerOrderFromTab,
   draftTotalCents,
   isPaymentResolved,
   MANUAL_METHOD_LABELS,
@@ -354,6 +355,7 @@ export default function App() {
   async function startCharge(org: string, tab: TabDetail, tipCents: number) {
     const amountCents = tab.outstandingCents + tipCents
     const breakdown = tabBreakdownLines(tab, tipCents)
+    const order = customerOrderFromTab(tab)
     const common = {
       amount: amountCents,
       tipCents,
@@ -384,6 +386,7 @@ export default function App() {
         status: data.status,
         amountCents: data.amount,
         breakdown,
+        order,
       })
       broadcastCurrent()
       startCountdown(data.expiresAt)
@@ -412,6 +415,7 @@ export default function App() {
       tipCents,
       amountCents,
       breakdown,
+      order,
       dispatchedToReader: !!readerId,
     })
     setManualStatusText(MANUAL_METHOD_LABELS[method].waiting)

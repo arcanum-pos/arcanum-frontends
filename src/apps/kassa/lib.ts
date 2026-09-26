@@ -1,4 +1,5 @@
 import { formatEuro } from '@/shared/format'
+import type { CustomerOrder } from '@/shared/customer-order'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
 import type { DraftLine, TabDetail } from './tabs-api'
 import { netQuantity } from './tabs-api'
@@ -79,6 +80,17 @@ export function tabBreakdownLines(tab: TabDetail, tipCents = 0): string[] {
   return lines
 }
 
+// The order as the customer display lists it: lines net of voids.
+export function customerOrderFromTab(tab: TabDetail): CustomerOrder {
+  return {
+    label: tab.label,
+    number: tab.number,
+    lines: tab.lines
+      .filter((l) => !l.voidsLineId && netQuantity(l) > 0)
+      .map((l) => ({ name: l.itemCode === FOOI_CODE ? 'Fooi' : l.name, quantity: netQuantity(l), unitPriceCents: l.unitPriceCents })),
+  }
+}
+
 // Max tip the backend accepts (tipCents 0..100000).
 export const MAX_TIP_CENTS = 100_000
 
@@ -114,6 +126,8 @@ export interface CurrentPayment {
   amountCents: number
   description?: string
   breakdown: string[]
+  // The order for the customer display (same shape the backend's charge status gives).
+  order?: CustomerOrder
   qrCodeUrl?: string
   expiresAt?: string
   chargeId: string

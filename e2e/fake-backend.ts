@@ -279,6 +279,7 @@ export class FakeBackend {
           method: c.method,
           qrCodeUrl: c.method === 'bancontact' ? QR_URL : null,
           expiresAt: null,
+          order: c.tabId ? this.customerOrder(c.tabId) : null,
         },
       }
     }
@@ -394,6 +395,20 @@ export class FakeBackend {
         voidReason: null,
         createdAt: new Date().toISOString(),
       })
+    }
+  }
+
+  // Like the backend's customerOrder: the tab's lines net of voids.
+  customerOrder(tabId: string) {
+    const tab = this.tab(tabId)
+    if (!tab) return null
+    const detail = this.detail(tab) as any
+    return {
+      label: detail.label,
+      number: detail.number,
+      lines: detail.lines
+        .filter((l: any) => !l.voidsLineId && l.quantity - l.voidedQuantity > 0)
+        .map((l: any) => ({ name: l.name, quantity: l.quantity - l.voidedQuantity, unitPriceCents: l.unitPriceCents })),
     }
   }
 
