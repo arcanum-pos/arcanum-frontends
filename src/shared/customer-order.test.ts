@@ -21,6 +21,7 @@ describe('customerBill', () => {
       itemCount: 12,
       itemsCents: 2600,
       alreadyPaidCents: 0,
+      openCents: 2600,
       tipCents: 0,
       amountCents: 2600,
     })
@@ -33,6 +34,13 @@ describe('customerBill', () => {
 
   it('an earlier (split) payment shows as already paid', () => {
     expect(customerBill(order, 1600).alreadyPaidCents).toBe(1000)
+  })
+
+  it('a part of an equal split is not mistaken for an earlier payment', () => {
+    const bill = customerBill({ ...order, paidCents: 0 }, 867)
+    expect([bill.alreadyPaidCents, bill.openCents, bill.amountCents]).toEqual([0, 2600, 867])
+    const second = customerBill({ ...order, paidCents: 867 }, 867)
+    expect([second.alreadyPaidCents, second.openCents]).toEqual([867, 1733])
   })
 
   it('no title for a Toog sale; no lines when the order is unknown', () => {
@@ -52,6 +60,7 @@ describe('readCustomerOrder', () => {
       label: 'T',
       number: 1,
       eventName: 'Fuif',
+      paidCents: null,
       lines: [{ name: 'A', quantity: 1, unitPriceCents: 100 }],
     })
     expect(readCustomerOrder({ lines: [], eventName: 42 })?.eventName).toBeNull()

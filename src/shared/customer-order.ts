@@ -13,6 +13,8 @@ export interface CustomerOrder {
   number: number | null
   // The event the tab is tagged with, if any.
   eventName?: string | null
+  // Already paid on this tab before this payment (split payments).
+  paidCents?: number | null
   lines: CustomerOrderLine[]
 }
 
@@ -25,8 +27,10 @@ export interface CustomerBill {
   lines: { name: string; quantity: number; totalCents: number }[]
   itemCount: number
   itemsCents: number
-  // Paid earlier on this tab (a split payment); the amount now is the rest.
+  // Paid earlier on this tab (split payments).
   alreadyPaidCents: number
+  // Still open on the tab (items − already paid); this payment may be only a part of it.
+  openCents: number
   tipCents: number
   amountCents: number
 }
@@ -37,12 +41,19 @@ export function customerBill(order: CustomerOrder | null | undefined, amountCent
   const lines = (order?.lines ?? []).filter((l) => l.quantity > 0).map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents }))
   const itemsCents = lines.reduce((sum, l) => sum + l.totalCents, 0)
   const label = order?.label?.trim() || ''
+  // Known from the order when it says so; else inferred (the amount pays the rest).
+  const alreadyPaidCents = Number.isInteger(order?.paidCents)
+    ? Math.max(0, order!.paidCents as number)
+    : lines.length
+      ? Math.max(0, itemsCents - (amountCents - tipCents))
+      : 0
   return {
     title: label && !UNNAMED.has(label.toLowerCase()) ? label : null,
     lines,
     itemCount: lines.reduce((n, l) => n + l.quantity, 0),
     itemsCents,
-    alreadyPaidCents: lines.length ? Math.max(0, itemsCents - (amountCents - tipCents)) : 0,
+    alreadyPaidCents,
+    openCents: Math.max(0, itemsCents - alreadyPaidCents),
     tipCents,
     amountCents,
   }
@@ -51,7 +62,7 @@ export function customerBill(order: CustomerOrder | null | undefined, amountCent
 // Only what the CFD can safely show — anything else from the wire is dropped.
 export function readCustomerOrder(value: unknown): CustomerOrder | null {
   if (!value || typeof value !== 'object') return null
-  const v = value as { label?: unknown; number?: unknown; eventName?: unknown; lines?: unknown }
+  const v = value as { label?: unknown; number?: unknown; eventName?: unknown; paidCents?: unknown; lines?: unknown }
   if (!Array.isArray(v.lines)) return null
   const lines = v.lines
     .filter((l): l is CustomerOrderLine => !!l && typeof l.name === 'string' && Number.isInteger(l.quantity) && Number.isInteger(l.unitPriceCents))
@@ -60,6 +71,7 @@ export function readCustomerOrder(value: unknown): CustomerOrder | null {
     label: typeof v.label === 'string' ? v.label : '',
     number: Number.isInteger(v.number) ? (v.number as number) : null,
     eventName: typeof v.eventName === 'string' && v.eventName.trim() ? v.eventName.trim() : null,
+    paidCents: Number.isInteger(v.paidCents) ? (v.paidCents as number) : null,
     lines,
   }
 }

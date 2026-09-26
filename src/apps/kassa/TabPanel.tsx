@@ -32,6 +32,8 @@ export function TabPanel({
   onRename,
   onCancelTab,
   onRefresh,
+  onSplit,
+  onStopSplit,
 }: {
   title: string
   subtitle: string
@@ -51,13 +53,22 @@ export function TabPanel({
   onRename: () => void
   onCancelTab: () => void
   onRefresh: () => void
+  // "Splitsen": pay what's open in equal parts (opens the dialog).
+  onSplit: () => void
+  onStopSplit: () => void
 }) {
   const submitted = (tab?.lines || []).filter((l) => !l.voidsLineId)
   const draftTotal = draftTotalCents(draft)
   const toPay = (tab?.outstandingCents || 0) + draftTotal
-  const tipCents = toPay > 0 ? clampTip(readAmountCents(tipInput)) : 0
+  // Split into equal parts: this payment is the next part — what's open ÷
+  // parts left, the last one takes the rest (as the server computes it).
+  const split = tab?.split ?? null
+  const partsLeft = split ? Math.max(1, split.parts - split.paid) : 1
+  const payCents = split && partsLeft > 1 ? Math.floor(toPay / partsLeft) : toPay
+  const tipCents = payCents > 0 ? clampTip(readAmountCents(tipInput)) : 0
   const locked = busy || !!tab?.paymentPending
-  const noTip = locked || toPay < 1
+  const noTip = locked || payCents < 1
+  const paidCents = tab?.paidCents || 0
 
   return (
     <div className="flex flex-col gap-3" data-testid="tab-panel">
@@ -74,6 +85,24 @@ export function TabPanel({
             </Button>
           )}
         </div>
+
+        {split && (
+          <div className="flex items-center gap-3 border-b bg-muted/40 px-3.5 py-2.5" data-testid="split-banner">
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold tracking-tight">
+                Gesplitst in {split.parts} · deel {Math.min(split.paid + 1, split.parts)} van {split.parts}
+              </p>
+              <div className="mt-1.5 flex gap-1" aria-hidden="true">
+                {Array.from({ length: split.parts }, (_, i) => (
+                  <span key={i} className={cn('h-1.5 w-5 rounded-full', i < split.paid ? 'bg-foreground' : 'bg-foreground/15')} />
+                ))}
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" disabled={locked} onClick={onStopSplit}>
+              Splitsen stoppen
+            </Button>
+          </div>
+        )}
 
         {tab?.paymentPending && (
           <div className="flex flex-col gap-2 border-b bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
@@ -161,8 +190,14 @@ export function TabPanel({
           )}
         </div>
 
+        {paidCents > 0 && (
+          <div className="flex items-baseline justify-between border-t px-3.5 py-2 text-[13px] text-muted-foreground">
+            <span>Al betaald</span>
+            <span className="font-mono tabular-nums">− {formatEuro(paidCents)}</span>
+          </div>
+        )}
         <div className="flex items-baseline justify-between border-t bg-muted/40 px-3.5 py-3">
-          <span className="text-[13px] text-foreground/70">Te betalen</span>
+          <span className="text-[13px] text-foreground/70">{paidCents > 0 ? 'Nog te betalen' : 'Te betalen'}</span>
           <span className="font-mono text-[30px] leading-tight font-semibold tracking-tight tabular-nums">{formatEuro(toPay)}</span>
         </div>
       </section>
@@ -219,7 +254,7 @@ export function TabPanel({
             <TipButton disabled={noTip} onClick={() => onTipInputChange(centsToInput(clampTip(tipCents + 200)))}>
               +€2
             </TipButton>
-            <TipButton disabled={noTip || roundUpTipCents(toPay) === 0} onClick={() => onTipInputChange(centsToInput(roundUpTipCents(toPay)))}>
+            <TipButton disabled={noTip || roundUpTipCents(payCents) === 0} onClick={() => onTipInputChange(centsToInput(roundUpTipCents(payCents)))}>
               Afronden
             </TipButton>
             <TipButton disabled={locked || tipCents === 0} onClick={() => onTipInputChange('')}>
@@ -233,14 +268,21 @@ export function TabPanel({
       <div className="flex flex-col gap-2">
         <button
           type="button"
-          disabled={locked || toPay < 1}
+          disabled={locked || payCents < 1}
           onClick={onPay}
           className="h-[52px] rounded-xl bg-foreground text-[15px] font-semibold tracking-tight text-background transition-colors outline-none hover:bg-foreground/85 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         >
-          Afrekenen {toPay > 0 && formatEuro(toPay + tipCents)}
+          {split
+            ? `Afrekenen deel ${Math.min(split.paid + 1, split.parts)}/${split.parts} · ${formatEuro(payCents + tipCents)}`
+            : `Afrekenen${payCents > 0 ? ` ${formatEuro(payCents + tipCents)}` : ''}`}
         </button>
         {tipCents > 0 && <p className="text-center text-[12.5px] text-muted-foreground">waarvan {formatEuro(tipCents)} fooi</p>}
         <div className="flex gap-2">
+          {!split && toPay >= 2 && (
+            <SecondaryButton disabled={locked} onClick={onSplit}>
+              Splitsen
+            </SecondaryButton>
+          )}
           {tab && draft.length > 0 && (
             <SecondaryButton disabled={locked} onClick={onSubmitOrder}>
               Bestelling toevoegen aan rekening

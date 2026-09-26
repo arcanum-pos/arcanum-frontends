@@ -86,6 +86,7 @@ export function customerOrderFromTab(tab: TabDetail): CustomerOrder {
     label: tab.label,
     number: tab.number,
     eventName: tab.eventName ?? null,
+    paidCents: tab.paidCents,
     lines: tab.lines
       .filter((l) => !l.voidsLineId && netQuantity(l) > 0)
       .map((l) => ({ name: l.itemCode === FOOI_CODE ? 'Fooi' : l.name, quantity: netQuantity(l), unitPriceCents: l.unitPriceCents })),
@@ -135,6 +136,8 @@ export interface CurrentPayment {
   tabId: string
   // Part of amountCents — paid by the customer, but not revenue.
   tipCents: number
+  // One part of an equal split ("deel 2 van 3"); absent for a full payment.
+  part?: { index: number; of: number }
   // True once a SumUp charge was actually sent to a physical reader — then
   // cancelling here can't stop the customer from still paying on it, so
   // the charge is left for the reader/poller to resolve.
@@ -206,3 +209,30 @@ export function searchPick(sections: KassaCatalog['sections'], query: string): K
   const matches = filterSections(sections, query, null).flatMap((s) => s.entries)
   return matches.length === 1 ? matches[0] : null
 }
+
+// The parts an equal split of `cents` over `parts` comes to — by the same
+// rule the server uses: each part is what's still open ÷ parts left,
+// rounded down, so the last one takes what remains. 2600 / 3 → 866, 867, 867.
+export function splitSequence(cents: number, parts: number): number[] {
+  const out: number[] = []
+  let open = cents
+  for (let left = parts; left >= 1; left--) {
+    const part = left === 1 ? open : Math.floor(open / left)
+    out.push(part)
+    open -= part
+  }
+  return out
+}
+
+// "3 × € 25,83" or "€ 8,66 + 2 × € 8,67" — the parts, equal ones grouped.
+export function splitPreviewText(cents: number, parts: number): string {
+  const groups: { cents: number; count: number }[] = []
+  for (const part of splitSequence(cents, parts)) {
+    const last = groups[groups.length - 1]
+    if (last && last.cents === part) last.count++
+    else groups.push({ cents: part, count: 1 })
+  }
+  return groups.map((g) => (g.count === 1 ? formatEuro(g.cents) : `${g.count} × ${formatEuro(g.cents)}`)).join(' + ')
+}
+
+export const MAX_SPLIT_PARTS = 50

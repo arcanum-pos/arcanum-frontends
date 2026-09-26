@@ -65,7 +65,10 @@ export function TabStrip({
             {tabTitle(tab)}
             {draftKeys.has(tab.id) && ' •'}
           </span>
-          <span className={amount(active === tab.id)}>{tab.paymentPending ? 'Betaling loopt…' : formatEuro(tab.outstandingCents)}</span>
+          <span className={amount(active === tab.id)}>
+            {tab.paymentPending ? 'Betaling loopt…' : formatEuro(tab.outstandingCents)}
+            {!tab.paymentPending && tab.split && ` · ${tab.split.paid}/${tab.split.parts} betaald`}
+          </span>
         </TabPill>
       ))}
 

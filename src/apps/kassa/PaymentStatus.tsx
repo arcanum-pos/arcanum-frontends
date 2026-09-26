@@ -32,6 +32,11 @@ export function PaymentStatus({
       <div className="flex flex-col items-center gap-4 text-center">
         <div className="flex items-center self-stretch">
           <span className="text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{methodLabel}</span>
+          {current.part && (
+            <span className="ml-auto rounded-md border px-1.5 py-0.5 text-[11px] font-semibold" data-testid="payment-part">
+              Deel {current.part.index} van {current.part.of}
+            </span>
+          )}
         </div>
 
         {resolved && (
@@ -84,7 +89,7 @@ export function PaymentStatus({
 
         {resolved ? (
           <Button className="mt-1 h-11 w-full rounded-[10px] text-sm" onClick={onNext}>
-            Volgende klant
+            {current.part && current.part.index < current.part.of ? 'Volgend deel' : 'Volgende klant'}
           </Button>
         ) : (
           <Button variant="outline" className="h-10 w-full rounded-[10px]" onClick={onCancel}>

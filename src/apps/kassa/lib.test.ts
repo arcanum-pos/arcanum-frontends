@@ -6,6 +6,8 @@ import {
   clampTip,
   draftTotalCents,
   entryToPickerItem,
+  splitPreviewText,
+  splitSequence,
   filterSections,
   normalizeSearch,
   searchPick,
@@ -284,5 +286,21 @@ describe('product search and group filter', () => {
     expect(searchPick(sections, 'steak')).toBeNull()
     expect(searchPick(sections, '')).toBeNull()
     expect(searchPick(sections, 'pizza')).toBeNull()
+  })
+})
+
+describe('equal split', () => {
+  it('each part is what is open ÷ parts left, rounded down (the server rule)', () => {
+    expect(splitSequence(2600, 3)).toEqual([866, 867, 867])
+    expect(splitSequence(7750, 3)).toEqual([2583, 2583, 2584])
+    expect(splitSequence(3000, 3)).toEqual([1000, 1000, 1000])
+    expect(splitSequence(101, 2)).toEqual([50, 51])
+    for (const [cents, parts] of [[2600, 3], [9999, 7], [5, 5]]) expect(splitSequence(cents, parts).reduce((a, b) => a + b, 0)).toBe(cents)
+  })
+
+  it('describes the parts, equal ones grouped', () => {
+    expect(splitPreviewText(3000, 3)).toBe('3 × € 10,00')
+    expect(splitPreviewText(2600, 3)).toBe('€ 8,66 + 2 × € 8,67')
+    expect(splitPreviewText(7750, 3)).toBe('2 × € 25,83 + € 25,84')
   })
 })

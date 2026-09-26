@@ -30,6 +30,7 @@ import { fetchKassaCatalog, listEvents, type KassaCatalog } from './catalog-api'
 import { ItemPicker, type CatalogState } from './ItemPicker'
 import { PaymentStatus } from './PaymentStatus'
 import { NameDialog, VoidDialog } from './TabDialogs'
+import { SplitDialog } from './SplitDialog'
 import { TabPanel } from './TabPanel'
 import { QUICK_SALE_LABEL, TabStrip, type ActiveKey } from './TabStrip'
 import * as tabsApi from './tabs-api'
@@ -78,6 +79,7 @@ export default function App() {
   const [drafts, setDrafts] = useState<Record<string, DraftLine[]>>({})
   const [nameDialog, setNameDialog] = useState<NameDialogMode | null>(null)
   const [voidTarget, setVoidTarget] = useState<TabLine | null>(null)
+  const [splitDialogOpen, setSplitDialogOpen] = useState(false)
 
   const currentRef = useRef<CurrentPayment | null>(null)
   const catalogRef = useRef<KassaCatalog | null>(null)
@@ -361,26 +363,53 @@ export default function App() {
   // Submits whatever's still in the draft first (for Toog: creates the tab
   // with it), then charges exactly what's outstanding plus the tip — the
   // server refuses any other amount.
+  // Whatever's still in the draft goes onto the server first (for Toog:
+  // creates the tab with it) — paying and splitting both work on the tab.
+  async function submitDraftFirst(org: string, key: ActiveKey): Promise<TabDetail> {
+    let tab: TabDetail
+    if (key === 'quick') {
+      tab = await tabsApi.createTab(org, QUICK_SALE_LABEL, getCurrentSlotId(), draft, catalogRef.current?.id ?? null, eventRef.current?.id ?? null)
+      setDraftFor('quick', [])
+      // From here on it's a real tab: if the payment fails or is
+      // cancelled, it stays open in the strip to retry, void or close.
+      setActive(tab.id)
+      activeRef.current = tab.id
+    } else if (draft.length > 0) {
+      tab = await tabsApi.addOrder(org, key, draft, catalogRef.current?.id ?? null)
+      setDraftFor(key, [])
+    } else {
+      tab = await tabsApi.getTab(org, key)
+    }
+    setActiveTab(tab)
+    refreshTabs()
+    return tab
+  }
+
+  // "Gelijk verdelen": split what's open into `parts` payments.
+  function startSplit(parts: number) {
+    setSplitDialogOpen(false)
+    const key = active
+    runTabAction(async (org) => {
+      const tab = await submitDraftFirst(org, key)
+      setActiveTab(await tabsApi.setSplit(org, tab.id, parts))
+      refreshTabs()
+    })
+  }
+
+  function stopSplit() {
+    if (!shownTab) return
+    const tabId = shownTab.id
+    runTabAction(async (org) => {
+      setActiveTab(await tabsApi.setSplit(org, tabId, null))
+      refreshTabs()
+    })
+  }
+
   function pay() {
     const key = active
     const tipCents = clampTip(readAmountCents(tipInput))
     runTabAction(async (org) => {
-      let tab: TabDetail
-      if (key === 'quick') {
-        tab = await tabsApi.createTab(org, QUICK_SALE_LABEL, getCurrentSlotId(), draft, catalogRef.current?.id ?? null, eventRef.current?.id ?? null)
-        setDraftFor('quick', [])
-        // From here on it's a real tab: if the payment fails or is
-        // cancelled, it stays open in the strip to retry, void or close.
-        setActive(tab.id)
-        activeRef.current = tab.id
-      } else if (draft.length > 0) {
-        tab = await tabsApi.addOrder(org, key, draft, catalogRef.current?.id ?? null)
-        setDraftFor(key, [])
-      } else {
-        tab = await tabsApi.getTab(org, key)
-      }
-      setActiveTab(tab)
-      refreshTabs()
+      const tab = await submitDraftFirst(org, key)
 
       if (tab.outstandingCents < 1) {
         setError('Niets te betalen op deze rekening.')
@@ -390,13 +419,18 @@ export default function App() {
     })
   }
 
+  // Charges what's outstanding — or, while split, the next part — plus the
+  // tip. The server refuses more than what's open.
   async function startCharge(org: string, tab: TabDetail, tipCents: number) {
-    const amountCents = tab.outstandingCents + tipCents
+    const split = tab.split ?? null
+    const amountCents = (split ? split.nextCents : tab.outstandingCents) + tipCents
+    const part = split ? { index: Math.min(split.paid + 1, split.parts), of: split.parts } : undefined
     const breakdown = tabBreakdownLines(tab, tipCents)
     const order = customerOrderFromTab(tab)
     const common = {
       amount: amountCents,
       tipCents,
+      splitPart: split ? true : undefined,
       orgId: org,
       tabId: tab.id,
       posTerminalId: posTerminalIdRef.current || undefined,
@@ -425,6 +459,7 @@ export default function App() {
         amountCents: data.amount,
         breakdown,
         order,
+        part,
       })
       broadcastCurrent()
       startCountdown(data.expiresAt)
@@ -454,6 +489,7 @@ export default function App() {
       amountCents,
       breakdown,
       order,
+      part,
       dispatchedToReader: !!readerId,
     })
     setManualStatusText(MANUAL_METHOD_LABELS[method].waiting)
@@ -550,10 +586,22 @@ export default function App() {
   }
 
   // Paid — back to Toog for the next customer (without the tip).
+  // Paid. A rekening with something still open (the next part of a split)
+  // stays selected for the next payment; otherwise back to Toog for the
+  // next customer. Never keeps the tip.
   function finishPayment() {
+    const tabId = currentRef.current?.tabId
     setTipInput('')
     clearPaymentView()
-    selectTab('quick')
+    const org = posOrgIdRef.current
+    if (!tabId || !org) {
+      selectTab('quick')
+      return
+    }
+    tabsApi
+      .getTab(org, tabId)
+      .then((tab) => selectTab(tab.status === 'open' && tab.outstandingCents > 0 ? tab.id : 'quick'))
+      .catch(() => selectTab('quick'))
   }
 
   // Back to the tab without paying. A cash (or reader-less SumUp) charge is
@@ -805,6 +853,8 @@ export default function App() {
                 onRename={() => setNameDialog('rename')}
                 onCancelTab={cancelEmptyTab}
                 onRefresh={refreshAll}
+                onSplit={() => setSplitDialogOpen(true)}
+                onStopSplit={stopSplit}
               />
             </div>
           </div>
@@ -834,6 +884,13 @@ export default function App() {
         initialValue={nameDialog === 'rename' ? shownTab?.label || '' : ''}
         onConfirm={confirmNameDialog}
         onClose={() => setNameDialog(null)}
+      />
+      <SplitDialog
+        key={splitDialogOpen ? 'open' : 'closed'}
+        open={splitDialogOpen}
+        openCents={(shownTab?.outstandingCents || 0) + draftTotalCents(draft)}
+        onConfirm={startSplit}
+        onClose={() => setSplitDialogOpen(false)}
       />
       <VoidDialog key={voidTarget?.id ?? 'closed'} line={voidTarget} onConfirm={confirmVoid} onClose={() => setVoidTarget(null)} />
     </div>

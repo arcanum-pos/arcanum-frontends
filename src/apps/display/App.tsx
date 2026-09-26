@@ -29,6 +29,8 @@ interface Payment {
   // The raw status (Bancontact's own, or AWAITING_MANUAL/RESOLVED, or pending/succeeded/failed).
   status: string
   errorMessage?: string
+  // One part of an equal split ("deel 2 van 3").
+  part?: { index: number; of: number } | null
 }
 
 export default function App() {
@@ -58,6 +60,7 @@ export default function App() {
       expiresAt: next.expiresAt ?? prev?.expiresAt,
       status: next.status ?? prev?.status ?? 'PENDING',
       errorMessage: next.errorMessage,
+      part: next.part !== undefined ? next.part : prev?.part,
     }))
   }
 
@@ -79,6 +82,7 @@ export default function App() {
         expiresAt: data.expiresAt || undefined,
         status: data.providerStatus || data.status,
         errorMessage: data.status === 'failed' ? data.errorMessage || undefined : undefined,
+        part: readPart(data.splitPart, data.order?.split?.parts),
       })
     } catch (err) {
       console.error('Kon betaalstatus niet ophalen', err)
@@ -135,6 +139,7 @@ export default function App() {
           qrCodeUrl: msg.qrCodeUrl,
           expiresAt: msg.expiresAt,
           status: msg.status,
+          part: readPart(msg.part?.index, msg.part?.of),
         })
       } else if (msg.type === 'status') {
         setStatus(msg.status)
@@ -204,6 +209,10 @@ export default function App() {
   )
 }
 
+function readPart(index: unknown, of: unknown): Payment['part'] {
+  return Number.isInteger(index) && Number.isInteger(of) && (index as number) >= 1 && (of as number) >= (index as number) ? { index: index as number, of: of as number } : null
+}
+
 // Waiting for the payment: the order on the left ("Jouw bestelling"), the
 // total and how to pay on the right — for Bancontact with the QR.
 function WaitingView({ payment, eventName, failed, countdownText }: { payment: Payment; eventName: string | null; failed: boolean; countdownText: string }) {
@@ -257,11 +266,14 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
               {payment.order?.eventName || eventName}
             </p>
           )}
-          <p className="text-xs font-semibold tracking-[0.1em] text-neutral-400 uppercase">Totaal te betalen</p>
+          <p className="text-xs font-semibold tracking-[0.1em] text-neutral-400 uppercase">
+            {payment.part ? `Te betalen · deel ${payment.part.index} van ${payment.part.of}` : 'Totaal te betalen'}
+          </p>
           <p className="mt-2 font-mono text-[56px] leading-none font-semibold tracking-tight tabular-nums">{formatEuro(bill.amountCents)}</p>
-          <p className="mt-3 text-[13.5px] text-neutral-400">
-            {bill.itemCount > 0 && `${bill.itemCount === 1 ? '1 item' : `${bill.itemCount} items`} · `}
-            {method}
+          <p className="mt-3 text-[13.5px] text-neutral-400" data-testid="cfd-summary">
+            {payment.part
+              ? `Nog open op de rekening: ${formatEuro(bill.openCents)} · ${method}`
+              : `${bill.itemCount > 0 ? `${bill.itemCount === 1 ? '1 item' : `${bill.itemCount} items`} · ` : ''}${method}`}
           </p>
         </div>
 
@@ -305,6 +317,11 @@ function PaidView({ payment, eventName, onTap }: { payment: Payment; eventName: 
       <p className="font-mono text-xl text-neutral-300">
         {formatEuro(payment.amountCents)} betaald · {method}
       </p>
+      {payment.part && (
+        <p className="text-base text-neutral-400" data-testid="cfd-part">
+          Deel {payment.part.index} van {payment.part.of}
+        </p>
+      )}
       {(payment.order?.eventName || eventName) && (
         <p className="mt-2 text-sm text-neutral-500" data-testid="cfd-event">
           {payment.order?.eventName || eventName}

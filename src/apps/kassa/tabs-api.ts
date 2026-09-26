@@ -2,7 +2,7 @@
 // see arcanum-backend/src/tabs.ts). Tabs live on the server and belong to
 // the org, so every kassa of the org sees the same open tabs — this module
 // just fetches; the server enforces every rule (open, no payment pending,
-// amount = outstanding).
+// amount at most what's outstanding).
 import { getDeviceId, getDeviceName } from '@/shared/device'
 
 export interface TabSummary {
@@ -19,6 +19,15 @@ export interface TabSummary {
   paidCents: number
   outstandingCents: number
   paymentPending: boolean
+  // "Gelijk verdelen" in progress: parts in the plan, how many are paid,
+  // and what the next part is (the last one takes the rounding).
+  split?: TabSplit | null
+}
+
+export interface TabSplit {
+  parts: number
+  paid: number
+  nextCents: number
 }
 
 export interface TabLine {
@@ -118,6 +127,11 @@ export function voidLine(orgId: string, tabId: string, lineId: string, reason: s
 
 export function renameTab(orgId: string, tabId: string, label: string) {
   return request<TabDetail>(orgId, `/${encodeURIComponent(tabId)}`, { method: 'PATCH', body: { label } })
+}
+
+// Split what's open now into `parts` equal payments; null stops splitting.
+export function setSplit(orgId: string, tabId: string, parts: number | null) {
+  return request<TabDetail>(orgId, `/${encodeURIComponent(tabId)}/split`, { method: 'POST', body: { parts } })
 }
 
 export function cancelTab(orgId: string, tabId: string, reason?: string) {
