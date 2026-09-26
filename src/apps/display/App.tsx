@@ -177,7 +177,7 @@ export default function App() {
               {eventName}
             </h1>
           )}
-          <p className="max-w-md text-xl text-muted-foreground">Klaar voor de volgende betaling</p>
+          <p className="max-w-md text-xl text-muted-foreground">Klaar voor de volgende bestelling</p>
         </div>
       )}
 

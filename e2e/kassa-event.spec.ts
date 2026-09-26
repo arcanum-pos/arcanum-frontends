@@ -110,7 +110,7 @@ test('a CFD on another device learns the event from the payment', async ({ page,
     await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
   })
   await page.goto('/display.html?terminal=cfd-e2e')
-  await expect(page.getByText('Klaar voor de volgende betaling')).toBeVisible()
+  await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()
   await expect(page.getByTestId('cfd-event')).toHaveCount(0)
 
   const tab = backend.openTab('Tafel 4', [{ name: 'Pintje', unitPriceCents: 250, quantity: 2 }])

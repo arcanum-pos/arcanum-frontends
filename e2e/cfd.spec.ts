@@ -21,7 +21,7 @@ async function openDisplay(page: Page, backend: FakeBackend) {
   const errors: string[] = []
   page.on('pageerror', (err) => errors.push(err.message))
   await page.goto('/display.html?terminal=cfd-e2e')
-  await expect(page.getByText('Klaar voor de volgende betaling')).toBeVisible()
+  await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()
   return { push: (msg: Record<string, unknown>) => sockets.forEach((ws) => ws.send(JSON.stringify(msg))), errors }
 }
 
@@ -55,7 +55,7 @@ test('same device: the kassa shows the order and the QR on the CFD, then "Bedank
   await expect(paid).toContainText('€ 27,00 betaald · Bancontact')
   await paid.click()
   await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
-  await expect(display.getByText('Klaar voor de volgende betaling')).toBeVisible()
+  await expect(display.getByText('Klaar voor de volgende bestelling')).toBeVisible()
   expect(cfd.errors).toEqual([])
 })
 
@@ -93,7 +93,7 @@ test('another device: the order comes with the charge status (tab name, lines ne
   await expect(page.getByTestId('cfd-paid')).toContainText('€ 41,50 betaald · Contant')
 
   cfd.push({ event: 'reset' })
-  await expect(page.getByText('Klaar voor de volgende betaling')).toBeVisible()
+  await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()
   expect(cfd.errors).toEqual([])
 })
 
