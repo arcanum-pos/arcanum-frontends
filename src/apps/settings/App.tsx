@@ -8,6 +8,7 @@ import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { LinkPanel } from './LinkPanel'
 import { ReaderPanel } from './ReaderPanel'
 import { CatalogPanel } from './CatalogPanel'
+import { EventPanel } from './EventPanel'
 import { SlotPanel } from './SlotPanel'
 import { useSourceUrl } from '@/shared/source-url'
 
@@ -89,6 +90,16 @@ export default function App() {
             </CardHeader>
             <CardContent>
               <CatalogPanel posOrgId={posOrgId} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Evenement</CardTitle>
+              <p className="text-sm text-muted-foreground">Optioneel: aan welk evenement de verkopen van deze kassa gekoppeld worden (voor de rapporten).</p>
+            </CardHeader>
+            <CardContent>
+              <EventPanel posOrgId={posOrgId} />
             </CardContent>
           </Card>
 

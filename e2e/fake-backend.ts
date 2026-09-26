@@ -91,6 +91,13 @@ interface Tab {
   openedDeviceName: string | null
   openedAt: string
   receiptNumber: number | null
+  eventId?: string | null
+}
+
+export interface FakeEvent {
+  id: string
+  name: string
+  date: string
 }
 
 export interface FakeCharge {
@@ -117,6 +124,7 @@ export class FakeBackend {
   lines: Line[] = []
   charges: FakeCharge[] = []
   catalogs: FakeCatalog[] = [standardCatalog()]
+  events: FakeEvent[] = []
   private tabCounter = 0
   private receiptCounter = 0
   // Runs right before the next charge is validated — simulates another
@@ -200,6 +208,8 @@ export class FakeBackend {
     const paidCents = charges.filter((c) => c.status === 'succeeded').reduce((s, c) => s + c.amountCents - c.tipCents, 0)
     return {
       ...tab,
+      eventId: tab.eventId ?? null,
+      eventName: this.events.find((e) => e.id === tab.eventId)?.name ?? null,
       totalCents,
       paidCents,
       outstandingCents: totalCents - paidCents,
@@ -251,6 +261,8 @@ export class FakeBackend {
       if (p.endsWith('/ws-token')) return { status: 200, body: { token: 'test-token' } }
       return { status: 200, body: { ok: true } }
     }
+
+    if (/^\/api\/organizations\/[^/]+\/events$/.test(p) && method === 'GET') return { status: 200, body: this.events }
 
     const catalogs = p.match(/^\/api\/organizations\/[^/]+\/catalogs(?:\/([^/]+)\/(kassa))?$/)
     if (catalogs && method === 'GET') return this.handleCatalogs(catalogs[1], catalogs[2])
@@ -333,9 +345,13 @@ export class FakeBackend {
         return { status: 200, body: this.tabs.filter((t) => t.status === status).sort((a, b) => b.number - a.number).map((t) => this.summary(t)) }
       }
       if (method === 'POST') {
+        if (body.eventId != null && !this.events.some((e) => e.id === body.eventId)) {
+          return { status: 400, body: { error: 'Onbekend evenement — kies het opnieuw in de instellingen van de kassa' } }
+        }
         const priced = body.lines?.length ? this.priceLines(body.lines, body.catalogId) : []
         if (typeof priced === 'string') return { status: 400, body: { error: priced } }
         const tab = this.openTab(body.label || '')
+        tab.eventId = body.eventId ?? null
         tab.openedDeviceName = body.deviceName || null
         if (priced.length) this.addOrder(tab.id, priced)
         return { status: 201, body: this.detail(tab) }
@@ -406,6 +422,7 @@ export class FakeBackend {
     return {
       label: detail.label,
       number: detail.number,
+      eventName: detail.eventName,
       lines: detail.lines
         .filter((l: any) => !l.voidsLineId && l.quantity - l.voidedQuantity > 0)
         .map((l: any) => ({ name: l.name, quantity: l.quantity - l.voidedQuantity, unitPriceCents: l.unitPriceCents })),

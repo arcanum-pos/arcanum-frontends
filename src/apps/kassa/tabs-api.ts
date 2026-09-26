@@ -9,6 +9,8 @@ export interface TabSummary {
   id: string
   number: number
   label: string
+  eventId?: string | null
+  eventName?: string | null
   status: 'open' | 'closed' | 'cancelled'
   openedDeviceName: string | null
   openedAt: string
@@ -91,10 +93,12 @@ export function getTab(orgId: string, tabId: string) {
 
 // catalogId: the catalog the draft's catalog lines were picked from — the
 // server prices them from it.
-export function createTab(orgId: string, label: string, slotId: string, lines: DraftLine[] = [], catalogId: string | null = null) {
+// eventId: the kassa's chosen event (Instellingen → Evenement), if any —
+// tags the tab and every sale paid on it.
+export function createTab(orgId: string, label: string, slotId: string, lines: DraftLine[] = [], catalogId: string | null = null, eventId: string | null = null) {
   return request<TabDetail>(orgId, '', {
     method: 'POST',
-    body: { label, slotId, ...device(), lines: lines.length > 0 ? toLineInputs(lines) : undefined, catalogId: catalogId || undefined },
+    body: { label, slotId, ...device(), lines: lines.length > 0 ? toLineInputs(lines) : undefined, catalogId: catalogId || undefined, eventId: eventId || undefined },
   })
 }
 

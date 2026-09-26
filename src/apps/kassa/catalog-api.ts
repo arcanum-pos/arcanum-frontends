@@ -40,3 +40,15 @@ export async function listCatalogs(orgId: string): Promise<CatalogSummary[]> {
   if (!res.ok) throw new Error(`Kon menukaarten niet laden (${res.status})`)
   return res.json()
 }
+
+export interface KassaEvent {
+  id: string
+  name: string
+  date: string
+}
+
+export async function listEvents(orgId: string): Promise<KassaEvent[]> {
+  const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/events`)
+  if (!res.ok) throw new Error(`Kon evenementen niet laden (${res.status})`)
+  return res.json()
+}

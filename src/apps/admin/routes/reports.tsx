@@ -301,8 +301,8 @@ function EmptyRow({ cols }: { cols: number }) {
 }
 
 // The raw payment list for the same period, optionally narrowed to one
-// event (nothing tags payments with an event yet, so that filter mostly
-// matters later).
+// event (a sale carries the event its kassa had chosen when the rekening
+// was opened — Instellingen → Evenement).
 function TransactionList({ orgId, bounds }: { orgId: string | null; bounds: { from: string; to: string } | null }) {
   const { data: events } = useAsync(() => (orgId ? listEvents(orgId) : Promise.resolve([])), [orgId])
   // '' = no explicit selection yet, ALL_EVENTS = "Alle events" chosen

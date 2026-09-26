@@ -85,6 +85,7 @@ export function customerOrderFromTab(tab: TabDetail): CustomerOrder {
   return {
     label: tab.label,
     number: tab.number,
+    eventName: tab.eventName ?? null,
     lines: tab.lines
       .filter((l) => !l.voidsLineId && netQuantity(l) > 0)
       .map((l) => ({ name: l.itemCode === FOOI_CODE ? 'Fooi' : l.name, quantity: netQuantity(l), unitPriceCents: l.unitPriceCents })),

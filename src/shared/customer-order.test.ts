@@ -48,11 +48,13 @@ describe('customerBill', () => {
 
 describe('readCustomerOrder', () => {
   it('keeps only well-formed lines and fields', () => {
-    expect(readCustomerOrder({ label: 'T', number: 1, lines: [{ name: 'A', quantity: 1, unitPriceCents: 100, secret: 'x' }, { name: 5 }, null] })).toEqual({
+    expect(readCustomerOrder({ label: 'T', number: 1, eventName: ' Fuif ', lines: [{ name: 'A', quantity: 1, unitPriceCents: 100, secret: 'x' }, { name: 5 }, null] })).toEqual({
       label: 'T',
       number: 1,
+      eventName: 'Fuif',
       lines: [{ name: 'A', quantity: 1, unitPriceCents: 100 }],
     })
+    expect(readCustomerOrder({ lines: [], eventName: 42 })?.eventName).toBeNull()
     expect(readCustomerOrder(null)).toBeNull()
     expect(readCustomerOrder({ lines: 'x' })).toBeNull()
   })

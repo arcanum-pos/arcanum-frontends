@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import kabouterLogo from '@/shared/assets/kabouter.png'
-import { getCatalogSelection, getDeviceId, getDeviceName, getSumupReader, setCatalogSelection } from '@/shared/device'
+import { getCatalogSelection, getDeviceId, getDeviceName, getEventSelection, getSumupReader, setCatalogSelection, setEventSelection, type EventSelection } from '@/shared/device'
 import {
   connectNotifications,
   getLinkedDevice,
@@ -26,7 +26,7 @@ import {
   type PaymentMethod,
   type PickerItem,
 } from './lib'
-import { fetchKassaCatalog, type KassaCatalog } from './catalog-api'
+import { fetchKassaCatalog, listEvents, type KassaCatalog } from './catalog-api'
 import { ItemPicker, type CatalogState } from './ItemPicker'
 import { PaymentStatus } from './PaymentStatus'
 import { NameDialog, VoidDialog } from './TabDialogs'
@@ -50,6 +50,10 @@ export default function App() {
   // What this kassa sells from: the device's chosen catalog, else the org
   // default (see loadCatalog).
   const [catalogState, setCatalogState] = useState<CatalogState>({ status: 'loading' })
+  // The event new rekeningen (and so their sales) are tagged with — optional.
+  const [event, setEvent] = useState<EventSelection | null>(() => getEventSelection())
+  const eventRef = useRef<EventSelection | null>(event)
+  eventRef.current = event
   const [notice, setNotice] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bancontact')
   // Fooi for the next payment, as typed (comma input). Added on top of the
@@ -103,6 +107,11 @@ export default function App() {
     channelRef.current?.postMessage(c ? { type: 'payment', ...c } : { type: 'reset' })
   }
 
+  // What a same-device CFD shows when idle (the event, if any).
+  function broadcastContext() {
+    channelRef.current?.postMessage({ type: 'context', eventName: eventRef.current?.name ?? null })
+  }
+
   function stopCountdown() {
     if (countdownTimerRef.current) clearInterval(countdownTimerRef.current)
     countdownTimerRef.current = null
@@ -137,6 +146,8 @@ export default function App() {
     // An entry vanished from the catalog since it was loaded — reload it
     // (the draft stays, so the cashier can see and fix what's refused).
     else if (err instanceof TabApiError && err.status === 400 && /menukaart/i.test(err.message)) loadCatalog()
+    // The chosen event is gone: check it again (drops it, with a notice).
+    else if (err instanceof TabApiError && err.status === 400 && /evenement/i.test(err.message)) loadEvent()
   }
 
   // --- Catalog ---
@@ -180,6 +191,32 @@ export default function App() {
     }
   }
 
+  // The event chosen in Instellingen (maybe in another window since): kept
+  // only while it still exists for the org, with its current name.
+  async function loadEvent() {
+    const chosen = getEventSelection()
+    const org = posOrgIdRef.current
+    if (!chosen || !org) {
+      setEvent(chosen)
+      return
+    }
+    try {
+      const current = (await listEvents(org)).find((e) => e.id === chosen.id)
+      if (!current) {
+        setEventSelection(null)
+        setEvent(null)
+        setNotice(`Het gekozen evenement "${chosen.name}" bestaat niet meer — verkopen worden niet meer aan een evenement gekoppeld.`)
+        return
+      }
+      const fresh = { id: current.id, name: current.name, date: current.date }
+      if (fresh.name !== chosen.name || fresh.date !== chosen.date) setEventSelection(fresh)
+      setEvent(fresh)
+    } catch (err) {
+      console.error('Kon evenementen niet laden', err)
+      setEvent(chosen)
+    }
+  }
+
   async function refreshTabs(): Promise<TabSummary[] | null> {
     const org = posOrgIdRef.current
     if (!org) return null
@@ -212,6 +249,7 @@ export default function App() {
   // meantime and falls back to Toog.
   async function refreshAll() {
     loadCatalog()
+    loadEvent()
     const list = await refreshTabs()
     const key = activeRef.current
     if (list && key !== 'quick' && !list.some((t) => t.id === key) && !currentRef.current) {
@@ -290,7 +328,7 @@ export default function App() {
       }
       // 'park' moves the Toog draft onto a new named tab as its first order.
       const lines = mode === 'park' ? drafts.quick || [] : []
-      const tab = await tabsApi.createTab(org, name, getCurrentSlotId(), lines, catalogRef.current?.id ?? null)
+      const tab = await tabsApi.createTab(org, name, getCurrentSlotId(), lines, catalogRef.current?.id ?? null, eventRef.current?.id ?? null)
       if (mode === 'park') setDraftFor('quick', [])
       await refreshTabs()
       setActive(tab.id)
@@ -329,7 +367,7 @@ export default function App() {
     runTabAction(async (org) => {
       let tab: TabDetail
       if (key === 'quick') {
-        tab = await tabsApi.createTab(org, QUICK_SALE_LABEL, getCurrentSlotId(), draft, catalogRef.current?.id ?? null)
+        tab = await tabsApi.createTab(org, QUICK_SALE_LABEL, getCurrentSlotId(), draft, catalogRef.current?.id ?? null, eventRef.current?.id ?? null)
         setDraftFor('quick', [])
         // From here on it's a real tab: if the payment fails or is
         // cancelled, it stays open in the strip to retry, void or close.
@@ -626,6 +664,7 @@ export default function App() {
     if (!orgId) return
     refreshTabs()
     loadCatalog()
+    loadEvent()
     function onVisible() {
       if (document.visibilityState === 'visible') refreshAll()
     }
@@ -644,13 +683,21 @@ export default function App() {
     channel.onmessage = (event) => {
       const msg = event.data
       if (!msg) return
-      if (msg.type === 'request-state') broadcastCurrent()
+      if (msg.type === 'request-state') {
+        broadcastContext()
+        broadcastCurrent()
+      }
       // The CFD's success overlay was tapped — only meaningful once paid.
       else if (msg.type === 'reset-requested' && currentRef.current && isPaymentResolved(currentRef.current)) finishPayment()
     }
     return () => channel.close()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    broadcastContext()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event?.name])
 
   const showConfirmButton = current !== null && current.status !== 'RESOLVED'
   const draftKeys = new Set(Object.keys(drafts))
@@ -670,7 +717,18 @@ export default function App() {
               {initials(orgName) || <img src={kabouterLogo} alt="" className="size-4 invert dark:invert-0" />}
             </div>
             <div className="flex min-w-0 flex-col gap-px">
-              <span className="truncate text-[14.5px] font-semibold tracking-tight">{orgName || 'Kassa'}</span>
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-[14.5px] font-semibold tracking-tight">{orgName || 'Kassa'}</span>
+                {event && (
+                  <span
+                    className="shrink-0 rounded-md border bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold tracking-[0.01em] text-foreground/80"
+                    title="Verkopen worden aan dit evenement gekoppeld (Instellingen → Evenement)"
+                    data-testid="kassa-event"
+                  >
+                    {event.name}
+                  </span>
+                )}
+              </div>
               <span className="truncate text-[11.5px] text-muted-foreground">
                 {[getDeviceName(), catalogName && `Menukaart ${catalogName}`, terminalIdLabel && `POS ${terminalIdLabel.slice(0, 8)}`].filter(Boolean).join(' · ')}
               </span>

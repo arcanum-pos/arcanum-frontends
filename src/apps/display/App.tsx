@@ -33,6 +33,9 @@ interface Payment {
 
 export default function App() {
   const [payment, setPayment] = useState<Payment | null>(null)
+  // The event the kassa sells for, if any: from a same-device kassa, or
+  // learned from the last payment's order (a CFD on another device).
+  const [eventName, setEventName] = useState<string | null>(null)
   const [countdownText, setCountdownText] = useState('')
   const [terminalHint, setTerminalHint] = useState('')
   const [linkedHint, setLinkedHint] = useState('')
@@ -45,6 +48,7 @@ export default function App() {
   // A newer message about the same payment keeps what it doesn't repeat
   // (e.g. a status-only update keeps the order and the QR).
   function showPayment(next: Partial<Payment> & { method: string }) {
+    if (next.order?.eventName) setEventName(next.order.eventName)
     setPayment((prev) => ({
       method: next.method,
       amountCents: next.amountCents ?? prev?.amountCents ?? 0,
@@ -136,6 +140,8 @@ export default function App() {
         setStatus(msg.status)
       } else if (msg.type === 'reset') {
         showIdle()
+      } else if (msg.type === 'context') {
+        setEventName(typeof msg.eventName === 'string' && msg.eventName.trim() ? msg.eventName.trim() : null)
       }
     }
 
@@ -165,14 +171,19 @@ export default function App() {
   return (
     <div className="relative flex min-h-svh flex-col bg-background text-foreground">
       {!payment && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-          <p className="max-w-md text-center text-xl text-muted-foreground">Klaar voor de volgende betaling</p>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+          {eventName && (
+            <h1 className="text-[38px] font-semibold tracking-tight" data-testid="cfd-event">
+              {eventName}
+            </h1>
+          )}
+          <p className="max-w-md text-xl text-muted-foreground">Klaar voor de volgende betaling</p>
         </div>
       )}
 
-      {payment && phase !== 'paid' && <WaitingView payment={payment} failed={phase === 'failed'} countdownText={countdownText} />}
+      {payment && phase !== 'paid' && <WaitingView payment={payment} eventName={eventName} failed={phase === 'failed'} countdownText={countdownText} />}
 
-      {payment && phase === 'paid' && <PaidView payment={payment} onTap={() => channelRef.current?.postMessage({ type: 'reset-requested' })} />}
+      {payment && phase === 'paid' && <PaidView payment={payment} eventName={eventName} onTap={() => channelRef.current?.postMessage({ type: 'reset-requested' })} />}
 
       <button
         type="button"
@@ -195,7 +206,7 @@ export default function App() {
 
 // Waiting for the payment: the order on the left ("Jouw bestelling"), the
 // total and how to pay on the right — for Bancontact with the QR.
-function WaitingView({ payment, failed, countdownText }: { payment: Payment; failed: boolean; countdownText: string }) {
+function WaitingView({ payment, eventName, failed, countdownText }: { payment: Payment; eventName: string | null; failed: boolean; countdownText: string }) {
   const bill = customerBill(payment.order, payment.amountCents, payment.tipCents)
   const method = METHOD_LABELS[payment.method] || payment.method
   const showQr = payment.method === 'bancontact' && !!payment.qrCodeUrl && !failed
@@ -241,6 +252,11 @@ function WaitingView({ payment, failed, countdownText }: { payment: Payment; fai
 
       <section className={cn('flex flex-col justify-between gap-8 p-8 text-neutral-50', bill.lines.length > 0 ? 'md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%]' : 'flex-1 items-center justify-center text-center')}>
         <div>
+          {(payment.order?.eventName || eventName) && (
+            <p className="mb-6 truncate text-sm font-medium text-neutral-400" data-testid="cfd-event">
+              {payment.order?.eventName || eventName}
+            </p>
+          )}
           <p className="text-xs font-semibold tracking-[0.1em] text-neutral-400 uppercase">Totaal te betalen</p>
           <p className="mt-2 font-mono text-[56px] leading-none font-semibold tracking-tight tabular-nums">{formatEuro(bill.amountCents)}</p>
           <p className="mt-3 text-[13.5px] text-neutral-400">
@@ -274,7 +290,7 @@ function WaitingView({ payment, failed, countdownText }: { payment: Payment; fai
 
 // Paid: a calm confirmation (design_files' "Bedankt!"), not a pop-up. A tap
 // tells a same-device kassa the customer is done (it moves on to the next).
-function PaidView({ payment, onTap }: { payment: Payment; onTap: () => void }) {
+function PaidView({ payment, eventName, onTap }: { payment: Payment; eventName: string | null; onTap: () => void }) {
   const method = METHOD_LABELS[payment.method] || payment.method
   return (
     <div
@@ -289,6 +305,11 @@ function PaidView({ payment, onTap }: { payment: Payment; onTap: () => void }) {
       <p className="font-mono text-xl text-neutral-300">
         {formatEuro(payment.amountCents)} betaald · {method}
       </p>
+      {(payment.order?.eventName || eventName) && (
+        <p className="mt-2 text-sm text-neutral-500" data-testid="cfd-event">
+          {payment.order?.eventName || eventName}
+        </p>
+      )}
     </div>
   )
 }

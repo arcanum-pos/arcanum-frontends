@@ -11,6 +11,8 @@ export interface CustomerOrderLine {
 export interface CustomerOrder {
   label: string
   number: number | null
+  // The event the tab is tagged with, if any.
+  eventName?: string | null
   lines: CustomerOrderLine[]
 }
 
@@ -49,10 +51,15 @@ export function customerBill(order: CustomerOrder | null | undefined, amountCent
 // Only what the CFD can safely show — anything else from the wire is dropped.
 export function readCustomerOrder(value: unknown): CustomerOrder | null {
   if (!value || typeof value !== 'object') return null
-  const v = value as { label?: unknown; number?: unknown; lines?: unknown }
+  const v = value as { label?: unknown; number?: unknown; eventName?: unknown; lines?: unknown }
   if (!Array.isArray(v.lines)) return null
   const lines = v.lines
     .filter((l): l is CustomerOrderLine => !!l && typeof l.name === 'string' && Number.isInteger(l.quantity) && Number.isInteger(l.unitPriceCents))
     .map((l) => ({ name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents }))
-  return { label: typeof v.label === 'string' ? v.label : '', number: Number.isInteger(v.number) ? (v.number as number) : null, lines }
+  return {
+    label: typeof v.label === 'string' ? v.label : '',
+    number: Number.isInteger(v.number) ? (v.number as number) : null,
+    eventName: typeof v.eventName === 'string' && v.eventName.trim() ? v.eventName.trim() : null,
+    lines,
+  }
 }

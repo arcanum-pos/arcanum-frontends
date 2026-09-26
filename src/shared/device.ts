@@ -102,3 +102,33 @@ export function setCatalogSelection(selection: CatalogSelection | null): void {
     localStorage.removeItem(CATALOG_KEY)
   }
 }
+
+// Which event (evenement) this kassa's sales are tagged with — set from
+// Settings' Evenement panel, optional (none = no tag). A reporting tag only
+// (DOMAIN_MODEL.md decision 1): it goes on each tab when it opens, and from
+// there on every sale paid on it. Per-browser, not synced.
+const EVENT_KEY = 'arcanum-event'
+
+export interface EventSelection {
+  id: string
+  name: string
+  date: string
+}
+
+export function getEventSelection(): EventSelection | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(EVENT_KEY) || 'null')
+    return value && typeof value.id === 'string' && typeof value.name === 'string' ? value : null
+  } catch (err) {
+    console.error('Kon gekozen evenement niet laden', err)
+    return null
+  }
+}
+
+export function setEventSelection(selection: EventSelection | null): void {
+  if (selection) {
+    localStorage.setItem(EVENT_KEY, JSON.stringify(selection))
+  } else {
+    localStorage.removeItem(EVENT_KEY)
+  }
+}
