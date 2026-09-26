@@ -1,4 +1,5 @@
 import { expect, panel, test } from './fixtures'
+import { fakeEntry } from './fake-backend'
 
 // What the kassa's layout shows at a glance (styled after design_files/):
 // how many of a product are already on the order, the Toog draft's amount
@@ -33,4 +34,35 @@ test('the payment method is a real radio group, styled as tiles', async ({ kassa
   await expect(kassa.getByRole('radio', { name: 'Contant' })).toBeChecked()
   await kassa.getByRole('radio', { name: 'Contant' }).press('ArrowRight')
   await expect(kassa.getByRole('radio', { name: 'SumUp' })).toBeChecked()
+})
+
+// Safari once showed each group card cut off after its first row (a
+// mis-sized card clipping its rows) until hovered. Every card must fit all
+// its rows, also on a wide screen with several groups side by side.
+test('every group card shows all its rows, on a wide screen too', async ({ kassa, page, backend }) => {
+  const e = (name: string, cents: number) => fakeEntry(`v-${name.replace(/\W/g, '')}`, name, cents, null)
+  backend.catalogs = [
+    {
+      id: 'c-rest',
+      name: 'Restaurant',
+      isDefault: true,
+      archived: false,
+      sections: [
+        { id: 's-drank', name: 'Drank', entries: ['Duvel', 'Pintje', 'Palm', 'Frisdrank', 'Fruitsap'].map((n) => e(n, 250)) },
+        { id: 's-menu', name: 'Menu', entries: ['normaal', 'jeugd', 'kind'].flatMap((v) => ['Steak', 'Vol-au-vent', 'Witloof'].map((p) => e(`${p} (${v})`, 3000))) },
+        { id: 's-dessert', name: 'Dessert', entries: ['Dame blanche', 'Tiramisu', 'Kinderdessert', 'Koffiekoek'].map((n) => e(n, 600)) },
+      ],
+    },
+  ]
+  for (const width of [2000, 1280]) {
+    await page.setViewportSize({ width, height: 1100 })
+    await kassa.reload()
+    await expect(kassa.getByRole('button', { name: /^Witloof \(kind\)/ })).toBeInViewport()
+    for (const last of ['Fruitsap', 'Witloof (kind)', 'Koffiekoek']) {
+      const card = kassa.locator('section').filter({ hasText: last })
+      const row = kassa.getByRole('button', { name: new RegExp(`^${last.replace(/[()]/g, '\\$&')}`) })
+      const [c, r] = [await card.boundingBox(), await row.boundingBox()]
+      expect(r!.y + r!.height, `${last} inside its card at ${width}px`).toBeLessThanOrEqual(c!.y + c!.height + 1)
+    }
+  }
 })

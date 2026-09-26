@@ -33,13 +33,15 @@ export function ItemPicker({
   if (catalogState.status === 'error') return <p className="text-sm font-medium text-destructive">{catalogState.message}</p>
 
   return (
-    <div className="grid items-start gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]">
+    // Plain auto-fill tracks, like the design (no min()/percentages — Safari
+    // mis-sized the cards' height with those, showing one row until hover).
+    <div className="grid items-start gap-3 sm:[grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
       {catalogState.catalog.sections.map((section) => {
         const quick = section.entries.filter((e) => e.quickQuantities?.length)
         const plain = section.entries.filter((e) => !e.quickQuantities?.length)
         return (
-          <section key={section.id} className={cn('overflow-hidden rounded-xl border bg-card', quick.length > 0 && 'col-span-full')}>
-            <div className="flex items-center justify-between border-b bg-muted/40 px-3.5 py-2.5">
+          <section key={section.id} className={cn('rounded-xl border bg-card', quick.length > 0 && 'col-span-full')}>
+            <div className="flex items-center justify-between rounded-t-xl border-b bg-muted/40 px-3.5 py-2.5">
               <h2 className="text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{section.name}</h2>
               <span className="font-mono text-[11px] text-muted-foreground" aria-hidden="true">
                 {section.entries.length}
@@ -68,7 +70,7 @@ function EntryRow({ entry, quantity, disabled, onAdd }: { entry: KassaEntry; qua
       type="button"
       disabled={disabled}
       onClick={() => onAdd(entryToPickerItem(entry), 1)}
-      className="flex min-h-12 w-full items-center gap-2.5 border-b border-border/60 px-3.5 py-2.5 text-left transition-colors outline-none last:border-b-0 hover:bg-muted/60 focus-visible:bg-muted active:bg-muted disabled:opacity-50"
+      className="flex min-h-12 w-full items-center gap-2.5 border-b border-border/60 px-3.5 py-2.5 text-left transition-colors outline-none last:rounded-b-xl last:border-b-0 hover:bg-muted/60 focus-visible:bg-muted active:bg-muted disabled:opacity-50"
     >
       {/* Already on the order: "2×" — decorative, the ticket lists it too. */}
       <span

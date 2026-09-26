@@ -17,7 +17,11 @@ export default defineConfig({
     viewport: { width: 1280, height: 900 },
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  // WebKit too: the kassa is used in Safari (run `npx playwright install webkit` once).
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' } },
+    { name: 'webkit', use: { browserName: 'webkit' } },
+  ],
   webServer: {
     command: `npx vite build && npx vite preview --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}/kassa.html`,

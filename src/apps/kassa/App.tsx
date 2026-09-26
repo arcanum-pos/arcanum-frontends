@@ -708,9 +708,13 @@ export default function App() {
         )}
 
         {!current && (
-          <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_392px]">
-            <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} />
-            <div className="lg:sticky lg:top-4">
+          // Flex like the design, not a grid with an fr track: Safari
+          // mis-sized the nested product grid's rows inside that.
+          <div className="flex flex-col items-start gap-4 lg:flex-row">
+            <div className="w-full min-w-0 lg:flex-1">
+              <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} />
+            </div>
+            <div className="w-full lg:sticky lg:top-4 lg:w-[392px] lg:shrink-0">
               <TabPanel
                 title={panelTitle}
                 subtitle={panelSubtitle}
