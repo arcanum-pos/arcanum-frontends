@@ -15,6 +15,8 @@ export interface CustomerOrder {
   eventName?: string | null
   // Already paid on this tab before this payment (split payments).
   paidCents?: number | null
+  // Per item: the units this payment covers (null = the whole rekening or an equal part).
+  paying?: CustomerOrderLine[] | null
   lines: CustomerOrderLine[]
 }
 
@@ -62,16 +64,20 @@ export function customerBill(order: CustomerOrder | null | undefined, amountCent
 // Only what the CFD can safely show — anything else from the wire is dropped.
 export function readCustomerOrder(value: unknown): CustomerOrder | null {
   if (!value || typeof value !== 'object') return null
-  const v = value as { label?: unknown; number?: unknown; eventName?: unknown; paidCents?: unknown; lines?: unknown }
+  const v = value as { label?: unknown; number?: unknown; eventName?: unknown; paidCents?: unknown; paying?: unknown; lines?: unknown }
   if (!Array.isArray(v.lines)) return null
-  const lines = v.lines
-    .filter((l): l is CustomerOrderLine => !!l && typeof l.name === 'string' && Number.isInteger(l.quantity) && Number.isInteger(l.unitPriceCents))
-    .map((l) => ({ name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents }))
+  const readLines = (list: unknown[]) =>
+    list
+      .filter((l): l is CustomerOrderLine => !!l && typeof (l as CustomerOrderLine).name === 'string' && Number.isInteger((l as CustomerOrderLine).quantity) && Number.isInteger((l as CustomerOrderLine).unitPriceCents))
+      .map((l) => ({ name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents }))
+  const lines = readLines(v.lines)
+  const paying = Array.isArray(v.paying) && v.paying.length ? readLines(v.paying) : null
   return {
     label: typeof v.label === 'string' ? v.label : '',
     number: Number.isInteger(v.number) ? (v.number as number) : null,
     eventName: typeof v.eventName === 'string' && v.eventName.trim() ? v.eventName.trim() : null,
     paidCents: Number.isInteger(v.paidCents) ? (v.paidCents as number) : null,
+    paying,
     lines,
   }
 }

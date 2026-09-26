@@ -12,10 +12,14 @@ import {
   unlinkTerminal,
 } from '@/shared/terminal'
 import { getCurrentSlotId } from '@/shared/slots'
+import { formatEuro } from '@/shared/format'
 import {
   addToDraft,
   clampTip,
   customerOrderFromTab,
+  selectionCents,
+  selectionLines,
+  type ItemSelection,
   draftTotalCents,
   isPaymentResolved,
   MANUAL_METHOD_LABELS,
@@ -80,6 +84,10 @@ export default function App() {
   const [nameDialog, setNameDialog] = useState<NameDialogMode | null>(null)
   const [voidTarget, setVoidTarget] = useState<TabLine | null>(null)
   const [splitDialogOpen, setSplitDialogOpen] = useState(false)
+  // Split per item: on which rekening, and the units picked for the next payment.
+  const [itemMode, setItemMode] = useState<{ tabId: string; selection: ItemSelection } | null>(null)
+  const itemModeRef = useRef(itemMode)
+  itemModeRef.current = itemMode
 
   const currentRef = useRef<CurrentPayment | null>(null)
   const catalogRef = useRef<KassaCatalog | null>(null)
@@ -396,6 +404,16 @@ export default function App() {
     })
   }
 
+  // Per item: each person pays what they had, picked on the ticket.
+  function startItems() {
+    setSplitDialogOpen(false)
+    const key = active
+    runTabAction(async (org) => {
+      const tab = await submitDraftFirst(org, key)
+      setItemMode({ tabId: tab.id, selection: {} })
+    })
+  }
+
   function stopSplit() {
     if (!shownTab) return
     const tabId = shownTab.id
@@ -410,6 +428,15 @@ export default function App() {
     const tipCents = clampTip(readAmountCents(tipInput))
     runTabAction(async (org) => {
       const tab = await submitDraftFirst(org, key)
+      const items = itemModeRef.current?.tabId === tab.id ? itemModeRef.current.selection : null
+      if (items) {
+        if (selectionCents(tab, items) < 1) {
+          setError('Kies eerst wat deze persoon betaalt.')
+          return
+        }
+        await startCharge(org, tab, tipCents, items)
+        return
+      }
 
       if (tab.outstandingCents < 1) {
         setError('Niets te betalen op deze rekening.')
@@ -421,16 +448,26 @@ export default function App() {
 
   // Charges what's outstanding — or, while split, the next part — plus the
   // tip. The server refuses more than what's open.
-  async function startCharge(org: string, tab: TabDetail, tipCents: number) {
-    const split = tab.split ?? null
-    const amountCents = (split ? split.nextCents : tab.outstandingCents) + tipCents
+  // Per item (`items`): exactly the picked units — sent as lines, the server
+  // checks they cost the amount and aren't paid yet.
+  async function startCharge(org: string, tab: TabDetail, tipCents: number, items: ItemSelection | null = null) {
+    const picked = items ? selectionLines(tab, items) : null
+    const split = picked ? null : (tab.split ?? null)
+    const amountCents = (picked ? selectionCents(tab, items!) : split ? split.nextCents : tab.outstandingCents) + tipCents
     const part = split ? { index: Math.min(split.paid + 1, split.parts), of: split.parts } : undefined
-    const breakdown = tabBreakdownLines(tab, tipCents)
-    const order = customerOrderFromTab(tab)
+    const remainsOpen = amountCents - tipCents < tab.outstandingCents
+    const breakdown = picked
+      ? [...picked.map((x) => `${x.quantity} × ${x.line.name}`), ...(tipCents > 0 ? [`Fooi = ${formatEuro(tipCents)}`] : [])]
+      : tabBreakdownLines(tab, tipCents)
+    const order = {
+      ...customerOrderFromTab(tab),
+      paying: picked ? picked.map((x) => ({ name: x.line.name, quantity: x.quantity, unitPriceCents: x.line.unitPriceCents })) : null,
+    }
     const common = {
       amount: amountCents,
       tipCents,
       splitPart: split ? true : undefined,
+      lines: picked ? picked.map((x) => ({ lineId: x.line.id, quantity: x.quantity })) : undefined,
       orgId: org,
       tabId: tab.id,
       posTerminalId: posTerminalIdRef.current || undefined,
@@ -460,6 +497,7 @@ export default function App() {
         breakdown,
         order,
         part,
+        remainsOpen,
       })
       broadcastCurrent()
       startCountdown(data.expiresAt)
@@ -490,6 +528,7 @@ export default function App() {
       breakdown,
       order,
       part,
+      remainsOpen,
       dispatchedToReader: !!readerId,
     })
     setManualStatusText(MANUAL_METHOD_LABELS[method].waiting)
@@ -600,7 +639,12 @@ export default function App() {
     }
     tabsApi
       .getTab(org, tabId)
-      .then((tab) => selectTab(tab.status === 'open' && tab.outstandingCents > 0 ? tab.id : 'quick'))
+      .then((tab) => {
+        const more = tab.status === 'open' && tab.outstandingCents > 0
+        // Per item: the next person starts with nothing picked.
+        setItemMode((m) => (m && m.tabId === tabId && more ? { tabId, selection: {} } : m && m.tabId === tabId ? null : m))
+        selectTab(more ? tab.id : 'quick')
+      })
       .catch(() => selectTab('quick'))
   }
 
@@ -831,7 +875,7 @@ export default function App() {
           // mis-sized the nested product grid's rows inside that.
           <div className="flex flex-col items-start gap-4 lg:flex-row">
             <div className="w-full min-w-0 lg:flex-1">
-              <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} onRemove={removeItem} />
+              <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
             </div>
             <div className="w-full lg:sticky lg:top-4 lg:w-[392px] lg:shrink-0">
               <TabPanel
@@ -855,6 +899,9 @@ export default function App() {
                 onRefresh={refreshAll}
                 onSplit={() => setSplitDialogOpen(true)}
                 onStopSplit={stopSplit}
+                itemSelection={itemMode && shownTab && itemMode.tabId === shownTab.id ? itemMode.selection : null}
+                onItemSelection={(selection) => setItemMode((m) => (m ? { ...m, selection } : m))}
+                onStopItems={() => setItemMode(null)}
               />
             </div>
           </div>
@@ -890,6 +937,7 @@ export default function App() {
         open={splitDialogOpen}
         openCents={(shownTab?.outstandingCents || 0) + draftTotalCents(draft)}
         onConfirm={startSplit}
+        onItems={startItems}
         onClose={() => setSplitDialogOpen(false)}
       />
       <VoidDialog key={voidTarget?.id ?? 'closed'} line={voidTarget} onConfirm={confirmVoid} onClose={() => setVoidTarget(null)} />

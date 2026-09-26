@@ -112,6 +112,8 @@ export interface FakeCharge {
   tipCents: number
   // Which part of an equal split (1-based), 0 = not a part.
   splitPart?: number
+  // Per item: the units this payment covers.
+  lines?: { lineId: string; quantity: number }[]
   // Every charge body as the kassa sent it, for assertions.
   body?: any
 }
@@ -229,6 +231,11 @@ export class FakeBackend {
     }
   }
 
+  // Units of a line covered by succeeded item payments.
+  paidUnits(lineId: string): number {
+    return this.charges.filter((c) => c.status === 'succeeded').reduce((sum, c) => sum + (c.lines?.find((l) => l.lineId === lineId)?.quantity || 0), 0)
+  }
+
   private detail(tab: Tab) {
     const lines = this.tabLines(tab.id)
     return {
@@ -236,6 +243,7 @@ export class FakeBackend {
       lines: lines.map((l) => ({
         ...l,
         voidedQuantity: -lines.filter((v) => v.voidsLineId === l.id).reduce((s, v) => s + v.quantity, 0),
+        paidQuantity: this.paidUnits(l.id),
       })),
     }
   }
@@ -303,7 +311,10 @@ export class FakeBackend {
           method: c.method,
           qrCodeUrl: c.method === 'bancontact' ? QR_URL : null,
           expiresAt: null,
-          order: c.tabId ? this.customerOrder(c.tabId) : null,
+          order: c.tabId ? { ...this.customerOrder(c.tabId), paying: c.lines?.length ? c.lines.map((pick) => {
+            const l = this.lines.find((x) => x.id === pick.lineId)!
+            return { name: l.name, quantity: pick.quantity, unitPriceCents: l.unitPriceCents }
+          }) : null } : null,
           splitPart: c.splitPart || null,
         },
       }
@@ -410,6 +421,9 @@ export class FakeBackend {
       const remaining = original.quantity + this.lines.filter((v) => v.voidsLineId === lineId).reduce((s, v) => s + v.quantity, 0)
       const quantity = body.quantity ?? remaining
       if (!this.writable(tab.id) || quantity < 1 || quantity > remaining) return this.refusal(tab.id)
+      if (quantity > remaining - this.paidUnits(lineId)) {
+        return { status: 409, body: { error: 'Deze stuks zijn al betaald — ze kunnen niet meer geannuleerd worden', tab: this.summary(tab) } }
+      }
       const s = this.summary(tab)
       if (s.totalCents - quantity * original.unitPriceCents < s.paidCents) {
         return { status: 409, body: { error: 'Er is al een deel betaald — annuleren zou meer terugbetalen dan er open staat', tab: s } }
@@ -474,12 +488,22 @@ export class FakeBackend {
       if (s.paymentPending) return { status: 409, body: { error: 'Er loopt al een betaling voor deze rekening', tab: s } }
       // The kassa's intent, checked exactly (like the backend's prepareTabCharge).
       const pays = body.amount - tipCents
-      const expected = body.splitPart === true ? pays === s.split?.nextCents : body.partial === true ? pays >= 1 && pays <= s.outstandingCents : pays === s.outstandingCents
+      if (body.lines !== undefined) {
+        const detail = this.detail(this.tab(tabId)!) as any
+        let cents = 0
+        for (const pick of body.lines as { lineId: string; quantity: number }[]) {
+          const l = detail.lines.find((x: any) => x.id === pick.lineId && !x.voidsLineId)
+          if (!l || pick.quantity > l.quantity - l.voidedQuantity - l.paidQuantity) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', tab: s } }
+          cents += pick.quantity * l.unitPriceCents
+        }
+        if (cents !== pays) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', tab: s } }
+      }
+      const expected = body.lines !== undefined ? pays >= 1 && pays <= s.outstandingCents : body.splitPart === true ? pays === s.split?.nextCents : body.partial === true ? pays >= 1 && pays <= s.outstandingCents : pays === s.outstandingCents
       if (!expected) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', tab: s } }
     }
     const tab = tabId ? this.tab(tabId) : undefined
     const splitPart = body.splitPart === true && tab?.splitParts ? (tab.splitPaid || 0) + 1 : 0
-    const charge: FakeCharge = { id: nextId('charge'), tabId, method, status: 'pending', amountCents: body.amount, tipCents, splitPart, body }
+    const charge: FakeCharge = { id: nextId('charge'), tabId, method, status: 'pending', amountCents: body.amount, tipCents, splitPart, lines: body.lines, body }
     this.charges.push(charge)
     if (method === 'bancontact') {
       return { status: 201, body: { chargeId: charge.id, status: 'PENDING', amount: body.amount, expiresAt: new Date(Date.now() + 120_000).toISOString(), qrCodeUrl: QR_URL } }

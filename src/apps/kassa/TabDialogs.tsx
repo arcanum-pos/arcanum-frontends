@@ -71,7 +71,8 @@ export function VoidDialog({
   onConfirm: (line: TabLine, reason: string, quantity: number) => void
   onClose: () => void
 }) {
-  const remaining = line ? netQuantity(line) : 0
+  // Not what's already paid per item: those units can't be cancelled.
+  const remaining = line ? netQuantity(line) - (line.paidQuantity || 0) : 0
   // Fresh state per line — the caller remounts this via `key`.
   const [reason, setReason] = useState('')
   const [quantity, setQuantity] = useState(remaining)

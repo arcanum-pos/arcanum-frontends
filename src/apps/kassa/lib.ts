@@ -1,7 +1,7 @@
 import { formatEuro } from '@/shared/format'
 import type { CustomerOrder } from '@/shared/customer-order'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
-import type { DraftLine, TabDetail } from './tabs-api'
+import type { DraftLine, TabDetail, TabLine } from './tabs-api'
 import { netQuantity } from './tabs-api'
 
 // A tappable item: a catalog entry. The server prices it from the catalog
@@ -138,6 +138,8 @@ export interface CurrentPayment {
   tipCents: number
   // One part of an equal split ("deel 2 van 3"); absent for a full payment.
   part?: { index: number; of: number }
+  // Something stays open on the rekening after this payment (a part, or an item payment).
+  remainsOpen?: boolean
   // True once a SumUp charge was actually sent to a physical reader — then
   // cancelling here can't stop the customer from still paying on it, so
   // the charge is left for the reader/poller to resolve.
@@ -236,3 +238,30 @@ export function splitPreviewText(cents: number, parts: number): string {
 }
 
 export const MAX_SPLIT_PARTS = 50
+
+// --- Split per item ---
+
+// Units of a submitted line that can still be paid per item: not voided,
+// not paid yet.
+export function payableUnits(line: TabLine): number {
+  return line.voidsLineId ? 0 : Math.max(0, netQuantity(line) - (line.paidQuantity || 0))
+}
+
+// A selection is { lineId: units }; only units that are still payable count.
+export type ItemSelection = Record<string, number>
+
+export function selectionLines(tab: TabDetail, selection: ItemSelection): { line: TabLine; quantity: number }[] {
+  return tab.lines
+    .filter((l) => !l.voidsLineId)
+    .map((line) => ({ line, quantity: Math.min(selection[line.id] || 0, payableUnits(line)) }))
+    .filter((x) => x.quantity > 0)
+}
+
+export function selectionCents(tab: TabDetail, selection: ItemSelection): number {
+  return selectionLines(tab, selection).reduce((sum, x) => sum + x.quantity * x.line.unitPriceCents, 0)
+}
+
+// "Alles wat open is": every unit still payable.
+export function selectAllPayable(tab: TabDetail): ItemSelection {
+  return Object.fromEntries(tab.lines.filter((l) => payableUnits(l) > 0).map((l) => [l.id, payableUnits(l)]))
+}

@@ -134,3 +134,118 @@ test('the CFD shows the part and what stays open', async ({ kassa, backend }) =>
   await kassa.getByRole('button', { name: 'Bevestig ontvangst contant geld' }).click()
   await expect(display.getByTestId('cfd-part')).toHaveText('Deel 2 van 2')
 })
+
+// --- Step 2: per item ---
+
+async function tafel5(kassa: Page, backend: import('./fake-backend').FakeBackend) {
+  const tab = backend.openTab('Tafel 5', [
+    { name: 'Pintje', unitPriceCents: 250, quantity: 3 },
+    { name: 'Steak', unitPriceCents: 3400, quantity: 1 },
+    { name: 'Water', unitPriceCents: 200, quantity: 2 },
+  ])
+  await kassa.reload()
+  await kassa.getByRole('button', { name: /^#1 Tafel 5/ }).click()
+  await panel(kassa).getByRole('button', { name: 'Splitsen', exact: true }).click()
+  const dialog = kassa.getByRole('dialog')
+  await dialog.getByRole('tab', { name: 'Per item' }).click()
+  await dialog.getByRole('button', { name: 'Items kiezen' }).click()
+  await expect(panel(kassa).getByTestId('items-banner')).toBeVisible()
+  return tab
+}
+
+const itemRow = (kassa: Page, name: string) => panel(kassa).getByTestId('item-row').filter({ hasText: name })
+
+test('per item: each person pays what they had; paid units stay marked; "Alles wat open is" pays the rest', async ({ kassa, backend }) => {
+  const tab = await tafel5(kassa, backend)
+  const pay = panel(kassa).getByRole('button', { name: /^Afrekenen selectie/ })
+  await expect(pay).toBeDisabled()
+  // Products can't be added while picking.
+  await expect(kassa.getByRole('button', { name: '5 × Bon', exact: true })).toBeDisabled()
+
+  // Person 1: the steak and one pintje.
+  await itemRow(kassa, 'Steak').getByRole('button', { name: /^Steak:/ }).click()
+  await itemRow(kassa, 'Pintje').getByRole('button', { name: 'meer Pintje' }).click()
+  await expect(itemRow(kassa, 'Pintje')).toContainText('1/3')
+  await expect(pay).toHaveText('Afrekenen selectie · € 36,50')
+  await kassa.getByLabel('Contant').check()
+  await pay.click()
+  await kassa.getByRole('button', { name: 'Bevestig ontvangst contant geld' }).click()
+  await kassa.getByRole('button', { name: 'Volgende persoon', exact: true }).click()
+
+  // Back on the rekening, nothing picked, the paid units marked.
+  await expect(panel(kassa).getByTestId('items-banner')).toBeVisible()
+  await expect(itemRow(kassa, 'Steak')).toContainText('✓ 1 betaald')
+  await expect(itemRow(kassa, 'Steak').getByRole('button', { name: /^Steak:/ })).toBeDisabled()
+  await expect(itemRow(kassa, 'Pintje')).toContainText('0/2')
+  await expect(pay).toHaveText('Afrekenen selectie')
+
+  // Person 2: everything else.
+  await panel(kassa).getByRole('button', { name: 'Alles wat open is' }).click()
+  await expect(pay).toHaveText('Afrekenen selectie · € 9,00')
+  await kassa.getByLabel('Contant').check()
+  await pay.click()
+  await kassa.getByRole('button', { name: 'Bevestig ontvangst contant geld' }).click()
+  await kassa.getByRole('button', { name: 'Volgende klant', exact: true }).click()
+
+  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  expect(backend.tabs.find((t) => t.id === tab.id)).toMatchObject({ status: 'closed' })
+  expect(backend.charges.map((c) => [c.amountCents, c.lines?.map((l) => l.quantity)])).toEqual([
+    [3650, [1, 1]],
+    [900, [2, 2]],
+  ])
+})
+
+test('per item: right-click takes a unit off the selection; "Stoppen" leaves the mode', async ({ kassa, backend }) => {
+  await tafel5(kassa, backend)
+  const pintje = itemRow(kassa, 'Pintje').getByRole('button', { name: /^Pintje:/ })
+  await pintje.click()
+  await pintje.click()
+  await expect(itemRow(kassa, 'Pintje')).toContainText('2/3')
+  await pintje.click({ button: 'right' })
+  await expect(itemRow(kassa, 'Pintje')).toContainText('1/3')
+  await panel(kassa).getByRole('button', { name: 'Stoppen', exact: true }).click()
+  await expect(panel(kassa).getByTestId('items-banner')).toHaveCount(0)
+  await expect(panel(kassa).getByRole('button', { name: 'Afrekenen € 45,50', exact: true })).toBeEnabled()
+})
+
+test('per item: the CFD lists only what this person pays', async ({ kassa, backend }) => {
+  const display = await kassa.context().newPage()
+  await display.routeWebSocket(/\/devices\/connect/, () => {})
+  await display.route(/\/(api\/|whoami)/, async (route) => {
+    const url = new URL(route.request().url())
+    const { status, body } = backend.handle(route.request().method(), url.pathname + url.search, null)
+    await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+  })
+  await display.goto('/display.html?terminal=cfd-e2e')
+
+  await tafel5(kassa, backend)
+  await itemRow(kassa, 'Steak').getByRole('button', { name: /^Steak:/ }).click()
+  await kassa.getByLabel('Contant').check()
+  await panel(kassa).getByRole('button', { name: /^Afrekenen selectie/ }).click()
+
+  const waiting = display.getByTestId('cfd-waiting')
+  await expect(waiting.getByText('Jouw deel')).toBeVisible()
+  await expect(waiting.getByRole('listitem')).toHaveText([/^1\s*Steak\s*€ 34,00$/])
+  await expect(display.getByTestId('cfd-summary')).toHaveText('Nog open op de rekening: € 45,50 · Contant')
+})
+
+test('per item: paid units can no longer be cancelled — only the unpaid ones are offered', async ({ kassa, backend }) => {
+  await tafel5(kassa, backend)
+  await itemRow(kassa, 'Steak').getByRole('button', { name: /^Steak:/ }).click()
+  await itemRow(kassa, 'Pintje').getByRole('button', { name: 'meer Pintje' }).click()
+  await itemRow(kassa, 'Pintje').getByRole('button', { name: 'meer Pintje' }).click()
+  await kassa.getByLabel('Contant').check()
+  await panel(kassa).getByRole('button', { name: /^Afrekenen selectie/ }).click()
+  await kassa.getByRole('button', { name: 'Bevestig ontvangst contant geld' }).click()
+  await kassa.getByRole('button', { name: 'Volgende persoon', exact: true }).click()
+  await panel(kassa).getByRole('button', { name: 'Stoppen', exact: true }).click()
+
+  // Steak fully paid: no "Annuleren". Pintje: 2 of 3 paid, only 1 can be cancelled.
+  const row = (name: string) => panel(kassa).locator('div.border-b').filter({ hasText: name })
+  await expect(row('Steak')).toContainText('✓ 1 betaald')
+  await expect(row('Steak').getByRole('button', { name: 'Annuleren' })).toHaveCount(0)
+  await row('Pintje').getByRole('button', { name: 'Annuleren' }).click()
+  // Only the one unpaid pintje: the dialog offers exactly that, no quantity to pick.
+  await expect(kassa.getByRole('dialog')).toContainText('1 × Pintje')
+  await expect(kassa.getByRole('dialog').getByLabel('Aantal annuleren')).toHaveCount(0)
+})

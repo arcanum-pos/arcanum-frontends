@@ -6,6 +6,10 @@ import {
   clampTip,
   draftTotalCents,
   entryToPickerItem,
+  payableUnits,
+  selectAllPayable,
+  selectionCents,
+  selectionLines,
   splitPreviewText,
   splitSequence,
   filterSections,
@@ -302,5 +306,28 @@ describe('equal split', () => {
     expect(splitPreviewText(3000, 3)).toBe('3 × € 10,00')
     expect(splitPreviewText(2600, 3)).toBe('€ 8,66 + 2 × € 8,67')
     expect(splitPreviewText(7750, 3)).toBe('2 × € 25,83 + € 25,84')
+  })
+})
+
+describe('split per item', () => {
+  const l = (id: string, quantity: number, unitPriceCents: number, extra: Partial<TabLine> = {}): TabLine => ({
+    id, orderId: 'o', itemCode: null, name: id, unitPriceCents, quantity, voidsLineId: null, voidReason: null, voidedQuantity: 0, paidQuantity: 0, createdAt: '', ...extra,
+  })
+  const tab = {
+    lines: [l('pintje', 3, 250, { paidQuantity: 1 }), l('steak', 1, 3400), l('water', 2, 200, { voidedQuantity: 2 }), l('void', -1, 250, { voidsLineId: 'x' })],
+  } as unknown as TabDetail
+
+  it('payable = not voided, not paid', () => {
+    expect(tab.lines.map(payableUnits)).toEqual([2, 1, 0, 0])
+  })
+
+  it('a selection counts only payable units', () => {
+    const sel = { pintje: 5, steak: 1, water: 1 }
+    expect(selectionLines(tab, sel).map((x) => [x.line.id, x.quantity])).toEqual([['pintje', 2], ['steak', 1]])
+    expect(selectionCents(tab, sel)).toBe(500 + 3400)
+  })
+
+  it('"Alles wat open is" selects every payable unit', () => {
+    expect(selectAllPayable(tab)).toEqual({ pintje: 2, steak: 1 })
   })
 })

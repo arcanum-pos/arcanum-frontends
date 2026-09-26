@@ -89,7 +89,7 @@ export function PaymentStatus({
 
         {resolved ? (
           <Button className="mt-1 h-11 w-full rounded-[10px] text-sm" onClick={onNext}>
-            {current.part && current.part.index < current.part.of ? 'Volgend deel' : 'Volgende klant'}
+            {current.remainsOpen ? (current.part ? 'Volgend deel' : 'Volgende persoon') : 'Volgende klant'}
           </Button>
         ) : (
           <Button variant="outline" className="h-10 w-full rounded-[10px]" onClick={onCancel}>

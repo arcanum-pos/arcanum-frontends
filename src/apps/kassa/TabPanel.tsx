@@ -1,7 +1,19 @@
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { formatEuro } from '@/shared/format'
-import { centsToInput, clampTip, draftTotalCents, FOOI_CODE, PAYMENT_METHOD_OPTIONS, readAmountCents, roundUpTipCents, type PaymentMethod } from './lib'
+import {
+  centsToInput,
+  clampTip,
+  draftTotalCents,
+  FOOI_CODE,
+  PAYMENT_METHOD_OPTIONS,
+  payableUnits,
+  readAmountCents,
+  roundUpTipCents,
+  selectionCents,
+  type ItemSelection,
+  type PaymentMethod,
+} from './lib'
 import { netQuantity, type DraftLine, type TabDetail, type TabLine } from './tabs-api'
 
 // Right half of the kassa: the active tab (or the Toog quick-sale draft
@@ -34,6 +46,9 @@ export function TabPanel({
   onRefresh,
   onSplit,
   onStopSplit,
+  itemSelection,
+  onItemSelection,
+  onStopItems,
 }: {
   title: string
   subtitle: string
@@ -56,6 +71,10 @@ export function TabPanel({
   // "Splitsen": pay what's open in equal parts (opens the dialog).
   onSplit: () => void
   onStopSplit: () => void
+  // Split per item in progress: the units picked for this payment (null = not in that mode).
+  itemSelection: ItemSelection | null
+  onItemSelection: (selection: ItemSelection) => void
+  onStopItems: () => void
 }) {
   const submitted = (tab?.lines || []).filter((l) => !l.voidsLineId)
   const draftTotal = draftTotalCents(draft)
@@ -64,7 +83,8 @@ export function TabPanel({
   // parts left, the last one takes the rest (as the server computes it).
   const split = tab?.split ?? null
   const partsLeft = split ? Math.max(1, split.parts - split.paid) : 1
-  const payCents = split && partsLeft > 1 ? Math.floor(toPay / partsLeft) : toPay
+  const byItems = !!tab && itemSelection !== null
+  const payCents = byItems ? selectionCents(tab!, itemSelection!) : split && partsLeft > 1 ? Math.floor(toPay / partsLeft) : toPay
   const tipCents = payCents > 0 ? clampTip(readAmountCents(tipInput)) : 0
   const locked = busy || !!tab?.paymentPending
   const noTip = locked || payCents < 1
@@ -104,6 +124,18 @@ export function TabPanel({
           </div>
         )}
 
+        {byItems && (
+          <div className="flex items-center gap-2 border-b bg-muted/40 px-3.5 py-2.5" data-testid="items-banner">
+            <p className="min-w-0 flex-1 text-[13px] font-semibold tracking-tight">Per item · tik aan wat deze persoon betaalt</p>
+            <Button variant="outline" size="sm" disabled={locked} onClick={() => onItemSelection(Object.fromEntries(tab!.lines.filter((l) => payableUnits(l) > 0).map((l) => [l.id, payableUnits(l)])))}>
+              Alles wat open is
+            </Button>
+            <Button variant="ghost" size="sm" disabled={locked} onClick={onStopItems}>
+              Stoppen
+            </Button>
+          </div>
+        )}
+
         {tab?.paymentPending && (
           <div className="flex flex-col gap-2 border-b bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
             <p>Er loopt een betaling voor deze rekening. Wacht tot die afgerond of verlopen is.</p>
@@ -122,7 +154,18 @@ export function TabPanel({
             </p>
           )}
 
-          {submitted.map((line) => {
+          {byItems &&
+            submitted.map((line) => (
+              <ItemRow
+                key={line.id}
+                line={line}
+                selected={Math.min(itemSelection![line.id] || 0, payableUnits(line))}
+                disabled={locked}
+                onChange={(n) => onItemSelection({ ...itemSelection!, [line.id]: n })}
+              />
+            ))}
+
+          {!byItems && submitted.map((line) => {
             const qty = netQuantity(line)
             return (
               <div key={line.id} className="flex items-center gap-2.5 border-b border-border/60 px-3.5 py-2">
@@ -130,9 +173,11 @@ export function TabPanel({
                   <p className="truncate text-[13.5px] font-medium tracking-tight">{line.itemCode === FOOI_CODE ? 'Fooi' : `${qty || line.quantity} × ${line.name}`}</p>
                   <p className="font-mono text-[11px] text-muted-foreground">
                     {line.voidedQuantity > 0 && qty > 0 ? `${line.voidedQuantity} geannuleerd` : formatEuro(line.unitPriceCents)}
+                    {(line.paidQuantity || 0) > 0 && ` · ✓ ${line.paidQuantity} betaald`}
                   </p>
                 </div>
-                {qty > 0 && (
+                {/* Paid units (per item) can't be cancelled — only offered while some aren't. */}
+                {payableUnits(line) > 0 && (
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" disabled={locked} onClick={() => onVoid(line)}>
                     Annuleren
                   </Button>
@@ -272,13 +317,15 @@ export function TabPanel({
           onClick={onPay}
           className="h-[52px] rounded-xl bg-foreground text-[15px] font-semibold tracking-tight text-background transition-colors outline-none hover:bg-foreground/85 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         >
-          {split
+          {byItems
+            ? `Afrekenen selectie${payCents > 0 ? ` · ${formatEuro(payCents + tipCents)}` : ''}`
+            : split
             ? `Afrekenen deel ${Math.min(split.paid + 1, split.parts)}/${split.parts} · ${formatEuro(payCents + tipCents)}`
             : `Afrekenen${payCents > 0 ? ` ${formatEuro(payCents + tipCents)}` : ''}`}
         </button>
         {tipCents > 0 && <p className="text-center text-[12.5px] text-muted-foreground">waarvan {formatEuro(tipCents)} fooi</p>}
         <div className="flex gap-2">
-          {!split && toPay >= 2 && (
+          {!split && !byItems && toPay >= 2 && (
             <SecondaryButton disabled={locked} onClick={onSplit}>
               Splitsen
             </SecondaryButton>
@@ -327,5 +374,68 @@ function SecondaryButton({ disabled, onClick, children }: { disabled: boolean; o
     >
       {children}
     </button>
+  )
+}
+
+// One submitted line while paying per item: tap adds a unit to this
+// payment (right-click takes one off, like the product buttons); a line
+// with several units gets − n/m +. Paid units stay marked.
+function ItemRow({ line, selected, disabled, onChange }: { line: TabLine; selected: number; disabled: boolean; onChange: (n: number) => void }) {
+  const payable = payableUnits(line)
+  const paid = line.paidQuantity || 0
+  const qty = netQuantity(line)
+  if (qty <= 0) return null
+  const done = payable === 0
+  return (
+    <div
+      className={cn('flex items-center gap-2.5 border-b border-border/60 px-3.5 py-2', selected > 0 && 'bg-foreground/[0.04]', done && 'text-muted-foreground')}
+      data-testid="item-row"
+    >
+      <button
+        type="button"
+        disabled={disabled || done}
+        onClick={() => onChange(selected >= payable ? 0 : selected + 1)}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          if (!disabled && selected > 0) onChange(selected - 1)
+        }}
+        aria-pressed={selected > 0}
+        aria-label={`${line.name}: ${selected} van ${payable} gekozen`}
+        className="flex min-w-0 flex-1 items-center gap-2.5 text-left outline-none disabled:cursor-default"
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            'flex size-5 shrink-0 items-center justify-center rounded-md border text-[11px] font-bold',
+            done ? 'border-transparent bg-muted text-muted-foreground' : selected > 0 ? 'border-foreground bg-foreground text-background' : 'bg-card'
+          )}
+        >
+          {done || selected > 0 ? '✓' : ''}
+        </span>
+        <span className="min-w-0">
+          <span className={cn('block truncate text-[13.5px] font-medium tracking-tight', done && 'line-through')}>
+            {qty} × {line.name}
+          </span>
+          <span className="block font-mono text-[11px] text-muted-foreground">
+            {formatEuro(line.unitPriceCents)}
+            {paid > 0 && ` · ✓ ${paid} betaald`}
+          </span>
+        </span>
+      </button>
+      {payable > 1 && (
+        <div className="flex h-8 items-center overflow-hidden rounded-lg border">
+          <button type="button" aria-label={`minder ${line.name}`} disabled={disabled || selected === 0} onClick={() => onChange(selected - 1)} className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-40">
+            −
+          </button>
+          <span className="min-w-[38px] text-center font-mono text-[12.5px] font-semibold tabular-nums">
+            {selected}/{payable}
+          </span>
+          <button type="button" aria-label={`meer ${line.name}`} disabled={disabled || selected >= payable} onClick={() => onChange(selected + 1)} className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-40">
+            +
+          </button>
+        </div>
+      )}
+      <span className="w-[72px] text-right font-mono text-[13.5px] font-semibold tabular-nums">{selected > 0 ? formatEuro(selected * line.unitPriceCents) : ''}</span>
+    </div>
   )
 }

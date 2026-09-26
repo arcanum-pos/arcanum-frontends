@@ -40,6 +40,8 @@ export interface TabLine {
   voidsLineId: string | null
   voidReason: string | null
   voidedQuantity: number
+  // Units already paid by an item payment (split per item).
+  paidQuantity?: number
   createdAt: string
 }
 

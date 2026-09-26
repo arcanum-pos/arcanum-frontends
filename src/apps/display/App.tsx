@@ -217,6 +217,10 @@ function readPart(index: unknown, of: unknown): Payment['part'] {
 // total and how to pay on the right — for Bancontact with the QR.
 function WaitingView({ payment, eventName, failed, countdownText }: { payment: Payment; eventName: string | null; failed: boolean; countdownText: string }) {
   const bill = customerBill(payment.order, payment.amountCents, payment.tipCents)
+  // Per item: the list is what this payment covers, not the whole rekening.
+  const paying = payment.order?.paying ?? null
+  const shownLines = paying ? paying.map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents })) : bill.lines
+  const partial = !!payment.part || !!paying
   const method = METHOD_LABELS[payment.method] || payment.method
   const showQr = payment.method === 'bancontact' && !!payment.qrCodeUrl && !failed
   const statusText = failed
@@ -229,21 +233,21 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
 
   return (
     <div className="flex min-h-svh flex-1 flex-col bg-neutral-950 md:flex-row" data-testid="cfd-waiting">
-      {bill.lines.length > 0 && (
+      {shownLines.length > 0 && (
         <section className="flex min-w-0 flex-col bg-white text-neutral-950 md:flex-[1.25]">
           <div className="border-b border-neutral-200 px-8 pt-7 pb-4">
-            <p className="text-xs font-semibold tracking-[0.1em] text-neutral-500 uppercase">Jouw bestelling</p>
+            <p className="text-xs font-semibold tracking-[0.1em] text-neutral-500 uppercase">{paying ? 'Jouw deel' : 'Jouw bestelling'}</p>
             {bill.title && <h1 className="mt-1 text-2xl font-semibold tracking-tight">{bill.title}</h1>}
           </div>
           <ul className="flex-1 overflow-y-auto px-8 pt-1.5 pb-6">
-            {bill.lines.map((l, i) => (
+            {shownLines.map((l, i) => (
               <li key={i} className="flex items-center gap-3 border-b border-neutral-100 py-3">
                 <span className="flex h-7 min-w-9 items-center justify-center rounded-lg bg-neutral-100 px-2 font-mono text-sm font-semibold text-neutral-700">{l.quantity}</span>
                 <span className="flex-1 text-lg font-medium tracking-tight">{l.name}</span>
                 <span className="font-mono text-lg font-semibold tabular-nums">{formatEuro(l.totalCents)}</span>
               </li>
             ))}
-            {bill.alreadyPaidCents > 0 && (
+            {!paying && bill.alreadyPaidCents > 0 && (
               <li className="flex items-center justify-between py-3 text-neutral-500">
                 <span className="text-base">Al betaald</span>
                 <span className="font-mono text-base tabular-nums">− {formatEuro(bill.alreadyPaidCents)}</span>
@@ -259,7 +263,7 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
         </section>
       )}
 
-      <section className={cn('flex flex-col justify-between gap-8 p-8 text-neutral-50', bill.lines.length > 0 ? 'md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%]' : 'flex-1 items-center justify-center text-center')}>
+      <section className={cn('flex flex-col justify-between gap-8 p-8 text-neutral-50', shownLines.length > 0 ? 'md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%]' : 'flex-1 items-center justify-center text-center')}>
         <div>
           {(payment.order?.eventName || eventName) && (
             <p className="mb-6 truncate text-sm font-medium text-neutral-400" data-testid="cfd-event">
@@ -271,15 +275,15 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
           </p>
           <p className="mt-2 font-mono text-[56px] leading-none font-semibold tracking-tight tabular-nums">{formatEuro(bill.amountCents)}</p>
           <p className="mt-3 text-[13.5px] text-neutral-400" data-testid="cfd-summary">
-            {payment.part
+            {partial
               ? `Nog open op de rekening: ${formatEuro(bill.openCents)} · ${method}`
               : `${bill.itemCount > 0 ? `${bill.itemCount === 1 ? '1 item' : `${bill.itemCount} items`} · ` : ''}${method}`}
           </p>
         </div>
 
-        <div className={cn('flex flex-col gap-4', bill.lines.length === 0 && 'items-center')}>
+        <div className={cn('flex flex-col gap-4', shownLines.length === 0 && 'items-center')}>
           {showQr && (
-            <div className={cn('rounded-2xl bg-white p-4', bill.lines.length > 0 ? 'self-start' : 'self-center')}>
+            <div className={cn('rounded-2xl bg-white p-4', shownLines.length > 0 ? 'self-start' : 'self-center')}>
               <img src={payment.qrCodeUrl} alt="QR-code voor betaling" className="size-[min(70vw,300px)]" />
             </div>
           )}

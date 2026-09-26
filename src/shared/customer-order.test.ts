@@ -61,10 +61,19 @@ describe('readCustomerOrder', () => {
       number: 1,
       eventName: 'Fuif',
       paidCents: null,
+      paying: null,
       lines: [{ name: 'A', quantity: 1, unitPriceCents: 100 }],
     })
     expect(readCustomerOrder({ lines: [], eventName: 42 })?.eventName).toBeNull()
     expect(readCustomerOrder(null)).toBeNull()
     expect(readCustomerOrder({ lines: 'x' })).toBeNull()
+  })
+})
+
+describe('readCustomerOrder, per item', () => {
+  it('keeps what this payment covers', () => {
+    const o = readCustomerOrder({ label: 'T', lines: [{ name: 'A', quantity: 2, unitPriceCents: 100 }], paying: [{ name: 'A', quantity: 1, unitPriceCents: 100 }, { bad: true }] })
+    expect(o?.paying).toEqual([{ name: 'A', quantity: 1, unitPriceCents: 100 }])
+    expect(readCustomerOrder({ lines: [], paying: [] })?.paying).toBeNull()
   })
 })
