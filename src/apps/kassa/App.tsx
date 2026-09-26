@@ -235,6 +235,15 @@ export default function App() {
     setDraftFor(active, addToDraft(draft, item, quantity))
   }
 
+  // Right-click on a product: one (or a quick quantity) less on the draft.
+  // Submitted lines aren't touched — those only go away with a void.
+  function removeItem(item: PickerItem, quantity: number) {
+    const i = draft.findIndex((l) => l.variantId === item.variantId)
+    if (i === -1) return
+    setError('')
+    setDraftQuantity(i, draft[i].quantity - quantity)
+  }
+
   function setDraftQuantity(index: number, quantity: number) {
     const next = [...draft]
     if (quantity <= 0) next.splice(index, 1)
@@ -712,7 +721,7 @@ export default function App() {
           // mis-sized the nested product grid's rows inside that.
           <div className="flex flex-col items-start gap-4 lg:flex-row">
             <div className="w-full min-w-0 lg:flex-1">
-              <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} />
+              <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending} onAdd={addItem} onRemove={removeItem} />
             </div>
             <div className="w-full lg:sticky lg:top-4 lg:w-[392px] lg:shrink-0">
               <TabPanel

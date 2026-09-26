@@ -66,3 +66,49 @@ test('every group card shows all its rows, on a wide screen too', async ({ kassa
     }
   }
 })
+
+test('click adds a product, right-click takes one off again (never below zero, never a submitted line)', async ({ kassa }) => {
+  const row = kassa.getByRole('button', { name: /^Fietstocht \(niet-lid\)/ })
+  const toog = kassa.getByRole('button', { name: /^Toog/ })
+  await row.click()
+  await row.click()
+  await row.click()
+  await expect(row).toContainText('3×')
+
+  await row.click({ button: 'right' })
+  await expect(row).toContainText('2×')
+  await expect(toog).toContainText('€ 16,00')
+  await row.click({ button: 'right' })
+  await row.click({ button: 'right' })
+  await expect(row).not.toContainText('×')
+  await expect(panel(kassa)).toContainText('Nog niets aangeslagen')
+  await row.click({ button: 'right' }) // nothing left: no-op
+  await expect(toog).toContainText('Direct afrekenen')
+  // The browser's own menu doesn't open on a product.
+  const prevented = await row.evaluate((el) => !el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2 })))
+  expect(prevented).toBe(true)
+
+  // Quick quantities: right-click takes that amount off, the line goes at zero.
+  const ten = kassa.getByRole('button', { name: '10 × Bon', exact: true })
+  const five = kassa.getByRole('button', { name: '5 × Bon', exact: true })
+  await ten.click()
+  await ten.click()
+  await five.click({ button: 'right' })
+  await expect(panel(kassa)).toContainText('15 items')
+  await ten.click({ button: 'right' })
+  await ten.click({ button: 'right' })
+  await expect(panel(kassa)).toContainText('0 items')
+})
+
+test('right-click leaves lines already on the rekening alone (those need a void)', async ({ kassa }) => {
+  await kassa.getByRole('button', { name: '+ Nieuwe rekening', exact: true }).click()
+  await kassa.getByLabel('Naam of tafel').fill('Tafel 2')
+  await kassa.getByRole('button', { name: 'Rekening openen', exact: true }).click()
+  const row = kassa.getByRole('button', { name: /^Fietstocht \(niet-lid\)/ })
+  await row.click()
+  await kassa.getByRole('button', { name: 'Bestelling toevoegen aan rekening' }).click()
+  await expect(panel(kassa).getByText('1 × Fietstocht (niet-lid)')).toBeVisible()
+  await row.click({ button: 'right' })
+  await expect(panel(kassa).getByText('1 × Fietstocht (niet-lid)')).toBeVisible()
+  await expect(panel(kassa).getByText('Te betalen').locator('..')).toContainText('€ 8,00')
+})

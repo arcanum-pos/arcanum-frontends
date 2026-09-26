@@ -15,12 +15,15 @@ export function ItemPicker({
   quantities,
   disabled,
   onAdd,
+  onRemove,
 }: {
   catalogState: CatalogState
   // Quantity of each variant in the current draft — shown next to the product.
   quantities: Record<string, number>
   disabled: boolean
   onAdd: (item: PickerItem, quantity: number) => void
+  // Right-click: take it off the order again (only what's not submitted yet).
+  onRemove: (item: PickerItem, quantity: number) => void
 }) {
   if (catalogState.status === 'loading') return <p className="py-10 text-center text-sm text-muted-foreground">Menukaart laden…</p>
   if (catalogState.status === 'none') {
@@ -48,12 +51,12 @@ export function ItemPicker({
               </span>
             </div>
             {quick.map((entry) => (
-              <QuickEntry key={entry.entryId} entry={entry} disabled={disabled} onAdd={onAdd} />
+              <QuickEntry key={entry.entryId} entry={entry} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
             ))}
             {plain.length > 0 && (
               <div className="flex flex-col">
                 {plain.map((entry) => (
-                  <EntryRow key={entry.entryId} entry={entry} quantity={quantities[entry.variantId] || 0} disabled={disabled} onAdd={onAdd} />
+                  <EntryRow key={entry.entryId} entry={entry} quantity={quantities[entry.variantId] || 0} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
                 ))}
               </div>
             )}
@@ -64,12 +67,22 @@ export function ItemPicker({
   )
 }
 
-function EntryRow({ entry, quantity, disabled, onAdd }: { entry: KassaEntry; quantity: number; disabled: boolean; onAdd: (item: PickerItem, quantity: number) => void }) {
+type Change = (item: PickerItem, quantity: number) => void
+
+// Click adds, right-click takes off again — the browser menu never opens on a product.
+const removeOnRightClick = (disabled: boolean, remove: () => void) => (e: React.MouseEvent) => {
+  e.preventDefault()
+  if (!disabled) remove()
+}
+
+function EntryRow({ entry, quantity, disabled, onAdd, onRemove }: { entry: KassaEntry; quantity: number; disabled: boolean; onAdd: Change; onRemove: Change }) {
   return (
     <button
       type="button"
       disabled={disabled}
+      title="Klik: +1 · rechtsklik: −1"
       onClick={() => onAdd(entryToPickerItem(entry), 1)}
+      onContextMenu={removeOnRightClick(disabled, () => onRemove(entryToPickerItem(entry), 1))}
       className="flex min-h-12 w-full items-center gap-2.5 border-b border-border/60 px-3.5 py-2.5 text-left transition-colors outline-none last:rounded-b-xl last:border-b-0 hover:bg-muted/60 focus-visible:bg-muted active:bg-muted disabled:opacity-50"
     >
       {/* Already on the order: "2×" — decorative, the ticket lists it too. */}
@@ -88,7 +101,7 @@ function EntryRow({ entry, quantity, disabled, onAdd }: { entry: KassaEntry; qua
   )
 }
 
-function QuickEntry({ entry, disabled, onAdd }: { entry: KassaEntry; disabled: boolean; onAdd: (item: PickerItem, quantity: number) => void }) {
+function QuickEntry({ entry, disabled, onAdd, onRemove }: { entry: KassaEntry; disabled: boolean; onAdd: Change; onRemove: Change }) {
   const item = entryToPickerItem(entry)
   return (
     <div className="flex flex-col gap-3 p-3.5">
@@ -102,7 +115,9 @@ function QuickEntry({ entry, disabled, onAdd }: { entry: KassaEntry; disabled: b
             type="button"
             aria-label={`${n} × ${entry.name}`}
             disabled={disabled}
+            title={`Klik: +${n} · rechtsklik: −${n}`}
             onClick={() => onAdd(item, n)}
+            onContextMenu={removeOnRightClick(disabled, () => onRemove(item, n))}
             className="flex h-[84px] flex-col items-start justify-between rounded-xl border bg-card px-3.5 py-3 text-left transition-colors outline-none hover:border-foreground hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[.985] disabled:opacity-50"
           >
             <span className="font-mono text-[26px] leading-none font-semibold tracking-tight">{n}</span>
