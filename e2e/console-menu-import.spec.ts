@@ -158,7 +158,7 @@ test.describe('Menukaart import', () => {
     await page.getByRole('button', { name: 'Importeren' }).click()
     await pickFile(page, 'oud.xlsx', await xlsx([['Naam', 'Bedrag'], ['Pils', 2.5]]), XLSX_MIME)
     await page.getByRole('button', { name: 'Voorbeeld bekijken' }).click()
-    await expect(page.getByTestId('import-errors')).toContainText('Verplichte kolommen ontbreekt: Groep, Product, Prijs')
+    await expect(page.getByTestId('import-errors')).toContainText('Verplichte kolommen ontbreken: Groep, Product, Prijs')
     expect(catalogAdmin.importRequests).toHaveLength(0)
   })
 

@@ -56,7 +56,9 @@ const nl = {
   addSectionDescription: 'Een knoppenblok op de kassa, bv. Drank, Eten of Bonnen.',
   renameSection: 'Groep hernoemen',
   deleteSectionTitle: (name: string) => `Groep “${name}” verwijderen?`,
-  deleteSectionDescription: (count: number) => `De ${count} product(en) in deze groep verdwijnen van deze menukaart. De producten zelf blijven bestaan.`,
+  deleteSectionDescription: (count: number) => count === 1
+      ? 'Het product in deze groep verdwijnt van deze menukaart. Het product zelf blijft bestaan.'
+      : `De ${count} producten in deze groep verdwijnen van deze menukaart. De producten zelf blijven bestaan.`,
   noCategory: 'Geen categorie',
   archivedEntry: 'Gearchiveerd product — niet op de kassa',
   priceOf: (name: string) => `Prijs ${name}`,
@@ -80,9 +82,9 @@ const nl = {
   importName: 'Naam van de nieuwe menukaart',
   ignoredColumns: (headers: string) => `Genegeerde kolommen: ${headers}`,
   importHasErrors: 'Het bestand bevat fouten — er is niets gewijzigd. Pas het bestand aan en probeer opnieuw.',
-  previewCounts: (rows: number, groups: number) => `${rows} rijen in ${groups} groep${groups === 1 ? '' : 'en'}.`,
+  previewCounts: (rows: number, groups: number) => `${rows} ${rows === 1 ? 'rij' : 'rijen'} in ${groups} groep${groups === 1 ? '' : 'en'}.`,
   noChanges: ' Geen wijzigingen.',
-  unchangedLines: (count: number) => `${count} lijnen ongewijzigd.`,
+  unchangedLines: (count: number) => `${count} ${count === 1 ? 'lijn' : 'lijnen'} ongewijzigd.`,
   otherFile: 'Ander bestand',
   apply: 'Toepassen',
   readingFile: 'Bestand lezen…',
@@ -102,7 +104,7 @@ const nl = {
   // Problems found before the file goes to the server (menu-sheet.ts).
   sheetEmpty: 'Het bestand is leeg.',
   sheetMissingColumns: (columns: string[]) =>
-    `Verplichte kolom${columns.length > 1 ? 'men' : ''} ontbreekt: ${columns.join(', ')}. De eerste niet-lege rij moet de kolomnamen bevatten.`,
+    `Verplichte kolom${columns.length > 1 ? 'men ontbreken' : ' ontbreekt'}: ${columns.join(', ')}. De eerste niet-lege rij moet de kolomnamen bevatten.`,
   sheetNoRows: 'Geen rijen gevonden onder de kolomnamen.',
   sheetTooManyRows: (max: number, count: number) => `Maximaal ${max} rijen per menukaart (dit bestand heeft er ${count}).`,
   sheetUnreadable: 'Kon dit bestand niet lezen. Gebruik een .xlsx- of .csv-bestand.',

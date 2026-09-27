@@ -23,14 +23,14 @@ const nl = {
 
   // Sidebar
   nav: {
-    dashboard: 'Dashboard',
+    dashboard: 'Overzicht',
     reports: 'Rapporten',
-    events: 'Events',
+    events: 'Evenementen',
     products: 'Producten',
     catalogs: 'Menukaarten',
-    devices: 'Devices',
-    users: 'Users',
-    settings: 'Settings',
+    devices: 'Toestellen',
+    users: 'Gebruikers',
+    settings: 'Instellingen',
   },
   installer: 'Installatie',
   profile: 'Profiel',
@@ -42,7 +42,7 @@ const nl = {
   organisations: 'Organisaties',
   newOrg: 'Nieuwe organisatie',
   createOrgTitle: 'Nieuwe organisatie aanmaken',
-  createOrgDescription: 'Je wordt automatisch beheerder (admin) van deze organisatie.',
+  createOrgDescription: 'Je wordt automatisch beheerder van deze organisatie.',
   name: 'Naam',
   orgNamePlaceholder: 'bv. Scouts Elewijt',
   importInstead: 'of importeer uit een exportbestand',
@@ -60,7 +60,7 @@ const nl = {
     revenueToday: 'Omzet vandaag',
     transactionsToday: 'Transacties vandaag',
     averageReceipt: 'Gemiddeld bonbedrag',
-    activeEvent: 'Actief event',
+    activeEvent: 'Actief evenement',
   },
   salesOverTime: 'Verkoop over tijd',
   notImplemented: 'Nog niet geïmplementeerd — gereserveerde ruimte.',
@@ -68,13 +68,13 @@ const nl = {
 
   // Settings: the side menu, also each page's heading
   settingsNav: {
-    appearance: 'Appearance',
-    preferences: 'Preferences',
-    profile: 'Profile',
-    paymentProviders: 'Payment Providers',
-    notifications: 'Notifications',
-    branding: 'Branding',
-    authentication: 'Authentication',
+    appearance: 'Weergave',
+    preferences: 'Voorkeuren',
+    profile: 'Profiel',
+    paymentProviders: 'Betaalproviders',
+    notifications: 'Meldingen',
+    branding: 'Huisstijl',
+    authentication: 'Aanmelding',
     data: 'Gegevens',
   },
 
@@ -172,7 +172,7 @@ const nl = {
     `Nog niet actief (status: ${status} / ssl: ${sslStatus}). Dit kan enkele minuten duren nadat de CNAME zichtbaar is — klik op Verifiëren om de status te vernieuwen.`,
   remove: 'Verwijderen',
   domainNeedsOwnIdp:
-    'Vereist een eigen identity provider voor deze organisatie (zie Authentication) — leden melden zich na het instellen aan via dit domein zelf, niet meer via het standaardadres van dit platform.',
+    'Vereist een eigen identity provider voor deze organisatie (zie Aanmelding) — leden melden zich na het instellen aan via dit domein zelf, niet meer via het standaardadres van dit platform.',
 
   // Settings → Authentication
   authenticationSubtitle:

@@ -70,7 +70,7 @@ const nl = {
   import_too_many_chunk_rows: 'Maximaal {max} rijen per stuk',
   import_not_abortable: 'Alleen een onafgewerkte import kan geannuleerd worden',
   invalid_domain: 'Vul een geldige domeinnaam in (bv. pos.mijnorganisatie.be)',
-  domain_requires_idp: 'Configureer eerst een eigen identity provider voor deze organisatie (zie Authentication) voordat je een aangepast domein instelt.',
+  domain_requires_idp: 'Configureer eerst een eigen identity provider voor deze organisatie (zie Aanmelding) voordat je een aangepast domein instelt.',
   domain_in_use: 'Dit domein is al in gebruik door een andere organisatie',
   domain_registration_failed: 'Kon domein niet registreren bij Cloudflare',
   domain_status_failed: 'Kon status niet ophalen bij Cloudflare',

@@ -71,7 +71,7 @@ describe('parseSheetRows: header mapping', () => {
     expect(parsed.rows).toEqual([])
     expect(parsed.errors).toEqual([{ kind: 'missingColumns', columns: ['Product', 'Prijs'] }])
     expect(sheetProblemText(nl, parsed.errors[0])).toBe(
-      'Verplichte kolommen ontbreekt: Product, Prijs. De eerste niet-lege rij moet de kolomnamen bevatten.'
+      'Verplichte kolommen ontbreken: Product, Prijs. De eerste niet-lege rij moet de kolomnamen bevatten.'
     )
   })
 
@@ -268,5 +268,18 @@ describe('preview', () => {
     // With the backend's code, the row's error itself is worded too.
     expect(importErrorText(en, API_ERROR_MESSAGES.en, { row: 7, message: 'Prijs ontbreekt', code: 'import_price_missing' })).toBe('Row 7: Price missing')
     expect(importErrorText(fr, API_ERROR_MESSAGES.fr, { row: 3, message: '…', code: 'import_duplicate_code', params: { code: 'B1', otherRow: 2 } })).toBe('Ligne 3 : Le code « B1 » figure déjà à la ligne 2')
+  })
+})
+
+describe('Dutch singular and plural', () => {
+  it('words one row, line, column or product in the singular', () => {
+    expect(nl.previewCounts(1, 1)).toBe('1 rij in 1 groep.')
+    expect(nl.previewCounts(3, 2)).toBe('3 rijen in 2 groepen.')
+    expect(nl.unchangedLines(1)).toBe('1 lijn ongewijzigd.')
+    expect(nl.unchangedLines(4)).toBe('4 lijnen ongewijzigd.')
+    expect(nl.sheetMissingColumns(['Prijs'])).toMatch(/^Verplichte kolom ontbreekt: Prijs\./)
+    expect(nl.sheetMissingColumns(['Product', 'Prijs'])).toMatch(/^Verplichte kolommen ontbreken: Product, Prijs\./)
+    expect(nl.deleteSectionDescription(1)).toMatch(/^Het product in deze groep verdwijnt/)
+    expect(nl.deleteSectionDescription(3)).toMatch(/^De 3 producten in deze groep verdwijnen/)
   })
 })

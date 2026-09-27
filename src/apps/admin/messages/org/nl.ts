@@ -60,8 +60,8 @@ const nl = {
       `${count} betaling${count === 1 ? '' : 'en'} van voor de rekeningen, samen ${amount} (fooi inbegrepen).`,
     nothingInPeriod: 'Niets in deze periode.',
     paymentsInPeriod: 'Betalingen in deze periode',
-    event: 'Event',
-    allEvents: 'Alle events',
+    event: 'Evenement',
+    allEvents: 'Alle evenementen',
     paymentsLoadError: (error: string) => `Kon betalingen niet laden: ${error}`,
     time: 'Tijdstip',
     description: 'Omschrijving',
@@ -89,19 +89,19 @@ const nl = {
 
   // Events
   events: {
-    title: 'Events',
-    subtitle: (org: string) => `Events van ${org}.`,
-    create: 'Nieuw event',
-    createHint: "Naam en datum — menu's/catalogi per event volgen later.",
+    title: 'Evenementen',
+    subtitle: (org: string) => `Evenementen van ${org}.`,
+    create: 'Nieuw evenement',
+    createHint: 'Naam en datum — menukaarten per evenement volgen later.',
     namePlaceholder: 'bv. Elewijtse Pijl 2027',
     submit: 'Aanmaken',
-    loadError: (error: string) => `Kon events niet laden: ${error}`,
-    empty: 'Nog geen events aangemaakt.',
+    loadError: (error: string) => `Kon evenementen niet laden: ${error}`,
+    empty: 'Nog geen evenementen aangemaakt.',
   },
 
   // Devices
   devices: {
-    title: 'Devices',
+    title: 'Toestellen',
     subtitle: (org: string) => `Alle kassa's, klantschermen, simulatoren en SumUp-readers gekoppeld aan ${org}.`,
     loadError: (error: string) => `Kon toestellen niet laden: ${error}`,
     readersError: (error: string) => `Kon SumUp-readers niet ophalen: ${error}`,
@@ -130,14 +130,14 @@ const nl = {
 
   // Users
   users: {
-    title: 'Users',
+    title: 'Gebruikers',
     subtitle: (org: string) => `Leden van ${org} en hun rol.`,
     invite: 'Lid uitnodigen',
     inviteHint: 'Ze krijgen deze rol zodra ze inloggen met dit e-mailadres.',
     emailAddress: 'E-mailadres',
     role: 'Rol',
-    cashierOption: 'Kassier (cashier)',
-    adminOption: 'Beheerder (admin)',
+    cashierOption: 'Kassier',
+    adminOption: 'Beheerder',
     submit: 'Uitnodigen',
     loadError: (error: string) => `Kon leden niet laden: ${error}`,
     email: 'E-mail',

@@ -39,7 +39,7 @@ export default {
   organisations: 'Organisations',
   newOrg: 'Nouvelle organisation',
   createOrgTitle: 'Créer une nouvelle organisation',
-  createOrgDescription: 'Vous en devenez automatiquement administrateur (admin).',
+  createOrgDescription: 'Vous en devenez automatiquement administrateur.',
   name: 'Nom',
   orgNamePlaceholder: 'p. ex. Scouts Elewijt',
   importInstead: 'ou importez depuis un fichier d’export',

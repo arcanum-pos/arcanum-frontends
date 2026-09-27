@@ -309,7 +309,7 @@ function TransactionList({ orgId, bounds }: { orgId: string | null; bounds: { fr
   const m = useMessages(ADMIN_ORG_MESSAGES)
   const intlLocale = INTL_LOCALES[useLocale().locale]
   const { data: events } = useAsync(() => (orgId ? listEvents(orgId) : Promise.resolve([])), [orgId])
-  // '' = no explicit selection yet, ALL_EVENTS = "Alle events" chosen
+  // '' = no explicit selection yet, ALL_EVENTS = "Alle evenementen" chosen
   // explicitly. Auto-selects the single event once exactly one exists.
   const [selectedEvent, setSelectedEvent] = useState<string>('')
 

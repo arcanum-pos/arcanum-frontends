@@ -254,7 +254,7 @@ test.describe('Menukaarten', () => {
     const { catalog } = seedCatalog(catalogAdmin)
     const page = await open(`/catalogs/${catalog.id}`)
     await page.getByTestId('section-Eten').getByRole('button', { name: 'Verwijderen', exact: true }).first().click()
-    await expect(page.getByRole('dialog')).toContainText('De 1 product(en) in deze groep verdwijnen')
+    await expect(page.getByRole('dialog')).toContainText('Het product in deze groep verdwijnt')
     await page.getByRole('dialog').getByRole('button', { name: 'Verwijderen' }).click()
     await expect.poll(() => sectionNames(page)).toEqual(['Drank'])
 
