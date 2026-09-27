@@ -5,8 +5,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useOrg } from '../lib/org-context'
+import { useMessages } from '@/shared/i18n'
+import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import {
   abortImport,
+  fileProblemText,
   mismatchedTables,
   parseExportText,
   progressPercent,
@@ -14,11 +17,12 @@ import {
   tableLabel,
   totalRows,
   type ExportFile,
+  type FileProblem,
   type TableReport,
 } from '../lib/org-transfer'
 
 type Step =
-  | { kind: 'pick'; error?: string }
+  | { kind: 'pick'; problem?: FileProblem }
   | { kind: 'summary'; file: ExportFile }
   | { kind: 'running'; file: ExportFile; done: number; total: number }
   | { kind: 'done'; orgId: string; tables: TableReport }
@@ -39,6 +43,7 @@ export function OrgImportDialog({
   resumeOrgId?: string
   resumeOrgName?: string
 }) {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
   const { reloadOrgs } = useOrg()
   const navigate = useNavigate()
   const [step, setStep] = useState<Step>({ kind: 'pick' })
@@ -64,7 +69,7 @@ export function OrgImportDialog({
     if (!fileInput) return
     const parsed = parseExportText(await fileInput.text())
     if (!parsed.ok) {
-      setStep({ kind: 'pick', error: parsed.error })
+      setStep({ kind: 'pick', problem: parsed.problem })
       return
     }
     setName(resumeOrgName ?? parsed.file.organization.name)
@@ -120,21 +125,17 @@ export function OrgImportDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent className="sm:max-w-lg" showCloseButton={step.kind !== 'running'}>
         <DialogHeader>
-          <DialogTitle>{resumeOrgId ? 'Import hervatten' : 'Organisatie importeren'}</DialogTitle>
-          <DialogDescription>
-            {resumeOrgId
-              ? `Kies hetzelfde exportbestand opnieuw om de import van "${resumeOrgName ?? 'deze organisatie'}" af te werken.`
-              : 'Maakt een nieuwe organisatie aan met alle gegevens uit een Arcanum-exportbestand. Jij wordt er beheerder van.'}
-          </DialogDescription>
+          <DialogTitle>{resumeOrgId ? m.orgImport.resumeTitle : m.orgImport.title}</DialogTitle>
+          <DialogDescription>{resumeOrgId ? m.orgImport.resumeHint(resumeOrgName ?? m.thisOrg) : m.orgImport.hint}</DialogDescription>
         </DialogHeader>
 
         {step.kind === 'pick' && (
           <div className="grid gap-2">
-            <Label htmlFor="org-import-file">Exportbestand (.json)</Label>
+            <Label htmlFor="org-import-file">{m.orgImport.file}</Label>
             <Input id="org-import-file" type="file" accept=".json,application/json" onChange={(e) => pickFile(e.target.files?.[0])} />
-            {step.error && (
+            {step.problem && (
               <p role="alert" className="text-sm text-destructive">
-                {step.error}
+                {fileProblemText(m, step.problem)}
               </p>
             )}
           </div>
@@ -143,15 +144,12 @@ export function OrgImportDialog({
         {step.kind === 'summary' && (
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="org-import-name">Naam van de organisatie</Label>
+              <Label htmlFor="org-import-name">{m.orgImport.orgName}</Label>
               <Input id="org-import-name" value={name} disabled={!!resumeOrgId} onChange={(e) => setName(e.target.value)} maxLength={100} />
             </div>
             <CountsTable file={step.file} />
             <p className="text-sm text-muted-foreground">
-              {step.file.includesSecrets
-                ? 'Dit bestand bevat betaal- en mailinstellingen; die worden opnieuw versleuteld met de sleutel van de nieuwe organisatie.'
-                : 'Dit bestand bevat geen betaal- of mailinstellingen — stel die na de import zelf opnieuw in.'}{' '}
-              Leden komen terug als uitnodiging en worden actief bij hun eerste login.
+              {step.file.includesSecrets ? m.orgImport.withSecrets : m.orgImport.withoutSecrets} {m.orgImport.membersAsInvites}
             </p>
           </div>
         )}
@@ -169,14 +167,14 @@ export function OrgImportDialog({
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              Bezig met importeren… {step.done} / {step.total} rijen
+              {m.orgImport.progress(step.done, step.total)}
             </p>
           </div>
         )}
 
         {step.kind === 'done' && (
           <div className="grid gap-3">
-            <p className="font-medium">Import voltooid.</p>
+            <p className="font-medium">{m.orgImport.done}</p>
             <ReportTable tables={step.tables} />
           </div>
         )}
@@ -184,13 +182,11 @@ export function OrgImportDialog({
         {step.kind === 'mismatch' && (
           <div className="grid gap-3">
             <p role="alert" className="text-sm text-destructive">
-              Niet alle gegevens zijn aangekomen. Opnieuw proberen is veilig — niets wordt dubbel geïmporteerd.
+              {m.orgImport.mismatch}
             </p>
             <ul className="text-sm">
-              {mismatchedTables(step.tables).map((m) => (
-                <li key={m.table}>
-                  {tableLabel(m.table)}: {m.imported} van {m.expected}
-                </li>
+              {mismatchedTables(step.tables).map((t) => (
+                <li key={t.table}>{m.orgImport.mismatchLine(tableLabel(m, t.table), t.imported, t.expected)}</li>
               ))}
             </ul>
           </div>
@@ -198,7 +194,7 @@ export function OrgImportDialog({
 
         {step.kind === 'failed' && (
           <p role="alert" className="text-sm text-destructive">
-            De import is onderbroken: {step.error}
+            {m.orgImport.failed(step.error)}
           </p>
         )}
 
@@ -206,27 +202,27 @@ export function OrgImportDialog({
           {step.kind === 'summary' && (
             <>
               <Button variant="outline" onClick={() => setStep({ kind: 'pick' })}>
-                Ander bestand
+                {m.orgImport.otherFile}
               </Button>
               <Button onClick={() => run(step.file)} disabled={!name.trim()}>
-                {resumeOrgId ? 'Hervatten' : 'Importeren'}
+                {resumeOrgId ? m.orgImport.resume : m.orgImport.import}
               </Button>
             </>
           )}
           {step.kind === 'done' && (
             <Button onClick={() => goToOrg(step.orgId)} disabled={busy}>
-              Naar de nieuwe organisatie
+              {m.orgImport.goToOrg}
             </Button>
           )}
           {(step.kind === 'mismatch' || step.kind === 'failed') && (
             <>
               {target.orgId && (
                 <Button variant="destructive" onClick={abort} disabled={busy}>
-                  Import annuleren
+                  {m.orgImport.abort}
                 </Button>
               )}
               <Button onClick={() => run(step.file)} disabled={busy}>
-                Opnieuw proberen
+                {m.orgImport.retry}
               </Button>
             </>
           )}
@@ -237,6 +233,7 @@ export function OrgImportDialog({
 }
 
 function CountsTable({ file }: { file: ExportFile }) {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
   const rows = Object.entries(file.tables).filter(([, r]) => r.length > 0)
   return (
     <div className="max-h-56 overflow-y-auto rounded-md border text-sm">
@@ -244,7 +241,7 @@ function CountsTable({ file }: { file: ExportFile }) {
         <tbody>
           {rows.map(([table, r]) => (
             <tr key={table} className="border-b last:border-b-0">
-              <td className="px-3 py-1.5">{tableLabel(table)}</td>
+              <td className="px-3 py-1.5">{tableLabel(m, table)}</td>
               <td className="px-3 py-1.5 text-right tabular-nums">{r.length}</td>
             </tr>
           ))}
@@ -255,6 +252,7 @@ function CountsTable({ file }: { file: ExportFile }) {
 }
 
 function ReportTable({ tables }: { tables: TableReport }) {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
   const rows = Object.entries(tables).filter(([, r]) => r.expected > 0 || r.imported > 0)
   return (
     <div className="max-h-56 overflow-y-auto rounded-md border text-sm">
@@ -262,7 +260,7 @@ function ReportTable({ tables }: { tables: TableReport }) {
         <tbody>
           {rows.map(([table, r]) => (
             <tr key={table} className="border-b last:border-b-0">
-              <td className="px-3 py-1.5">{tableLabel(table)}</td>
+              <td className="px-3 py-1.5">{tableLabel(m, table)}</td>
               <td className="px-3 py-1.5 text-right tabular-nums">
                 {r.imported} / {r.expected}
               </td>

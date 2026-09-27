@@ -17,9 +17,11 @@ import {
 import { createEvent, listEvents } from '../lib/api'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
+import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
+import { ADMIN_ORG_MESSAGES } from '../messages/org'
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+function formatDate(iso: string, intlLocale: string): string {
+  return new Date(iso).toLocaleDateString(intlLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 // First step only: name + date. Doesn't drive kassa menus/catalogues yet
@@ -27,6 +29,8 @@ function formatDate(iso: string): string {
 // — this just lets an org define events at all, and tag transactions/
 // reports with one (see routes/reports.tsx).
 export default function EventsPage() {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
+  const intlLocale = INTL_LOCALES[useLocale().locale]
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const { data: events, loading, error, reload } = useAsync(
@@ -62,45 +66,45 @@ export default function EventsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Events</h1>
-          <p className="text-muted-foreground">Events van {currentOrg?.name ?? 'deze organisatie'}.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{m.events.title}</h1>
+          <p className="text-muted-foreground">{m.events.subtitle(currentOrg?.name ?? m.thisOrg)}</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button disabled={!orgId}>Nieuw event</Button>
+            <Button disabled={!orgId}>{m.events.create}</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nieuw event</DialogTitle>
-              <DialogDescription>Naam en datum — menu's/catalogi per event volgen later.</DialogDescription>
+              <DialogTitle>{m.events.create}</DialogTitle>
+              <DialogDescription>{m.events.createHint}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="event-name">Naam</Label>
-                <Input id="event-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" placeholder="bv. Elewijtse Pijl 2027" />
+                <Label htmlFor="event-name">{m.name}</Label>
+                <Input id="event-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" placeholder={m.events.namePlaceholder} />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="event-date">Datum</Label>
+                <Label htmlFor="event-date">{m.date}</Label>
                 <Input id="event-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               </div>
               {createError && <p className="text-sm text-destructive">{createError}</p>}
             </div>
             <DialogFooter>
               <Button onClick={handleCreate} disabled={creating}>
-                {creating ? 'Bezig...' : 'Aanmaken'}
+                {creating ? m.busy : m.events.submit}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {error && <p className="text-sm text-destructive">Kon events niet laden: {error}</p>}
+      {error && <p className="text-sm text-destructive">{m.events.loadError(error)}</p>}
 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Naam</TableHead>
-            <TableHead>Datum</TableHead>
+            <TableHead>{m.name}</TableHead>
+            <TableHead>{m.date}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -117,7 +121,7 @@ export default function EventsPage() {
               <TableCell colSpan={2} className="text-center text-muted-foreground">
                 <div className="flex flex-col items-center gap-2 py-6">
                   <TicketCheck className="size-6" />
-                  Nog geen events aangemaakt.
+                  {m.events.empty}
                 </div>
               </TableCell>
             </TableRow>
@@ -126,7 +130,7 @@ export default function EventsPage() {
             events?.map((event) => (
               <TableRow key={event.id}>
                 <TableCell className="font-medium">{event.name}</TableCell>
-                <TableCell>{formatDate(event.date)}</TableCell>
+                <TableCell>{formatDate(event.date, intlLocale)}</TableCell>
               </TableRow>
             ))}
         </TableBody>

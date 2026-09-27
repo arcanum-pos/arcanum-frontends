@@ -4,6 +4,7 @@
 // just fetches; the server enforces every rule (open, no payment pending,
 // amount at most what's outstanding).
 import { getDeviceId, getDeviceName } from '@/shared/device'
+import { apiErrorMessage, isApiErrorCode, type ApiErrorCode } from '@/shared/api-errors'
 import type { KassaMessages } from './messages/nl'
 
 export interface TabSummary {
@@ -65,14 +66,21 @@ export interface DraftLine {
 
 // Carries the server's own error message (already Dutch, user-facing) and,
 // for a 409, the tab's current state so the caller can refresh from it.
+// `code`: the backend's error code, when it sent one (see shared/api-errors).
 export class TabApiError extends Error {
   readonly status: number
   readonly tab?: TabSummary
+  readonly code?: ApiErrorCode
 
-  constructor(message: string, status: number, tab?: TabSummary) {
+  constructor(message: string, status: number, tab?: TabSummary, code?: ApiErrorCode) {
     super(message)
     this.status = status
     this.tab = tab
+    this.code = code
+  }
+
+  static fromResponse(status: number, data: any, fallback: string): TabApiError {
+    return new TabApiError(apiErrorMessage(data, fallback), status, data?.tab, isApiErrorCode(data?.code) ? data.code : undefined)
   }
 }
 
@@ -83,7 +91,7 @@ async function request<T>(orgId: string, path: string, init?: { method?: string;
     body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new TabApiError(data.error || `Fout ${res.status}`, res.status, data.tab)
+  if (!res.ok) throw TabApiError.fromResponse(res.status, data, `Fout ${res.status}`)
   return data as T
 }
 

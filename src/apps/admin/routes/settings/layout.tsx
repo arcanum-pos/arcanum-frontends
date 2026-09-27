@@ -1,18 +1,21 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
+import { useMessages } from '@/shared/i18n'
+import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 
 const SETTINGS_NAV = [
-  { title: 'Appearance', to: '/settings/appearance' },
-  { title: 'Preferences', to: '/settings/preferences' },
-  { title: 'Profile', to: '/settings/profile' },
-  { title: 'Payment Providers', to: '/settings/payment-providers' },
-  { title: 'Notifications', to: '/settings/notifications' },
-  { title: 'Branding', to: '/settings/branding' },
-  { title: 'Authentication', to: '/settings/authentication' },
-  { title: 'Gegevens', to: '/settings/data' },
+  { key: 'appearance', to: '/settings/appearance' },
+  { key: 'preferences', to: '/settings/preferences' },
+  { key: 'profile', to: '/settings/profile' },
+  { key: 'paymentProviders', to: '/settings/payment-providers' },
+  { key: 'notifications', to: '/settings/notifications' },
+  { key: 'branding', to: '/settings/branding' },
+  { key: 'authentication', to: '/settings/authentication' },
+  { key: 'data', to: '/settings/data' },
 ] as const
 
 export default function SettingsLayout() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
 
   return (
@@ -27,7 +30,7 @@ export default function SettingsLayout() {
               pathname === item.to ? 'bg-accent text-accent-foreground font-medium' : 'text-muted-foreground'
             )}
           >
-            {item.title}
+            {m.settingsNav[item.key]}
           </Link>
         ))}
       </nav>

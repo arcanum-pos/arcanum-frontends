@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
+import { ADMIN_CATALOG_MESSAGES } from '@/apps/admin/messages/catalog'
+import { ADMIN_ORG_MESSAGES } from '@/apps/admin/messages/org'
+import { ADMIN_SHELL_MESSAGES } from '@/apps/admin/messages/shell'
 import { CHOOSER_MESSAGES } from '@/apps/chooser/messages'
 import { DEVICE_MESSAGES } from '@/apps/device/messages'
 import { DISPLAY_MESSAGES } from '@/apps/display/messages'
 import { KASSA_MESSAGES } from '@/apps/kassa/messages'
 import { LOGIN_PROMPT_MESSAGES } from '@/apps/login-prompt/messages'
 import { SETTINGS_MESSAGES } from '@/apps/settings/messages'
+import { SIMULATOR_MESSAGES } from '@/apps/simulator/messages'
 import { STATUS_MESSAGES } from '@/shared/payment-labels'
 import { LOCALES, type Messages } from '.'
 
@@ -13,11 +17,15 @@ import { LOCALES, type Messages } from '.'
 // status labels) missing an entry, an empty text, a function whose
 // parameters drifted.
 const MESSAGE_SETS: Record<string, Messages<unknown>> = {
+  'admin catalog': ADMIN_CATALOG_MESSAGES,
+  'admin org': ADMIN_ORG_MESSAGES,
+  'admin shell': ADMIN_SHELL_MESSAGES,
   chooser: CHOOSER_MESSAGES,
   device: DEVICE_MESSAGES,
   display: DISPLAY_MESSAGES,
   kassa: KASSA_MESSAGES,
   settings: SETTINGS_MESSAGES,
+  simulator: SIMULATOR_MESSAGES,
   'login prompt': LOGIN_PROMPT_MESSAGES,
   'payment status': STATUS_MESSAGES,
 }

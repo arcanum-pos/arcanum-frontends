@@ -8,6 +8,14 @@
 // "21%", ja/nee, …). This side only finds the header, maps the columns,
 // drops fully empty rows and keeps the real sheet row numbers so the
 // backend's errors point at the right row.
+//
+// The format itself (column headers, sheet names, the Uitleg sheet, file
+// names) is Dutch in every interface language, so any exported file
+// imports again whoever opens it. Only what the console shows around it
+// (problems, the preview) takes the messages.
+import { apiErrorText } from '../../../shared/api-errors'
+import type { ApiErrorMessages } from '../../../shared/api-errors/nl'
+import type { AdminCatalogMessages } from '../messages/catalog/nl'
 
 export const COLUMNS = [
   { key: 'groep', header: 'Groep', required: true },
@@ -31,9 +39,35 @@ export type RawCell = string | number | boolean | null
 
 export type ImportRow = { row: number } & Record<ColumnKey, RawCell>
 
+// A problem found before the file goes to the backend, worded by
+// sheetProblemText at render time.
+export type SheetProblem =
+  | { kind: 'empty' }
+  | { kind: 'missingColumns'; columns: string[] }
+  | { kind: 'noRows' }
+  | { kind: 'tooManyRows'; max: number; count: number }
+  | { kind: 'unreadable' }
+
+type SheetProblemMessages = Pick<AdminCatalogMessages, 'sheetEmpty' | 'sheetMissingColumns' | 'sheetNoRows' | 'sheetTooManyRows' | 'sheetUnreadable'>
+
+export function sheetProblemText(m: SheetProblemMessages, problem: SheetProblem): string {
+  switch (problem.kind) {
+    case 'empty':
+      return m.sheetEmpty
+    case 'missingColumns':
+      return m.sheetMissingColumns(problem.columns)
+    case 'noRows':
+      return m.sheetNoRows
+    case 'tooManyRows':
+      return m.sheetTooManyRows(problem.max, problem.count)
+    case 'unreadable':
+      return m.sheetUnreadable
+  }
+}
+
 export interface ParsedSheet {
   // Missing required headers or too many rows — don't call the backend.
-  errors: string[]
+  errors: SheetProblem[]
   // Header cells that aren't one of the known columns (ignored, shown as a notice).
   ignoredHeaders: string[]
   rows: ImportRow[]
@@ -62,7 +96,7 @@ function rawCell(value: unknown): RawCell {
 // `cells[i]` is sheet row i + 1 (both readers keep empty rows in place).
 export function parseSheetRows(cells: unknown[][]): ParsedSheet {
   const headerIndex = cells.findIndex((row) => Array.isArray(row) && row.some((c) => !isEmpty(c)))
-  if (headerIndex === -1) return { errors: ['Het bestand is leeg.'], ignoredHeaders: [], rows: [] }
+  if (headerIndex === -1) return { errors: [{ kind: 'empty' }], ignoredHeaders: [], rows: [] }
 
   const header = cells[headerIndex]
   const positions = new Map<ColumnKey, number>()
@@ -76,11 +110,7 @@ export function parseSheetRows(cells: unknown[][]): ParsedSheet {
 
   const missing = COLUMNS.filter((c) => c.required && !positions.has(c.key)).map((c) => c.header)
   if (missing.length > 0) {
-    return {
-      errors: [`Verplichte kolom${missing.length > 1 ? 'men' : ''} ontbreekt: ${missing.join(', ')}. De eerste niet-lege rij moet de kolomnamen bevatten.`],
-      ignoredHeaders,
-      rows: [],
-    }
+    return { errors: [{ kind: 'missingColumns', columns: missing }], ignoredHeaders, rows: [] }
   }
 
   const rows: ImportRow[] = []
@@ -97,9 +127,9 @@ export function parseSheetRows(cells: unknown[][]): ParsedSheet {
     if (anyValue) rows.push(row)
   }
 
-  const errors: string[] = []
-  if (rows.length === 0) errors.push('Geen rijen gevonden onder de kolomnamen.')
-  if (rows.length > MAX_IMPORT_ROWS) errors.push(`Maximaal ${MAX_IMPORT_ROWS} rijen per menukaart (dit bestand heeft er ${rows.length}).`)
+  const errors: SheetProblem[] = []
+  if (rows.length === 0) errors.push({ kind: 'noRows' })
+  if (rows.length > MAX_IMPORT_ROWS) errors.push({ kind: 'tooManyRows', max: MAX_IMPORT_ROWS, count: rows.length })
   return { errors, ignoredHeaders, rows }
 }
 
@@ -223,7 +253,8 @@ export const TEMPLATE_ROWS: ExportRow[] = [
   { groep: 'Eten', product: 'Steak', variant: 'kind', prijsCents: 1200, categorie: 'Eten', station: 'Keuken', btwBp: null, code: null, snelknoppen: null, zichtbaar: true },
 ]
 
-// Text of the "Uitleg" sheet — same rules as DOMAIN_MODEL.md.
+// Text of the "Uitleg" sheet — same rules as DOMAIN_MODEL.md. Part of the
+// file, so Dutch like the column names it explains.
 export function explanationRows(title: string): [string, string][] {
   return [
     ['Menukaart', title],
@@ -286,24 +317,33 @@ export interface PreviewSummary {
   removed: string[]
 }
 
+// Amounts are "€ 2,50" in every language (see formatEuro).
 function euro(cents: number): string {
   return `€ ${(cents / 100).toFixed(2).replace('.', ',')}`
 }
 
 // The preview dialog's sections, in reading order, leaving out empty ones.
-export function previewSections(summary: PreviewSummary): { title: string; items: string[] }[] {
+// The product changes themselves ("categorie: Drank → Bier") are the
+// backend's text, shown as they come.
+export function previewSections(m: Pick<AdminCatalogMessages, 'previewSections'>, summary: PreviewSummary): { title: string; items: string[] }[] {
+  const t = m.previewSections
   return [
-    { title: 'Nieuwe categorieën', items: summary.newCategories },
-    { title: 'Nieuwe stations', items: summary.newStations ?? [] },
-    { title: 'Nieuwe producten', items: summary.newProducts },
-    { title: 'Nieuwe varianten', items: summary.newVariants },
-    { title: 'Productwijzigingen', items: summary.updatedProducts.map((p) => `${p.name}: ${p.changes.join(', ')}`) },
-    { title: 'Prijswijzigingen', items: summary.priceChanges.map((p) => `${p.name}: ${euro(p.fromCents)} → ${euro(p.toCents)}`) },
-    { title: 'Toegevoegd aan deze menukaart', items: summary.added },
-    { title: 'Verwijderd van deze menukaart', items: summary.removed },
+    { title: t.newCategories, items: summary.newCategories },
+    { title: t.newStations, items: summary.newStations ?? [] },
+    { title: t.newProducts, items: summary.newProducts },
+    { title: t.newVariants, items: summary.newVariants },
+    { title: t.updatedProducts, items: summary.updatedProducts.map((p) => `${p.name}: ${p.changes.join(', ')}`) },
+    { title: t.priceChanges, items: summary.priceChanges.map((p) => `${p.name}: ${euro(p.fromCents)} → ${euro(p.toCents)}`) },
+    { title: t.added, items: summary.added },
+    { title: t.removed, items: summary.removed },
   ].filter((section) => section.items.length > 0)
 }
 
-export function importErrorText(error: { row: number | null; message: string }): string {
-  return error.row === null ? error.message : `Rij ${error.row}: ${error.message}`
+export function importErrorText(
+  m: Pick<AdminCatalogMessages, 'rowError'>,
+  errors: ApiErrorMessages,
+  error: { row: number | null; message: string; code?: string; params?: Record<string, unknown> }
+): string {
+  const text = apiErrorText(errors, { error: error.message, code: error.code, params: error.params }, error.message)
+  return error.row === null ? text : m.rowError(error.row, text)
 }

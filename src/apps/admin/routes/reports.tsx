@@ -10,11 +10,12 @@ import { listEvents, listTransactions } from '../lib/api'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { formatEuro } from '../lib/format'
+import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
+import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import {
   fetchSalesReport,
   legacyItemRows,
   methodLabel,
-  PERIOD_LABELS,
   periodBounds,
   REPORT_FORBIDDEN,
   toDateInput,
@@ -26,12 +27,12 @@ import {
 const ALL_EVENTS = '__all__'
 const PERIODS: Period[] = ['today', 'yesterday', 'week', 'month', 'custom']
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString('nl-BE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+function formatTime(iso: string, intlLocale: string): string {
+  return new Date(iso).toLocaleString(intlLocale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+function formatDate(iso: string, intlLocale: string): string {
+  return new Date(iso).toLocaleDateString(intlLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 // Sales report for a period (step 3d) on top, the raw payment list below.
@@ -39,6 +40,7 @@ function formatDate(iso: string): string {
 // tips excluded); payments = everything the ledger recorded, including
 // sales from before tabs existed (shown separately as "oude kassa").
 export default function ReportsPage() {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
 
@@ -58,34 +60,34 @@ export default function ReportsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Rapporten</h1>
-          <p className="text-muted-foreground">Verkoop en betalingen van {currentOrg?.name ?? 'deze organisatie'}.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{m.reports.title}</h1>
+          <p className="text-muted-foreground">{m.reports.subtitle(currentOrg?.name ?? m.thisOrg)}</p>
         </div>
-        <div className="flex flex-wrap items-end gap-2" role="group" aria-label="Periode">
+        <div className="flex flex-wrap items-end gap-2" role="group" aria-label={m.reports.period}>
           {PERIODS.map((p) => (
             <Button key={p} size="sm" variant={period === p ? 'default' : 'outline'} aria-pressed={period === p} onClick={() => setPeriod(p)}>
-              {PERIOD_LABELS[p]}
+              {m.reports.periods[p]}
             </Button>
           ))}
           {period === 'custom' && (
             <div className="flex flex-wrap items-end gap-2">
               <div className="flex flex-col gap-1">
-                <Label htmlFor="report-from">Van</Label>
+                <Label htmlFor="report-from">{m.reports.from}</Label>
                 <Input id="report-from" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-40" />
               </div>
               <div className="flex flex-col gap-1">
-                <Label htmlFor="report-to">Tot en met</Label>
+                <Label htmlFor="report-to">{m.reports.to}</Label>
                 <Input id="report-to" type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-40" />
               </div>
             </div>
           )}
         </div>
-        {period === 'custom' && !bounds && <p className="text-sm text-destructive">Kies een geldige periode (de einddatum ligt niet voor de begindatum).</p>}
+        {period === 'custom' && !bounds && <p className="text-sm text-destructive">{m.reports.invalidPeriod}</p>}
       </div>
 
       {forbidden ? (
         <Card>
-          <CardContent className="py-6 text-sm text-muted-foreground">Verkooprapporten zijn alleen voor beheerders van deze organisatie.</CardContent>
+          <CardContent className="py-6 text-sm text-muted-foreground">{m.reports.forbidden}</CardContent>
         </Card>
       ) : (
         <SalesReportView report={report.data} loading={report.loading} error={report.error} />
@@ -101,27 +103,28 @@ function Amount({ loading, cents }: { loading: boolean; cents: number | undefine
 }
 
 function SalesReportView({ report, loading, error }: { report: SalesReport | null; loading: boolean; error: string | null }) {
-  if (error) return <p className="text-sm text-destructive">Kon het rapport niet laden: {error}</p>
+  const m = useMessages(ADMIN_ORG_MESSAGES)
+  if (error) return <p className="text-sm text-destructive">{m.reports.loadError(error)}</p>
   const r = loading ? null : report
-  const legacyRows = r ? legacyItemRows(r.legacy.items) : []
+  const legacyRows = r ? legacyItemRows(m, r.legacy.items) : []
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Omzet excl. fooi</CardDescription>
+            <CardDescription>{m.reports.revenue}</CardDescription>
             <CardTitle className="text-2xl" data-testid="kpi-revenue">
               <Amount loading={!r} cents={r ? r.sales.revenueCents + r.legacy.amountCents - (r.legacy.items.fooi ?? 0) : undefined} />
             </CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            {r ? `${r.sales.tabCount} afgesloten rekening${r.sales.tabCount === 1 ? '' : 'en'}${r.legacy.count > 0 ? ' + oude kassa' : ''}` : ''}
+            {r ? m.reports.closedTabs(r.sales.tabCount, r.legacy.count > 0) : ''}
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Fooi</CardDescription>
+            <CardDescription>{m.reports.tips}</CardDescription>
             <CardTitle className="text-2xl" data-testid="kpi-tips">
               <Amount loading={!r} cents={r ? r.payments.tipCents + (r.legacy.items.fooi ?? 0) : undefined} />
             </CardTitle>
@@ -129,21 +132,21 @@ function SalesReportView({ report, loading, error }: { report: SalesReport | nul
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Betalingen totaal</CardDescription>
+            <CardDescription>{m.reports.paymentsTotal}</CardDescription>
             <CardTitle className="text-2xl" data-testid="kpi-payments">
               <Amount loading={!r} cents={r?.payments.amountCents} />
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">{r ? `${r.payments.count} betaling${r.payments.count === 1 ? '' : 'en'}` : ''}</CardContent>
+          <CardContent className="text-sm text-muted-foreground">{r ? m.reports.paymentCount(r.payments.count) : ''}</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Open rekeningen (nu)</CardDescription>
+            <CardDescription>{m.reports.openTabs}</CardDescription>
             <CardTitle className="text-2xl" data-testid="kpi-open">
               <Amount loading={!r} cents={r?.openTabs.outstandingCents} />
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">{r ? `${r.openTabs.count} open` : ''}</CardContent>
+          <CardContent className="text-sm text-muted-foreground">{r ? m.reports.openCount(r.openTabs.count) : ''}</CardContent>
         </Card>
       </div>
 
@@ -151,26 +154,26 @@ function SalesReportView({ report, loading, error }: { report: SalesReport | nul
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Per betaalmethode</CardTitle>
+              <CardTitle className="text-base">{m.reports.byMethod}</CardTitle>
             </CardHeader>
             <CardContent>
               <Table data-testid="report-methods">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Methode</TableHead>
-                    <TableHead className="text-right">Aantal</TableHead>
-                    <TableHead className="text-right">Bedrag</TableHead>
-                    <TableHead className="text-right">Waarvan fooi</TableHead>
+                    <TableHead>{m.reports.method}</TableHead>
+                    <TableHead className="text-right">{m.reports.quantity}</TableHead>
+                    <TableHead className="text-right">{m.reports.amount}</TableHead>
+                    <TableHead className="text-right">{m.reports.ofWhichTip}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {r.payments.byMethod.length === 0 && <EmptyRow cols={4} />}
-                  {r.payments.byMethod.map((m) => (
-                    <TableRow key={m.method}>
-                      <TableCell>{methodLabel(m.method)}</TableCell>
-                      <TableCell className="text-right">{m.count}</TableCell>
-                      <TableCell className="text-right">{formatEuro(m.amountCents)}</TableCell>
-                      <TableCell className="text-right">{formatEuro(m.tipCents)}</TableCell>
+                  {r.payments.byMethod.map((row) => (
+                    <TableRow key={row.method}>
+                      <TableCell>{methodLabel(m, row.method)}</TableCell>
+                      <TableCell className="text-right">{row.count}</TableCell>
+                      <TableCell className="text-right">{formatEuro(row.amountCents)}</TableCell>
+                      <TableCell className="text-right">{formatEuro(row.tipCents)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -180,22 +183,22 @@ function SalesReportView({ report, loading, error }: { report: SalesReport | nul
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Per categorie</CardTitle>
+              <CardTitle className="text-base">{m.reports.byCategory}</CardTitle>
             </CardHeader>
             <CardContent>
               <Table data-testid="report-categories">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Categorie</TableHead>
-                    <TableHead className="text-right">Aantal</TableHead>
-                    <TableHead className="text-right">Omzet</TableHead>
+                    <TableHead>{m.reports.category}</TableHead>
+                    <TableHead className="text-right">{m.reports.quantity}</TableHead>
+                    <TableHead className="text-right">{m.reports.revenueShort}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {r.sales.byCategory.length === 0 && <EmptyRow cols={3} />}
                   {r.sales.byCategory.map((c) => (
                     <TableRow key={c.category ?? '—'}>
-                      <TableCell>{c.category ?? 'Zonder categorie'}</TableCell>
+                      <TableCell>{c.category ?? m.reports.noCategory}</TableCell>
                       <TableCell className="text-right">{c.quantity}</TableCell>
                       <TableCell className="text-right">{formatEuro(c.revenueCents)}</TableCell>
                     </TableRow>
@@ -207,16 +210,16 @@ function SalesReportView({ report, loading, error }: { report: SalesReport | nul
 
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle className="text-base">Per product</CardTitle>
+              <CardTitle className="text-base">{m.reports.byProduct}</CardTitle>
             </CardHeader>
             <CardContent>
               <Table data-testid="report-products">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead className="hidden sm:table-cell">Categorie</TableHead>
-                    <TableHead className="text-right">Aantal</TableHead>
-                    <TableHead className="text-right">Omzet</TableHead>
+                    <TableHead>{m.reports.product}</TableHead>
+                    <TableHead className="hidden sm:table-cell">{m.reports.category}</TableHead>
+                    <TableHead className="text-right">{m.reports.quantity}</TableHead>
+                    <TableHead className="text-right">{m.reports.revenueShort}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -236,23 +239,23 @@ function SalesReportView({ report, loading, error }: { report: SalesReport | nul
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Per btw-tarief</CardTitle>
-              <CardDescription>De btw-tarieven zijn voorlopig — nog te bevestigen door de boekhouder.</CardDescription>
+              <CardTitle className="text-base">{m.reports.byVat}</CardTitle>
+              <CardDescription>{m.reports.vatProvisional}</CardDescription>
             </CardHeader>
             <CardContent>
               <Table data-testid="report-vat">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Tarief</TableHead>
-                    <TableHead className="text-right">Omzet incl. btw</TableHead>
-                    <TableHead className="text-right">Btw</TableHead>
+                    <TableHead>{m.reports.vatRate}</TableHead>
+                    <TableHead className="text-right">{m.reports.revenueInclVat}</TableHead>
+                    <TableHead className="text-right">{m.reports.vat}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {r.sales.byVat.length === 0 && <EmptyRow cols={3} />}
                   {r.sales.byVat.map((v) => (
                     <TableRow key={String(v.vatRateBp)}>
-                      <TableCell>{vatLabel(v.vatRateBp)}</TableCell>
+                      <TableCell>{vatLabel(m, v.vatRateBp)}</TableCell>
                       <TableCell className="text-right">{formatEuro(v.revenueCents)}</TableCell>
                       <TableCell className="text-right">{v.vatRateBp === null ? '—' : formatEuro(v.vatCents)}</TableCell>
                     </TableRow>
@@ -265,10 +268,8 @@ function SalesReportView({ report, loading, error }: { report: SalesReport | nul
           {r.legacy.count > 0 && (
             <Card data-testid="report-legacy">
               <CardHeader>
-                <CardTitle className="text-base">Voor de rekeningen (oude kassa)</CardTitle>
-                <CardDescription>
-                  {r.legacy.count} betaling{r.legacy.count === 1 ? '' : 'en'} van voor de rekeningen, samen {formatEuro(r.legacy.amountCents)} (fooi inbegrepen).
-                </CardDescription>
+                <CardTitle className="text-base">{m.reports.legacyTitle}</CardTitle>
+                <CardDescription>{m.reports.legacySummary(r.legacy.count, formatEuro(r.legacy.amountCents))}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -291,10 +292,11 @@ function SalesReportView({ report, loading, error }: { report: SalesReport | nul
 }
 
 function EmptyRow({ cols }: { cols: number }) {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
   return (
     <TableRow>
       <TableCell colSpan={cols} className="text-center text-muted-foreground">
-        Niets in deze periode.
+        {m.reports.nothingInPeriod}
       </TableCell>
     </TableRow>
   )
@@ -304,6 +306,8 @@ function EmptyRow({ cols }: { cols: number }) {
 // event (a sale carries the event its kassa had chosen when the rekening
 // was opened — Instellingen → Evenement).
 function TransactionList({ orgId, bounds }: { orgId: string | null; bounds: { from: string; to: string } | null }) {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
+  const intlLocale = INTL_LOCALES[useLocale().locale]
   const { data: events } = useAsync(() => (orgId ? listEvents(orgId) : Promise.resolve([])), [orgId])
   // '' = no explicit selection yet, ALL_EVENTS = "Alle events" chosen
   // explicitly. Auto-selects the single event once exactly one exists.
@@ -328,17 +332,17 @@ function TransactionList({ orgId, bounds }: { orgId: string | null; bounds: { fr
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold">Betalingen in deze periode</h2>
+        <h2 className="text-lg font-semibold">{m.reports.paymentsInPeriod}</h2>
         {events && events.length > 0 && (
           <Select value={selectedEvent} onValueChange={setSelectedEvent}>
             <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder="Event" />
+              <SelectValue placeholder={m.reports.event} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL_EVENTS}>Alle events</SelectItem>
+              <SelectItem value={ALL_EVENTS}>{m.reports.allEvents}</SelectItem>
               {events.map((event) => (
                 <SelectItem key={event.id} value={event.id}>
-                  {event.name} — {formatDate(event.date)}
+                  {event.name} — {formatDate(event.date, intlLocale)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -346,18 +350,18 @@ function TransactionList({ orgId, bounds }: { orgId: string | null; bounds: { fr
         )}
       </div>
 
-      {error && <p className="text-sm text-destructive">Kon betalingen niet laden: {error}</p>}
+      {error && <p className="text-sm text-destructive">{m.reports.paymentsLoadError(error)}</p>}
 
       <Table data-testid="transactions">
         <TableHeader>
           <TableRow>
-            <TableHead>Tijdstip</TableHead>
-            <TableHead>Omschrijving</TableHead>
-            <TableHead>Methode</TableHead>
-            <TableHead>Toestel</TableHead>
-            <TableHead>Gebruiker</TableHead>
-            <TableHead className="text-right">Fooi</TableHead>
-            <TableHead className="text-right">Bedrag</TableHead>
+            <TableHead>{m.reports.time}</TableHead>
+            <TableHead>{m.reports.description}</TableHead>
+            <TableHead>{m.reports.method}</TableHead>
+            <TableHead>{m.reports.device}</TableHead>
+            <TableHead>{m.reports.user}</TableHead>
+            <TableHead className="text-right">{m.reports.tips}</TableHead>
+            <TableHead className="text-right">{m.reports.amount}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -372,16 +376,16 @@ function TransactionList({ orgId, bounds }: { orgId: string | null; bounds: { fr
           {!loading && sorted.length === 0 && (
             <TableRow>
               <TableCell colSpan={7} className="text-center text-muted-foreground">
-                Geen betalingen in deze periode.
+                {m.reports.noPayments}
               </TableCell>
             </TableRow>
           )}
           {!loading &&
             sorted.map((tx) => (
               <TableRow key={tx.id}>
-                <TableCell>{formatTime(tx.completedAt)}</TableCell>
+                <TableCell>{formatTime(tx.completedAt, intlLocale)}</TableCell>
                 <TableCell>{tx.description || '—'}</TableCell>
-                <TableCell>{methodLabel(tx.method)}</TableCell>
+                <TableCell>{methodLabel(m, tx.method)}</TableCell>
                 <TableCell>{tx.deviceName || '—'}</TableCell>
                 <TableCell>{tx.userName || tx.userEmail || '—'}</TableCell>
                 <TableCell className="text-right">{tx.tipCents ? formatEuro(tx.tipCents) : '—'}</TableCell>

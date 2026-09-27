@@ -4,6 +4,7 @@
 // where a button sits on the kassa (per menukaart), a Categorie is what a
 // product is (reports), a Station is who prepares it (bar, keuken). Reads are open to any member, every write
 // is admin-only — a cashier just gets the server's 403 back as an error.
+import { apiErrorMessage } from '@/shared/api-errors'
 import { request } from './api'
 import type { ExportRow, ImportRow } from './menu-sheet'
 
@@ -260,7 +261,8 @@ export interface ImportSummary {
 
 export interface ImportResult {
   ok: boolean
-  errors: { row: number | null; message: string }[]
+  // code/params: the backend's error code for the row (see shared/api-errors).
+  errors: { row: number | null; message: string; code?: string; params?: Record<string, unknown> }[]
   // null when the file has errors (nothing to summarize yet).
   summary: ImportSummary | null
   catalog?: { id: string; name: string }
@@ -281,6 +283,6 @@ export async function importCatalog(
   })
   const data = await res.json().catch(() => null)
   if (data && Array.isArray(data.errors) && typeof data.ok === 'boolean') return data as ImportResult
-  if (!res.ok) throw new Error((data && data.error) || `status ${res.status}`)
+  if (!res.ok) throw new Error(apiErrorMessage(data, `status ${res.status}`))
   return data as ImportResult
 }

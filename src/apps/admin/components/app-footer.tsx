@@ -1,7 +1,10 @@
 import kabouterLogo from '@/shared/assets/kabouter.png'
+import { useMessages } from '@/shared/i18n'
 import { useVersionInfo, versionLabel } from '@/shared/source-url'
+import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 
 export function AppFooter() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const info = useVersionInfo()
   const sourceUrl = info.sourceUrl
   const version = versionLabel(info)
@@ -14,16 +17,16 @@ export function AppFooter() {
         rel="noopener noreferrer"
         className="hover:text-foreground hover:underline"
       >
-        Voor u geserveerd door kaboutersoft.be
+        {m.servedBy}
       </a>
       <span aria-hidden="true">·</span>
-      <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground hover:underline" title="Arcanum is vrije software (AGPL-3.0)">
-        Broncode
+      <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:text-foreground hover:underline" title={m.freeSoftware}>
+        {m.sourceCode}
       </a>
       {version && (
         <>
           <span aria-hidden="true">·</span>
-          <span data-testid="app-version" title="De geïnstalleerde versie van Arcanum">
+          <span data-testid="app-version" title={m.installedVersion}>
             {version}
           </span>
         </>

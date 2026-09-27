@@ -3,8 +3,11 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { API_ERROR_MESSAGES } from '@/shared/api-errors'
+import { useMessages } from '@/shared/i18n'
 import { importCatalog, type ImportResult } from '../lib/catalog-api'
-import { importErrorText, nameFromFileName, previewSections, type ImportRow } from '../lib/menu-sheet'
+import { importErrorText, nameFromFileName, previewSections, sheetProblemText, type ImportRow, type SheetProblem } from '../lib/menu-sheet'
+import { ADMIN_CATALOG_MESSAGES } from '../messages/catalog'
 
 export type ImportTarget = { kind: 'replace'; catalogId: string; catalogName: string } | { kind: 'new' }
 
@@ -23,11 +26,14 @@ export function MenuImportDialog({
   onClose: () => void
   onApplied: (catalog: { id: string; name: string }) => void
 }) {
+  const m = useMessages(ADMIN_CATALOG_MESSAGES)
+  const apiErrors = useMessages(API_ERROR_MESSAGES)
   const [file, setFile] = useState<File | null>(null)
   const [name, setName] = useState('')
   const [rows, setRows] = useState<ImportRow[] | null>(null)
-  const [notices, setNotices] = useState<string[]>([])
-  const [fileErrors, setFileErrors] = useState<string[]>([])
+  // Kept as found, worded at render time (the language can change live).
+  const [ignoredHeaders, setIgnoredHeaders] = useState<string[]>([])
+  const [fileErrors, setFileErrors] = useState<SheetProblem[]>([])
   const [preview, setPreview] = useState<ImportResult | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +50,7 @@ export function MenuImportDialog({
     try {
       const { readMenuFile } = await import('../lib/menu-files')
       const parsed = await readMenuFile(file)
-      setNotices(parsed.ignoredHeaders.length > 0 ? [`Genegeerde kolommen: ${parsed.ignoredHeaders.join(', ')}`] : [])
+      setIgnoredHeaders(parsed.ignoredHeaders)
       if (parsed.errors.length > 0) {
         setFileErrors(parsed.errors)
         return
@@ -83,50 +89,45 @@ export function MenuImportDialog({
     setPreview(null)
     setRows(null)
     setFileErrors([])
-    setNotices([])
+    setIgnoredHeaders([])
     if (picked && target.kind === 'new' && !name.trim()) setName(nameFromFileName(picked.name))
   }
 
   const summary = preview?.ok ? preview.summary : null
-  const sections = summary ? previewSections(summary) : []
+  const sections = summary ? previewSections(m, summary) : []
+  const fileErrorTexts = fileErrors.map((problem) => sheetProblemText(m, problem))
   const canPreview = !!file && (target.kind === 'replace' || !!name.trim()) && !busy
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{target.kind === 'replace' ? `Importeren in ${target.catalogName}` : 'Menukaart importeren'}</DialogTitle>
+          <DialogTitle>{target.kind === 'replace' ? m.importInto(target.catalogName) : m.importCatalog}</DialogTitle>
           <DialogDescription>
-            {target.kind === 'replace'
-              ? 'Het bestand vervangt de groepen, de volgorde en de prijzen van deze menukaart. Producten worden nooit verwijderd — ze kunnen op andere menukaarten staan — en een lege Categorie, Station, BTW of Code laat een bestaand product ongewijzigd.'
-              : 'Maakt een nieuwe menukaart uit het bestand. Bestaande producten worden herkend op code of naam en hergebruikt.'}
+            {target.kind === 'replace' ? m.importReplaceDescription : m.importNewDescription}
           </DialogDescription>
         </DialogHeader>
 
         {!preview && (
           <div className="grid gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="menu-file">Bestand (.xlsx of .csv)</Label>
+              <Label htmlFor="menu-file">{m.importFile}</Label>
               <Input id="menu-file" type="file" accept=".xlsx,.csv" onChange={(e) => chooseFile(e.target.files?.[0] ?? null)} />
             </div>
             {target.kind === 'new' && (
               <div className="grid gap-2">
-                <Label htmlFor="menu-name">Naam van de nieuwe menukaart</Label>
+                <Label htmlFor="menu-name">{m.importName}</Label>
                 <Input id="menu-name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
               </div>
             )}
           </div>
         )}
 
-        {notices.map((notice) => (
-          <p key={notice} className="text-sm text-muted-foreground">
-            {notice}
-          </p>
-        ))}
+        {ignoredHeaders.length > 0 && <p className="text-sm text-muted-foreground">{m.ignoredColumns(ignoredHeaders.join(', '))}</p>}
 
-        {fileErrors.length > 0 && (
+        {fileErrorTexts.length > 0 && (
           <div className="grid gap-1 rounded-lg bg-destructive/10 p-3 text-sm text-destructive" data-testid="import-errors">
-            {fileErrors.map((message) => (
+            {fileErrorTexts.map((message) => (
               <p key={message}>{message}</p>
             ))}
           </div>
@@ -134,10 +135,10 @@ export function MenuImportDialog({
 
         {preview && !preview.ok && (
           <div className="grid gap-2" data-testid="import-errors">
-            <p className="text-sm font-medium">Het bestand bevat fouten — er is niets gewijzigd. Pas het bestand aan en probeer opnieuw.</p>
+            <p className="text-sm font-medium">{m.importHasErrors}</p>
             <ul className="grid gap-1 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
               {preview.errors.map((e, i) => (
-                <li key={i}>{importErrorText(e)}</li>
+                <li key={i}>{importErrorText(m, apiErrors, e)}</li>
               ))}
             </ul>
           </div>
@@ -146,8 +147,8 @@ export function MenuImportDialog({
         {summary && (
           <div className="grid gap-3 text-sm" data-testid="import-preview">
             <p>
-              {summary.rows} rijen in {summary.groups} groep{summary.groups === 1 ? '' : 'en'}.
-              {sections.length === 0 && ' Geen wijzigingen.'}
+              {m.previewCounts(summary.rows, summary.groups)}
+              {sections.length === 0 && m.noChanges}
             </p>
             {sections.map((section) => (
               <div key={section.title} className="grid gap-1">
@@ -161,7 +162,7 @@ export function MenuImportDialog({
                 </ul>
               </div>
             ))}
-            {summary.unchanged > 0 && <p className="text-muted-foreground">{summary.unchanged} lijnen ongewijzigd.</p>}
+            {summary.unchanged > 0 && <p className="text-muted-foreground">{m.unchangedLines(summary.unchanged)}</p>}
           </div>
         )}
 
@@ -170,20 +171,20 @@ export function MenuImportDialog({
         <DialogFooter>
           {preview ? (
             <Button variant="outline" disabled={busy} onClick={() => chooseFile(null)}>
-              Ander bestand
+              {m.otherFile}
             </Button>
           ) : (
             <Button variant="outline" onClick={onClose}>
-              Annuleren
+              {m.cancel}
             </Button>
           )}
           {preview ? (
             <Button disabled={busy || !preview.ok} onClick={apply}>
-              Toepassen
+              {m.apply}
             </Button>
           ) : (
             <Button disabled={!canPreview} onClick={showPreview}>
-              {busy ? 'Bestand lezen…' : 'Voorbeeld bekijken'}
+              {busy ? m.readingFile : m.showPreview}
             </Button>
           )}
         </DialogFooter>

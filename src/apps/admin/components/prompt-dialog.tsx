@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useMessages } from '@/shared/i18n'
+import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 
 // "Ask for one name" dialog (rename a category/catalog/group, name a
 // duplicate). The caller mounts it with a fresh `key` per use, so its state
@@ -25,6 +27,7 @@ export function PromptDialog({
   onConfirm: (value: string) => Promise<void>
   onClose: () => void
 }) {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const [value, setValue] = useState(initialValue)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -64,10 +67,10 @@ export function PromptDialog({
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Annuleren
+              {m.cancel}
             </Button>
             <Button type="submit" disabled={busy || !value.trim()}>
-              {busy ? 'Bezig...' : confirmLabel}
+              {busy ? m.busy : confirmLabel}
             </Button>
           </DialogFooter>
         </form>
@@ -90,6 +93,7 @@ export function ConfirmDialog({
   onConfirm: () => Promise<void>
   onClose: () => void
 }) {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -116,7 +120,7 @@ export function ConfirmDialog({
         {error && <p className="text-sm text-destructive">{error}</p>}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
-            Annuleren
+            {m.cancel}
           </Button>
           <Button type="button" variant="destructive" disabled={busy} onClick={confirm}>
             {confirmLabel}

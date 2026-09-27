@@ -31,8 +31,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { inviteMember, listMembers, removeMember, whoami } from '../lib/api'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
+import { useMessages } from '@/shared/i18n'
+import { ADMIN_ORG_MESSAGES } from '../messages/org'
 
 export default function UsersPage() {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const { data: members, loading, error, reload } = useAsync(
@@ -73,7 +76,7 @@ export default function UsersPage() {
 
   async function handleRemove(membershipId: string, email: string) {
     if (!orgId) return
-    if (!window.confirm(`${email} verwijderen uit deze organisatie?`)) return
+    if (!window.confirm(m.users.confirmRemove(email))) return
     setRemovingId(membershipId)
     try {
       await removeMember(orgId, membershipId)
@@ -87,24 +90,24 @@ export default function UsersPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-          <p className="text-muted-foreground">Leden van {currentOrg?.name ?? 'deze organisatie'} en hun rol.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">{m.users.title}</h1>
+          <p className="text-muted-foreground">{m.users.subtitle(currentOrg?.name ?? m.thisOrg)}</p>
         </div>
         <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
           <DialogTrigger asChild>
             <Button disabled={!orgId}>
               <UserPlus />
-              Lid uitnodigen
+              {m.users.invite}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Lid uitnodigen</DialogTitle>
-              <DialogDescription>Ze krijgen deze rol zodra ze inloggen met dit e-mailadres.</DialogDescription>
+              <DialogTitle>{m.users.invite}</DialogTitle>
+              <DialogDescription>{m.users.inviteHint}</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="invite-email">E-mailadres</Label>
+                <Label htmlFor="invite-email">{m.users.emailAddress}</Label>
                 <Input
                   id="invite-email"
                   type="email"
@@ -114,14 +117,14 @@ export default function UsersPage() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Rol</Label>
+                <Label>{m.users.role}</Label>
                 <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'cashier')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cashier">Kassier (cashier)</SelectItem>
-                    <SelectItem value="admin">Beheerder (admin)</SelectItem>
+                    <SelectItem value="cashier">{m.users.cashierOption}</SelectItem>
+                    <SelectItem value="admin">{m.users.adminOption}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -129,21 +132,21 @@ export default function UsersPage() {
             </div>
             <DialogFooter>
               <Button onClick={handleInvite} disabled={inviting}>
-                {inviting ? 'Bezig...' : 'Uitnodigen'}
+                {inviting ? m.busy : m.users.submit}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {error && <p className="text-sm text-destructive">Kon leden niet laden: {error}</p>}
+      {error && <p className="text-sm text-destructive">{m.users.loadError(error)}</p>}
 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>E-mail</TableHead>
-            <TableHead>Rol</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>{m.users.email}</TableHead>
+            <TableHead>{m.users.role}</TableHead>
+            <TableHead>{m.status}</TableHead>
             <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
@@ -160,15 +163,15 @@ export default function UsersPage() {
             members?.map((member) => (
               <TableRow key={member.id}>
                 <TableCell className="font-medium">{member.invitedEmail}</TableCell>
-                <TableCell>{member.role === 'admin' ? 'Beheerder' : 'Kassier'}</TableCell>
+                <TableCell>{member.role === 'admin' ? m.users.admin : m.users.cashier}</TableCell>
                 <TableCell>
                   <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
-                    {member.status === 'active' ? 'Actief' : 'In afwachting'}
+                    {member.status === 'active' ? m.users.active : m.users.pending}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   {member.userSub && member.userSub === currentUserSub ? (
-                    <span className="text-sm text-muted-foreground">(jij)</span>
+                    <span className="text-sm text-muted-foreground">{m.users.you}</span>
                   ) : (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -178,7 +181,7 @@ export default function UsersPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem variant="destructive" onClick={() => handleRemove(member.id, member.invitedEmail)}>
-                          Verwijderen
+                          {m.remove}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

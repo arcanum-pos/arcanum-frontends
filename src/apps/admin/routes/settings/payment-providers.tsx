@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useMessages } from '@/shared/i18n'
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,7 @@ import {
 import { listPaymentCredentials, setPaymentCredential, type PaymentCredential } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
+import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 
 const PROVIDERS: PaymentCredential['provider'][] = ['bancontact', 'sumup']
 const PROVIDER_LABELS: Record<PaymentCredential['provider'], string> = {
@@ -25,6 +27,7 @@ const PROVIDER_LABELS: Record<PaymentCredential['provider'], string> = {
 }
 
 export default function PaymentProvidersPage() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const { data: credentials, loading, error, reload } = useAsync(
@@ -69,11 +72,11 @@ export default function PaymentProvidersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-lg font-medium">Payment Providers</h2>
-        <p className="text-sm text-muted-foreground">Betaalproviders gekoppeld aan {currentOrg?.name ?? 'deze organisatie'}.</p>
+        <h2 className="text-lg font-medium">{m.settingsNav.paymentProviders}</h2>
+        <p className="text-sm text-muted-foreground">{m.paymentProvidersSubtitle(currentOrg?.name ?? m.thisOrg)}</p>
       </div>
 
-      {error && <p className="text-sm text-destructive">Kon betaalproviders niet laden: {error}</p>}
+      {error && <p className="text-sm text-destructive">{m.paymentProvidersLoadFailed(error)}</p>}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {loading &&
@@ -98,12 +101,12 @@ export default function PaymentProvidersPage() {
                     <CardDescription>{provider}</CardDescription>
                   </div>
                   <Badge variant={cred?.configured ? 'default' : 'secondary'}>
-                    {cred?.configured ? 'Geconfigureerd' : 'Niet geconfigureerd'}
+                    {cred?.configured ? m.configured : m.notConfigured}
                   </Badge>
                 </CardHeader>
                 <CardContent>
                   <Button variant="outline" size="sm" onClick={() => openEditor(provider)}>
-                    Sleutels instellen
+                    {m.setKeys}
                   </Button>
                 </CardContent>
               </Card>
@@ -114,30 +117,30 @@ export default function PaymentProvidersPage() {
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing && PROVIDER_LABELS[editing]} — sleutels</DialogTitle>
-            <DialogDescription>Worden versleuteld opgeslagen (envelope encryption per organisatie).</DialogDescription>
+            <DialogTitle>{m.keysTitle(editing ? PROVIDER_LABELS[editing] : '')}</DialogTitle>
+            <DialogDescription>{m.keysEncrypted}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             {editing === 'sumup' && (
               <div className="grid gap-2">
-                <Label htmlFor="sumup-merchant">Merchant code</Label>
+                <Label htmlFor="sumup-merchant">{m.merchantCode}</Label>
                 <Input id="sumup-merchant" value={sumupMerchantId} onChange={(e) => setSumupMerchantId(e.target.value)} autoComplete="off" />
               </div>
             )}
             <div className="grid gap-2">
-              <Label htmlFor="provider-api-key">API-key</Label>
+              <Label htmlFor="provider-api-key">{m.apiKey}</Label>
               <Input id="provider-api-key" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} autoComplete="new-password" />
             </div>
             {editing === 'bancontact' && (
               <div className="grid gap-2">
-                <Label>Omgeving</Label>
+                <Label>{m.environment}</Label>
                 <Select value={environment} onValueChange={setEnvironment}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="prod">Productie</SelectItem>
-                    <SelectItem value="preprod">Test (preprod)</SelectItem>
+                    <SelectItem value="prod">{m.production}</SelectItem>
+                    <SelectItem value="preprod">{m.preprod}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -146,7 +149,7 @@ export default function PaymentProvidersPage() {
           </div>
           <DialogFooter>
             <Button onClick={handleSave} disabled={saving}>
-              {saving ? 'Bezig...' : 'Opslaan'}
+              {saving ? m.busy : m.save}
             </Button>
           </DialogFooter>
         </DialogContent>

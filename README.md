@@ -106,10 +106,8 @@ the SumUp simulator, the org/device chooser) has since moved here too —
 
 ## Translations (nl / fr / en)
 
-Being rolled out screen by screen — translated so far: the kassa,
-Instellingen, the customer display, the chooser, the login prompt and the
-device login. Still Dutch inline: the admin console (`/console`) and the
-SumUp simulator.
+Every screen is translated. A large screen may split its texts into a few
+sets (the admin console: `src/apps/admin/messages/{shell,catalog,org}`).
 
 - A screen's texts live in `src/apps/<name>/messages/{nl,fr,en}.ts`. `nl.ts`
   is the source of truth; `fr.ts`/`en.ts` end in `satisfies` its type, so a
@@ -120,19 +118,34 @@ SumUp simulator.
 - `src/shared/i18n/messages.test.ts` checks every registered message set has
   exactly the same shape in all three languages — add a new set there.
 - Amounts stay `€ 10,00` in every language (see `formatEuro`).
-- Which language: the kassa, Instellingen and the customer display use the
-  device's language (`deviceLocale`: the `arcanum-locale` pick, else Dutch —
-  never the browser's). It's picked in Instellingen → Taal, or set when the
-  device is registered on the chooser (in whatever language the chooser was
-  showing). The setup screens (`KioskShell languagePicker`) fall back to the
-  browser's language (`preferredLocale`). The customer display's own toggle
-  only lasts until it returns to rust.
+- Which language:
+  - The kassa, Instellingen and the customer display use the device's
+    language (`deviceLocale`: the `arcanum-locale` pick, else Dutch — never
+    the browser's). It's picked in Instellingen → Taal, or set when the
+    device is registered on the chooser: a language picked there, else the
+    org's default language, else the one the chooser showed.
+  - The setup screens (chooser, login prompt, device login, simulator —
+    `KioskShell languagePicker`) fall back to the browser's language
+    (`preferredLocale`).
+  - The admin console follows the admin's own pick (Settings → Preferences,
+    `arcanum-admin-locale`), else the browser's. The same page sets the
+    org's default language (`organizations.locale` in arcanum-backend — also
+    the language of its invite emails).
+  - The customer display's own toggle only lasts until it returns to rust.
+- Errors from arcanum-backend: user-facing ones carry a `code` (and
+  `params`) next to the Dutch `error`; `src/shared/api-errors` words them
+  per language (nl is the backend's own text — keep it in sync with
+  arcanum-backend's src/errors.ts when a code is added). API clients use
+  `apiErrorMessage`, a component rendering one live uses `apiErrorText`
+  with `useMessages(API_ERROR_MESSAGES)`. An unknown code falls back to the
+  server's text.
 - Not translated, on purpose: what's data. A Toog sale's tab is stored as
   "Toog" in every language (the customer display recognises it; `tabTitle`
-  shows it translated), void reasons are stored as typed, and the default
-  device name ("Toestel …") goes to the reports as is. Error texts from
-  arcanum-backend (e.g. "Rekening is gewijzigd…") are still Dutch — they'd
-  need error codes from the backend first.
+  shows it translated), void reasons are stored as typed, the default
+  device name ("Toestel …") goes to the reports as is, and file formats
+  (the menukaart xlsx/csv columns and sheets, the org export) are the same
+  in every language so any file imports again. A charge's stored
+  `error_message` (e.g. "Betaling verlopen (time-out)") is still Dutch.
 
 ## Local dev
 

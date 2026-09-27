@@ -10,29 +10,33 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { listOrgDevices, listSumupReaders, removeDevice, type DeviceRole, type SumupReader } from '../lib/api'
+import { listOrgDevices, listSumupReaders, removeDevice, type SumupReader } from '../lib/api'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
-
-const ROLE_LABELS: Record<DeviceRole, string> = {
-  pos: 'Kassa',
-  cfd: 'Klantscherm',
-  sim: 'SumUp-simulator',
-}
+import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
+import { ADMIN_ORG_MESSAGES } from '../messages/org'
 
 const READER_MODEL_LABELS: Record<string, string> = {
   solo: 'SumUp Solo',
   'virtual-solo': 'SumUp Virtual Solo',
 }
 
-const READER_STATUS_BADGE: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
-  paired: { label: 'Gekoppeld', variant: 'default' },
-  processing: { label: 'Bezig', variant: 'outline' },
-  expired: { label: 'Verlopen', variant: 'destructive' },
-  unknown: { label: 'Onbekend', variant: 'secondary' },
+// Labels: messages' devices.readerStatus.
+type ReaderStatus = 'paired' | 'processing' | 'expired' | 'unknown'
+const READER_STATUS_BADGE: Record<ReaderStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  paired: 'default',
+  processing: 'outline',
+  expired: 'destructive',
+  unknown: 'secondary',
+}
+
+function readerStatus(status: string): ReaderStatus {
+  return status in READER_STATUS_BADGE ? (status as ReaderStatus) : 'unknown'
 }
 
 export default function DevicesPage() {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
+  const intlLocale = INTL_LOCALES[useLocale().locale]
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const { data: devices, loading, error, reload } = useAsync(
@@ -53,7 +57,7 @@ export default function DevicesPage() {
   const [removingId, setRemovingId] = useState<string | null>(null)
 
   async function handleRemove(terminalId: string) {
-    if (!window.confirm(`Toestel ${terminalId} verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return
+    if (!window.confirm(m.devices.confirmRemove(terminalId))) return
     setRemovingId(terminalId)
     try {
       await removeDevice(terminalId)
@@ -66,25 +70,23 @@ export default function DevicesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Devices</h1>
-        <p className="text-muted-foreground">
-          Alle kassa's, klantschermen, simulatoren en SumUp-readers gekoppeld aan {currentOrg?.name ?? 'deze organisatie'}.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{m.devices.title}</h1>
+        <p className="text-muted-foreground">{m.devices.subtitle(currentOrg?.name ?? m.thisOrg)}</p>
       </div>
 
-      {error && <p className="text-sm text-destructive">Kon toestellen niet laden: {error}</p>}
+      {error && <p className="text-sm text-destructive">{m.devices.loadError(error)}</p>}
       {(sumupError || sumupReaders?.error) && (
-        <p className="text-sm text-destructive">Kon SumUp-readers niet ophalen: {sumupError ?? sumupReaders?.error}</p>
+        <p className="text-sm text-destructive">{m.devices.readersError(sumupError ?? sumupReaders?.error ?? '')}</p>
       )}
 
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Toestel-ID</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Gekoppeld aan</TableHead>
-            <TableHead>Geregistreerd op</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead>{m.devices.id}</TableHead>
+            <TableHead>{m.devices.type}</TableHead>
+            <TableHead>{m.devices.linkedTo}</TableHead>
+            <TableHead>{m.devices.registeredAt}</TableHead>
+            <TableHead>{m.status}</TableHead>
             <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
@@ -100,24 +102,24 @@ export default function DevicesPage() {
           {!loading && devices?.length === 0 && !sumupReaders?.readers.length && (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-muted-foreground">
-                Nog geen toestellen geregistreerd voor deze organisatie.
+                {m.devices.empty}
               </TableCell>
             </TableRow>
           )}
           {!loading &&
             sumupReaders?.readers.map((reader) => {
-              const status = READER_STATUS_BADGE[reader.status] ?? READER_STATUS_BADGE.unknown
+              const status = readerStatus(reader.status)
               return (
                 <TableRow key={`sumup-${reader.id}`}>
                   <TableCell>
                     <div className="font-medium">{reader.name}</div>
                     <div className="font-mono text-xs text-muted-foreground">{reader.id}</div>
                   </TableCell>
-                  <TableCell>{(reader.model && READER_MODEL_LABELS[reader.model]) ?? 'SumUp-reader'}</TableCell>
+                  <TableCell>{(reader.model && READER_MODEL_LABELS[reader.model]) ?? m.devices.reader}</TableCell>
                   <TableCell className="text-muted-foreground">—</TableCell>
                   <TableCell className="text-muted-foreground">—</TableCell>
                   <TableCell>
-                    <Badge variant={status.variant}>{status.label}</Badge>
+                    <Badge variant={READER_STATUS_BADGE[status]}>{m.devices.readerStatus[status]}</Badge>
                   </TableCell>
                   <TableCell />
                 </TableRow>
@@ -127,12 +129,12 @@ export default function DevicesPage() {
             devices?.map((device) => (
               <TableRow key={device.terminal_id}>
                 <TableCell className="font-mono text-xs">{device.terminal_id}</TableCell>
-                <TableCell>{ROLE_LABELS[device.role] ?? device.role}</TableCell>
+                <TableCell>{m.devices.roles[device.role] ?? device.role}</TableCell>
                 <TableCell className="font-mono text-xs">{device.linked_to ?? '—'}</TableCell>
-                <TableCell>{new Date(device.created_at).toLocaleString('nl-BE')}</TableCell>
+                <TableCell>{new Date(device.created_at).toLocaleString(intlLocale)}</TableCell>
                 <TableCell>
                   <Badge variant={device.online ? 'default' : 'secondary'}>
-                    {device.online ? 'Online' : 'Offline'}
+                    {device.online ? m.devices.online : m.devices.offline}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -144,7 +146,7 @@ export default function DevicesPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem variant="destructive" onClick={() => handleRemove(device.terminal_id)}>
-                        Verwijderen
+                        {m.remove}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -154,12 +156,7 @@ export default function DevicesPage() {
         </TableBody>
       </Table>
 
-      <p className="text-sm text-muted-foreground">
-        Offline betekent enkel dat er nu geen live verbinding is (bv. het scherm staat uit of de kassa toont een
-        andere pagina) — het toestel en zijn koppeling blijven bestaan. Gebruik "Verwijderen" enkel voor toestellen
-        die echt niet meer gebruikt worden. SumUp-readers staan hier enkel ter info (live opgehaald uit je SumUp-account)
-        — koppelen of loskoppelen doe je in de SumUp-app of in Instellingen, niet hier.
-      </p>
+      <p className="text-sm text-muted-foreground">{m.devices.footnote}</p>
     </div>
   )
 }

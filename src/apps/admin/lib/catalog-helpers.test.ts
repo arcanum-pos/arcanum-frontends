@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { ADMIN_CATALOG_MESSAGES } from '../messages/catalog'
 import type { CatalogEntry, CatalogSection } from './catalog-api'
 import {
   addableVariants,
+  catalogNoticeText,
   formatEuroInput,
   formatQuickQuantities,
   layoutOf,
@@ -10,8 +12,11 @@ import {
   moveSectionInLayout,
   parseEuroInput,
   parseQuickQuantities,
+  serverNotice,
   vatLabel,
 } from './catalog-helpers'
+
+const { nl, fr, en } = ADMIN_CATALOG_MESSAGES
 
 function entry(id: string, variantId: string): CatalogEntry {
   return {
@@ -71,7 +76,7 @@ describe('quick quantities', () => {
   })
 
   it.each(['0', '5, x', '1000', '1.5', '1,2,3,4,5,6,7,8,9,10,11'])('rejects %j like the backend would', (input) => {
-    expect(parseQuickQuantities(input)).toHaveProperty('error')
+    expect(parseQuickQuantities(input)).toBe('invalid')
   })
 
   it('formats back to the editable form', () => {
@@ -82,9 +87,27 @@ describe('quick quantities', () => {
 
 describe('vatLabel', () => {
   it('labels the known rates and none', () => {
-    expect(vatLabel(null)).toBe('Geen')
-    expect(vatLabel(2100)).toBe('21%')
-    expect(vatLabel(550)).toBe('5.5%')
+    expect(vatLabel(nl, null)).toBe('Geen')
+    expect(vatLabel(nl, 2100)).toBe('21%')
+    expect(vatLabel(nl, 550)).toBe('5.5%')
+  })
+
+  it('words "none" in the console’s language', () => {
+    expect(vatLabel(fr, null)).toBe('Aucune')
+    expect(vatLabel(en, null)).toBe('None')
+    expect(vatLabel(en, 600)).toBe('6%')
+  })
+})
+
+describe('catalogNoticeText', () => {
+  it('words the screens’ own notices and shows the server’s as they are', () => {
+    expect(catalogNoticeText(nl, { kind: 'invalidPrice', name: 'Pils' })).toBe('Ongeldige prijs voor Pils — gebruik bv. 2,50')
+    expect(catalogNoticeText(nl, { kind: 'invalidQuickQuantities' })).toBe(
+      'Snelknoppen: maximaal 10 hele getallen tussen 1 en 999, gescheiden door komma’s'
+    )
+    expect(catalogNoticeText(en, { kind: 'exportFailed', error: 'status 500' })).toBe('Export failed: status 500')
+    expect(catalogNoticeText(fr, { kind: 'invalidPrice', name: 'Pils' })).toBe('Prix non valable pour Pils — utilisez p. ex. 2,50')
+    expect(catalogNoticeText(en, serverNotice(new Error('Rekening is gewijzigd')))).toBe('Rekening is gewijzigd')
   })
 })
 

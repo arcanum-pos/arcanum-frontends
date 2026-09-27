@@ -6,16 +6,19 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useMessages } from '@/shared/i18n'
 import { getCustomDomain, removeCustomDomain, setCustomDomain, verifyCustomDomain } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
 import { CopyLinkButton } from '../../components/copy-link-button'
+import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 
 function isFullyActive(status: string | null, sslStatus: string | null): boolean {
   return status === 'active' && sslStatus === 'active'
 }
 
 export default function BrandingPage() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const { data: domain, loading, error, reload } = useAsync(
@@ -69,7 +72,7 @@ export default function BrandingPage() {
 
   async function handleRemove() {
     if (!orgId) return
-    if (!window.confirm(`${domain?.customDomain} verwijderen als aangepast domein?`)) return
+    if (!window.confirm(m.removeDomainConfirm(domain?.customDomain ?? ''))) return
     setRemoving(true)
     try {
       await removeCustomDomain(orgId)
@@ -84,30 +87,28 @@ export default function BrandingPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-lg font-medium">Branding</h2>
-        <p className="text-sm text-muted-foreground">
-          Optioneel: maak deze organisatie bereikbaar op een eigen domeinnaam in plaats van het standaardadres van dit platform.
-        </p>
+        <h2 className="text-lg font-medium">{m.settingsNav.branding}</h2>
+        <p className="text-sm text-muted-foreground">{m.brandingSubtitle}</p>
       </div>
 
-      {error && <p className="text-sm text-destructive">Kon domeininstellingen niet laden: {error}</p>}
+      {error && <p className="text-sm text-destructive">{m.domainLoadFailed(error)}</p>}
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-2">
           <div>
-            <CardTitle>Aangepast domein</CardTitle>
+            <CardTitle>{m.customDomain}</CardTitle>
             <CardDescription>
               {loading
-                ? 'Laden...'
+                ? m.loading
                 : !domain?.customDomain
-                  ? 'Nog geen domein ingesteld'
+                  ? m.noDomainYet
                   : active
-                    ? 'Actief'
-                    : 'Wachten op verificatie'}
+                    ? m.active
+                    : m.awaitingVerification}
             </CardDescription>
           </div>
           {!loading && domain?.customDomain && (
-            <Badge variant={active ? 'default' : 'secondary'}>{active ? 'Actief' : domain.status ?? 'Bezig'}</Badge>
+            <Badge variant={active ? 'default' : 'secondary'}>{active ? m.active : domain.status ?? m.inProgress}</Badge>
           )}
         </CardHeader>
         <CardContent className="grid gap-4">
@@ -119,18 +120,18 @@ export default function BrandingPage() {
           ) : (
             <>
               <div className="grid gap-2">
-                <Label htmlFor="custom-domain">Domeinnaam</Label>
+                <Label htmlFor="custom-domain">{m.domainName}</Label>
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
                     id="custom-domain"
                     className="max-w-72"
-                    placeholder="pos.mijnorganisatie.be"
+                    placeholder={m.domainPlaceholder}
                     value={hostname}
                     onChange={(e) => setHostname(e.target.value)}
                     autoComplete="off"
                   />
                   <Button onClick={handleSave} disabled={saving || !hostname.trim()}>
-                    {saving ? 'Bezig...' : domain?.customDomain ? 'Wijzigen' : 'Instellen'}
+                    {saving ? m.busy : domain?.customDomain ? m.change : m.setUp}
                   </Button>
                 </div>
                 {saveError && <p className="text-sm text-destructive">{saveError}</p>}
@@ -140,8 +141,9 @@ export default function BrandingPage() {
                 <>
                   <div className="grid gap-1">
                     <p className="text-sm text-muted-foreground">
-                      Maak bij je domeinprovider een CNAME-record aan dat <code className="rounded bg-muted px-1">{domain.customDomain}</code>{' '}
-                      naar het volgende adres verwijst:
+                      {m.cnameBefore}
+                      <code className="rounded bg-muted px-1">{domain.customDomain}</code>
+                      {m.cnameAfter}
                     </p>
                     <div className="flex items-center gap-1">
                       <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{domain.cnameTarget}</code>
@@ -151,22 +153,20 @@ export default function BrandingPage() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <Button variant="secondary" onClick={handleVerify} disabled={verifying}>
-                      {verifying ? 'Bezig...' : 'Verifiëren'}
+                      {verifying ? m.busy : m.verify}
                     </Button>
                   </div>
 
                   {active ? (
                     <div className="flex items-center gap-2 rounded-md border border-green-600/30 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-500/30 dark:bg-green-950 dark:text-green-400">
                       <CheckCircle2 className="size-4 shrink-0" />
-                      Domein geverifieerd en actief.
+                      {m.domainActive}
                     </div>
                   ) : (
                     !verifying &&
                     verifyErrors.length === 0 && (
                       <p className="text-sm text-muted-foreground">
-                        Nog niet actief (status: {domain.status ?? '-'} / ssl: {domain.sslStatus ?? '-'}). Dit kan
-                        enkele minuten duren nadat de CNAME zichtbaar is — klik op Verifiëren om de status te
-                        vernieuwen.
+                        {m.domainNotActiveYet(domain.status ?? '-', domain.sslStatus ?? '-')}
                       </p>
                     )
                   )}
@@ -180,7 +180,7 @@ export default function BrandingPage() {
 
                   <div className="flex items-center gap-2 border-t pt-4">
                     <Button variant="ghost" className="text-destructive" onClick={handleRemove} disabled={removing}>
-                      {removing ? 'Bezig...' : 'Verwijderen'}
+                      {removing ? m.busy : m.remove}
                     </Button>
                   </div>
                 </>
@@ -189,10 +189,7 @@ export default function BrandingPage() {
           )}
         </CardContent>
         <CardFooter>
-          <p className="text-sm text-muted-foreground">
-            Vereist een eigen identity provider voor deze organisatie (zie Authentication) — leden melden zich na het
-            instellen aan via dit domein zelf, niet meer via het standaardadres van dit platform.
-          </p>
+          <p className="text-sm text-muted-foreground">{m.domainNeedsOwnIdp}</p>
         </CardFooter>
       </Card>
     </div>

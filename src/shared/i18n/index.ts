@@ -28,20 +28,23 @@ export function isLocale(value: unknown): value is Locale {
 // LanguagePicker (chooser, login, device login) — also the customer
 // display's home language. A private window or blocked storage just means
 // "not picked".
+// The admin console keeps its own (ADMIN_LOCALE_KEY): it's a person's
+// choice in their own browser, which may well be a kassa's too.
 const STORAGE_KEY = 'arcanum-locale'
+export const ADMIN_LOCALE_KEY = 'arcanum-admin-locale'
 
-export function storedLocale(): Locale | null {
+export function storedLocale(key = STORAGE_KEY): Locale | null {
   try {
-    const value = localStorage.getItem(STORAGE_KEY)
+    const value = localStorage.getItem(key)
     return isLocale(value) ? value : null
   } catch {
     return null
   }
 }
 
-export function storeLocale(locale: Locale) {
+export function storeLocale(locale: Locale, key = STORAGE_KEY) {
   try {
-    localStorage.setItem(STORAGE_KEY, locale)
+    localStorage.setItem(key, locale)
   } catch {
     // Not remembered — the screen still switches.
   }
@@ -57,9 +60,10 @@ export function browserLocale(): Locale | null {
 }
 
 // A kiosk screen with no customer in front of it: this device's picked
-// language, else the browser's, else Dutch.
-export function preferredLocale(): Locale {
-  return storedLocale() ?? browserLocale() ?? DEFAULT_LOCALE
+// language, else the browser's, else Dutch. The admin console the same,
+// from its own key (ADMIN_LOCALE_KEY).
+export function preferredLocale(key = STORAGE_KEY): Locale {
+  return storedLocale(key) ?? browserLocale() ?? DEFAULT_LOCALE
 }
 
 // A kiosk screen with customers or cashiers in front of it (kassa,
@@ -67,6 +71,14 @@ export function preferredLocale(): Locale {
 // Dutch — never the browser's, which says nothing about who uses the device.
 export function deviceLocale(): Locale {
   return storedLocale() ?? DEFAULT_LOCALE
+}
+
+// The language the screen is showing right now (LocaleProvider keeps
+// <html lang> in sync) — for code outside React, e.g. an API client
+// wording an error. Dutch before a provider has run.
+export function currentLocale(): Locale {
+  const lang = typeof document === 'undefined' ? null : document.documentElement.lang
+  return isLocale(lang) ? lang : DEFAULT_LOCALE
 }
 
 // Provided by LocaleProvider (./locale-provider.tsx) at a screen's root.

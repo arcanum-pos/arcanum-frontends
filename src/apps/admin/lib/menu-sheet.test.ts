@@ -1,4 +1,6 @@
+import { API_ERROR_MESSAGES } from '@/shared/api-errors'
 import { describe, expect, it } from 'vitest'
+import { ADMIN_CATALOG_MESSAGES } from '../messages/catalog'
 import {
   explanationRows,
   exportCsvRows,
@@ -12,9 +14,12 @@ import {
   parseCsv,
   parseSheetRows,
   previewSections,
+  sheetProblemText,
   toCsv,
   type ExportRow,
 } from './menu-sheet'
+
+const { nl, fr, en } = ADMIN_CATALOG_MESSAGES
 
 const steak: ExportRow = {
   groep: 'Eten',
@@ -64,7 +69,10 @@ describe('parseSheetRows: header mapping', () => {
       ['Eten', 'Steak', ''],
     ])
     expect(parsed.rows).toEqual([])
-    expect(parsed.errors[0]).toContain('Product, Prijs')
+    expect(parsed.errors).toEqual([{ kind: 'missingColumns', columns: ['Product', 'Prijs'] }])
+    expect(sheetProblemText(nl, parsed.errors[0])).toBe(
+      'Verplichte kolommen ontbreekt: Product, Prijs. De eerste niet-lege rij moet de kolomnamen bevatten.'
+    )
   })
 
   it('ignores unknown columns and reports them', () => {
@@ -110,10 +118,21 @@ describe('parseSheetRows: header mapping', () => {
   })
 
   it('reports an empty file, a header without rows, and too many rows', () => {
-    expect(parseSheetRows([]).errors).toEqual(['Het bestand is leeg.'])
-    expect(parseSheetRows([['Groep', 'Product', 'Prijs']]).errors[0]).toContain('Geen rijen')
+    expect(parseSheetRows([]).errors).toEqual([{ kind: 'empty' }])
+    expect(sheetProblemText(nl, { kind: 'empty' })).toBe('Het bestand is leeg.')
+    expect(parseSheetRows([['Groep', 'Product', 'Prijs']]).errors).toEqual([{ kind: 'noRows' }])
+    expect(sheetProblemText(nl, { kind: 'noRows' })).toContain('Geen rijen')
     const many = [['Groep', 'Product', 'Prijs'], ...Array.from({ length: MAX_IMPORT_ROWS + 1 }, (_, i) => ['G', `P${i}`, 1])]
-    expect(parseSheetRows(many).errors[0]).toContain(`${MAX_IMPORT_ROWS + 1}`)
+    const [tooMany] = parseSheetRows(many).errors
+    expect(tooMany).toEqual({ kind: 'tooManyRows', max: MAX_IMPORT_ROWS, count: MAX_IMPORT_ROWS + 1 })
+    expect(sheetProblemText(nl, tooMany)).toContain(`${MAX_IMPORT_ROWS + 1}`)
+  })
+
+  it('words the problems in the console’s language, but keeps the (Dutch) column names', () => {
+    const missing = parseSheetRows([['Groep', 'Naam'], ['Eten', 'Steak']]).errors[0]
+    expect(sheetProblemText(en, missing)).toBe('Required columns missing: Product, Prijs. The first non-empty row must contain the column names.')
+    expect(sheetProblemText(fr, { kind: 'missingColumns', columns: ['Prijs'] })).toContain('Colonne obligatoire manquante : Prijs')
+    expect(sheetProblemText(fr, { kind: 'unreadable' })).toBe('Impossible de lire ce fichier. Utilisez un fichier .xlsx ou .csv.')
   })
 })
 
@@ -202,7 +221,7 @@ describe('file names on import', () => {
 
 describe('preview', () => {
   it('lists only non-empty sections, with prices in euro', () => {
-    const sections = previewSections({
+    const sections = previewSections(nl, {
       newCategories: [],
       newProducts: ['Cola'],
       newVariants: [],
@@ -222,9 +241,18 @@ describe('preview', () => {
 
   it('shows new stations right after new categories, and copes with a summary without them', () => {
     const base = { newCategories: ['Drank'], newProducts: [], newVariants: [], updatedProducts: [], priceChanges: [], added: [], removed: [] }
-    expect(previewSections({ ...base, newStations: ['Bar', 'Keuken'] }).map((x) => x.title)).toEqual(['Nieuwe categorieën', 'Nieuwe stations'])
-    expect(previewSections({ ...base, newStations: ['Bar'] })[1].items).toEqual(['Bar'])
-    expect(previewSections(base).map((x) => x.title)).toEqual(['Nieuwe categorieën'])
+    expect(previewSections(nl, { ...base, newStations: ['Bar', 'Keuken'] }).map((x) => x.title)).toEqual(['Nieuwe categorieën', 'Nieuwe stations'])
+    expect(previewSections(nl, { ...base, newStations: ['Bar'] })[1].items).toEqual(['Bar'])
+    expect(previewSections(nl, base).map((x) => x.title)).toEqual(['Nieuwe categorieën'])
+  })
+
+  it('titles the sections in the console’s language, amounts still in € 2,50', () => {
+    const summary = { newCategories: [], newStations: ['Bar'], newProducts: [], newVariants: [], updatedProducts: [], priceChanges: [{ name: 'Pils', fromCents: 250, toCents: 275 }], added: [], removed: [] }
+    expect(previewSections(fr, summary)).toEqual([
+      { title: 'Nouveaux postes', items: ['Bar'] },
+      { title: 'Modifications de prix', items: ['Pils: € 2,50 → € 2,75'] },
+    ])
+    expect(previewSections(en, summary).map((x) => x.title)).toEqual(['New stations', 'Price changes'])
   })
 
   it('explains Station in the Uitleg sheet', () => {
@@ -233,7 +261,12 @@ describe('preview', () => {
   })
 
   it('prefixes errors with their row number when there is one', () => {
-    expect(importErrorText({ row: 7, message: 'Prijs ontbreekt' })).toBe('Rij 7: Prijs ontbreekt')
-    expect(importErrorText({ row: null, message: 'Geen groepen' })).toBe('Geen groepen')
+    expect(importErrorText(nl, API_ERROR_MESSAGES.nl, { row: 7, message: 'Prijs ontbreekt' })).toBe('Rij 7: Prijs ontbreekt')
+    expect(importErrorText(nl, API_ERROR_MESSAGES.nl, { row: null, message: 'Geen groepen' })).toBe('Geen groepen')
+    expect(importErrorText(en, API_ERROR_MESSAGES.en, { row: 7, message: 'Prijs ontbreekt' })).toBe('Row 7: Prijs ontbreekt')
+    expect(importErrorText(fr, API_ERROR_MESSAGES.fr, { row: 7, message: 'Prijs ontbreekt' })).toBe('Ligne 7 : Prijs ontbreekt')
+    // With the backend's code, the row's error itself is worded too.
+    expect(importErrorText(en, API_ERROR_MESSAGES.en, { row: 7, message: 'Prijs ontbreekt', code: 'import_price_missing' })).toBe('Row 7: Price missing')
+    expect(importErrorText(fr, API_ERROR_MESSAGES.fr, { row: 3, message: '…', code: 'import_duplicate_code', params: { code: 'B1', otherRow: 2 } })).toBe('Ligne 3 : Le code « B1 » figure déjà à la ligne 2')
   })
 })

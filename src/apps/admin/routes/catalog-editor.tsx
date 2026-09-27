@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
+import { useMessages } from '@/shared/i18n'
 import { MenuExportButton } from '../components/menu-export-button'
 import { MenuImportDialog } from '../components/menu-import-dialog'
 import { ConfirmDialog, PromptDialog } from '../components/prompt-dialog'
@@ -28,27 +29,28 @@ import {
 } from '../lib/catalog-api'
 import {
   addableVariants,
+  catalogNoticeText,
   formatEuroInput,
   formatQuickQuantities,
   moveEntryInLayout,
   moveSectionInLayout,
   parseEuroInput,
   parseQuickQuantities,
+  serverNotice,
+  type CatalogNotice,
 } from '../lib/catalog-helpers'
 import { useOrg } from '../lib/org-context'
 import { useAsync } from '../lib/use-async'
+import { ADMIN_CATALOG_MESSAGES } from '../messages/catalog'
 
 type Prompt = { kind: 'new-section' } | { kind: 'import' } | { kind: 'rename-section'; section: CatalogSection } | { kind: 'delete-section'; section: CatalogSection }
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
-}
 
 // One menukaart: groepen (sections — the kassa's button groups) with their
 // lines (a product variant + its price here). Every change is saved right
 // away and the whole catalog is reloaded afterwards, so what's shown is
 // always what the server has.
 export default function CatalogEditorPage() {
+  const m = useMessages(ADMIN_CATALOG_MESSAGES)
   const { catalogId } = useParams({ strict: false }) as { catalogId: string }
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
@@ -56,14 +58,14 @@ export default function CatalogEditorPage() {
   const catalog = useAsync(() => (orgId ? getCatalog(orgId, catalogId) : Promise.resolve(null)), [orgId, catalogId])
   const products = useAsync(() => (orgId ? listProducts(orgId) : Promise.resolve([])), [orgId])
   const [prompt, setPrompt] = useState<Prompt | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<CatalogNotice | null>(null)
 
   async function run(action: () => Promise<unknown>) {
     setActionError(null)
     try {
       await action()
     } catch (err) {
-      setActionError(errorText(err))
+      setActionError(serverNotice(err))
     } finally {
       // Also after a failure — e.g. the layout call's "gewijzigd, herlaad"
       // (someone else edited meanwhile) is then fixed by the reload itself.
@@ -81,31 +83,31 @@ export default function CatalogEditorPage() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <Link to="/catalogs" className="flex items-center gap-1 text-sm text-muted-foreground hover:underline">
-          <ArrowLeft className="size-4" /> Menukaarten
+          <ArrowLeft className="size-4" /> {m.catalogsTitle}
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{data?.name ?? 'Menukaart'}</h1>
-            {data?.isDefault && <Badge>Standaard</Badge>}
+            <h1 className="text-2xl font-semibold tracking-tight">{data?.name ?? m.catalog}</h1>
+            {data?.isDefault && <Badge>{m.defaultBadge}</Badge>}
           </div>
           <div className="flex flex-wrap gap-2">
             {orgId && data && <MenuExportButton orgId={orgId} catalogId={data.id} onError={setActionError} />}
             <Button variant="outline" disabled={!data} onClick={() => setPrompt({ kind: 'import' })}>
-              Importeren
+              {m.import}
             </Button>
             <Button disabled={!data} onClick={() => setPrompt({ kind: 'new-section' })}>
-              Groep toevoegen
+              {m.addSection}
             </Button>
           </div>
         </div>
-        <p className="text-muted-foreground">Groepen zijn de knoppenblokken op de kassa. Prijzen gelden alleen op deze menukaart.</p>
+        <p className="text-muted-foreground">{m.editorIntro}</p>
       </div>
 
       {catalog.loading && !data && <Skeleton className="h-24 w-full" />}
-      {catalog.error && <p className="text-sm text-destructive">Kon menukaart niet laden: {catalog.error}</p>}
-      {actionError && <p className="text-sm text-destructive">{actionError}</p>}
+      {catalog.error && <p className="text-sm text-destructive">{m.catalogLoadFailed(catalog.error)}</p>}
+      {actionError && <p className="text-sm text-destructive">{catalogNoticeText(m, actionError)}</p>}
 
-      {data && data.sections.length === 0 && <p className="text-sm text-muted-foreground">Nog geen groepen. Voeg er een toe, bv. “Drank”.</p>}
+      {data && data.sections.length === 0 && <p className="text-sm text-muted-foreground">{m.noSections}</p>}
 
       {orgId &&
         data?.sections.map((section, sectionIndex) => (
@@ -116,7 +118,7 @@ export default function CatalogEditorPage() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={`${section.name} omhoog`}
+                  aria-label={m.moveUp(section.name)}
                   disabled={sectionIndex === 0}
                   onClick={() => layout(moveSectionInLayout(data.sections, sectionIndex, -1))}
                 >
@@ -125,22 +127,22 @@ export default function CatalogEditorPage() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={`${section.name} omlaag`}
+                  aria-label={m.moveDown(section.name)}
                   disabled={sectionIndex === data.sections.length - 1}
                   onClick={() => layout(moveSectionInLayout(data.sections, sectionIndex, 1))}
                 >
                   <ArrowDown />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setPrompt({ kind: 'rename-section', section })}>
-                  Hernoemen
+                  {m.rename}
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setPrompt({ kind: 'delete-section', section })}>
-                  Verwijderen
+                  {m.remove}
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
-              {section.entries.length === 0 && <p className="text-sm text-muted-foreground">Nog geen producten in deze groep.</p>}
+              {section.entries.length === 0 && <p className="text-sm text-muted-foreground">{m.emptySection}</p>}
               {section.entries.map((entry, entryIndex) => (
                 <EntryRow
                   key={`${entry.id}-${entry.priceCents}-${formatQuickQuantities(entry.quickQuantities)}`}
@@ -177,10 +179,10 @@ export default function CatalogEditorPage() {
       {orgId && prompt?.kind === 'new-section' && (
         <PromptDialog
           key="new-section"
-          title="Groep toevoegen"
-          description="Een knoppenblok op de kassa, bv. Drank, Eten of Bonnen."
-          label="Naam"
-          confirmLabel="Toevoegen"
+          title={m.addSection}
+          description={m.addSectionDescription}
+          label={m.name}
+          confirmLabel={m.add}
           onConfirm={async (name) => {
             await createSection(orgId, catalogId, name)
             catalog.reload()
@@ -191,10 +193,10 @@ export default function CatalogEditorPage() {
       {orgId && prompt?.kind === 'rename-section' && (
         <PromptDialog
           key={`rename-${prompt.section.id}`}
-          title="Groep hernoemen"
-          label="Naam"
+          title={m.renameSection}
+          label={m.name}
           initialValue={prompt.section.name}
-          confirmLabel="Opslaan"
+          confirmLabel={m.save}
           onConfirm={async (name) => {
             await renameSection(orgId, catalogId, prompt.section.id, name)
             catalog.reload()
@@ -204,9 +206,9 @@ export default function CatalogEditorPage() {
       )}
       {orgId && prompt?.kind === 'delete-section' && (
         <ConfirmDialog
-          title={`Groep “${prompt.section.name}” verwijderen?`}
-          description={`De ${prompt.section.entries.length} product(en) in deze groep verdwijnen van deze menukaart. De producten zelf blijven bestaan.`}
-          confirmLabel="Verwijderen"
+          title={m.deleteSectionTitle(prompt.section.name)}
+          description={m.deleteSectionDescription(prompt.section.entries.length)}
+          confirmLabel={m.remove}
           onConfirm={async () => {
             await deleteSection(orgId, catalogId, prompt.section.id)
             catalog.reload()
@@ -236,15 +238,16 @@ function EntryRow({
   onMove: (delta: number) => void
   onUpdate: (fields: { priceCents?: number; visible?: boolean; quickQuantities?: number[] | null }) => void
   onRemove: () => void
-  onError: (message: string) => void
+  onError: (notice: CatalogNotice) => void
 }) {
+  const m = useMessages(ADMIN_CATALOG_MESSAGES)
   const [price, setPrice] = useState(formatEuroInput(entry.priceCents))
   const [quick, setQuick] = useState(formatQuickQuantities(entry.quickQuantities))
 
   function savePrice() {
     const cents = parseEuroInput(price)
     if (cents === null) {
-      onError(`Ongeldige prijs voor ${entry.displayName} — gebruik bv. 2,50`)
+      onError({ kind: 'invalidPrice', name: entry.displayName })
       return
     }
     if (cents !== entry.priceCents) onUpdate({ priceCents: cents })
@@ -252,8 +255,8 @@ function EntryRow({
 
   function saveQuick() {
     const parsed = parseQuickQuantities(quick)
-    if (parsed && !Array.isArray(parsed)) {
-      onError(parsed.error)
+    if (parsed === 'invalid') {
+      onError({ kind: 'invalidQuickQuantities' })
       return
     }
     if (formatQuickQuantities(parsed) !== formatQuickQuantities(entry.quickQuantities)) onUpdate({ quickQuantities: parsed })
@@ -268,19 +271,19 @@ function EntryRow({
       <div className="min-w-40 flex-1">
         <p className={`font-medium ${entry.sellable ? '' : 'text-muted-foreground line-through'}`}>{entry.displayName}</p>
         <p className="text-xs text-muted-foreground">
-          {entry.categoryName ?? 'Geen categorie'}
+          {entry.categoryName ?? m.noCategory}
           {entry.code && ` · ${entry.code}`}
         </p>
         {!entry.sellable && (
           <Badge variant="destructive" className="mt-1">
-            Gearchiveerd product — niet op de kassa
+            {m.archivedEntry}
           </Badge>
         )}
       </div>
       <label className="flex items-center gap-1 text-sm">
         €
         <Input
-          aria-label={`Prijs ${entry.displayName}`}
+          aria-label={m.priceOf(entry.displayName)}
           inputMode="decimal"
           className="w-24"
           value={price}
@@ -290,8 +293,8 @@ function EntryRow({
         />
       </label>
       <Input
-        aria-label={`Snelknoppen ${entry.displayName}`}
-        placeholder="snelknoppen, bv. 5, 10"
+        aria-label={m.quickQuantitiesOf(entry.displayName)}
+        placeholder={m.quickQuantitiesPlaceholder}
         className="w-40"
         value={quick}
         onChange={(e) => setQuick(e.target.value)}
@@ -299,18 +302,18 @@ function EntryRow({
         onKeyDown={blurOnEnter}
       />
       <label className="flex items-center gap-2 text-sm">
-        <Switch checked={entry.visible} onCheckedChange={(visible) => onUpdate({ visible })} aria-label={`Zichtbaar ${entry.displayName}`} />
-        Zichtbaar
+        <Switch checked={entry.visible} onCheckedChange={(visible) => onUpdate({ visible })} aria-label={m.visibleOf(entry.displayName)} />
+        {m.visible}
       </label>
       <div className="flex">
-        <Button variant="ghost" size="icon-sm" aria-label={`${entry.displayName} omhoog`} disabled={first} onClick={() => onMove(-1)}>
+        <Button variant="ghost" size="icon-sm" aria-label={m.moveUp(entry.displayName)} disabled={first} onClick={() => onMove(-1)}>
           <ArrowUp />
         </Button>
-        <Button variant="ghost" size="icon-sm" aria-label={`${entry.displayName} omlaag`} disabled={last} onClick={() => onMove(1)}>
+        <Button variant="ghost" size="icon-sm" aria-label={m.moveDown(entry.displayName)} disabled={last} onClick={() => onMove(1)}>
           <ArrowDown />
         </Button>
         <Button variant="ghost" size="sm" onClick={onRemove}>
-          Verwijderen
+          {m.remove}
         </Button>
       </div>
     </div>
@@ -326,12 +329,13 @@ function AddEntryForm({
   sectionName: string
   onAdd: (variantId: string, priceCents: number) => void
 }) {
+  const m = useMessages(ADMIN_CATALOG_MESSAGES)
   const [variantId, setVariantId] = useState('')
   const [price, setPrice] = useState('')
   const cents = parseEuroInput(price)
 
   if (options.length === 0) {
-    return <p className="pt-2 text-xs text-muted-foreground">Alle producten staan al op deze menukaart — maak nieuwe aan onder Producten.</p>
+    return <p className="pt-2 text-xs text-muted-foreground">{m.allOnCatalog}</p>
   }
 
   return (
@@ -346,8 +350,8 @@ function AddEntryForm({
       }}
     >
       <Select value={variantId} onValueChange={setVariantId}>
-        <SelectTrigger className="w-56" aria-label={`Product toevoegen aan ${sectionName}`}>
-          <SelectValue placeholder="Product toevoegen…" />
+        <SelectTrigger className="w-56" aria-label={m.addProductTo(sectionName)}>
+          <SelectValue placeholder={m.addProductPlaceholder} />
         </SelectTrigger>
         <SelectContent>
           {options.map((o) => (
@@ -359,10 +363,10 @@ function AddEntryForm({
       </Select>
       <label className="flex items-center gap-1 text-sm">
         €
-        <Input aria-label={`Prijs nieuw product ${sectionName}`} inputMode="decimal" placeholder="0,00" className="w-24" value={price} onChange={(e) => setPrice(e.target.value)} />
+        <Input aria-label={m.newEntryPrice(sectionName)} inputMode="decimal" placeholder="0,00" className="w-24" value={price} onChange={(e) => setPrice(e.target.value)} />
       </label>
       <Button type="submit" variant="outline" disabled={!variantId || cents === null}>
-        Toevoegen
+        {m.add}
       </Button>
     </form>
   )

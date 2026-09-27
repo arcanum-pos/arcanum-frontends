@@ -70,6 +70,9 @@ function standardCatalog(): FakeCatalog {
 }
 
 const MENUKAART_REFUSAL = 'Dit product staat niet (meer) op de menukaart — herlaad de kassa'
+const UNKNOWN_CATALOG = 'Onbekende of gearchiveerde menukaart'
+// arcanum-backend's error codes (src/errors.ts) for the refusals above.
+const REFUSAL_CODES: Record<string, string> = { [MENUKAART_REFUSAL]: 'product_not_on_catalog', [UNKNOWN_CATALOG]: 'unknown_catalog' }
 
 interface Line {
   id: string
@@ -259,11 +262,11 @@ export class FakeBackend {
 
   private refusal(tabId: string): FakeResponse {
     const tab = this.tab(tabId)
-    if (!tab) return { status: 404, body: { error: 'Rekening niet gevonden' } }
+    if (!tab) return { status: 404, body: { error: 'Rekening niet gevonden', code: 'tab_not_found' } }
     const s = this.summary(tab)
-    if (tab.status !== 'open') return { status: 409, body: { error: 'Rekening is niet meer open', tab: s } }
-    if (s.paymentPending) return { status: 409, body: { error: 'Er loopt een betaling voor deze rekening', tab: s } }
-    return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', tab: s } }
+    if (tab.status !== 'open') return { status: 409, body: { error: 'Rekening is niet meer open', code: 'tab_not_open', tab: s } }
+    if (s.paymentPending) return { status: 409, body: { error: 'Er loopt een betaling voor deze rekening', code: 'tab_payment_pending', tab: s } }
+    return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', code: 'tab_changed', tab: s } }
   }
 
   private writable(tabId: string) {
@@ -328,7 +331,7 @@ export class FakeBackend {
       return { status: 200, body: this.catalogs.filter((c) => !c.archived).map((c) => ({ id: c.id, name: c.name, isDefault: c.isDefault })) }
     }
     const catalog = this.catalogs.find((c) => !c.archived && (catalogId === 'default' ? c.isDefault : c.id === catalogId))
-    if (!catalog || action !== 'kassa') return { status: 404, body: { error: 'Geen menukaart gevonden' } }
+    if (!catalog || action !== 'kassa') return { status: 404, body: { error: 'Geen menukaart gevonden', code: 'no_catalog' } }
     return {
       status: 200,
       body: {
@@ -354,7 +357,7 @@ export class FakeBackend {
       if (!('variantId' in l) || !l.variantId) return FREE_LINE_REFUSAL
       if (!catalogId) return 'catalogId is required for lines with a variantId'
       const catalog = this.catalogs.find((c) => c.id === catalogId && !c.archived)
-      if (!catalog) return 'Onbekende of gearchiveerde menukaart'
+      if (!catalog) return UNKNOWN_CATALOG
       const e = catalog.sections.flatMap((s) => s.entries).find((x) => x.variantId === l.variantId && x.visible)
       if (!e) return MENUKAART_REFUSAL
       priced.push({ itemCode: e.code, name: e.name, unitPriceCents: e.priceCents, quantity: l.quantity })
@@ -370,10 +373,10 @@ export class FakeBackend {
       }
       if (method === 'POST') {
         if (body.eventId != null && !this.events.some((e) => e.id === body.eventId)) {
-          return { status: 400, body: { error: 'Onbekend evenement — kies het opnieuw in de instellingen van de kassa' } }
+          return { status: 400, body: { error: 'Onbekend evenement — kies het opnieuw in de instellingen van de kassa', code: 'unknown_event' } }
         }
         const priced = body.lines?.length ? this.priceLines(body.lines, body.catalogId) : []
-        if (typeof priced === 'string') return { status: 400, body: { error: priced } }
+        if (typeof priced === 'string') return { status: 400, body: { error: priced, code: REFUSAL_CODES[priced] } }
         const tab = this.openTab(body.label || '')
         tab.eventId = body.eventId ?? null
         tab.openedDeviceName = body.deviceName || null
@@ -382,7 +385,7 @@ export class FakeBackend {
       }
     }
     const tab = tabId ? this.tab(tabId) : undefined
-    if (!tab) return { status: 404, body: { error: 'Rekening niet gevonden' } }
+    if (!tab) return { status: 404, body: { error: 'Rekening niet gevonden', code: 'tab_not_found' } }
 
     if (!action && method === 'GET') return { status: 200, body: this.detail(tab) }
     if (!action && method === 'PATCH') {
@@ -393,7 +396,7 @@ export class FakeBackend {
     if (action === 'orders' && method === 'POST') {
       if (!Array.isArray(body.lines) || body.lines.length === 0) return { status: 400, body: { error: 'lines must be a non-empty array' } }
       const priced = this.priceLines(body.lines, body.catalogId)
-      if (typeof priced === 'string') return { status: 400, body: { error: priced } }
+      if (typeof priced === 'string') return { status: 400, body: { error: priced, code: REFUSAL_CODES[priced] } }
       if (!this.writable(tab.id)) return this.refusal(tab.id)
       this.addOrder(tab.id, priced)
       return { status: 201, body: this.detail(tab) }
@@ -402,7 +405,7 @@ export class FakeBackend {
       const parts = body.parts
       if (parts !== null && (!Number.isInteger(parts) || parts < 2 || parts > 50)) return { status: 400, body: { error: 'parts must be an integer 2–50, or null' } }
       if (!this.writable(tab.id)) return this.refusal(tab.id)
-      if (parts !== null && this.summary(tab).outstandingCents < parts) return { status: 409, body: { error: 'Te weinig open om zo te verdelen', tab: this.summary(tab) } }
+      if (parts !== null && this.summary(tab).outstandingCents < parts) return { status: 409, body: { error: 'Te weinig open om zo te verdelen', code: 'split_too_small', tab: this.summary(tab) } }
       tab.splitParts = parts
       tab.splitPaid = 0
       return { status: 200, body: this.detail(tab) }
@@ -417,16 +420,16 @@ export class FakeBackend {
     if (lineId && method === 'POST') {
       if (!body.reason?.trim()) return { status: 400, body: { error: 'reason is required' } }
       const original = this.tabLines(tab.id).find((l) => l.id === lineId && !l.voidsLineId)
-      if (!original) return { status: 404, body: { error: 'Lijn niet gevonden' } }
+      if (!original) return { status: 404, body: { error: 'Lijn niet gevonden', code: 'line_not_found' } }
       const remaining = original.quantity + this.lines.filter((v) => v.voidsLineId === lineId).reduce((s, v) => s + v.quantity, 0)
       const quantity = body.quantity ?? remaining
       if (!this.writable(tab.id) || quantity < 1 || quantity > remaining) return this.refusal(tab.id)
       if (quantity > remaining - this.paidUnits(lineId)) {
-        return { status: 409, body: { error: 'Deze stuks zijn al betaald — ze kunnen niet meer geannuleerd worden', tab: this.summary(tab) } }
+        return { status: 409, body: { error: 'Deze stuks zijn al betaald — ze kunnen niet meer geannuleerd worden', code: 'void_units_paid', tab: this.summary(tab) } }
       }
       const s = this.summary(tab)
       if (s.totalCents - quantity * original.unitPriceCents < s.paidCents) {
-        return { status: 409, body: { error: 'Er is al een deel betaald — annuleren zou meer terugbetalen dan er open staat', tab: s } }
+        return { status: 409, body: { error: 'Er is al een deel betaald — annuleren zou meer terugbetalen dan er open staat', code: 'void_exceeds_outstanding', tab: s } }
       }
       const orderId = nextId('order')
       this.lineTab.set(orderId, tab.id)
@@ -482,10 +485,10 @@ export class FakeBackend {
     if (!Number.isInteger(tipCents) || tipCents < 0 || tipCents > 100_000) return { status: 400, body: { error: 'tipCents must be an integer between 0 and 100000' } }
     if (tabId) {
       const tab = this.tab(tabId)
-      if (!tab) return { status: 404, body: { error: 'Rekening niet gevonden' } }
+      if (!tab) return { status: 404, body: { error: 'Rekening niet gevonden', code: 'tab_not_found' } }
       const s = this.summary(tab)
-      if (tab.status !== 'open') return { status: 409, body: { error: 'Rekening is niet meer open', tab: s } }
-      if (s.paymentPending) return { status: 409, body: { error: 'Er loopt al een betaling voor deze rekening', tab: s } }
+      if (tab.status !== 'open') return { status: 409, body: { error: 'Rekening is niet meer open', code: 'tab_not_open', tab: s } }
+      if (s.paymentPending) return { status: 409, body: { error: 'Er loopt al een betaling voor deze rekening', code: 'tab_payment_already_pending', tab: s } }
       // The kassa's intent, checked exactly (like the backend's prepareTabCharge).
       const pays = body.amount - tipCents
       if (body.lines !== undefined) {
@@ -493,13 +496,13 @@ export class FakeBackend {
         let cents = 0
         for (const pick of body.lines as { lineId: string; quantity: number }[]) {
           const l = detail.lines.find((x: any) => x.id === pick.lineId && !x.voidsLineId)
-          if (!l || pick.quantity > l.quantity - l.voidedQuantity - l.paidQuantity) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', tab: s } }
+          if (!l || pick.quantity > l.quantity - l.voidedQuantity - l.paidQuantity) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', code: 'tab_changed', tab: s } }
           cents += pick.quantity * l.unitPriceCents
         }
-        if (cents !== pays) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', tab: s } }
+        if (cents !== pays) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', code: 'tab_changed', tab: s } }
       }
       const expected = body.lines !== undefined ? pays >= 1 && pays <= s.outstandingCents : body.splitPart === true ? pays === s.split?.nextCents : body.partial === true ? pays >= 1 && pays <= s.outstandingCents : pays === s.outstandingCents
-      if (!expected) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', tab: s } }
+      if (!expected) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', code: 'tab_changed', tab: s } }
     }
     const tab = tabId ? this.tab(tabId) : undefined
     const splitPart = body.splitPart === true && tab?.splitParts ? (tab.splitPaid || 0) + 1 : 0

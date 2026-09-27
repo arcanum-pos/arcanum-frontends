@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useMessages } from '@/shared/i18n'
 import {
   getGmailApiCredentials,
   getMailProvider,
@@ -19,13 +20,14 @@ import {
 } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
+import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 
-const PLANNED_NOTIFICATIONS = [
-  { id: 'invite', label: 'Nieuwe uitnodiging', description: 'E-mail wanneer iemand wordt uitgenodigd voor deze organisatie.' },
-  { id: 'payment-failed', label: 'Mislukte betaling', description: 'E-mail bij een mislukte of verlopen betaling.' },
-]
+// A service-account file that isn't one: its own message (follows a
+// language switch), or the browser's JSON.parse error as is.
+type FileError = { kind: 'incomplete' } | { kind: 'unreadable'; detail: string }
 
 export default function NotificationsPage() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
 
@@ -57,7 +59,7 @@ export default function NotificationsPage() {
   const [privateKey, setPrivateKey] = useState('')
   const [impersonatedUser, setImpersonatedUser] = useState('')
   const [gmailFromName, setGmailFromName] = useState('')
-  const [fileError, setFileError] = useState<string | null>(null)
+  const [fileError, setFileError] = useState<FileError | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [saving, setSaving] = useState(false)
@@ -101,13 +103,14 @@ export default function NotificationsPage() {
       .then((text) => {
         const parsed = JSON.parse(text)
         if (!parsed.client_email || !parsed.private_key) {
-          throw new Error('Bestand mist client_email of private_key')
+          setFileError({ kind: 'incomplete' })
+          return
         }
         setClientEmail(parsed.client_email)
         setPrivateKey(parsed.private_key)
       })
       .catch((err) => {
-        setFileError(err instanceof Error ? err.message : String(err))
+        setFileError({ kind: 'unreadable', detail: err instanceof Error ? err.message : String(err) })
       })
       .finally(() => {
         if (fileInputRef.current) fileInputRef.current.value = ''
@@ -168,33 +171,31 @@ export default function NotificationsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-lg font-medium">Notifications</h2>
-        <p className="text-sm text-muted-foreground">
-          E-mailconfiguratie voor deze organisatie. Laat leeg om het platform-standaardaccount te blijven gebruiken.
-        </p>
+        <h2 className="text-lg font-medium">{m.settingsNav.notifications}</h2>
+        <p className="text-sm text-muted-foreground">{m.notificationsSubtitle}</p>
       </div>
 
-      {providerError && <p className="text-sm text-destructive">Kon e-mailconfiguratie niet laden: {providerError}</p>}
+      {providerError && <p className="text-sm text-destructive">{m.mailLoadFailed(providerError)}</p>}
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-2">
           <div>
-            <CardTitle>E-mailaccount</CardTitle>
+            <CardTitle>{m.mailAccount}</CardTitle>
             <CardDescription>
               {loading
-                ? 'Laden...'
+                ? m.loading
                 : provider === 'smtp'
                   ? smtp?.hasPassword
-                    ? 'Status: wachtwoord ingesteld'
-                    : 'Status: nog geen wachtwoord ingesteld'
+                    ? m.passwordSet
+                    : m.passwordNotSet
                   : gmailApi?.hasPrivateKey
-                    ? 'Status: service account ingesteld'
-                    : 'Status: nog geen service account ingesteld'}
+                    ? m.serviceAccountSet
+                    : m.serviceAccountNotSet}
             </CardDescription>
           </div>
           {!loading && (
             <Badge variant={smtp?.host || gmailApi?.hasPrivateKey ? 'default' : 'secondary'}>
-              {smtp?.host || gmailApi?.hasPrivateKey ? 'Aangepast' : 'Platform-standaard'}
+              {smtp?.host || gmailApi?.hasPrivateKey ? m.custom : m.platformDefault}
             </Badge>
           )}
         </CardHeader>
@@ -208,14 +209,14 @@ export default function NotificationsPage() {
           ) : (
             <>
               <div className="grid gap-2">
-                <Label htmlFor="mail-provider">Verzendmethode</Label>
+                <Label htmlFor="mail-provider">{m.sendMethod}</Label>
                 <Select value={provider} onValueChange={(v) => setProvider(v as MailProvider)}>
                   <SelectTrigger id="mail-provider">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="smtp">SMTP</SelectItem>
-                    <SelectItem value="gmail_api">Gmail API (service account)</SelectItem>
+                    <SelectItem value="gmail_api">{m.gmailApiOption}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -224,31 +225,31 @@ export default function NotificationsPage() {
                 <>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
-                      <Label htmlFor="smtp-host">Host</Label>
+                      <Label htmlFor="smtp-host">{m.host}</Label>
                       <Input id="smtp-host" placeholder="smtp.gmail.com" value={host} onChange={(e) => setHost(e.target.value)} autoComplete="off" />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="smtp-port">Poort</Label>
+                      <Label htmlFor="smtp-port">{m.port}</Label>
                       <Input id="smtp-port" placeholder="587" inputMode="numeric" value={port} onChange={(e) => setPort(e.target.value)} autoComplete="off" />
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="smtp-username">Gebruikersnaam</Label>
+                    <Label htmlFor="smtp-username">{m.username}</Label>
                     <Input id="smtp-username" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="smtp-password">
-                      Wachtwoord <span className="font-normal text-muted-foreground">(app-wachtwoord — alleen invullen om te wijzigen)</span>
+                      {m.password} <span className="font-normal text-muted-foreground">{m.passwordHint}</span>
                     </Label>
                     <Input id="smtp-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">
-                      <Label htmlFor="smtp-from-address">Afzenderadres</Label>
+                      <Label htmlFor="smtp-from-address">{m.fromAddress}</Label>
                       <Input id="smtp-from-address" value={fromAddress} onChange={(e) => setFromAddress(e.target.value)} autoComplete="off" />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="smtp-from-name">Afzendernaam</Label>
+                      <Label htmlFor="smtp-from-name">{m.fromName}</Label>
                       <Input id="smtp-from-name" placeholder="Arcanum" value={fromName} onChange={(e) => setFromName(e.target.value)} autoComplete="off" />
                     </div>
                   </div>
@@ -257,57 +258,59 @@ export default function NotificationsPage() {
                 <>
                   <div className="grid gap-2">
                     <Label htmlFor="gmail-service-account">
-                      Service-account JSON-bestand{' '}
-                      <span className="font-normal text-muted-foreground">(uit Google Cloud Console — alleen invullen om te wijzigen)</span>
+                      {m.serviceAccountFile}{' '}
+                      <span className="font-normal text-muted-foreground">{m.serviceAccountFileHint}</span>
                     </Label>
                     <Input id="gmail-service-account" ref={fileInputRef} type="file" accept="application/json,.json" onChange={handleServiceAccountFile} />
-                    {fileError && <p className="text-sm text-destructive">{fileError}</p>}
-                    {clientEmail && <p className="text-sm text-muted-foreground">Client e-mail: {clientEmail}</p>}
+                    {fileError && (
+                      <p className="text-sm text-destructive">{fileError.kind === 'incomplete' ? m.serviceAccountFileIncomplete : fileError.detail}</p>
+                    )}
+                    {clientEmail && <p className="text-sm text-muted-foreground">{m.clientEmail(clientEmail)}</p>}
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="gmail-impersonated-user">
-                      Verzenden als <span className="font-normal text-muted-foreground">(Workspace-adres met domain-wide delegation)</span>
+                      {m.sendAs} <span className="font-normal text-muted-foreground">{m.sendAsHint}</span>
                     </Label>
                     <Input
                       id="gmail-impersonated-user"
-                      placeholder="admin@jouwdomein.be"
+                      placeholder={m.sendAsPlaceholder}
                       value={impersonatedUser}
                       onChange={(e) => setImpersonatedUser(e.target.value)}
                       autoComplete="off"
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="gmail-from-name">Afzendernaam</Label>
+                    <Label htmlFor="gmail-from-name">{m.fromName}</Label>
                     <Input id="gmail-from-name" placeholder="Arcanum" value={gmailFromName} onChange={(e) => setGmailFromName(e.target.value)} autoComplete="off" />
                   </div>
                 </>
               )}
 
               {saveError && <p className="text-sm text-destructive">{saveError}</p>}
-              {saved && !saveError && <p className="text-sm text-muted-foreground">Opgeslagen.</p>}
+              {saved && !saveError && <p className="text-sm text-muted-foreground">{m.saved}</p>}
             </>
           )}
         </CardContent>
         <CardFooter className="flex items-center gap-3">
           <Button onClick={handleSave} disabled={saving || loading}>
-            {saving ? 'Bezig...' : 'Opslaan'}
+            {saving ? m.busy : m.save}
           </Button>
           <Button variant="outline" onClick={handleTestSend} disabled={testing || loading}>
-            {testing ? 'Bezig...' : 'Verstuur testmail'}
+            {testing ? m.busy : m.sendTestMail}
           </Button>
-          {testResult === 'ok' && <span className="text-sm text-muted-foreground">Testmail verstuurd — controleer je inbox.</span>}
-          {testResult === 'error' && <span className="text-sm text-destructive">Mislukt: {testError}</span>}
+          {testResult === 'ok' && <span className="text-sm text-muted-foreground">{m.testMailSent}</span>}
+          {testResult === 'error' && <span className="text-sm text-destructive">{m.testMailFailed(testError ?? '')}</span>}
         </CardFooter>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>E-mailmeldingen</CardTitle>
-          <CardDescription>Voorbeeld van welke meldingen hier komen — nog niet configureerbaar per type.</CardDescription>
+          <CardTitle>{m.mailNotifications}</CardTitle>
+          <CardDescription>{m.mailNotificationsHint}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {PLANNED_NOTIFICATIONS.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-4">
+          {Object.entries(m.plannedNotifications).map(([id, item]) => (
+            <div key={id} className="flex items-center justify-between gap-4">
               <div>
                 <Label className="font-medium">{item.label}</Label>
                 <p className="text-sm text-muted-foreground">{item.description}</p>

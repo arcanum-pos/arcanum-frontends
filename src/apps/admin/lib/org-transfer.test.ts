@@ -1,14 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import {
   buildManifest,
   chunkRows,
   DEFAULT_TABLE_ORDER,
+  fileProblemText,
   filenameFromDisposition,
   mismatchedTables,
   parseExportText,
   planChunks,
   progressPercent,
   runImport,
+  tableLabel,
   totalRows,
   validateExportFile,
   withRetry,
@@ -27,7 +30,7 @@ describe('validateExportFile / parseExportText', () => {
   it('rejects other formats, versions and broken files with a readable reason', () => {
     const reason = (data: unknown) => {
       const r = validateExportFile(data)
-      return r.ok ? null : r.error
+      return r.ok ? null : fileProblemText(ADMIN_ORG_MESSAGES.nl, r.problem)
     }
     expect(reason(null)).toMatch(/geen Arcanum-exportbestand/)
     expect(reason({ ...file(), format: 'menukaart' })).toMatch(/geen Arcanum-exportbestand/)
@@ -38,8 +41,25 @@ describe('validateExportFile / parseExportText', () => {
 
   it('reports invalid JSON', () => {
     const r = parseExportText('{nope')
-    expect(r.ok).toBe(false)
+    expect(r).toEqual({ ok: false, problem: { kind: 'invalidJson' } })
     expect(parseExportText(JSON.stringify(file())).ok).toBe(true)
+  })
+
+  it('words the reason in the chosen language', () => {
+    const r = validateExportFile({ ...file(), version: 2 })
+    expect(r.ok ? null : fileProblemText(ADMIN_ORG_MESSAGES.en, r.problem)).toBe('Export version 2 isn’t supported (expected 1).')
+    expect(fileProblemText(ADMIN_ORG_MESSAGES.fr, { kind: 'notExport' })).toBe('Ceci n’est pas un fichier d’exportation Arcanum.')
+  })
+})
+
+describe('tableLabel', () => {
+  it('names every export table in every language, unknown tables as-is', () => {
+    for (const m of Object.values(ADMIN_ORG_MESSAGES)) {
+      for (const table of DEFAULT_TABLE_ORDER) expect(tableLabel(m, table)).not.toBe(table)
+    }
+    expect(tableLabel(ADMIN_ORG_MESSAGES.nl, 'products')).toBe('Producten')
+    expect(tableLabel(ADMIN_ORG_MESSAGES.en, 'tabs')).toBe('Bills')
+    expect(tableLabel(ADMIN_ORG_MESSAGES.fr, 'future_table')).toBe('future_table')
   })
 })
 

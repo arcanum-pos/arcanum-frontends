@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useMessages } from '@/shared/i18n'
 import { KioskShell } from '@/shared/kiosk-shell'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
+import { SIMULATOR_MESSAGES } from './messages'
 
 // Simulates a SumUp Solo device for local testing (no reader hardware
 // required). Registers as role 'sim', gets linked to a POS from Settings
@@ -15,9 +17,14 @@ const WORKER_URL = '/api/bancontact'
 
 type View = { step: 'idle' } | { step: 'payment'; chargeId: string; amountCents: number; status: string }
 
+// What the corner hint says — kept as data, worded at render time so it
+// follows a language switch.
+type Link = { terminalId: string; state: 'unknown' } | { terminalId: string; state: 'linked'; pos: string } | { terminalId: string; state: 'unlinked' }
+
 export default function App() {
+  const m = useMessages(SIMULATOR_MESSAGES)
   const [view, setView] = useState<View>({ step: 'idle' })
-  const [linkedHint, setLinkedHint] = useState('')
+  const [link, setLink] = useState<Link | null>(null)
   const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
@@ -44,12 +51,13 @@ export default function App() {
         return
       }
 
-      setLinkedHint(`SIM-ID: ${terminal.terminalId}`)
+      const terminalId = terminal.terminalId
+      setLink({ terminalId, state: 'unknown' })
 
-      socket = connectNotifications(terminal.terminalId, {
-        linked: (msg) => setLinkedHint(`SIM-ID: ${terminal.terminalId} — gekoppeld aan kassa ${msg.pos_terminal_id}`),
+      socket = connectNotifications(terminalId, {
+        linked: (msg) => setLink({ terminalId, state: 'linked', pos: msg.pos_terminal_id }),
         unlinked: () => {
-          setLinkedHint(`SIM-ID: ${terminal.terminalId} — niet gekoppeld aan een kassa`)
+          setLink({ terminalId, state: 'unlinked' })
           setView({ step: 'idle' })
         },
         payment_updated: (msg) => fetchAndShowCharge(msg.payment_id),
@@ -76,14 +84,22 @@ export default function App() {
     }
   }
 
+  const linkedHint = !link
+    ? ''
+    : link.state === 'linked'
+      ? m.linked(link.terminalId, link.pos)
+      : link.state === 'unlinked'
+        ? m.unlinked(link.terminalId)
+        : m.simId(link.terminalId)
+
   return (
-    <KioskShell>
+    <KioskShell languagePicker>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-lg">SumUp-simulator</CardTitle>
+          <CardTitle className="text-lg">{m.title}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4 text-center">
-          {view.step === 'idle' && <p className="text-muted-foreground">Wacht op betaalverzoek</p>}
+          {view.step === 'idle' && <p className="text-muted-foreground">{m.waiting}</p>}
 
           {view.step === 'payment' && (
             <>
@@ -91,11 +107,11 @@ export default function App() {
                 {Number.isInteger(view.amountCents) ? `€ ${(view.amountCents / 100).toFixed(2).replace('.', ',')}` : ''}
               </p>
               <Badge variant={view.status === 'succeeded' ? 'default' : 'secondary'} className="text-sm uppercase">
-                {view.status === 'succeeded' ? 'Betaald' : 'In afwachting'}
+                {view.status === 'succeeded' ? m.paid : m.pending}
               </Badge>
               {view.status !== 'succeeded' && (
                 <Button onClick={confirmPaid} disabled={confirming}>
-                  Betaald
+                  {m.confirmPaid}
                 </Button>
               )}
             </>

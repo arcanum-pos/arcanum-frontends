@@ -1,19 +1,16 @@
 // Pure helpers for the catalog screens (products.tsx, catalogs.tsx,
 // catalog-editor.tsx) — kept free of React so they're unit-tested
 // (catalog-helpers.test.ts).
+import type { AdminCatalogMessages } from '../messages/catalog/nl'
 import type { CatalogSection, LayoutPayload } from './catalog-api'
 
-// BTW as basis points (2100 = 21%). The rates themselves are placeholders
-// until confirmed with an accountant (DOMAIN_MODEL.md: VAT per product).
-export const VAT_OPTIONS: { label: string; value: number | null }[] = [
-  { label: 'Geen', value: null },
-  { label: '6%', value: 600 },
-  { label: '12%', value: 1200 },
-  { label: '21%', value: 2100 },
-]
+// BTW as basis points (2100 = 21%); null = none. The rates themselves are
+// placeholders until confirmed with an accountant (DOMAIN_MODEL.md: VAT per
+// product).
+export const VAT_RATES: (number | null)[] = [null, 600, 1200, 2100]
 
-export function vatLabel(value: number | null): string {
-  return VAT_OPTIONS.find((o) => o.value === value)?.label ?? `${(value ?? 0) / 100}%`
+export function vatLabel(m: Pick<AdminCatalogMessages, 'vatNone'>, value: number | null): string {
+  return value === null ? m.vatNone : `${value / 100}%`
 }
 
 // "2,50" / "2.50" / "€ 2,5" / "3" → cents; null when it isn't a valid,
@@ -29,22 +26,51 @@ export function formatEuroInput(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',')
 }
 
-// "5, 10, 20" → [5, 10, 20]; "" → null (no quick buttons). Returns a
-// string error for anything the backend would refuse (1–10 integers
-// between 1 and 999).
-export function parseQuickQuantities(input: string): number[] | null | { error: string } {
+// "5, 10, 20" → [5, 10, 20]; "" → null (no quick buttons). Returns
+// 'invalid' for anything the backend would refuse (1–10 integers between 1
+// and 999) — worded by the invalidQuickQuantities notice.
+export function parseQuickQuantities(input: string): number[] | null | 'invalid' {
   const trimmed = input.trim()
   if (!trimmed) return null
   const parts = trimmed.split(/[,;\s]+/).filter(Boolean)
   const numbers = parts.map((p) => Number(p))
   if (parts.length > 10 || !numbers.every((n) => Number.isInteger(n) && n >= 1 && n <= 999)) {
-    return { error: 'Snelknoppen: maximaal 10 hele getallen tussen 1 en 999, gescheiden door komma’s' }
+    return 'invalid'
   }
   return numbers
 }
 
 export function formatQuickQuantities(values: number[] | null): string {
   return values ? values.join(', ') : ''
+}
+
+// An error line on a catalog screen, kept as what happened rather than as
+// text so it follows a live language switch. The server's own messages are
+// shown as they are.
+export type CatalogNotice =
+  | { kind: 'server'; message: string }
+  | { kind: 'exportFailed'; error: string }
+  | { kind: 'invalidPrice'; name: string }
+  | { kind: 'invalidQuickQuantities' }
+
+export function serverNotice(err: unknown): CatalogNotice {
+  return { kind: 'server', message: err instanceof Error ? err.message : String(err) }
+}
+
+export function catalogNoticeText(
+  m: Pick<AdminCatalogMessages, 'exportFailed' | 'invalidPrice' | 'invalidQuickQuantities'>,
+  notice: CatalogNotice
+): string {
+  switch (notice.kind) {
+    case 'server':
+      return notice.message
+    case 'exportFailed':
+      return m.exportFailed(notice.error)
+    case 'invalidPrice':
+      return m.invalidPrice(notice.name)
+    case 'invalidQuickQuantities':
+      return m.invalidQuickQuantities
+  }
 }
 
 // A copy of `items` with the element at `index` moved by `delta` (−1 up,

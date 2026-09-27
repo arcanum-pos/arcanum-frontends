@@ -13,6 +13,7 @@ import {
 } from '@/shared/terminal'
 import { getCurrentSlotId } from '@/shared/slots'
 import { formatEuro } from '@/shared/format'
+import type { ApiErrorCode } from '@/shared/api-errors'
 import { useMessages } from '@/shared/i18n'
 import {
   addToDraft,
@@ -43,6 +44,9 @@ import * as tabsApi from './tabs-api'
 import { netQuantity, QUICK_SALE_LABEL, TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
 
 const WORKER_URL = '/api/bancontact'
+
+// Refusals that mean this kassa's catalog is out of date.
+const CATALOG_ERRORS = new Set<ApiErrorCode>(['unknown_catalog', 'product_not_on_catalog', 'catalog_not_found', 'no_catalog', 'unknown_product'])
 const DEVICES_URL = '/api/devices'
 
 type NameDialogMode = 'new' | 'park' | 'rename'
@@ -160,9 +164,9 @@ export default function App() {
     if (err instanceof TabApiError && err.status === 409) refreshAll()
     // An entry vanished from the catalog since it was loaded — reload it
     // (the draft stays, so the cashier can see and fix what's refused).
-    else if (err instanceof TabApiError && err.status === 400 && /menukaart/i.test(err.message)) loadCatalog()
+    else if (err instanceof TabApiError && err.code && CATALOG_ERRORS.has(err.code)) loadCatalog()
     // The chosen event is gone: check it again (drops it, with a notice).
-    else if (err instanceof TabApiError && err.status === 400 && /evenement/i.test(err.message)) loadEvent()
+    else if (err instanceof TabApiError && err.code === 'unknown_event') loadEvent()
   }
 
   // --- Catalog ---
@@ -484,7 +488,10 @@ export default function App() {
         body: JSON.stringify(common),
       })
       const data = await res.json()
-      if (!res.ok) throw new TabApiError(data.error ? `${data.error}${data.details ? `: ${JSON.stringify(data.details)}` : ''}` : m.unknownError, res.status)
+      if (!res.ok) {
+        const error = TabApiError.fromResponse(res.status, data, m.unknownError)
+        throw data.details ? new TabApiError(`${error.message}: ${JSON.stringify(data.details)}`, error.status, error.tab, error.code) : error
+      }
 
       setCurrentBoth({
         method: 'bancontact',
@@ -517,7 +524,7 @@ export default function App() {
       body: JSON.stringify({ ...common, method, readerId }),
     })
     const data = await res.json()
-    if (!res.ok || !data.chargeId) throw new TabApiError(data.error || m.chargeFailed, res.status)
+    if (!res.ok || !data.chargeId) throw TabApiError.fromResponse(res.status, data, m.chargeFailed)
 
     setCurrentBoth({
       method,

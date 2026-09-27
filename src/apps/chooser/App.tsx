@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { KioskShell } from '@/shared/kiosk-shell'
-import { storeLocale, useLocale, useMessages } from '@/shared/i18n'
+import { isLocale, storedLocale, storeLocale, useLocale, useMessages } from '@/shared/i18n'
 import { ChoiceCard } from './ChoiceCard'
 import { listMyMemberships, type Membership } from './lib'
 import { CHOOSER_MESSAGES } from './messages'
@@ -9,11 +9,11 @@ import { getStoredTerminalInfo, PAGE_FOR_ROLE, registerNewTerminal, type Role } 
 
 const ROLES: Role[] = ['pos', 'cfd', 'sim']
 
-type View = { step: 'loading' } | { step: 'org-picker'; memberships: Membership[] } | { step: 'role-picker'; orgId: string; orgName: string }
+type View = { step: 'loading' } | { step: 'org-picker'; memberships: Membership[] } | { step: 'role-picker'; orgId: string; orgName: string; orgLocale?: string }
 
-// The language the device is set up in (picked here, or the browser's)
-// becomes its language — the kassa's and the customer display's too (see
-// src/shared/i18n's deviceLocale).
+// Registering sets the device's language (the kassa's and the customer
+// display's, see src/shared/i18n's deviceLocale): a language picked here,
+// else the org's default, else the one this screen showed (the browser's).
 export default function App() {
   const m = useMessages(CHOOSER_MESSAGES)
   const { locale } = useLocale()
@@ -38,7 +38,7 @@ export default function App() {
           return
         }
         if (memberships.length === 1) {
-          setView({ step: 'role-picker', orgId: memberships[0].orgId, orgName: memberships[0].orgName })
+          setView({ step: 'role-picker', orgId: memberships[0].orgId, orgName: memberships[0].orgName, orgLocale: memberships[0].orgLocale })
           return
         }
         setView({ step: 'org-picker', memberships })
@@ -46,9 +46,9 @@ export default function App() {
       .catch((err) => console.error('Kon organisaties niet laden', err))
   }, [])
 
-  async function chooseRole(role: Role, orgId: string, orgName: string) {
+  async function chooseRole(role: Role, orgId: string, orgName: string, orgLocale: string | undefined) {
     setRegistering(true)
-    storeLocale(locale)
+    storeLocale(storedLocale() ?? (isLocale(orgLocale) ? orgLocale : locale))
     await registerNewTerminal(role, orgId, orgName)
     window.location.href = PAGE_FOR_ROLE[role]
   }
@@ -71,7 +71,7 @@ export default function App() {
           <h1 className="font-heading text-xl font-bold">{m.whichOrg}</h1>
           <div className="flex flex-col gap-2">
             {view.memberships.map((m) => (
-              <ChoiceCard key={m.orgId} title={m.orgName} onClick={() => setView({ step: 'role-picker', orgId: m.orgId, orgName: m.orgName })} />
+              <ChoiceCard key={m.orgId} title={m.orgName} onClick={() => setView({ step: 'role-picker', orgId: m.orgId, orgName: m.orgName, orgLocale: m.orgLocale })} />
             ))}
           </div>
         </div>
@@ -92,7 +92,7 @@ export default function App() {
               key={role}
               title={m.roles[role].title}
               hint={m.roles[role].hint}
-              onClick={() => !registering && chooseRole(role, view.orgId, view.orgName)}
+              onClick={() => !registering && chooseRole(role, view.orgId, view.orgName, view.orgLocale)}
             />
           ))}
         </div>

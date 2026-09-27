@@ -2,9 +2,11 @@ import type { Page } from '@playwright/test'
 import { expect, panel, test } from './fixtures'
 import type { FakeBackend } from './fake-backend'
 
+test.use({ locale: 'en-GB' })
+
 // The kassa and Instellingen speak the device's language (Instellingen →
-// Taal), Dutch until one is picked — never the browser's (Playwright's is
-// en-US, and every other kassa spec runs in Dutch).
+// Taal), Dutch until one is picked — never the browser's (the specs below
+// run in an English browser to prove it).
 
 async function openSettings(kassa: Page, backend: FakeBackend) {
   const settings = await kassa.context().newPage()
@@ -57,6 +59,29 @@ test('a French kassa: a cash sale end to end, and the Toog tab is still stored a
   await expect(kassa.getByText('Comptoir — payer directement')).toBeVisible()
 })
 
+async function registerOnChooser(browser: import('@playwright/test').Browser, browserLocale: string, orgLocale: string | undefined, pick?: string) {
+  const context = await browser.newContext({ locale: browserLocale })
+  const page = await context.newPage()
+  await page.route(/\/api\/organizations\/memberships/, (route) =>
+    route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ orgId: 'org-1', orgName: 'Scouts', role: 'admin', orgLocale }]) })
+  )
+  await page.route(/\/api\/devices\//, (route) => route.fulfill({ contentType: 'application/json', body: '{}' }))
+  await page.route(/\/kassa(\.html)?$/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>kassa</p>' }))
+  await page.goto('/chooser.html')
+  if (pick) await page.getByRole('button', { name: pick }).click()
+  await page.getByRole('button', { name: /^(Kassa|Caisse|Till)/ }).click()
+  await page.waitForURL(/\/kassa/)
+  const stored = await page.evaluate(() => localStorage.getItem('arcanum-locale'))
+  await context.close()
+  return stored
+}
+
+test("registering a device: a language picked on the chooser, else the org's default, else the browser's", async ({ browser }) => {
+  expect(await registerOnChooser(browser, 'nl-BE', 'fr')).toBe('fr')
+  expect(await registerOnChooser(browser, 'nl-BE', 'fr', 'English')).toBe('en')
+  expect(await registerOnChooser(browser, 'fr-BE', undefined)).toBe('fr')
+})
+
 test('the chooser hands the language it was set up in to the device', async ({ browser }) => {
   const context = await browser.newContext({ locale: 'fr-BE' })
   const page = await context.newPage()
@@ -72,4 +97,19 @@ test('the chooser hands the language it was set up in to the device', async ({ b
   await expect(page.getByText('kassa')).toBeVisible()
   expect(await page.evaluate(() => localStorage.getItem('arcanum-locale'))).toBe('fr')
   await context.close()
+})
+
+test("a French kassa shows the backend's refusals in French (by error code)", async ({ kassa, backend }) => {
+  const tab = backend.openTab('Tafel 2', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 5 }])
+  await kassa.evaluate(() => localStorage.setItem('arcanum-locale', 'fr'))
+  await kassa.reload()
+  await kassa.getByRole('button', { name: /^#1 Tafel 2/ }).click()
+  await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
+
+  // Another kassa adds a line just before this one charges: a 409 tab_changed.
+  backend.beforeNextCharge = () => backend.addLines(tab.id, [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 1 }])
+  await kassa.getByLabel('Espèces').check()
+  await kassa.getByRole('button', { name: 'Encaisser € 5,00' }).click()
+  await expect(kassa.getByText('L’addition a été modifiée, rechargez et réessayez')).toBeVisible()
+  expect(backend.charges).toHaveLength(0)
 })

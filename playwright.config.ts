@@ -14,6 +14,10 @@ export default defineConfig({
   reporter: process.env.CI ? 'line' : [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: `http://localhost:${PORT}`,
+    // A Dutch-speaking Belgian browser, like most users: the console and the
+    // setup screens follow the browser's language (specs that test another
+    // one set their own).
+    locale: 'nl-BE',
     viewport: { width: 1280, height: 900 },
     trace: 'retain-on-failure',
   },

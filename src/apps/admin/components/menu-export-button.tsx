@@ -2,11 +2,15 @@ import { useState } from 'react'
 import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { useMessages } from '@/shared/i18n'
 import { exportCatalog } from '../lib/catalog-api'
+import type { CatalogNotice } from '../lib/catalog-helpers'
+import { ADMIN_CATALOG_MESSAGES } from '../messages/catalog'
 
 // "Exporteren" → Excel (.xlsx, same layout as the import expects, plus an
 // Uitleg sheet) or CSV (;-separated with decimal comma, for Belgian Excel).
 // The spreadsheet code is only loaded when one of the two is clicked.
+// A failure goes to the caller as an exportFailed notice (catalog-helpers).
 export function MenuExportButton({
   orgId,
   catalogId,
@@ -18,8 +22,9 @@ export function MenuExportButton({
   catalogId: string
   variant?: 'outline' | 'ghost'
   size?: 'default' | 'sm'
-  onError: (message: string) => void
+  onError: (notice: CatalogNotice) => void
 }) {
+  const m = useMessages(ADMIN_CATALOG_MESSAGES)
   const [busy, setBusy] = useState(false)
 
   async function run(format: 'xlsx' | 'csv') {
@@ -28,7 +33,7 @@ export function MenuExportButton({
       const [data, files] = await Promise.all([exportCatalog(orgId, catalogId), import('../lib/menu-files')])
       await files.downloadMenu(data.catalog.name, data.rows, format)
     } catch (err) {
-      onError(`Exporteren mislukt: ${err instanceof Error ? err.message : String(err)}`)
+      onError({ kind: 'exportFailed', error: err instanceof Error ? err.message : String(err) })
     } finally {
       setBusy(false)
     }
@@ -38,7 +43,7 @@ export function MenuExportButton({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant={variant} size={size} disabled={busy}>
-          <Download /> Exporteren
+          <Download /> {m.export}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

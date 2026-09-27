@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import { legacyItemRows, methodLabel, periodBounds, toDateInput, vatLabel } from './reports'
+
+const nl = ADMIN_ORG_MESSAGES.nl
+const { fr, en } = ADMIN_ORG_MESSAGES
 
 // Local-time helpers, so the tests hold in any machine time zone.
 const local = (y: number, m: number, d: number) => new Date(y, m - 1, d).toISOString()
@@ -53,23 +57,36 @@ describe('toDateInput', () => {
 
 describe('labels', () => {
   it('names payment methods in Dutch, unknown ones as-is', () => {
-    expect(methodLabel('cash')).toBe('Contant')
-    expect(methodLabel('bancontact')).toBe('Bancontact')
-    expect(methodLabel('payconiq')).toBe('payconiq')
+    expect(methodLabel(nl, 'cash')).toBe('Contant')
+    expect(methodLabel(nl, 'bancontact')).toBe('Bancontact')
+    expect(methodLabel(nl, 'payconiq')).toBe('payconiq')
+  })
+
+  it('names payment methods in the chosen language', () => {
+    expect(methodLabel(fr, 'cash')).toBe('Espèces')
+    expect(methodLabel(en, 'cash')).toBe('Cash')
+    expect(methodLabel(en, 'payconiq')).toBe('payconiq')
   })
 
   it('shows VAT basis points as a percentage, and a missing rate as "niet ingesteld"', () => {
-    expect(vatLabel(2100)).toBe('21%')
-    expect(vatLabel(600)).toBe('6%')
-    expect(vatLabel(550)).toBe('5,5%')
-    expect(vatLabel(0)).toBe('0%')
-    expect(vatLabel(null)).toBe('niet ingesteld')
+    expect(vatLabel(nl, 2100)).toBe('21%')
+    expect(vatLabel(nl, 600)).toBe('6%')
+    expect(vatLabel(nl, 550)).toBe('5,5%')
+    expect(vatLabel(nl, 0)).toBe('0%')
+    expect(vatLabel(nl, null)).toBe('niet ingesteld')
+  })
+
+  it('words VAT rates per language', () => {
+    expect(vatLabel(fr, 550)).toBe('5,5 %')
+    expect(vatLabel(fr, null)).toBe('non défini')
+    expect(vatLabel(en, 550)).toBe('5.5%')
+    expect(vatLabel(en, null)).toBe('not set')
   })
 })
 
 describe('legacyItemRows', () => {
   it('maps the old kassa keys to readable labels, in a fixed order, fooi as an amount', () => {
-    expect(legacyItemRows({ fooi: 350, wandeltochtMember: 2, bon: 40, fietstocht: 3 })).toEqual([
+    expect(legacyItemRows(nl, { fooi: 350, wandeltochtMember: 2, bon: 40, fietstocht: 3 })).toEqual([
       { key: 'bon', label: 'Bonnen', value: '40' },
       { key: 'fietstocht', label: 'Fietstocht', value: '3' },
       { key: 'wandeltochtMember', label: 'Wandeltocht (lid)', value: '2' },
@@ -78,13 +95,17 @@ describe('legacyItemRows', () => {
   })
 
   it('shows unknown keys raw, after the known ones', () => {
-    expect(legacyItemRows({ zwemtocht: 1, bon: 2 }).map((r) => [r.label, r.value])).toEqual([
+    expect(legacyItemRows(nl, { zwemtocht: 1, bon: 2 }).map((r) => [r.label, r.value])).toEqual([
       ['Bonnen', '2'],
       ['zwemtocht', '1'],
     ])
   })
 
+  it('translates the wording around the product names, not the names', () => {
+    expect(legacyItemRows(en, { fooi: 100, fietstochtMember: 1, bon: 2 }).map((r) => r.label)).toEqual(['Bonnen', 'Fietstocht (member)', 'Tip'])
+  })
+
   it('is empty for no items', () => {
-    expect(legacyItemRows({})).toEqual([])
+    expect(legacyItemRows(nl, {})).toEqual([])
   })
 })

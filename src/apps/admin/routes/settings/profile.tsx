@@ -1,29 +1,32 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useMessages } from '@/shared/i18n'
 import { whoami } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
+import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 
 function initials(name: string): string {
   return name.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 }
 
 export default function ProfilePage() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const { data: user, loading, error } = useAsync(whoami, [])
 
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-lg font-medium">Profile</h2>
-        <p className="text-sm text-muted-foreground">Je identiteit, zoals bevestigd door je identity provider.</p>
+        <h2 className="text-lg font-medium">{m.settingsNav.profile}</h2>
+        <p className="text-sm text-muted-foreground">{m.profileSubtitle}</p>
       </div>
 
-      {error && <p className="text-sm text-destructive">Kon profiel niet laden: {error}</p>}
+      {error && <p className="text-sm text-destructive">{m.profileLoadFailed(error)}</p>}
 
       <Card>
         <CardHeader>
-          <CardTitle>Wie ben ik</CardTitle>
-          <CardDescription>Alleen-lezen — wijzig dit bij je identity provider zelf.</CardDescription>
+          <CardTitle>{m.whoAmI}</CardTitle>
+          <CardDescription>{m.profileReadOnly}</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center gap-4">
           {loading || !user ? (
@@ -41,11 +44,11 @@ export default function ProfilePage() {
               </Avatar>
               <dl className="grid gap-1 text-sm">
                 <div className="flex gap-2">
-                  <dt className="w-20 text-muted-foreground">Naam</dt>
+                  <dt className="w-20 text-muted-foreground">{m.name}</dt>
                   <dd className="font-medium">{user.name || '—'}</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="w-20 text-muted-foreground">E-mail</dt>
+                  <dt className="w-20 text-muted-foreground">{m.email}</dt>
                   <dd className="font-medium">{user.email}</dd>
                 </div>
                 <div className="flex gap-2">

@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useMessages } from '@/shared/i18n'
+import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 
 export function CopyLinkButton({ text }: { text: string }) {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const [copied, setCopied] = useState(false)
 
   async function handleCopy() {
@@ -17,7 +20,7 @@ export function CopyLinkButton({ text }: { text: string }) {
   }
 
   return (
-    <Button variant="ghost" size="icon" className="size-7" onClick={handleCopy} title="Kopiëren">
+    <Button variant="ghost" size="icon" className="size-7" onClick={handleCopy} title={m.copy}>
       {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
     </Button>
   )

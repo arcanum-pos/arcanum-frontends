@@ -5,12 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useMessages } from '@/shared/i18n'
 import { getIdentityProvider, setIdentityProvider } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
 import { CopyLinkButton } from '../../components/copy-link-button'
+import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 
 export default function AuthenticationPage() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const { data: idp, loading, error, reload } = useAsync(
@@ -78,25 +81,21 @@ export default function AuthenticationPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-lg font-medium">Authentication</h2>
-        <p className="text-sm text-muted-foreground">
-          Optioneel: laat leden van deze organisatie inloggen via een eigen identity provider (bv. Google Workspace,
-          Microsoft Entra ID, Keycloak) in plaats van het platform-standaardaccount. Laat leeg om de standaard te
-          blijven gebruiken.
-        </p>
+        <h2 className="text-lg font-medium">{m.settingsNav.authentication}</h2>
+        <p className="text-sm text-muted-foreground">{m.authenticationSubtitle}</p>
       </div>
 
-      {error && <p className="text-sm text-destructive">Kon identity provider niet laden: {error}</p>}
+      {error && <p className="text-sm text-destructive">{m.idpLoadFailed(error)}</p>}
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-2">
           <div>
-            <CardTitle>Identity provider</CardTitle>
+            <CardTitle>{m.identityProvider}</CardTitle>
             <CardDescription>
-              {loading ? 'Laden...' : idp?.hasClientSecret ? 'Status: client-secret ingesteld' : 'Status: nog geen client-secret ingesteld'}
+              {loading ? m.loading : idp?.hasClientSecret ? m.clientSecretSet : m.clientSecretNotSet}
             </CardDescription>
           </div>
-          {!loading && <Badge variant={idp?.issuerUrl ? 'default' : 'secondary'}>{idp?.issuerUrl ? 'Aangepast' : 'Platform-standaard'}</Badge>}
+          {!loading && <Badge variant={idp?.issuerUrl ? 'default' : 'secondary'}>{idp?.issuerUrl ? m.custom : m.platformDefault}</Badge>}
         </CardHeader>
         <CardContent className="grid gap-4">
           {loading ? (
@@ -108,34 +107,31 @@ export default function AuthenticationPage() {
           ) : (
             <>
               <div className="grid gap-2">
-                <Label htmlFor="idp-issuer-url">Issuer-URL</Label>
+                <Label htmlFor="idp-issuer-url">{m.issuerUrl}</Label>
                 <Input id="idp-issuer-url" placeholder="https://..." value={issuerUrl} onChange={(e) => setIssuerUrl(e.target.value)} autoComplete="off" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="idp-client-id">Client-ID voor device code flow</Label>
+                <Label htmlFor="idp-client-id">{m.deviceClientId}</Label>
                 <Input id="idp-client-id" value={clientId} onChange={(e) => setClientId(e.target.value)} autoComplete="off" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="idp-client-secret">Client-secret</Label>
+                <Label htmlFor="idp-client-secret">{m.clientSecret}</Label>
                 <Input id="idp-client-secret" type="password" value={clientSecret} onChange={(e) => setClientSecret(e.target.value)} autoComplete="new-password" />
-                <p className="text-sm text-muted-foreground">Alleen invullen om te wijzigen.</p>
+                <p className="text-sm text-muted-foreground">{m.fillInToChange}</p>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="idp-authcode-client-id">Client-ID voor authorization code flow (optioneel)</Label>
+                <Label htmlFor="idp-authcode-client-id">{m.authCodeClientId}</Label>
                 <Input
                   id="idp-authcode-client-id"
                   value={authCodeClientId}
                   onChange={(e) => setAuthCodeClientId(e.target.value)}
                   autoComplete="off"
                 />
-                <p className="text-sm text-muted-foreground">
-                  Alleen nodig als deze identity provider een aparte client per flow vereist. Leeg = gebruik de client
-                  hierboven voor beide.
-                </p>
+                <p className="text-sm text-muted-foreground">{m.authCodeClientHint}</p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="idp-authcode-client-secret">Client-secret</Label>
+                <Label htmlFor="idp-authcode-client-secret">{m.clientSecret}</Label>
                 <Input
                   id="idp-authcode-client-secret"
                   type="password"
@@ -143,22 +139,19 @@ export default function AuthenticationPage() {
                   onChange={(e) => setAuthCodeClientSecret(e.target.value)}
                   autoComplete="new-password"
                 />
-                <p className="text-sm text-muted-foreground">
-                  Alleen invullen om te wijzigen ({idp?.hasAuthCodeClientSecret ? 'momenteel ingesteld' : 'momenteel niet ingesteld'}).
-                </p>
+                <p className="text-sm text-muted-foreground">{m.fillInToChangeState(!!idp?.hasAuthCodeClientSecret)}</p>
               </div>
 
               {currentOrg?.customDomain && (authCodeClientId || idp?.authCodeClientId) && (
                 <p className="rounded-md border border-amber-600/30 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-950 dark:text-amber-300">
-                  Deze organisatie heeft een aangepast domein ({currentOrg.customDomain}) en een eigen client voor
-                  authorization code flow — vergeet niet om{' '}
-                  <code className="rounded bg-muted px-1">https://{currentOrg.customDomain}/callback</code> te
-                  registreren als toegestane redirect-URI bij deze identity provider zelf.
+                  {m.redirectUriBefore(currentOrg.customDomain)}
+                  <code className="rounded bg-muted px-1">https://{currentOrg.customDomain}/callback</code>
+                  {m.redirectUriAfter}
                 </p>
               )}
 
               <div className="grid gap-2">
-                <Label htmlFor="idp-scopes">Scopes (optioneel)</Label>
+                <Label htmlFor="idp-scopes">{m.scopes}</Label>
                 <Input
                   id="idp-scopes"
                   placeholder="openid profile email offline_access"
@@ -166,19 +159,16 @@ export default function AuthenticationPage() {
                   onChange={(e) => setScopes(e.target.value)}
                   autoComplete="off"
                 />
-                <p className="text-sm text-muted-foreground">
-                  Spatie-gescheiden — standaard 'openid profile email offline_access'. Google accepteert geen
-                  'offline_access'; gebruik dan bv. 'openid profile email'.
-                </p>
+                <p className="text-sm text-muted-foreground">{m.scopesHint}</p>
               </div>
               {saveError && <p className="text-sm text-destructive">{saveError}</p>}
-              {saved && !saveError && <p className="text-sm text-muted-foreground">Opgeslagen.</p>}
+              {saved && !saveError && <p className="text-sm text-muted-foreground">{m.saved}</p>}
             </>
           )}
         </CardContent>
         <CardFooter>
           <Button onClick={handleSave} disabled={saving || loading}>
-            {saving ? 'Bezig...' : 'Opslaan'}
+            {saving ? m.busy : m.save}
           </Button>
         </CardFooter>
       </Card>
@@ -186,11 +176,11 @@ export default function AuthenticationPage() {
       {deviceFlowUrl && (
         <Card>
           <CardHeader>
-            <CardTitle>Aanmeldlinks</CardTitle>
+            <CardTitle>{m.loginLinks}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-1">
-              <p className="text-sm text-muted-foreground">Gebruik deze link om aan te melden op een toestel:</p>
+              <p className="text-sm text-muted-foreground">{m.deviceLinkHint}</p>
               <div className="flex items-center gap-1">
                 <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{deviceFlowUrl}</code>
                 <CopyLinkButton text={deviceFlowUrl} />
@@ -198,7 +188,7 @@ export default function AuthenticationPage() {
             </div>
             {consoleFlowUrl && (
               <div className="grid gap-1">
-                <p className="text-sm text-muted-foreground">Gebruik deze link om aan te melden in het beheerportaal:</p>
+                <p className="text-sm text-muted-foreground">{m.consoleLinkHint}</p>
                 <div className="flex items-center gap-1">
                   <code className="w-fit rounded bg-muted px-2 py-1 text-sm break-all">{consoleFlowUrl}</code>
                   <CopyLinkButton text={consoleFlowUrl} />

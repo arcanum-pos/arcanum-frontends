@@ -19,10 +19,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useMessages } from '@/shared/i18n'
 import { useOrg } from '../lib/org-context'
+import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 import { OrgImportDialog } from './org-import-dialog'
 
 export function TeamSwitcher() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const { isMobile } = useSidebar()
   const { orgs, currentOrg, loading, setCurrentOrgId, addOrg } = useOrg()
   const [createOpen, setCreateOpen] = useState(false)
@@ -68,8 +71,8 @@ export function TeamSwitcher() {
                   <Building2 className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{currentOrg?.name ?? 'Geen organisatie'}</span>
-                  <span className="truncate text-xs text-muted-foreground">Organisatie</span>
+                  <span className="truncate font-semibold">{currentOrg?.name ?? m.noOrg}</span>
+                  <span className="truncate text-xs text-muted-foreground">{m.organisation}</span>
                 </div>
                 <ChevronsUpDown className="ml-auto" />
               </SidebarMenuButton>
@@ -80,7 +83,7 @@ export function TeamSwitcher() {
               side={isMobile ? 'bottom' : 'right'}
               sideOffset={4}
             >
-              <DropdownMenuLabel className="text-xs text-muted-foreground">Organisaties</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-muted-foreground">{m.organisations}</DropdownMenuLabel>
               {orgs.map((org) => (
                 <DropdownMenuItem key={org.id} onClick={() => setCurrentOrgId(org.id)} className="gap-2 p-2">
                   <div className="flex size-6 items-center justify-center rounded-md border">
@@ -94,7 +97,7 @@ export function TeamSwitcher() {
                 <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                   <Plus className="size-4" />
                 </div>
-                <div className="font-medium text-muted-foreground">Nieuwe organisatie</div>
+                <div className="font-medium text-muted-foreground">{m.newOrg}</div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -104,16 +107,16 @@ export function TeamSwitcher() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Nieuwe organisatie aanmaken</DialogTitle>
-            <DialogDescription>Je wordt automatisch beheerder (admin) van deze organisatie.</DialogDescription>
+            <DialogTitle>{m.createOrgTitle}</DialogTitle>
+            <DialogDescription>{m.createOrgDescription}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
-            <Label htmlFor="new-org-name">Naam</Label>
+            <Label htmlFor="new-org-name">{m.name}</Label>
             <Input
               id="new-org-name"
               value={newOrgName}
               onChange={(e) => setNewOrgName(e.target.value)}
-              placeholder="bv. Scouts Elewijt"
+              placeholder={m.orgNamePlaceholder}
               autoComplete="off"
             />
             {createError && <p className="text-sm text-destructive">{createError}</p>}
@@ -125,12 +128,12 @@ export function TeamSwitcher() {
                 setImportOpen(true)
               }}
             >
-              of importeer uit een exportbestand
+              {m.importInstead}
             </button>
           </div>
           <DialogFooter>
             <Button onClick={handleCreate} disabled={creating}>
-              {creating ? 'Bezig...' : 'Aanmaken'}
+              {creating ? m.busy : m.create}
             </Button>
           </DialogFooter>
         </DialogContent>

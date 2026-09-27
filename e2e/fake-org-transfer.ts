@@ -20,6 +20,7 @@ interface FakeOrg {
   importStatus: string | null
   counts: Record<string, number>
   rows: Map<string, Set<string>>
+  locale?: 'nl' | 'fr' | 'en'
 }
 
 export function exportFile(overrides: Record<string, unknown> = {}) {
@@ -77,6 +78,15 @@ export class FakeOrgTransfer {
     if (detail && method === 'GET') {
       const org = this.orgs.find((o) => o.id === detail[1])
       return org ? ok(this.orgJson(org)) : { status: 404, body: { error: 'Not found' } }
+    }
+
+    const localeMatch = path.match(/^\/api\/organizations\/([^/]+)\/locale$/)
+    if (localeMatch && method === 'PUT') {
+      const org = this.orgs.find((o) => o.id === localeMatch[1])
+      if (!org) return { status: 404, body: { error: 'Organisatie niet gevonden', code: 'org_not_found' } }
+      if (!['nl', 'fr', 'en'].includes(body?.locale)) return { status: 400, body: { error: 'locale must be one of nl, fr, en' } }
+      org.locale = body.locale
+      return ok({ locale: org.locale })
     }
 
     const exportMatch = path.match(/^\/api\/organizations\/([^/]+)\/export$/)
@@ -148,7 +158,7 @@ export class FakeOrgTransfer {
   }
 
   private orgJson(o: FakeOrg) {
-    return { id: o.id, name: o.name, logoUrl: null, theme: null, createdAt: '2026-01-01', customDomain: null, importStatus: o.importStatus }
+    return { id: o.id, name: o.name, logoUrl: null, theme: null, createdAt: '2026-01-01', customDomain: null, importStatus: o.importStatus, locale: o.locale ?? 'nl' }
   }
 }
 

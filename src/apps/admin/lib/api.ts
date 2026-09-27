@@ -3,6 +3,8 @@
 // deployed behind arcanum-bff (same-origin, so cookies flow automatically);
 // in local `npm run dev` it needs Vite's dev proxy (see vite.config.ts) to
 // forward these to a real arcanum-bff dev server.
+import { apiErrorMessage } from '@/shared/api-errors'
+import type { Locale } from '@/shared/i18n'
 
 const ORGANIZATIONS_URL = '/api/organizations';
 const DEVICES_URL = '/api/devices';
@@ -17,7 +19,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    const message = data && (data.error || data.details) ? [data.error, data.details].filter(Boolean).join(': ') : `status ${res.status}`;
+    const message = [apiErrorMessage(data, ''), data?.details].filter(Boolean).join(': ') || `status ${res.status}`;
     throw new Error(message);
   }
   return data as T;
@@ -32,6 +34,9 @@ export interface Organization {
   customDomain: string | null
   // 'importing' while an org import (org-transfer.ts) isn't finished yet.
   importStatus?: string | null
+  // The org's default language: its mails (the invite), and the language a
+  // new kassa device starts in (chooser).
+  locale?: Locale
 }
 
 export function listMyOrganizations(): Promise<Organization[]> {
@@ -44,6 +49,10 @@ export function createOrganization(name: string): Promise<Organization> {
 
 export function getOrganization(orgId: string): Promise<Organization> {
   return request(`/${encodeURIComponent(orgId)}`)
+}
+
+export function setOrganizationLocale(orgId: string, locale: Locale): Promise<{ locale: Locale }> {
+  return request(`/${encodeURIComponent(orgId)}/locale`, { method: 'PUT', body: JSON.stringify({ locale }) })
 }
 
 export interface CustomDomainConfig {

@@ -4,6 +4,8 @@
 // server's order) → finish. Chunks are idempotent server-side, so a failed
 // one is simply retried, and a whole unfinished import can be re-run
 // ("Hervatten") against the same org.
+import { apiErrorMessage } from '@/shared/api-errors'
+import type { AdminOrgMessages } from '../messages/org/nl'
 
 export const EXPORT_FORMAT = 'arcanum-org-export'
 export const EXPORT_VERSION = 1
@@ -28,27 +30,43 @@ export type TableReport = Record<string, { expected: number; imported: number }>
 
 // --- Pure helpers ---
 
+// Why a file can't be imported — a kind, not a text, so the dialog words it
+// in whatever language the console is showing (fileProblemText).
+export type FileProblem =
+  | { kind: 'invalidJson' }
+  | { kind: 'notExport' }
+  | { kind: 'version'; version: string }
+  | { kind: 'noOrganization' }
+  | { kind: 'incomplete' }
+
+export type ParsedExport = { ok: true; file: ExportFile } | { ok: false; problem: FileProblem }
+
 // Checks a parsed JSON value is an export this app can import. Everything
 // the backend checks again, but failing here means no API call at all.
-export function validateExportFile(data: unknown): { ok: true; file: ExportFile } | { ok: false; error: string } {
+export function validateExportFile(data: unknown): ParsedExport {
   const d = data as Partial<ExportFile> | null
-  if (!d || typeof d !== 'object' || d.format !== EXPORT_FORMAT) return { ok: false, error: 'Dit is geen Arcanum-exportbestand.' }
-  if (d.version !== EXPORT_VERSION) return { ok: false, error: `Exportversie ${String(d.version)} wordt niet ondersteund (verwacht ${EXPORT_VERSION}).` }
-  if (!d.organization || typeof d.organization.name !== 'string') return { ok: false, error: 'Het bestand bevat geen organisatie.' }
+  if (!d || typeof d !== 'object' || d.format !== EXPORT_FORMAT) return { ok: false, problem: { kind: 'notExport' } }
+  if (d.version !== EXPORT_VERSION) return { ok: false, problem: { kind: 'version', version: String(d.version) } }
+  if (!d.organization || typeof d.organization.name !== 'string') return { ok: false, problem: { kind: 'noOrganization' } }
   if (!d.tables || typeof d.tables !== 'object' || Object.values(d.tables).some((t) => !Array.isArray(t))) {
-    return { ok: false, error: 'Het bestand is onvolledig of beschadigd (tabellen ontbreken).' }
+    return { ok: false, problem: { kind: 'incomplete' } }
   }
   return { ok: true, file: d as ExportFile }
 }
 
-export function parseExportText(text: string): { ok: true; file: ExportFile } | { ok: false; error: string } {
+export function parseExportText(text: string): ParsedExport {
   let data: unknown
   try {
     data = JSON.parse(text)
   } catch {
-    return { ok: false, error: 'Dit bestand is geen geldige JSON.' }
+    return { ok: false, problem: { kind: 'invalidJson' } }
   }
   return validateExportFile(data)
+}
+
+export function fileProblemText(m: Pick<AdminOrgMessages, 'orgImport'>, problem: FileProblem): string {
+  const p = m.orgImport.problems
+  return problem.kind === 'version' ? p.version(problem.version, EXPORT_VERSION) : p[problem.kind]
 }
 
 export function buildManifest(file: ExportFile): Manifest {
@@ -117,31 +135,35 @@ export function filenameFromDisposition(header: string | null, fallback: string)
   return match ? decodeURIComponent(match[1]) : fallback
 }
 
-// Human-readable table names for the summary and the report.
-export const TABLE_LABELS: Record<string, string> = {
-  memberships: 'Leden (als uitnodiging)',
-  events: 'Evenementen',
-  categories: 'Categorieën',
-  prep_stations: 'Stations',
-  products: 'Producten',
-  product_variants: 'Varianten',
-  catalogs: 'Menukaarten',
-  catalog_sections: 'Groepen',
-  catalog_entries: 'Menukaartlijnen',
-  org_counters: 'Tellers (rekening-/ticketnummers)',
-  tabs: 'Rekeningen',
-  orders: 'Bestellingen',
-  order_lines: 'Bestellijnen',
-  charges: 'Betalingen',
-  transactions: 'Transacties',
-  mail_provider: 'Mailinstelling',
-  payment_provider_credentials: 'Betaalinstellingen (geheim)',
-  smtp_credentials: 'SMTP-instellingen (geheim)',
-  gmail_api_credentials: 'Gmail API-instellingen (geheim)',
-}
+// Every table an export can hold, in the backend's foreign-key order.
+// Their human-readable names (summary and report) are messages'
+// orgImport.tables.
+export const EXPORT_TABLES = [
+  'memberships',
+  'events',
+  'categories',
+  'prep_stations',
+  'products',
+  'product_variants',
+  'catalogs',
+  'catalog_sections',
+  'catalog_entries',
+  'org_counters',
+  'tabs',
+  'orders',
+  'order_lines',
+  'charges',
+  'transactions',
+  'mail_provider',
+  'payment_provider_credentials',
+  'smtp_credentials',
+  'gmail_api_credentials',
+] as const
 
-export function tableLabel(table: string): string {
-  return TABLE_LABELS[table] ?? table
+export type ExportTable = (typeof EXPORT_TABLES)[number]
+
+export function tableLabel(m: Pick<AdminOrgMessages, 'orgImport'>, table: string): string {
+  return (m.orgImport.tables as Record<string, string>)[table] ?? table
 }
 
 // --- API ---
@@ -159,7 +181,7 @@ async function postJson(url: string, body?: unknown): Promise<{ status: number; 
 }
 
 function apiError(status: number, data: any): Error {
-  return new Error(data?.error || `Fout ${status}`)
+  return new Error(apiErrorMessage(data, `Fout ${status}`))
 }
 
 export async function downloadExport(orgId: string, includeSecrets: boolean): Promise<void> {
@@ -204,7 +226,7 @@ export async function abortImport(orgId: string): Promise<void> {
 
 // Default table order when resuming (no /start response to read it from):
 // the same foreign-key order the backend uses.
-export const DEFAULT_TABLE_ORDER = Object.keys(TABLE_LABELS)
+export const DEFAULT_TABLE_ORDER: string[] = [...EXPORT_TABLES]
 export const DEFAULT_MAX_CHUNK_ROWS = 2000
 
 export interface RunImportOptions {

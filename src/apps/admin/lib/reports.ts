@@ -2,7 +2,10 @@
 // /organizations/:orgId/reports/sales plus the pure helpers the Rapporten
 // page uses (period bounds, labels). Revenue comes from order lines of
 // closed tabs and excludes tips; payments come from the ledger
-// (transactions), legacy pre-tab sales included.
+// (transactions), legacy pre-tab sales included. Helpers that produce
+// text take the messages (messages/org) as their first argument.
+import { apiErrorMessage } from '@/shared/api-errors'
+import type { AdminOrgMessages } from '../messages/org/nl'
 import { formatEuro } from './format'
 
 export interface SalesReport {
@@ -25,29 +28,21 @@ export interface SalesReport {
   openTabs: { count: number; outstandingCents: number }
 }
 
-// The error message for a 403, so the page can say "alleen voor
-// beheerders" instead of showing a raw error (useAsync keeps only the
-// message).
-export const REPORT_FORBIDDEN = 'Rapporten zijn alleen voor beheerders.'
+// The error message for a 403 — a marker, never shown: the page says
+// "alleen voor beheerders" (in the admin's language) instead of a raw
+// error (useAsync keeps only the message).
+export const REPORT_FORBIDDEN = 'reports:forbidden'
 
 export async function fetchSalesReport(orgId: string, from: string, to: string): Promise<SalesReport> {
   const params = new URLSearchParams({ from, to })
   const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/reports/sales?${params}`)
   if (res.status === 403) throw new Error(REPORT_FORBIDDEN)
   const data = await res.json().catch(() => null)
-  if (!res.ok) throw new Error((data && data.error) || `status ${res.status}`)
+  if (!res.ok) throw new Error(apiErrorMessage(data, `status ${res.status}`))
   return data as SalesReport
 }
 
 export type Period = 'today' | 'yesterday' | 'week' | 'month' | 'custom'
-
-export const PERIOD_LABELS: Record<Period, string> = {
-  today: 'Vandaag',
-  yesterday: 'Gisteren',
-  week: 'Deze week',
-  month: 'Deze maand',
-  custom: 'Aangepast',
-}
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -110,37 +105,30 @@ export function periodBounds(period: Period, now: Date, custom?: { from: string;
   return { from: from.toISOString(), to: to.toISOString() }
 }
 
-const METHOD_LABELS: Record<string, string> = { cash: 'Contant', sumup: 'SumUp', bancontact: 'Bancontact' }
-
-export function methodLabel(method: string): string {
-  return METHOD_LABELS[method] ?? method
+export function methodLabel(m: Pick<AdminOrgMessages, 'methods'>, method: string): string {
+  return (m.methods as Record<string, string>)[method] ?? method
 }
 
-// Basis points → "21%", "5,5%"; null → not set yet (VAT per product is
-// still provisional pending the accountant).
-export function vatLabel(vatRateBp: number | null): string {
-  if (vatRateBp === null) return 'niet ingesteld'
-  return `${String(vatRateBp / 100).replace('.', ',')}%`
+// Basis points → "21%", "5,5%" (worded per language); null → not set yet
+// (VAT per product is still provisional pending the accountant).
+export function vatLabel(m: Pick<AdminOrgMessages, 'vatNotSet' | 'vatPercent'>, vatRateBp: number | null): string {
+  if (vatRateBp === null) return m.vatNotSet
+  return m.vatPercent(vatRateBp / 100)
 }
 
-// The old kassa's item keys (transactions.items, before tabs existed).
-const LEGACY_LABELS: Record<string, string> = {
-  bon: 'Bonnen',
-  fietstocht: 'Fietstocht',
-  fietstochtMember: 'Fietstocht (lid)',
-  wandeltocht: 'Wandeltocht',
-  wandeltochtMember: 'Wandeltocht (lid)',
-  fooi: 'Fooi',
-}
+// The old kassa's item keys (transactions.items, before tabs existed), in
+// their usual order.
+const LEGACY_KEYS = ['bon', 'fietstocht', 'fietstochtMember', 'wandeltocht', 'wandeltochtMember', 'fooi'] as const
 
 // Known keys first in their usual order, then anything unknown as-is.
 // Every value is a count, except fooi, which is an amount in cents.
-export function legacyItemRows(items: Record<string, number>): { key: string; label: string; value: string }[] {
-  const known = Object.keys(LEGACY_LABELS).filter((k) => k in items)
-  const unknown = Object.keys(items).filter((k) => !(k in LEGACY_LABELS)).sort()
+export function legacyItemRows(m: Pick<AdminOrgMessages, 'legacyItems'>, items: Record<string, number>): { key: string; label: string; value: string }[] {
+  const labels: Record<string, string> = m.legacyItems
+  const known = LEGACY_KEYS.filter((k) => k in items)
+  const unknown = Object.keys(items).filter((k) => !(k in labels)).sort()
   return [...known, ...unknown].map((key) => ({
     key,
-    label: LEGACY_LABELS[key] ?? key,
+    label: labels[key] ?? key,
     value: key === 'fooi' ? formatEuro(items[key]) : String(items[key]),
   }))
 }

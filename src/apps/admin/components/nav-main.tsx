@@ -6,20 +6,23 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
+import { useMessages } from '@/shared/i18n'
 import { useVersionInfo } from '@/shared/source-url'
+import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 
 const NAV_ITEMS = [
-  { title: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { title: 'Rapporten', to: '/reports', icon: Receipt },
-  { title: 'Events', to: '/events', icon: TicketCheck },
-  { title: 'Producten', to: '/products', icon: Package },
-  { title: 'Menukaarten', to: '/catalogs', icon: BookOpen },
-  { title: 'Devices', to: '/devices', icon: MonitorSmartphone },
-  { title: 'Users', to: '/users', icon: Users },
-  { title: 'Settings', to: '/settings', icon: Settings },
+  { key: 'dashboard', to: '/dashboard', icon: LayoutDashboard },
+  { key: 'reports', to: '/reports', icon: Receipt },
+  { key: 'events', to: '/events', icon: TicketCheck },
+  { key: 'products', to: '/products', icon: Package },
+  { key: 'catalogs', to: '/catalogs', icon: BookOpen },
+  { key: 'devices', to: '/devices', icon: MonitorSmartphone },
+  { key: 'users', to: '/users', icon: Users },
+  { key: 'settings', to: '/settings', icon: Settings },
 ] as const
 
 export function NavMain() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { installer } = useVersionInfo()
 
@@ -28,10 +31,10 @@ export function NavMain() {
       <SidebarMenu>
         {NAV_ITEMS.map((item) => (
           <SidebarMenuItem key={item.to}>
-            <SidebarMenuButton asChild isActive={pathname.startsWith(item.to)} tooltip={item.title}>
+            <SidebarMenuButton asChild isActive={pathname.startsWith(item.to)} tooltip={m.nav[item.key]}>
               <Link to={item.to}>
                 <item.icon />
-                <span>{item.title}</span>
+                <span>{m.nav[item.key]}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -40,10 +43,10 @@ export function NavMain() {
           // arcanum-installer behind arcanum-bff (self-hosted installations
           // only) — its own page, not a console route: a full page load.
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Installatie">
+            <SidebarMenuButton asChild tooltip={m.installer}>
               <a href="/installer/">
                 <Server />
-                <span>Installatie</span>
+                <span>{m.installer}</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>

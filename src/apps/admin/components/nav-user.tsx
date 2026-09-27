@@ -16,8 +16,10 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { Link } from '@tanstack/react-router'
+import { useMessages } from '@/shared/i18n'
 import { whoami } from '../lib/api'
 import { useAsync } from '../lib/use-async'
+import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 
 function initials(name: string): string {
   return name
@@ -30,6 +32,7 @@ function initials(name: string): string {
 }
 
 export function NavUser() {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
   const { isMobile } = useSidebar()
   const { data: user, loading } = useAsync(whoami, [])
 
@@ -82,7 +85,7 @@ export function NavUser() {
             <DropdownMenuItem asChild>
               <Link to="/settings/profile">
                 <User />
-                Profiel
+                {m.profile}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -91,7 +94,7 @@ export function NavUser() {
                 own SSO cookie. See arcanum-bff's authroutes.ts. */}
             <DropdownMenuItem variant="destructive" onClick={() => window.location.assign('/logout')}>
               <LogOut />
-              Afmelden
+              {m.logout}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

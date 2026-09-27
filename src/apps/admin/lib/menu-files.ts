@@ -2,6 +2,8 @@
 // imports the spreadsheet libraries — always loaded with a dynamic
 // import() when someone exports or imports, so the rest of the console
 // never ships that code. The sheet logic itself is in menu-sheet.ts.
+// What goes into the file (sheet names, titles, the export date) is Dutch
+// whatever the console's language — it's the file format, see menu-sheet.ts.
 import writeXlsxFile, { type Row, type SheetData } from 'write-excel-file/browser'
 import { readSheet } from 'read-excel-file/browser'
 import {
@@ -82,6 +84,6 @@ export async function readMenuFile(file: File): Promise<ParsedSheet> {
   try {
     return parseSheetRows(await readSheet(file))
   } catch {
-    return { errors: ['Kon dit bestand niet lezen. Gebruik een .xlsx- of .csv-bestand.'], ignoredHeaders: [], rows: [] }
+    return { errors: [{ kind: 'unreadable' }], ignoredHeaders: [], rows: [] }
   }
 }
