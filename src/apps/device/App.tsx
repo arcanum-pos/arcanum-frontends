@@ -104,7 +104,7 @@ export default function App() {
   }, [attempt])
 
   return (
-    <KioskShell maxWidth="max-w-md" languagePicker>
+    <KioskShell maxWidth="max-w-md" devicePickers>
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-lg">{m.title}</CardTitle>

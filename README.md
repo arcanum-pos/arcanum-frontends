@@ -147,6 +147,21 @@ sets (the admin console: `src/apps/admin/messages/{shell,catalog,org}`).
   in every language so any file imports again. A charge's stored
   `error_message` (e.g. "Betaling verlopen (time-out)") is still Dutch.
 
+## Light / dark
+
+Every screen follows a theme — light, dark, or the system's — as a `.dark`
+class on `<html>` (`src/shared/theme.ts`, `ThemeProvider` at each screen's
+root). Two separate choices, like the language: the device's
+(`arcanum-theme`: kassa, Instellingen, the customer display, the setup
+screens — picked in Instellingen → Weergave, with the `ThemePicker` on the
+setup screens, or in the customer display's corner) and the console's own
+(`arcanum-admin-theme`, Settings → Weergave). Both start at "system".
+
+Use the theme tokens (`bg-background`, `text-muted-foreground`, …), not fixed
+colours. The one deliberate exception is the customer display's order list
+while paying: the opposite of the theme (`bg-neutral-950 … dark:bg-white`),
+next to a payment panel in the theme itself — dark mode is the design's look.
+
 ## Local dev
 
 ```

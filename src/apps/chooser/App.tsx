@@ -55,7 +55,7 @@ export default function App() {
 
   if (view.step === 'loading') {
     return (
-      <KioskShell languagePicker>
+      <KioskShell devicePickers>
         <div className="flex flex-col items-center gap-3">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-24 w-full" />
@@ -66,7 +66,7 @@ export default function App() {
 
   if (view.step === 'org-picker') {
     return (
-      <KioskShell languagePicker>
+      <KioskShell devicePickers>
         <div className="flex flex-col gap-4 text-center">
           <h1 className="font-heading text-xl font-bold">{m.whichOrg}</h1>
           <div className="flex flex-col gap-2">
@@ -80,7 +80,7 @@ export default function App() {
   }
 
   return (
-    <KioskShell languagePicker>
+    <KioskShell devicePickers>
       <div className="flex flex-col gap-4 text-center">
         <div>
           <h1 className="font-heading text-xl font-bold">{m.whichRole}</h1>

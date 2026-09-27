@@ -10,6 +10,8 @@ const nl = {
   deviceId: (id: string) => `Toestel-ID: ${id}`,
   language: 'Taal',
   languageHint: 'De taal van de kassa en het klantscherm op dit toestel. Klanten kunnen op het klantscherm zelf nog een andere kiezen.',
+  appearance: 'Weergave',
+  appearanceHint: 'Licht of donker, voor de kassa en het klantscherm op dit toestel. Systeem volgt de instelling van het toestel zelf.',
   catalog: 'Menukaart',
   catalogHint: 'Welke menukaart deze kassa verkoopt.',
   event: 'Evenement',

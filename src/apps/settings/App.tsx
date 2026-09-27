@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
 import { OrgBadge } from '@/shared/org-badge'
+import { ThemePicker } from '@/shared/theme-picker'
 import { getDevice, getDeviceId, setDeviceName } from '@/shared/device'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { LinkPanel } from './LinkPanel'
@@ -92,6 +93,16 @@ export default function App() {
         </CardHeader>
         <CardContent>
           <LanguagePicker persist />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{m.appearance}</CardTitle>
+          <p className="text-sm text-muted-foreground">{m.appearanceHint}</p>
+        </CardHeader>
+        <CardContent>
+          <ThemePicker withLabels />
         </CardContent>
       </Card>
 

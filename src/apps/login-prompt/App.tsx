@@ -14,7 +14,7 @@ export default function App() {
   const href = returnTo && returnTo !== '/' ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login'
 
   return (
-    <KioskShell languagePicker>
+    <KioskShell devicePickers>
       <Card>
         <CardHeader>
           <CardTitle>{m.title}</CardTitle>

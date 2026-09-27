@@ -4,6 +4,7 @@ import { customerBill, readCustomerOrder, type CustomerOrder } from '@/shared/cu
 import { formatEuro } from '@/shared/format'
 import { useLocale, useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
+import { ThemePicker } from '@/shared/theme-picker'
 import { STATUS_MESSAGES } from '@/shared/payment-labels'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { payPhase, type PayPhase } from './lib'
@@ -12,6 +13,10 @@ import { DISPLAY_MESSAGES } from './messages'
 // Customer-facing display, three states: rust (idle), waiting for the
 // payment (the order, the total and — for Bancontact — the QR), and paid.
 // Styled after design_files/ (Kassa + CFD voorstel); no platform branding.
+// Follows the device's theme (light/dark, see shared/theme.ts): rust, the
+// payment panel and "Bedankt!" in the theme itself, the order list next to
+// the payment panel in the opposite one — dark mode is the design's look
+// (a white order list beside a dark payment panel), light mode its mirror.
 //
 // Reacts to a payment two ways:
 //  - same-device BroadcastChannel('arcanum-payment') — kassa and this page
@@ -204,20 +209,18 @@ export default function App() {
       {payment && phase === 'paid' && <PaidView payment={payment} eventName={eventName} onTap={() => channelRef.current?.postMessage({ type: 'reset-requested' })} />}
 
       <div className="fixed right-4 bottom-4 flex items-center gap-3">
-        <LanguagePicker inverted={!!payment} />
+        <ThemePicker />
+        <LanguagePicker />
         <button
           type="button"
-          className={cn(
-            'rounded-lg px-2.5 py-1 text-xs opacity-40 transition-opacity hover:opacity-100',
-            payment ? 'bg-neutral-800 text-neutral-200' : 'bg-secondary text-secondary-foreground'
-          )}
+          className="rounded-lg bg-secondary px-2.5 py-1 text-xs text-secondary-foreground opacity-40 transition-opacity hover:opacity-100"
           onClick={() => document.documentElement.requestFullscreen().catch(() => {})}
         >
           {m.fullscreen}
         </button>
       </div>
 
-      <p className={cn('fixed bottom-2 left-2 text-xs', payment ? 'text-neutral-500' : 'text-muted-foreground')}>
+      <p className="fixed bottom-2 left-2 text-xs text-muted-foreground">
         {terminalHint}
         {linkedHint && ` — ${linkedHint}`}
       </p>
@@ -250,29 +253,30 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
       : m.payWith[payment.method] || `${m.waiting}…`
 
   return (
-    <div className="flex min-h-svh flex-1 flex-col bg-neutral-950 md:flex-row" data-testid="cfd-waiting">
+    <div className="flex min-h-svh flex-1 flex-col bg-background md:flex-row" data-testid="cfd-waiting">
+      {/* The opposite of the theme: dark on a light screen, white on a dark one. */}
       {shownLines.length > 0 && (
-        <section className="flex min-w-0 flex-col bg-white text-neutral-950 md:flex-[1.25]">
-          <div className="border-b border-neutral-200 px-8 pt-7 pb-4">
-            <p className="text-xs font-semibold tracking-[0.1em] text-neutral-500 uppercase">{paying ? m.yourShare : m.yourOrder}</p>
+        <section className="flex min-w-0 flex-col bg-neutral-950 text-neutral-50 md:flex-[1.25] dark:bg-white dark:text-neutral-950" data-testid="cfd-order">
+          <div className="border-b border-neutral-800 px-8 pt-7 pb-4 dark:border-neutral-200">
+            <p className="text-xs font-semibold tracking-[0.1em] text-neutral-400 uppercase dark:text-neutral-500">{paying ? m.yourShare : m.yourOrder}</p>
             {bill.title && <h1 className="mt-1 text-2xl font-semibold tracking-tight">{bill.title}</h1>}
           </div>
           <ul className="flex-1 overflow-y-auto px-8 pt-1.5 pb-6">
             {shownLines.map((l, i) => (
-              <li key={i} className="flex items-center gap-3 border-b border-neutral-100 py-3">
-                <span className="flex h-7 min-w-9 items-center justify-center rounded-lg bg-neutral-100 px-2 font-mono text-sm font-semibold text-neutral-700">{l.quantity}</span>
+              <li key={i} className="flex items-center gap-3 border-b border-neutral-800/70 py-3 dark:border-neutral-100">
+                <span className="flex h-7 min-w-9 items-center justify-center rounded-lg bg-neutral-800 px-2 font-mono text-sm font-semibold text-neutral-200 dark:bg-neutral-100 dark:text-neutral-700">{l.quantity}</span>
                 <span className="flex-1 text-lg font-medium tracking-tight">{l.name}</span>
                 <span className="font-mono text-lg font-semibold tabular-nums">{formatEuro(l.totalCents)}</span>
               </li>
             ))}
             {!paying && bill.alreadyPaidCents > 0 && (
-              <li className="flex items-center justify-between py-3 text-neutral-500">
+              <li className="flex items-center justify-between py-3 text-neutral-400 dark:text-neutral-500">
                 <span className="text-base">{m.alreadyPaid}</span>
                 <span className="font-mono text-base tabular-nums">− {formatEuro(bill.alreadyPaidCents)}</span>
               </li>
             )}
             {bill.tipCents > 0 && (
-              <li className="flex items-center justify-between py-3 text-neutral-500">
+              <li className="flex items-center justify-between py-3 text-neutral-400 dark:text-neutral-500">
                 <span className="text-base">{m.tip}</span>
                 <span className="font-mono text-base tabular-nums">{formatEuro(bill.tipCents)}</span>
               </li>
@@ -281,18 +285,18 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
         </section>
       )}
 
-      <section className={cn('flex flex-col justify-between gap-8 p-8 text-neutral-50', shownLines.length > 0 ? 'md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%]' : 'flex-1 items-center justify-center text-center')}>
+      <section className={cn('flex flex-col justify-between gap-8 bg-background p-8 text-foreground', shownLines.length > 0 ? 'md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%]' : 'flex-1 items-center justify-center text-center')}>
         <div>
           {(payment.order?.eventName || eventName) && (
-            <p className="mb-6 truncate text-sm font-medium text-neutral-400" data-testid="cfd-event">
+            <p className="mb-6 truncate text-sm font-medium text-muted-foreground" data-testid="cfd-event">
               {payment.order?.eventName || eventName}
             </p>
           )}
-          <p className="text-xs font-semibold tracking-[0.1em] text-neutral-400 uppercase">
+          <p className="text-xs font-semibold tracking-[0.1em] text-muted-foreground uppercase">
             {payment.part ? m.partDue(payment.part.index, payment.part.of) : m.totalDue}
           </p>
           <p className="mt-2 font-mono text-[56px] leading-none font-semibold tracking-tight tabular-nums">{formatEuro(bill.amountCents)}</p>
-          <p className="mt-3 text-[13.5px] text-neutral-400" data-testid="cfd-summary">
+          <p className="mt-3 text-[13.5px] text-muted-foreground" data-testid="cfd-summary">
             {partial
               ? `${m.stillOpen(formatEuro(bill.openCents))} · ${method}`
               : `${bill.itemCount > 0 ? `${m.items(bill.itemCount)} · ` : ''}${method}`}
@@ -301,7 +305,7 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
 
         <div className={cn('flex flex-col gap-4', shownLines.length === 0 && 'items-center')}>
           {showQr && (
-            <div className={cn('rounded-2xl bg-white p-4', shownLines.length > 0 ? 'self-start' : 'self-center')}>
+            <div className={cn('rounded-2xl bg-white p-4 ring-1 ring-border', shownLines.length > 0 ? 'self-start' : 'self-center')}>
               <img src={payment.qrCodeUrl} alt={m.qrAlt} className="size-[min(70vw,300px)]" />
             </div>
           )}
@@ -310,12 +314,12 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
               <span className={cn('absolute inset-0 rounded-full', failed ? 'bg-red-500' : 'bg-amber-400')} />
               {!failed && <span className="absolute -inset-1.5 animate-ping rounded-full bg-amber-400/60" />}
             </span>
-            <span className="text-lg text-neutral-200" data-testid="cfd-status">
+            <span className="text-lg text-foreground/85" data-testid="cfd-status">
               {statusText}
             </span>
           </div>
-          {!failed && <p className="max-w-[340px] text-[13.5px] text-neutral-500">{m.instructions[payment.method] || ''}</p>}
-          {countdownText && <p className="font-mono text-xs text-neutral-500">{countdownText}</p>}
+          {!failed && <p className="max-w-[340px] text-[13.5px] text-muted-foreground">{m.instructions[payment.method] || ''}</p>}
+          {countdownText && <p className="font-mono text-xs text-muted-foreground">{countdownText}</p>}
         </div>
       </section>
     </div>
@@ -329,7 +333,7 @@ function PaidView({ payment, eventName, onTap }: { payment: Payment; eventName: 
   const method = m.methods[payment.method] || payment.method
   return (
     <div
-      className="flex min-h-svh flex-1 cursor-pointer flex-col items-center justify-center gap-4 bg-neutral-950 p-8 text-center text-neutral-50 animate-in fade-in duration-300"
+      className="flex min-h-svh flex-1 cursor-pointer flex-col items-center justify-center gap-4 bg-background p-8 text-center text-foreground animate-in fade-in duration-300"
       onClick={onTap}
       data-testid="cfd-paid"
     >
@@ -337,16 +341,16 @@ function PaidView({ payment, eventName, onTap }: { payment: Payment; eventName: 
         ✓
       </div>
       <p className="text-[42px] font-semibold tracking-tight">{m.thanks}</p>
-      <p className="font-mono text-xl text-neutral-300">
+      <p className="font-mono text-xl text-foreground/80">
         {m.paid(formatEuro(payment.amountCents), method)}
       </p>
       {payment.part && (
-        <p className="text-base text-neutral-400" data-testid="cfd-part">
+        <p className="text-base text-muted-foreground" data-testid="cfd-part">
           {m.part(payment.part.index, payment.part.of)}
         </p>
       )}
       {(payment.order?.eventName || eventName) && (
-        <p className="mt-2 text-sm text-neutral-500" data-testid="cfd-event">
+        <p className="mt-2 text-sm text-muted-foreground" data-testid="cfd-event">
           {payment.order?.eventName || eventName}
         </p>
       )}

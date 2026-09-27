@@ -10,6 +10,8 @@ export default {
   deviceId: (id: string) => `ID de l’appareil : ${id}`,
   language: 'Langue',
   languageHint: 'La langue de la caisse et de l’écran client sur cet appareil. Sur l’écran client, les clients peuvent encore en choisir une autre.',
+  appearance: 'Apparence',
+  appearanceHint: 'Clair ou sombre, pour la caisse et l’écran client sur cet appareil. Système suit le réglage de l’appareil lui-même.',
   catalog: 'Carte',
   catalogHint: 'La carte que vend cette caisse.',
   event: 'Événement',

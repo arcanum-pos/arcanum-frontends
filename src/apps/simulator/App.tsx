@@ -93,7 +93,7 @@ export default function App() {
         : m.simId(link.terminalId)
 
   return (
-    <KioskShell languagePicker>
+    <KioskShell devicePickers>
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-lg">{m.title}</CardTitle>

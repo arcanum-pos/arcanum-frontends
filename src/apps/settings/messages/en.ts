@@ -10,6 +10,8 @@ export default {
   deviceId: (id: string) => `Device ID: ${id}`,
   language: 'Language',
   languageHint: 'The language of the till and the customer display on this device. Customers can still pick another one on the customer display.',
+  appearance: 'Appearance',
+  appearanceHint: 'Light or dark, for the till and the customer display on this device. System follows the device’s own setting.',
   catalog: 'Menu',
   catalogHint: 'Which menu this till sells.',
   event: 'Event',
