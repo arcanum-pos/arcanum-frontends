@@ -104,6 +104,22 @@ the SumUp simulator, the org/device chooser) has since moved here too —
 `arcanum-webapp` has nothing left to serve. Real data wiring is in — see
 `src/apps/admin/lib/api.ts`.
 
+## Translations (nl / fr / en)
+
+Being rolled out screen by screen — so far only the customer display
+(`display`) is translated; every other screen still has its Dutch written
+inline.
+
+- A screen's texts live in `src/apps/<name>/messages/{nl,fr,en}.ts`. `nl.ts`
+  is the source of truth; `fr.ts`/`en.ts` end in `satisfies` its type, so a
+  missing text is a compile error. Texts with values in them (amounts,
+  counts, plurals) are functions, so each language words them its own way.
+- No i18n library, no string keys: `useMessages(DISPLAY_MESSAGES).thanks`.
+  Wrap the screen's root in `LocaleProvider` (`src/shared/i18n/locale-provider.tsx`).
+- `src/shared/i18n/messages.test.ts` checks every registered message set has
+  exactly the same shape in all three languages — add a new set there.
+- Amounts stay `€ 10,00` in every language (see `formatEuro`).
+
 ## Local dev
 
 ```

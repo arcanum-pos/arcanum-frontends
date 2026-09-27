@@ -110,3 +110,35 @@ test('a failed payment says so, without the QR', async ({ page, backend }) => {
   await expect(page.getByAltText('QR-code voor betaling')).toHaveCount(0)
   await expect(page.getByTestId('cfd-paid')).toHaveCount(0)
 })
+
+test('the customer can switch the language, and the next customer starts in Dutch again', async ({ page, backend }) => {
+  const cfd = await openDisplay(page, backend)
+  await expect(page.locator('html')).toHaveAttribute('lang', 'nl')
+
+  await page.getByRole('button', { name: 'fr', exact: true }).click()
+  await expect(page.getByText('Prêt pour la prochaine commande')).toBeVisible()
+  await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
+  await expect(page.getByRole('button', { name: 'Plein écran' })).toBeVisible()
+
+  const tab = backend.openTab('Tafel 2', [{ name: 'Pintje', unitPriceCents: 250, quantity: 2 }])
+  const charge = backend.startCharge(tab.id, 'cash')
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'cash' })
+  const waiting = page.getByTestId('cfd-waiting')
+  await expect(waiting.getByText('Votre commande')).toBeVisible()
+  await expect(waiting).toContainText('2 articles · Espèces')
+  await expect(page.getByTestId('cfd-status')).toHaveText('Veuillez payer en espèces')
+
+  await page.getByRole('button', { name: 'en', exact: true }).click()
+  await expect(page.getByTestId('cfd-status')).toHaveText('Please pay in cash')
+  await expect(waiting).toContainText('2 items · Cash')
+
+  backend.resolveCharge(charge.id, true)
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'cash' })
+  await expect(page.getByTestId('cfd-paid')).toContainText('Thank you!')
+  await expect(page.getByTestId('cfd-paid')).toContainText('€ 5,00 paid · Cash')
+
+  cfd.push({ event: 'reset' })
+  await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'nl', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  expect(cfd.errors).toEqual([])
+})
