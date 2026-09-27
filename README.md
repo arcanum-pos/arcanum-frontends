@@ -158,9 +158,9 @@ setup screens, or in the customer display's corner) and the console's own
 (`arcanum-admin-theme`, Settings → Weergave). Both start at "system".
 
 Use the theme tokens (`bg-background`, `text-muted-foreground`, …), not fixed
-colours. The one deliberate exception is the customer display's order list
-while paying: the opposite of the theme (`bg-neutral-950 … dark:bg-white`),
-next to a payment panel in the theme itself — dark mode is the design's look.
+colours. The one deliberate exception is the customer display's payment
+panel beside the order list: the opposite of the theme (`bg-neutral-950 …
+dark:bg-white`), next to an order list in the theme itself.
 
 ## Local dev
 

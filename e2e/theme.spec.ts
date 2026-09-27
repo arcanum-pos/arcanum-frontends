@@ -4,9 +4,8 @@ import type { FakeBackend } from './fake-backend'
 
 // Light / dark / system per device (arcanum-theme): picked in Instellingen,
 // on the setup screens, or in the customer display's corner. The customer
-// display's rust and "Bedankt!" follow it; while paying, the payment panel
-// does and the order list takes the opposite (the design's dark look is a
-// white order list beside a dark payment panel).
+// display's rust and "Bedankt!" follow it; while paying, the order list
+// does and the payment panel beside it takes the opposite.
 
 const bg = (page: Page, testId: string) => page.getByTestId(testId).evaluate((el) => getComputedStyle(el).backgroundColor)
 const isDark = (color: string) => {
@@ -32,7 +31,7 @@ async function openDisplay(page: Page, backend: FakeBackend) {
 }
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`customer display, ${theme}: rust and "Bedankt!" in the theme, the order list in the opposite`, async ({ page, backend }) => {
+  test(`customer display, ${theme}: rust, "Bedankt!" and the order list in the theme, the payment panel in the opposite`, async ({ page, backend }) => {
     await page.addInitScript((t) => localStorage.setItem('arcanum-theme', t), theme)
     const push = await openDisplay(page, backend)
     await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /\bdark\b/ : /^(?!.*\bdark\b)/)
@@ -41,8 +40,8 @@ for (const theme of ['light', 'dark'] as const) {
     const charge = backend.startCharge(tab.id, 'cash')
     push({ event: 'payment_updated', payment_id: charge.id, method: 'cash' })
     await expect(page.getByTestId('cfd-order')).toBeVisible()
-    expect(isDark(await bg(page, 'cfd-waiting'))).toBe(theme === 'dark')
-    expect(isDark(await bg(page, 'cfd-order'))).toBe(theme !== 'dark')
+    expect(isDark(await bg(page, 'cfd-order'))).toBe(theme === 'dark')
+    expect(isDark(await bg(page, 'cfd-pay'))).toBe(theme !== 'dark')
 
     backend.resolveCharge(charge.id, true)
     push({ event: 'payment_updated', payment_id: charge.id, method: 'cash' })
