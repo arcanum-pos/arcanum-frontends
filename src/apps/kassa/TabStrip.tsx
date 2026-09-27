@@ -1,3 +1,4 @@
+import { RotateCw } from 'lucide-react'
 import { cn } from 'cn'
 import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
@@ -35,6 +36,7 @@ export function TabStrip({
   disabled,
   onSelect,
   onNew,
+  onRefresh,
 }: {
   tabs: TabSummary[]
   active: ActiveKey
@@ -45,6 +47,8 @@ export function TabStrip({
   disabled: boolean
   onSelect: (key: ActiveKey) => void
   onNew: () => void
+  // Reload the list now — other kassas' changes also arrive live (tabs_changed).
+  onRefresh: () => void
 }) {
   const m = useMessages(KASSA_MESSAGES)
   const amount = (isActive: boolean) => cn('font-mono text-xs tabular-nums', isActive ? 'text-background/70' : 'text-muted-foreground')
@@ -80,6 +84,16 @@ export function TabStrip({
         className="h-9 shrink-0 rounded-lg border border-dashed border-foreground/20 bg-card px-3 text-[13px] font-medium whitespace-nowrap text-foreground/75 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
       >
         {m.newTab}
+      </button>
+
+      <button
+        type="button"
+        onClick={onRefresh}
+        aria-label={m.refresh}
+        title={m.refresh}
+        className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-card text-foreground/70 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <RotateCw className="size-4" aria-hidden="true" />
       </button>
     </div>
   )

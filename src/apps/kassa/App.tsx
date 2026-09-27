@@ -39,6 +39,7 @@ import { NameDialog, VoidDialog } from './TabDialogs'
 import { KASSA_MESSAGES } from './messages'
 import { SplitDialog } from './SplitDialog'
 import { TabPanel } from './TabPanel'
+import { TabsOverview } from './TabsOverview'
 import { TabStrip, type ActiveKey } from './TabStrip'
 import * as tabsApi from './tabs-api'
 import { netQuantity, QUICK_SALE_LABEL, TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
@@ -97,6 +98,11 @@ export default function App() {
   const [itemMode, setItemMode] = useState<{ tabId: string; selection: ItemSelection } | null>(null)
   const itemModeRef = useRef(itemMode)
   itemModeRef.current = itemMode
+  // The Rekeningen overview in place of the kassa, and a counter that tells
+  // it to reload (a tabs_changed push, Vernieuwen).
+  const [view, setView] = useState<'kassa' | 'overview'>('kassa')
+  const [tabsSignal, setTabsSignal] = useState(0)
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const currentRef = useRef<CurrentPayment | null>(null)
   const catalogRef = useRef<KassaCatalog | null>(null)
@@ -260,11 +266,18 @@ export default function App() {
     }
   }
 
-  // Also notices a tab that was closed or cancelled on another kassa in the
-  // meantime and falls back to Toog.
+  // Everything this kassa shows from the server, e.g. on focus or Vernieuwen.
   async function refreshAll() {
     loadCatalog()
     loadEvent()
+    setTabsSignal((n) => n + 1)
+    await syncTabs()
+  }
+
+  // The open-tab list and the selected tab. Also notices a tab that was
+  // closed or cancelled on another kassa in the meantime and falls back to
+  // Toog.
+  async function syncTabs() {
     const list = await refreshTabs()
     const key = activeRef.current
     if (list && key !== 'quick' && !list.some((t) => t.id === key) && !currentRef.current) {
@@ -274,6 +287,17 @@ export default function App() {
       return
     }
     await loadTab(key)
+  }
+
+  // Another kassa changed a tab (devicehub's tabs_changed): pull the list
+  // and the selected tab — once for a burst of pushes.
+  function scheduleSync() {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+    syncTimerRef.current = setTimeout(() => {
+      syncTimerRef.current = null
+      setTabsSignal((n) => n + 1)
+      syncTabs()
+    }, 250)
   }
 
   function selectTab(key: ActiveKey) {
@@ -749,15 +773,19 @@ export default function App() {
           if (msg.method === 'sumup') checkSumupStatus(msg.payment_id)
           else if (msg.method === 'bancontact') checkBancontactStatus(msg.payment_id)
         },
+        tabs_changed: () => scheduleSync(),
       })
     })
 
-    return () => socket?.close()
+    return () => {
+      socket?.close()
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // The only cross-kassa sync for now: reload when this kassa is looked at
-  // again. A live tab_updated push comes later (DOMAIN_MODEL.md).
+  // Besides the live tabs_changed push: reload when this kassa is looked at
+  // again (a push missed while the socket was down).
   useEffect(() => {
     if (!orgId) return
     refreshTabs()
@@ -834,6 +862,15 @@ export default function App() {
           </div>
           <div className="min-w-5 flex-1" />
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              className="h-[34px] px-3 text-[13px]"
+              disabled={current !== null}
+              aria-pressed={view === 'overview'}
+              onClick={() => setView(view === 'overview' ? 'kassa' : 'overview')}
+            >
+              {view === 'overview' ? m.backToKassa : m.overviewButton}
+            </Button>
             <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={openingDisplay} onClick={openDisplay}>
               {m.openDisplay}
             </Button>
@@ -861,7 +898,19 @@ export default function App() {
           </div>
         </div>
         <div className="px-5 pb-2.5">
-          <TabStrip tabs={tabs} active={active} draftKeys={draftKeys} quickTotalCents={draftTotalCents(drafts.quick || [])} disabled={busy || current !== null} onSelect={selectTab} onNew={() => setNameDialog('new')} />
+          <TabStrip
+            tabs={tabs}
+            active={active}
+            draftKeys={draftKeys}
+            quickTotalCents={draftTotalCents(drafts.quick || [])}
+            disabled={busy || current !== null}
+            onSelect={(key) => {
+              setView('kassa')
+              selectTab(key)
+            }}
+            onNew={() => setNameDialog('new')}
+            onRefresh={refreshAll}
+          />
         </div>
       </header>
 
@@ -876,7 +925,18 @@ export default function App() {
           </div>
         )}
 
-        {!current && (
+        {!current && view === 'overview' && orgId && (
+          <TabsOverview
+            orgId={orgId}
+            refreshSignal={tabsSignal}
+            onOpenTab={(tabId) => {
+              setView('kassa')
+              selectTab(tabId)
+            }}
+          />
+        )}
+
+        {!current && view === 'kassa' && (
           // Flex like the design, not a grid with an fr track: Safari
           // mis-sized the nested product grid's rows inside that.
           <div className="flex flex-col items-start gap-4 lg:flex-row">

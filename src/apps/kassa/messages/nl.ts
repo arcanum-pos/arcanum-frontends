@@ -129,6 +129,29 @@ const nl = {
   breakdownLine: (quantity: number, name: string, unitPrice: string, total: string) => `${quantity} × ${name} à ${unitPrice} = ${total}`,
   breakdownTip: (amount: string) => `Fooi = ${amount}`,
 
+  // Rekeningen overview (today, every kassa)
+  overviewButton: 'Rekeningen',
+  backToKassa: '← Terug naar de kassa',
+  overviewTitle: 'Rekeningen van vandaag',
+  overviewSubtitle: "Van alle kassa's. Tik een open rekening om ze op deze kassa verder te zetten.",
+  overviewSearch: 'Zoek op naam, #nummer of bedrag…',
+  overviewFilters: { all: 'Alle', open: 'Open', paid: 'Betaald', cancelled: 'Geannuleerd' },
+  overviewStatus: { open: 'Open', paying: 'Betaling loopt', paid: 'Betaald', cancelled: 'Geannuleerd' },
+  overviewTotals: (paidCount: number, paid: string, openCount: number, open: string) => `${paidCount} betaald · ${paid} — ${openCount} open · ${open}`,
+  overviewColumns: { time: 'Tijd', tab: 'Rekening', kassa: 'Kassa', items: 'Artikelen', method: 'Methode', status: 'Status', amount: 'Bedrag' },
+  overviewEmpty: 'Nog geen rekeningen vandaag.',
+  overviewNoMatches: 'Geen rekeningen gevonden.',
+  overviewFailed: 'Kon de rekeningen niet laden.',
+  detailOpened: (at: string, by: string | null) => (by ? `Geopend om ${at} op ${by}` : `Geopend om ${at}`),
+  detailClosed: (at: string) => `Afgesloten om ${at}`,
+  detailReceipt: (n: number) => `Kasticket #${n}`,
+  detailCancelled: (reason: string | null) => (reason ? `Geannuleerd: ${reason}` : 'Geannuleerd'),
+  detailLines: 'Bestelling',
+  detailPayments: 'Betalingen',
+  detailNoPayments: 'Geen betalingen.',
+  paymentStatuses: { pending: 'Loopt', succeeded: 'Betaald', failed: 'Mislukt' } as Record<string, string>,
+  detailFailed: 'Kon de rekening niet laden.',
+
   // Notices and errors of the kassa's own (the server's come as they are)
   catalogGone: (name: string) => `De gekozen menukaart "${name}" is niet meer beschikbaar — de standaardmenukaart wordt gebruikt.`,
   linesDropped: (n: number) =>

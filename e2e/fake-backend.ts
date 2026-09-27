@@ -93,6 +93,8 @@ interface Tab {
   status: 'open' | 'closed' | 'cancelled'
   openedDeviceName: string | null
   openedAt: string
+  closedAt?: string | null
+  cancelReason?: string | null
   receiptNumber: number | null
   eventId?: string | null
   // "Gelijk verdelen" plan, like the backend's tabs.split_parts / split_paid.
@@ -231,6 +233,12 @@ export class FakeBackend {
       paidCents,
       outstandingCents: totalCents - paidCents,
       paymentPending: charges.some((c) => c.status === 'pending'),
+      closedAt: tab.closedAt ?? null,
+      cancelReason: tab.cancelReason ?? null,
+      // Like the backend: distinct methods of succeeded charges, first paid first.
+      methods: [...new Set(charges.filter((c) => c.status === 'succeeded').map((c) => c.method))],
+      // Net units still on the tab (voids are negative lines here).
+      itemCount: lines.filter((l) => l.itemCode !== 'fooi').reduce((n, l) => n + l.quantity, 0),
     }
   }
 
@@ -248,6 +256,9 @@ export class FakeBackend {
         voidedQuantity: -lines.filter((v) => v.voidsLineId === l.id).reduce((s, v) => s + v.quantity, 0),
         paidQuantity: this.paidUnits(l.id),
       })),
+      payments: this.charges
+        .filter((c) => c.tabId === tab.id)
+        .map((c) => ({ id: c.id, method: c.method, status: c.status, amountCents: c.amountCents, tipCents: c.tipCents, deviceName: 'Andere kassa', userName: null, createdAt: tab.openedAt, resolvedAt: c.status === 'pending' ? null : tab.closedAt ?? null })),
     }
   }
 
@@ -256,6 +267,7 @@ export class FakeBackend {
     const s = this.summary(tab)
     if (tab.status === 'open' && s.paidCents >= s.totalCents) {
       tab.status = 'closed'
+      tab.closedAt = new Date().toISOString()
       tab.receiptNumber = ++this.receiptCounter
     }
   }
@@ -368,8 +380,15 @@ export class FakeBackend {
   private handleTabs(method: string, url: URL, body: any, tabId?: string, action?: string, lineId?: string): FakeResponse {
     if (!tabId) {
       if (method === 'GET') {
+        // Like the backend: status=all, and `since` keeps what was opened or
+        // closed since then, or is still open — newest opened first.
         const status = url.searchParams.get('status') || 'open'
-        return { status: 200, body: this.tabs.filter((t) => t.status === status).sort((a, b) => b.number - a.number).map((t) => this.summary(t)) }
+        const since = url.searchParams.get('since')
+        const list = this.tabs
+          .filter((t) => status === 'all' || t.status === status)
+          .filter((t) => !since || t.status === 'open' || t.openedAt >= since || (t.closedAt ?? '') >= since)
+          .sort((a, b) => (since ? b.openedAt.localeCompare(a.openedAt) || b.number - a.number : b.number - a.number))
+        return { status: 200, body: list.map((t) => this.summary(t)) }
       }
       if (method === 'POST') {
         if (body.eventId != null && !this.events.some((e) => e.id === body.eventId)) {
@@ -415,6 +434,7 @@ export class FakeBackend {
       const anyPayment = this.charges.some((c) => c.tabId === tab.id && c.status !== 'failed')
       if (tab.status !== 'open' || s.totalCents !== 0 || anyPayment) return this.refusal(tab.id)
       tab.status = 'cancelled'
+      tab.closedAt = new Date().toISOString()
       return { status: 200, body: this.detail(tab) }
     }
     if (lineId && method === 'POST') {

@@ -15,7 +15,10 @@ export interface TabSummary {
   eventName?: string | null
   status: 'open' | 'closed' | 'cancelled'
   openedDeviceName: string | null
+  openedByName?: string | null
   openedAt: string
+  closedAt?: string | null
+  cancelReason?: string | null
   receiptNumber: number | null
   totalCents: number
   paidCents: number
@@ -24,6 +27,23 @@ export interface TabSummary {
   // "Gelijk verdelen" in progress: parts in the plan, how many are paid,
   // and what the next part is (the last one takes the rounding).
   split?: TabSplit | null
+  // The methods it was paid with (succeeded charges, first paid first).
+  methods?: string[]
+  // Units still on it, net of voids.
+  itemCount?: number
+}
+
+// A charge on the tab, as the detail lists it.
+export interface TabPayment {
+  id: string
+  method: string
+  status: 'pending' | 'succeeded' | 'failed'
+  amountCents: number
+  tipCents: number
+  deviceName: string | null
+  userName: string | null
+  createdAt: string
+  resolvedAt: string | null
 }
 
 export interface TabSplit {
@@ -49,6 +69,7 @@ export interface TabLine {
 
 export interface TabDetail extends TabSummary {
   lines: TabLine[]
+  payments?: TabPayment[]
 }
 
 // A line as the kassa builds it, before it's submitted as part of an order.
@@ -105,6 +126,12 @@ export function toLineInputs(lines: DraftLine[]) {
 
 export function listOpenTabs(orgId: string) {
   return request<TabSummary[]>(orgId, '?status=open')
+}
+
+// Every tab opened or closed since `since`, plus those still open, of every
+// kassa of the org — the Rekeningen overview ("vandaag").
+export function listTabsSince(orgId: string, since: string) {
+  return request<TabSummary[]>(orgId, `?status=all&since=${encodeURIComponent(since)}`)
 }
 
 export function getTab(orgId: string, tabId: string) {

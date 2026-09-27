@@ -114,6 +114,28 @@ export default {
   breakdownLine: (quantity: number, name: string, unitPrice: string, total: string) => `${quantity} × ${name} à ${unitPrice} = ${total}`,
   breakdownTip: (amount: string) => `Pourboire = ${amount}`,
 
+  overviewButton: 'Additions',
+  backToKassa: '← Retour à la caisse',
+  overviewTitle: 'Additions du jour',
+  overviewSubtitle: 'De toutes les caisses. Touchez une addition ouverte pour la reprendre sur cette caisse.',
+  overviewSearch: 'Cherchez par nom, #numéro ou montant…',
+  overviewFilters: { all: 'Toutes', open: 'Ouvertes', paid: 'Payées', cancelled: 'Annulées' },
+  overviewStatus: { open: 'Ouverte', paying: 'Paiement en cours', paid: 'Payée', cancelled: 'Annulée' },
+  overviewTotals: (paidCount: number, paid: string, openCount: number, open: string) => `${paidCount} payée(s) · ${paid} — ${openCount} ouverte(s) · ${open}`,
+  overviewColumns: { time: 'Heure', tab: 'Addition', kassa: 'Caisse', items: 'Articles', method: 'Mode', status: 'Statut', amount: 'Montant' },
+  overviewEmpty: 'Pas encore d’additions aujourd’hui.',
+  overviewNoMatches: 'Aucune addition trouvée.',
+  overviewFailed: 'Impossible de charger les additions.',
+  detailOpened: (at: string, by: string | null) => (by ? `Ouverte à ${at} sur ${by}` : `Ouverte à ${at}`),
+  detailClosed: (at: string) => `Clôturée à ${at}`,
+  detailReceipt: (n: number) => `Ticket de caisse #${n}`,
+  detailCancelled: (reason: string | null) => (reason ? `Annulée : ${reason}` : 'Annulée'),
+  detailLines: 'Commande',
+  detailPayments: 'Paiements',
+  detailNoPayments: 'Aucun paiement.',
+  paymentStatuses: { pending: 'En cours', succeeded: 'Payé', failed: 'Échoué' },
+  detailFailed: 'Impossible de charger l’addition.',
+
   catalogGone: (name: string) => `La carte choisie « ${name} » n’est plus disponible — la carte par défaut est utilisée.`,
   linesDropped: (n: number) =>
     n === 1
