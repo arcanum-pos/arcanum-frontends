@@ -3,7 +3,6 @@ import type { DisplayMessages } from './nl'
 export default {
   idle: 'Prêt pour la prochaine commande',
   fullscreen: 'Plein écran',
-  language: 'Langue',
   loadingStatus: 'chargement du statut...',
   linkedTo: (posId: string) => `lié à la caisse ${posId}`,
   notLinked: 'lié à aucune caisse',

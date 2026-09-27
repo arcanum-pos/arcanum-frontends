@@ -3,7 +3,9 @@ import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useMessages } from '@/shared/i18n'
 import { KioskShell } from '@/shared/kiosk-shell'
+import { DEVICE_MESSAGES } from './messages'
 
 // Served at either /device (platform default) or /<orgId>/device (that
 // org's own identity provider) — derive the matching /device/start URL from
@@ -32,9 +34,11 @@ type State =
   | { phase: 'starting' }
   | { phase: 'waiting'; userCode: string; verificationUriComplete: string }
   | { phase: 'complete'; userCode: string; verificationUriComplete: string }
-  | { phase: 'error'; message: string }
+  // `message` is the server's own; without one, `failed` picks our text.
+  | { phase: 'error'; message: string | null; failed: 'login' | 'start' }
 
 export default function App() {
+  const m = useMessages(DEVICE_MESSAGES)
   const [state, setState] = useState<State>({ phase: 'starting' })
   const [attempt, setAttempt] = useState(0)
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -62,7 +66,7 @@ export default function App() {
           }
 
           if (data.status === 'error') {
-            setState({ phase: 'error', message: data.message || 'Aanmelden mislukt.' })
+            setState({ phase: 'error', message: data.message || null, failed: 'login' })
             return
           }
 
@@ -81,14 +85,14 @@ export default function App() {
         if (cancelled) return
 
         if (!res.ok || data.error) {
-          setState({ phase: 'error', message: data.error || 'Kon apparaatcode niet aanmaken.' })
+          setState({ phase: 'error', message: data.error || null, failed: 'start' })
           return
         }
 
         setState({ phase: 'waiting', userCode: data.userCode, verificationUriComplete: data.verificationUriComplete })
         schedulePoll(data.pollId, data.interval, data.userCode, data.verificationUriComplete)
       } catch {
-        if (!cancelled) setState({ phase: 'error', message: 'Kon apparaatcode niet aanmaken.' })
+        if (!cancelled) setState({ phase: 'error', message: null, failed: 'start' })
       }
     }
 
@@ -100,11 +104,11 @@ export default function App() {
   }, [attempt])
 
   return (
-    <KioskShell maxWidth="max-w-md">
+    <KioskShell maxWidth="max-w-md" languagePicker>
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-lg">Aanmelden op dit toestel</CardTitle>
-          <CardDescription>Scan de QR-code met je telefoon, of ga naar de getoonde link en voer de code in.</CardDescription>
+          <CardTitle className="text-lg">{m.title}</CardTitle>
+          <CardDescription>{m.description}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center gap-4">
           {state.phase === 'starting' && <Skeleton className="size-[200px]" />}
@@ -125,15 +129,15 @@ export default function App() {
                   : 'text-sm font-semibold text-muted-foreground'
             }
           >
-            {state.phase === 'starting' && 'Code aanmaken...'}
-            {state.phase === 'waiting' && 'Wachten op bevestiging op je telefoon...'}
-            {state.phase === 'complete' && 'Aangemeld! Doorsturen...'}
-            {state.phase === 'error' && state.message}
+            {state.phase === 'starting' && m.starting}
+            {state.phase === 'waiting' && m.waiting}
+            {state.phase === 'complete' && m.complete}
+            {state.phase === 'error' && (state.message || (state.failed === 'login' ? m.loginFailed : m.startFailed))}
           </p>
 
           {state.phase === 'error' && (
             <Button variant="secondary" onClick={() => setAttempt((n) => n + 1)}>
-              Opnieuw proberen
+              {m.retry}
             </Button>
           )}
         </CardContent>

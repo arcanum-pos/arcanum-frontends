@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { cn } from 'cn'
 import { customerBill, readCustomerOrder, type CustomerOrder } from '@/shared/customer-order'
 import { formatEuro } from '@/shared/format'
-import { DEFAULT_LOCALE, LOCALES, useLocale, useMessages } from '@/shared/i18n'
+import { useLocale, useMessages } from '@/shared/i18n'
+import { LanguagePicker } from '@/shared/i18n/language-picker'
 import { STATUS_MESSAGES } from '@/shared/payment-labels'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { payPhase, type PayPhase } from './lib'
@@ -22,7 +23,8 @@ import { DISPLAY_MESSAGES } from './messages'
 //    charge status carries the order too).
 //
 // Speaks nl/fr/en: the customer picks with the corner toggle, and it goes
-// back to Dutch when the display returns to rust, for the next customer.
+// back to the device's own language (see main.tsx) when the display
+// returns to rust, for the next customer.
 const WORKER_URL = '/api/bancontact'
 
 interface Payment {
@@ -41,7 +43,7 @@ interface Payment {
 
 export default function App() {
   const m = useMessages(DISPLAY_MESSAGES)
-  const { locale, setLocale } = useLocale()
+  const { resetLocale } = useLocale()
   const [payment, setPayment] = useState<Payment | null>(null)
   // The event the kassa sells for, if any: from a same-device kassa, or
   // learned from the last payment's order (a CFD on another device).
@@ -54,7 +56,7 @@ export default function App() {
 
   function showIdle() {
     setPayment(null)
-    setLocale(DEFAULT_LOCALE)
+    resetLocale()
   }
 
   // A newer message about the same payment keeps what it doesn't repeat
@@ -202,24 +204,7 @@ export default function App() {
       {payment && phase === 'paid' && <PaidView payment={payment} eventName={eventName} onTap={() => channelRef.current?.postMessage({ type: 'reset-requested' })} />}
 
       <div className="fixed right-4 bottom-4 flex items-center gap-3">
-        <div role="group" aria-label={m.language} className="flex gap-1" data-testid="cfd-language">
-          {LOCALES.map((l) => (
-            <button
-              key={l}
-              type="button"
-              lang={l}
-              aria-pressed={l === locale}
-              onClick={() => setLocale(l)}
-              className={cn(
-                'rounded-lg px-2.5 py-1 text-xs font-semibold uppercase transition-opacity',
-                l === locale ? 'opacity-100' : 'opacity-50 hover:opacity-100',
-                payment ? 'bg-neutral-800 text-neutral-200' : 'bg-secondary text-secondary-foreground'
-              )}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
+        <LanguagePicker inverted={!!payment} />
         <button
           type="button"
           className={cn(

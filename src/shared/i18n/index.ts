@@ -17,10 +17,54 @@ export const DEFAULT_LOCALE: Locale = 'nl'
 
 export type Messages<T> = Record<Locale, T>
 
+export function isLocale(value: unknown): value is Locale {
+  return (LOCALES as readonly unknown[]).includes(value)
+}
+
+// This device's language, as last picked with a kiosk screen's
+// LanguagePicker (chooser, login, device login) — also the customer
+// display's home language. A private window or blocked storage just means
+// "not picked".
+const STORAGE_KEY = 'arcanum-locale'
+
+export function storedLocale(): Locale | null {
+  try {
+    const value = localStorage.getItem(STORAGE_KEY)
+    return isLocale(value) ? value : null
+  } catch {
+    return null
+  }
+}
+
+export function storeLocale(locale: Locale) {
+  try {
+    localStorage.setItem(STORAGE_KEY, locale)
+  } catch {
+    // Not remembered — the screen still switches.
+  }
+}
+
+// The browser's first preferred language we speak ("fr-BE" → fr), if any.
+export function browserLocale(): Locale | null {
+  for (const tag of navigator.languages?.length ? navigator.languages : [navigator.language]) {
+    const base = tag?.toLowerCase().split('-')[0]
+    if (isLocale(base)) return base
+  }
+  return null
+}
+
+// A kiosk screen with no customer in front of it: this device's picked
+// language, else the browser's, else Dutch.
+export function preferredLocale(): Locale {
+  return storedLocale() ?? browserLocale() ?? DEFAULT_LOCALE
+}
+
 // Provided by LocaleProvider (./locale-provider.tsx) at a screen's root.
-export const LocaleContext = createContext<{ locale: Locale; setLocale: (locale: Locale) => void }>({
+// resetLocale goes back to the language the screen started in.
+export const LocaleContext = createContext<{ locale: Locale; setLocale: (locale: Locale) => void; resetLocale: () => void }>({
   locale: DEFAULT_LOCALE,
   setLocale: () => {},
+  resetLocale: () => {},
 })
 
 export function useLocale() {

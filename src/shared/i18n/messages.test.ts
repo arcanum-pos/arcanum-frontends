@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { CHOOSER_MESSAGES } from '@/apps/chooser/messages'
+import { DEVICE_MESSAGES } from '@/apps/device/messages'
 import { DISPLAY_MESSAGES } from '@/apps/display/messages'
+import { LOGIN_PROMPT_MESSAGES } from '@/apps/login-prompt/messages'
 import { STATUS_MESSAGES } from '@/shared/payment-labels'
 import { LOCALES, type Messages } from '.'
 
@@ -8,7 +11,10 @@ import { LOCALES, type Messages } from '.'
 // status labels) missing an entry, an empty text, a function whose
 // parameters drifted.
 const MESSAGE_SETS: Record<string, Messages<unknown>> = {
+  chooser: CHOOSER_MESSAGES,
+  device: DEVICE_MESSAGES,
   display: DISPLAY_MESSAGES,
+  'login prompt': LOGIN_PROMPT_MESSAGES,
   'payment status': STATUS_MESSAGES,
 }
 

@@ -106,9 +106,9 @@ the SumUp simulator, the org/device chooser) has since moved here too —
 
 ## Translations (nl / fr / en)
 
-Being rolled out screen by screen — so far only the customer display
-(`display`) is translated; every other screen still has its Dutch written
-inline.
+Being rolled out screen by screen — translated so far: the customer
+display (`display`), the chooser, the login prompt and the device login.
+Every other screen still has its Dutch written inline.
 
 - A screen's texts live in `src/apps/<name>/messages/{nl,fr,en}.ts`. `nl.ts`
   is the source of truth; `fr.ts`/`en.ts` end in `satisfies` its type, so a
@@ -119,6 +119,11 @@ inline.
 - `src/shared/i18n/messages.test.ts` checks every registered message set has
   exactly the same shape in all three languages — add a new set there.
 - Amounts stay `€ 10,00` in every language (see `formatEuro`).
+- Which language: the setup screens (`KioskShell languagePicker`) use the
+  device's picked language (`arcanum-locale`), else the browser's, else
+  Dutch — and the pick is remembered. The customer display starts from that
+  picked language (never the browser's; defaults to Dutch), and its own
+  toggle only lasts until it returns to rust.
 
 ## Local dev
 

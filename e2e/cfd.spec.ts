@@ -115,7 +115,7 @@ test('the customer can switch the language, and the next customer starts in Dutc
   const cfd = await openDisplay(page, backend)
   await expect(page.locator('html')).toHaveAttribute('lang', 'nl')
 
-  await page.getByRole('button', { name: 'fr', exact: true }).click()
+  await page.getByRole('button', { name: 'Français' }).click()
   await expect(page.getByText('Prêt pour la prochaine commande')).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
   await expect(page.getByRole('button', { name: 'Plein écran' })).toBeVisible()
@@ -128,7 +128,7 @@ test('the customer can switch the language, and the next customer starts in Dutc
   await expect(waiting).toContainText('2 articles · Espèces')
   await expect(page.getByTestId('cfd-status')).toHaveText('Veuillez payer en espèces')
 
-  await page.getByRole('button', { name: 'en', exact: true }).click()
+  await page.getByRole('button', { name: 'English' }).click()
   await expect(page.getByTestId('cfd-status')).toHaveText('Please pay in cash')
   await expect(waiting).toContainText('2 items · Cash')
 
@@ -139,6 +139,20 @@ test('the customer can switch the language, and the next customer starts in Dutc
 
   cfd.push({ event: 'reset' })
   await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'nl', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('button', { name: 'Nederlands' })).toHaveAttribute('aria-pressed', 'true')
   expect(cfd.errors).toEqual([])
+})
+
+test('the device language picked on the chooser is the CFD\'s home language, not the browser\'s', async ({ page, backend }) => {
+  await page.addInitScript(() => localStorage.setItem('arcanum-locale', 'fr'))
+  await page.routeWebSocket(/\/devices\/connect/, () => {})
+  await page.goto('/display.html?terminal=cfd-e2e')
+  await expect(page.getByText('Prêt pour la prochaine commande')).toBeVisible()
+
+  // A customer's pick doesn't change the device's language.
+  await page.getByRole('button', { name: 'English' }).click()
+  await expect(page.getByText('Ready for the next order')).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Prêt pour la prochaine commande')).toBeVisible()
+  void backend
 })

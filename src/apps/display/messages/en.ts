@@ -3,7 +3,6 @@ import type { DisplayMessages } from './nl'
 export default {
   idle: 'Ready for the next order',
   fullscreen: 'Full screen',
-  language: 'Language',
   loadingStatus: 'loading status...',
   linkedTo: (posId: string) => `linked to till ${posId}`,
   notLinked: 'not linked to a till',

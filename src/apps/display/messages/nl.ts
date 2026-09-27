@@ -3,7 +3,6 @@
 const nl = {
   idle: 'Klaar voor de volgende bestelling',
   fullscreen: 'Volledig scherm',
-  language: 'Taal',
   loadingStatus: 'status laden...',
   linkedTo: (posId: string) => `gekoppeld aan kassa ${posId}`,
   notLinked: 'niet gekoppeld aan een kassa',
