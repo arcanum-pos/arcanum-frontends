@@ -47,14 +47,4 @@ export function startNewSlot(): Slot {
   return slot
 }
 
-export function slotLabel(slot: Slot, index: number): string {
-  const date = new Date(slot.startedAt).toLocaleString('nl-BE', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-  return `Tijdvak ${index + 1} (${date})`
-}
-
 export const SLOTS_STORAGE_KEY = SLOTS_KEY

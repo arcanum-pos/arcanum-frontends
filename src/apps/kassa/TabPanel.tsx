@@ -1,12 +1,13 @@
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { formatEuro } from '@/shared/format'
+import { useMessages } from '@/shared/i18n'
 import {
   centsToInput,
   clampTip,
   draftTotalCents,
   FOOI_CODE,
-  PAYMENT_METHOD_OPTIONS,
+  PAYMENT_METHODS,
   payableUnits,
   readAmountCents,
   roundUpTipCents,
@@ -14,6 +15,7 @@ import {
   type ItemSelection,
   type PaymentMethod,
 } from './lib'
+import { KASSA_MESSAGES } from './messages'
 import { netQuantity, type DraftLine, type TabDetail, type TabLine } from './tabs-api'
 
 // Right half of the kassa: the active tab (or the Toog quick-sale draft
@@ -76,6 +78,7 @@ export function TabPanel({
   onItemSelection: (selection: ItemSelection) => void
   onStopItems: () => void
 }) {
+  const m = useMessages(KASSA_MESSAGES)
   const submitted = (tab?.lines || []).filter((l) => !l.voidsLineId)
   const draftTotal = draftTotalCents(draft)
   const toPay = (tab?.outstandingCents || 0) + draftTotal
@@ -101,7 +104,7 @@ export function TabPanel({
           </div>
           {tab && (
             <Button variant="outline" size="sm" disabled={locked} onClick={onRename}>
-              Naam wijzigen
+              {m.rename}
             </Button>
           )}
         </div>
@@ -110,7 +113,7 @@ export function TabPanel({
           <div className="flex items-center gap-3 border-b bg-muted/40 px-3.5 py-2.5" data-testid="split-banner">
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold tracking-tight">
-                Gesplitst in {split.parts} · deel {Math.min(split.paid + 1, split.parts)} van {split.parts}
+                {m.splitBanner(split.parts, Math.min(split.paid + 1, split.parts))}
               </p>
               <div className="mt-1.5 flex gap-1" aria-hidden="true">
                 {Array.from({ length: split.parts }, (_, i) => (
@@ -119,28 +122,28 @@ export function TabPanel({
               </div>
             </div>
             <Button variant="ghost" size="sm" disabled={locked} onClick={onStopSplit}>
-              Splitsen stoppen
+              {m.stopSplit}
             </Button>
           </div>
         )}
 
         {byItems && (
           <div className="flex items-center gap-2 border-b bg-muted/40 px-3.5 py-2.5" data-testid="items-banner">
-            <p className="min-w-0 flex-1 text-[13px] font-semibold tracking-tight">Per item · tik aan wat deze persoon betaalt</p>
+            <p className="min-w-0 flex-1 text-[13px] font-semibold tracking-tight">{m.itemsBanner}</p>
             <Button variant="outline" size="sm" disabled={locked} onClick={() => onItemSelection(Object.fromEntries(tab!.lines.filter((l) => payableUnits(l) > 0).map((l) => [l.id, payableUnits(l)])))}>
-              Alles wat open is
+              {m.allOpen}
             </Button>
             <Button variant="ghost" size="sm" disabled={locked} onClick={onStopItems}>
-              Stoppen
+              {m.stop}
             </Button>
           </div>
         )}
 
         {tab?.paymentPending && (
           <div className="flex flex-col gap-2 border-b bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-            <p>Er loopt een betaling voor deze rekening. Wacht tot die afgerond of verlopen is.</p>
+            <p>{m.paymentPending}</p>
             <Button variant="outline" size="sm" className="self-start" onClick={onRefresh}>
-              Vernieuwen
+              {m.refresh}
             </Button>
           </div>
         )}
@@ -148,9 +151,9 @@ export function TabPanel({
         <div className="max-h-[340px] overflow-y-auto">
           {submitted.length === 0 && draft.length === 0 && (
             <p className="px-3.5 py-8 text-center text-[13px] text-muted-foreground">
-              Nog niets aangeslagen.
+              {m.nothingYet}
               <br />
-              Tik een product om te starten.
+              {m.tapToStart}
             </p>
           )}
 
@@ -170,16 +173,16 @@ export function TabPanel({
             return (
               <div key={line.id} className="flex items-center gap-2.5 border-b border-border/60 px-3.5 py-2">
                 <div className={cn('min-w-0 flex-1', qty === 0 && 'text-muted-foreground line-through')}>
-                  <p className="truncate text-[13.5px] font-medium tracking-tight">{line.itemCode === FOOI_CODE ? 'Fooi' : `${qty || line.quantity} × ${line.name}`}</p>
+                  <p className="truncate text-[13.5px] font-medium tracking-tight">{line.itemCode === FOOI_CODE ? m.tip : `${qty || line.quantity} × ${line.name}`}</p>
                   <p className="font-mono text-[11px] text-muted-foreground">
-                    {line.voidedQuantity > 0 && qty > 0 ? `${line.voidedQuantity} geannuleerd` : formatEuro(line.unitPriceCents)}
-                    {(line.paidQuantity || 0) > 0 && ` · ✓ ${line.paidQuantity} betaald`}
+                    {line.voidedQuantity > 0 && qty > 0 ? m.voided(line.voidedQuantity) : formatEuro(line.unitPriceCents)}
+                    {(line.paidQuantity || 0) > 0 && ` · ${m.unitsPaid(line.paidQuantity || 0)}`}
                   </p>
                 </div>
                 {/* Paid units (per item) can't be cancelled — only offered while some aren't. */}
                 {payableUnits(line) > 0 && (
                   <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" disabled={locked} onClick={() => onVoid(line)}>
-                    Annuleren
+                    {m.voidLine}
                   </Button>
                 )}
                 <span className="w-[72px] text-right font-mono text-[13.5px] font-semibold tabular-nums">{formatEuro(qty * line.unitPriceCents)}</span>
@@ -190,7 +193,7 @@ export function TabPanel({
           {draft.length > 0 && (
             <>
               <div className="flex items-center justify-between bg-muted/40 px-3.5 py-1.5">
-                <p className="text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{tab ? 'Nieuw — nog niet toegevoegd' : 'Bestelling'}</p>
+                <p className="text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{tab ? m.draftOnTab : m.draftQuick}</p>
                 <Button
                   variant="outline"
                   size="xs"
@@ -198,7 +201,7 @@ export function TabPanel({
                   disabled={busy}
                   onClick={onClearDraft}
                 >
-                  Leegmaken
+                  {m.clear}
                 </Button>
               </div>
               {draft.map((line, i) => (
@@ -210,7 +213,7 @@ export function TabPanel({
                   <div className="flex h-8 items-center overflow-hidden rounded-lg border">
                     <button
                       type="button"
-                      aria-label={`minder ${line.name}`}
+                      aria-label={m.less(line.name)}
                       disabled={busy}
                       onClick={() => onDraftQuantity(i, line.quantity - 1)}
                       className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-50"
@@ -220,7 +223,7 @@ export function TabPanel({
                     <span className="w-[30px] text-center font-mono text-[13px] font-semibold tabular-nums">{line.quantity}</span>
                     <button
                       type="button"
-                      aria-label={`meer ${line.name}`}
+                      aria-label={m.more(line.name)}
                       disabled={busy}
                       onClick={() => onDraftQuantity(i, line.quantity + 1)}
                       className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-50"
@@ -237,12 +240,12 @@ export function TabPanel({
 
         {paidCents > 0 && (
           <div className="flex items-baseline justify-between border-t px-3.5 py-2 text-[13px] text-muted-foreground">
-            <span>Al betaald</span>
+            <span>{m.alreadyPaid}</span>
             <span className="font-mono tabular-nums">− {formatEuro(paidCents)}</span>
           </div>
         )}
         <div className="flex items-baseline justify-between border-t bg-muted/40 px-3.5 py-3">
-          <span className="text-[13px] text-foreground/70">{paidCents > 0 ? 'Nog te betalen' : 'Te betalen'}</span>
+          <span className="text-[13px] text-foreground/70">{paidCents > 0 ? m.stillToPay : m.toPay}</span>
           <span className="font-mono text-[30px] leading-tight font-semibold tracking-tight tabular-nums">{formatEuro(toPay)}</span>
         </div>
       </section>
@@ -250,27 +253,27 @@ export function TabPanel({
       {/* How it's paid */}
       <section className="flex flex-col gap-3 rounded-xl border bg-card p-3.5">
         <div>
-          <p className="mb-2.5 text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">Betaalmethode</p>
+          <p className="mb-2.5 text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{m.paymentMethod}</p>
           <div className="grid grid-cols-3 gap-2">
-            {PAYMENT_METHOD_OPTIONS.map((opt) => (
+            {PAYMENT_METHODS.map((method) => (
               // A real radio underneath (keyboard, screen readers), styled as a tile.
               <label
-                key={opt.value}
+                key={method}
                 className={cn(
                   'relative flex h-[42px] cursor-pointer items-center justify-center rounded-lg border text-[13.5px] font-medium transition-colors has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50',
-                  paymentMethod === opt.value ? 'border-foreground bg-foreground text-background' : 'bg-card text-foreground/80 hover:bg-muted'
+                  paymentMethod === method ? 'border-foreground bg-foreground text-background' : 'bg-card text-foreground/80 hover:bg-muted'
                 )}
               >
                 <input
                   type="radio"
                   name="payment-method"
-                  value={opt.value}
-                  checked={paymentMethod === opt.value}
-                  onChange={() => onPaymentMethodChange(opt.value)}
+                  value={method}
+                  checked={paymentMethod === method}
+                  onChange={() => onPaymentMethodChange(method)}
                   autoComplete="off"
                   className="absolute inset-0 cursor-pointer opacity-0"
                 />
-                {opt.label}
+                {m.methods[method]}
               </label>
             ))}
           </div>
@@ -279,7 +282,7 @@ export function TabPanel({
         <div className="flex flex-col gap-2 border-t pt-3">
           <div className="flex items-center justify-between gap-2">
             <label htmlFor="tip-input" className="text-[12.5px] text-foreground/70">
-              Fooi
+              {m.tip}
             </label>
             <input
               id="tip-input"
@@ -300,10 +303,10 @@ export function TabPanel({
               +€2
             </TipButton>
             <TipButton disabled={noTip || roundUpTipCents(payCents) === 0} onClick={() => onTipInputChange(centsToInput(roundUpTipCents(payCents)))}>
-              Afronden
+              {m.roundUp}
             </TipButton>
             <TipButton disabled={locked || tipCents === 0} onClick={() => onTipInputChange('')}>
-              Geen fooi
+              {m.noTip}
             </TipButton>
           </div>
         </div>
@@ -318,31 +321,31 @@ export function TabPanel({
           className="h-[52px] rounded-xl bg-foreground text-[15px] font-semibold tracking-tight text-background transition-colors outline-none hover:bg-foreground/85 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         >
           {byItems
-            ? `Afrekenen selectie${payCents > 0 ? ` · ${formatEuro(payCents + tipCents)}` : ''}`
+            ? m.paySelection(payCents > 0 ? formatEuro(payCents + tipCents) : null)
             : split
-            ? `Afrekenen deel ${Math.min(split.paid + 1, split.parts)}/${split.parts} · ${formatEuro(payCents + tipCents)}`
-            : `Afrekenen${payCents > 0 ? ` ${formatEuro(payCents + tipCents)}` : ''}`}
+            ? m.payPart(Math.min(split.paid + 1, split.parts), split.parts, formatEuro(payCents + tipCents))
+            : m.pay(payCents > 0 ? formatEuro(payCents + tipCents) : null)}
         </button>
-        {tipCents > 0 && <p className="text-center text-[12.5px] text-muted-foreground">waarvan {formatEuro(tipCents)} fooi</p>}
+        {tipCents > 0 && <p className="text-center text-[12.5px] text-muted-foreground">{m.ofWhichTip(formatEuro(tipCents))}</p>}
         <div className="flex gap-2">
           {!split && !byItems && toPay >= 2 && (
             <SecondaryButton disabled={locked} onClick={onSplit}>
-              Splitsen
+              {m.split}
             </SecondaryButton>
           )}
           {tab && draft.length > 0 && (
             <SecondaryButton disabled={locked} onClick={onSubmitOrder}>
-              Bestelling toevoegen aan rekening
+              {m.addOrder}
             </SecondaryButton>
           )}
           {!tab && (
             <SecondaryButton disabled={busy || draft.length === 0} onClick={onPark}>
-              Op rekening zetten
+              {m.park}
             </SecondaryButton>
           )}
           {tab && tab.totalCents === 0 && tab.paidCents === 0 && draft.length === 0 && (
             <SecondaryButton disabled={locked} onClick={onCancelTab}>
-              Lege rekening sluiten
+              {m.closeEmpty}
             </SecondaryButton>
           )}
         </div>
@@ -381,6 +384,7 @@ function SecondaryButton({ disabled, onClick, children }: { disabled: boolean; o
 // payment (right-click takes one off, like the product buttons); a line
 // with several units gets − n/m +. Paid units stay marked.
 function ItemRow({ line, selected, disabled, onChange }: { line: TabLine; selected: number; disabled: boolean; onChange: (n: number) => void }) {
+  const m = useMessages(KASSA_MESSAGES)
   const payable = payableUnits(line)
   const paid = line.paidQuantity || 0
   const qty = netQuantity(line)
@@ -400,7 +404,7 @@ function ItemRow({ line, selected, disabled, onChange }: { line: TabLine; select
           if (!disabled && selected > 0) onChange(selected - 1)
         }}
         aria-pressed={selected > 0}
-        aria-label={`${line.name}: ${selected} van ${payable} gekozen`}
+        aria-label={m.picked(line.name, selected, payable)}
         className="flex min-w-0 flex-1 items-center gap-2.5 text-left outline-none disabled:cursor-default"
       >
         <span
@@ -418,19 +422,19 @@ function ItemRow({ line, selected, disabled, onChange }: { line: TabLine; select
           </span>
           <span className="block font-mono text-[11px] text-muted-foreground">
             {formatEuro(line.unitPriceCents)}
-            {paid > 0 && ` · ✓ ${paid} betaald`}
+            {paid > 0 && ` · ${m.unitsPaid(paid)}`}
           </span>
         </span>
       </button>
       {payable > 1 && (
         <div className="flex h-8 items-center overflow-hidden rounded-lg border">
-          <button type="button" aria-label={`minder ${line.name}`} disabled={disabled || selected === 0} onClick={() => onChange(selected - 1)} className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-40">
+          <button type="button" aria-label={m.less(line.name)} disabled={disabled || selected === 0} onClick={() => onChange(selected - 1)} className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-40">
             −
           </button>
           <span className="min-w-[38px] text-center font-mono text-[12.5px] font-semibold tabular-nums">
             {selected}/{payable}
           </span>
-          <button type="button" aria-label={`meer ${line.name}`} disabled={disabled || selected >= payable} onClick={() => onChange(selected + 1)} className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-40">
+          <button type="button" aria-label={m.more(line.name)} disabled={disabled || selected >= payable} onClick={() => onChange(selected + 1)} className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-40">
             +
           </button>
         </div>

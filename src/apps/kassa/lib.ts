@@ -1,6 +1,7 @@
 import { formatEuro } from '@/shared/format'
 import type { CustomerOrder } from '@/shared/customer-order'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
+import type { KassaMessages } from './messages/nl'
 import type { DraftLine, TabDetail, TabLine } from './tabs-api'
 import { netQuantity } from './tabs-api'
 
@@ -64,24 +65,27 @@ export function draftTotalCents(draft: DraftLine[]): number {
   return draft.reduce((sum, l) => sum + l.unitPriceCents * l.quantity, 0)
 }
 
-function breakdownLine(name: string, itemCode: string | null, quantity: number, unitPriceCents: number): string {
-  if (itemCode === FOOI_CODE) return `Fooi = ${formatEuro(unitPriceCents * quantity)}`
-  return `${quantity} × ${name} à ${formatEuro(unitPriceCents)} = ${formatEuro(quantity * unitPriceCents)}`
+type BreakdownMessages = Pick<KassaMessages, 'breakdownLine' | 'breakdownTip'>
+
+function breakdownLine(m: BreakdownMessages, name: string, itemCode: string | null, quantity: number, unitPriceCents: number): string {
+  if (itemCode === FOOI_CODE) return m.breakdownTip(formatEuro(unitPriceCents * quantity))
+  return m.breakdownLine(quantity, name, formatEuro(unitPriceCents), formatEuro(quantity * unitPriceCents))
 }
 
 // What the payment view and the customer display list above the amount —
 // the tab's net lines (voids subtracted, fully voided lines left out),
 // plus the tip given with this payment, if any.
-export function tabBreakdownLines(tab: TabDetail, tipCents = 0): string[] {
+export function tabBreakdownLines(m: BreakdownMessages, tab: TabDetail, tipCents = 0): string[] {
   const lines = tab.lines
     .filter((l) => !l.voidsLineId && netQuantity(l) > 0)
-    .map((l) => breakdownLine(l.name, l.itemCode, netQuantity(l), l.unitPriceCents))
-  if (tipCents > 0) lines.push(`Fooi = ${formatEuro(tipCents)}`)
+    .map((l) => breakdownLine(m, l.name, l.itemCode, netQuantity(l), l.unitPriceCents))
+  if (tipCents > 0) lines.push(m.breakdownTip(formatEuro(tipCents)))
   return lines
 }
 
-// The order as the customer display lists it: lines net of voids.
-export function customerOrderFromTab(tab: TabDetail): CustomerOrder {
+// The order as the customer display lists it: lines net of voids. (An old
+// fooi line is named in the kassa's language — the display can't tell.)
+export function customerOrderFromTab(m: Pick<KassaMessages, 'tip'>, tab: TabDetail): CustomerOrder {
   return {
     label: tab.label,
     number: tab.number,
@@ -89,7 +93,7 @@ export function customerOrderFromTab(tab: TabDetail): CustomerOrder {
     paidCents: tab.paidCents,
     lines: tab.lines
       .filter((l) => !l.voidsLineId && netQuantity(l) > 0)
-      .map((l) => ({ name: l.itemCode === FOOI_CODE ? 'Fooi' : l.name, quantity: netQuantity(l), unitPriceCents: l.unitPriceCents })),
+      .map((l) => ({ name: l.itemCode === FOOI_CODE ? m.tip : l.name, quantity: netQuantity(l), unitPriceCents: l.unitPriceCents })),
   }
 }
 
@@ -121,7 +125,7 @@ export type PaymentMethod = 'bancontact' | 'cash' | 'sumup'
 
 export interface CurrentPayment {
   method: PaymentMethod
-  // Bancontact: a STATUS_LABELS key (PENDING/SUCCEEDED/...). Cash/SumUp:
+  // Bancontact: a STATUS_MESSAGES key (PENDING/SUCCEEDED/...). Cash/SumUp:
   // 'AWAITING_MANUAL' | 'RESOLVED' — the manual view's own text is tracked
   // separately (see App's manualStatusText).
   status: string
@@ -150,24 +154,10 @@ export function isPaymentResolved(current: CurrentPayment): boolean {
   return current.status === 'RESOLVED' || current.status === 'SUCCEEDED'
 }
 
-export const MANUAL_METHOD_LABELS: Record<'cash' | 'sumup', { waiting: string; confirmBtn: string; paid: string }> = {
-  cash: {
-    waiting: 'Wacht op contante betaling',
-    confirmBtn: 'Bevestig ontvangst contant geld',
-    paid: 'Betaald (contant)',
-  },
-  sumup: {
-    waiting: 'Wacht op SumUp betaling (automatisch, of bevestig hieronder)',
-    confirmBtn: 'Bevestig SumUp betaling',
-    paid: 'Betaald (SumUp)',
-  },
-}
+// What the manual (cash/SumUp) payment view says; the text is in KassaMessages.
+export type ManualStatus = { kind: 'waiting' } | { kind: 'paid' } | { kind: 'failed'; error: string | null }
 
-export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: 'bancontact', label: 'Bancontact' },
-  { value: 'cash', label: 'Contant' },
-  { value: 'sumup', label: 'SumUp' },
-]
+export const PAYMENT_METHODS: PaymentMethod[] = ['bancontact', 'cash', 'sumup']
 
 // --- Search and group filter (kassa product picker) ---
 

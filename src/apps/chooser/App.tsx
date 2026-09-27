@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { KioskShell } from '@/shared/kiosk-shell'
-import { useMessages } from '@/shared/i18n'
+import { storeLocale, useLocale, useMessages } from '@/shared/i18n'
 import { ChoiceCard } from './ChoiceCard'
 import { listMyMemberships, type Membership } from './lib'
 import { CHOOSER_MESSAGES } from './messages'
@@ -11,10 +11,12 @@ const ROLES: Role[] = ['pos', 'cfd', 'sim']
 
 type View = { step: 'loading' } | { step: 'org-picker'; memberships: Membership[] } | { step: 'role-picker'; orgId: string; orgName: string }
 
-// The language picked here stays this device's language — the customer
-// display's too (see src/shared/i18n).
+// The language the device is set up in (picked here, or the browser's)
+// becomes its language — the kassa's and the customer display's too (see
+// src/shared/i18n's deviceLocale).
 export default function App() {
   const m = useMessages(CHOOSER_MESSAGES)
+  const { locale } = useLocale()
   const [view, setView] = useState<View>({ step: 'loading' })
   const [registering, setRegistering] = useState(false)
 
@@ -46,6 +48,7 @@ export default function App() {
 
   async function chooseRole(role: Role, orgId: string, orgName: string) {
     setRegistering(true)
+    storeLocale(locale)
     await registerNewTerminal(role, orgId, orgName)
     window.location.href = PAGE_FOR_ROLE[role]
   }

@@ -106,9 +106,10 @@ the SumUp simulator, the org/device chooser) has since moved here too —
 
 ## Translations (nl / fr / en)
 
-Being rolled out screen by screen — translated so far: the customer
-display (`display`), the chooser, the login prompt and the device login.
-Every other screen still has its Dutch written inline.
+Being rolled out screen by screen — translated so far: the kassa,
+Instellingen, the customer display, the chooser, the login prompt and the
+device login. Still Dutch inline: the admin console (`/console`) and the
+SumUp simulator.
 
 - A screen's texts live in `src/apps/<name>/messages/{nl,fr,en}.ts`. `nl.ts`
   is the source of truth; `fr.ts`/`en.ts` end in `satisfies` its type, so a
@@ -119,11 +120,19 @@ Every other screen still has its Dutch written inline.
 - `src/shared/i18n/messages.test.ts` checks every registered message set has
   exactly the same shape in all three languages — add a new set there.
 - Amounts stay `€ 10,00` in every language (see `formatEuro`).
-- Which language: the setup screens (`KioskShell languagePicker`) use the
-  device's picked language (`arcanum-locale`), else the browser's, else
-  Dutch — and the pick is remembered. The customer display starts from that
-  picked language (never the browser's; defaults to Dutch), and its own
-  toggle only lasts until it returns to rust.
+- Which language: the kassa, Instellingen and the customer display use the
+  device's language (`deviceLocale`: the `arcanum-locale` pick, else Dutch —
+  never the browser's). It's picked in Instellingen → Taal, or set when the
+  device is registered on the chooser (in whatever language the chooser was
+  showing). The setup screens (`KioskShell languagePicker`) fall back to the
+  browser's language (`preferredLocale`). The customer display's own toggle
+  only lasts until it returns to rust.
+- Not translated, on purpose: what's data. A Toog sale's tab is stored as
+  "Toog" in every language (the customer display recognises it; `tabTitle`
+  shows it translated), void reasons are stored as typed, and the default
+  device name ("Toestel …") goes to the reports as is. Error texts from
+  arcanum-backend (e.g. "Rekening is gewijzigd…") are still Dutch — they'd
+  need error codes from the backend first.
 
 ## Local dev
 

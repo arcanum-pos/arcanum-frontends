@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { CHOOSER_MESSAGES } from '@/apps/chooser/messages'
 import { DEVICE_MESSAGES } from '@/apps/device/messages'
 import { DISPLAY_MESSAGES } from '@/apps/display/messages'
+import { KASSA_MESSAGES } from '@/apps/kassa/messages'
 import { LOGIN_PROMPT_MESSAGES } from '@/apps/login-prompt/messages'
+import { SETTINGS_MESSAGES } from '@/apps/settings/messages'
 import { STATUS_MESSAGES } from '@/shared/payment-labels'
 import { LOCALES, type Messages } from '.'
 
@@ -14,6 +16,8 @@ const MESSAGE_SETS: Record<string, Messages<unknown>> = {
   chooser: CHOOSER_MESSAGES,
   device: DEVICE_MESSAGES,
   display: DISPLAY_MESSAGES,
+  kassa: KASSA_MESSAGES,
+  settings: SETTINGS_MESSAGES,
   'login prompt': LOGIN_PROMPT_MESSAGES,
   'payment status': STATUS_MESSAGES,
 }

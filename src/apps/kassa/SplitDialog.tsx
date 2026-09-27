@@ -3,7 +3,9 @@ import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatEuro } from '@/shared/format'
+import { useMessages } from '@/shared/i18n'
 import { MAX_SPLIT_PARTS, splitPreviewText } from './lib'
+import { KASSA_MESSAGES } from './messages'
 
 const QUICK_PARTS = [2, 3, 4, 5, 6]
 
@@ -24,6 +26,7 @@ export function SplitDialog({
   onItems: () => void
   onClose: () => void
 }) {
+  const m = useMessages(KASSA_MESSAGES)
   // Fresh state per opening — the caller remounts this via `key`.
   const [mode, setMode] = useState<'equal' | 'items'>('equal')
   const [parts, setParts] = useState(2)
@@ -41,15 +44,15 @@ export function SplitDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle>Splitsen</DialogTitle>
-            <DialogDescription>{formatEuro(openCents)} in meerdere betalingen. Elke betaling kiest haar eigen betaalmethode en fooi.</DialogDescription>
+            <DialogTitle>{m.split}</DialogTitle>
+            <DialogDescription>{m.splitDescription(formatEuro(openCents))}</DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="tablist" aria-label="Hoe splitsen">
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-muted p-1" role="tablist" aria-label={m.splitHow}>
             {(
               [
-                ['equal', 'Gelijk verdelen'],
-                ['items', 'Per item'],
+                ['equal', m.splitEqual],
+                ['items', m.splitItems],
               ] as const
             ).map(([key, label]) => (
               <button
@@ -67,19 +70,19 @@ export function SplitDialog({
 
           {mode === 'items' && (
             <p className="text-sm text-foreground/80">
-              Tik op de rekening aan wat de eerste persoon betaalt, en reken af. Betaalde stuks blijven gemarkeerd; kies daarna voor de volgende persoon. <strong>Alles wat open is</strong> selecteert de rest.
+              {m.splitItemsHelp} <strong>{m.allOpen}</strong> {m.splitItemsHelpEnd}
             </p>
           )}
 
           {mode === 'equal' && (
           <div className="flex flex-col items-center gap-3">
             <p className="text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase" id="split-parts-label">
-              Aantal personen
+              {m.people}
             </p>
             <div className="flex items-center gap-3" role="group" aria-labelledby="split-parts-label">
               <button
                 type="button"
-                aria-label="Minder personen"
+                aria-label={m.fewerPeople}
                 disabled={parts <= 2}
                 onClick={() => setParts(parts - 1)}
                 className="flex size-12 items-center justify-center rounded-xl border text-xl hover:bg-muted disabled:opacity-40"
@@ -91,7 +94,7 @@ export function SplitDialog({
               </output>
               <button
                 type="button"
-                aria-label="Meer personen"
+                aria-label={m.morePeople}
                 disabled={parts >= max}
                 onClick={() => setParts(parts + 1)}
                 className="flex size-12 items-center justify-center rounded-xl border text-xl hover:bg-muted disabled:opacity-40"
@@ -123,9 +126,9 @@ export function SplitDialog({
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              Terug
+              {m.back}
             </Button>
-            <Button type="submit">{mode === 'equal' ? `In ${parts} verdelen` : 'Items kiezen'}</Button>
+            <Button type="submit">{mode === 'equal' ? m.splitInto(parts) : m.pickItems}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

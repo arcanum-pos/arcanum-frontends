@@ -17,6 +17,9 @@ export const DEFAULT_LOCALE: Locale = 'nl'
 
 export type Messages<T> = Record<Locale, T>
 
+// For Intl date/number formatting — Belgian conventions in each language.
+export const INTL_LOCALES: Record<Locale, string> = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-BE' }
+
 export function isLocale(value: unknown): value is Locale {
   return (LOCALES as readonly unknown[]).includes(value)
 }
@@ -57,6 +60,13 @@ export function browserLocale(): Locale | null {
 // language, else the browser's, else Dutch.
 export function preferredLocale(): Locale {
   return storedLocale() ?? browserLocale() ?? DEFAULT_LOCALE
+}
+
+// A kiosk screen with customers or cashiers in front of it (kassa,
+// Instellingen, the customer display): the device's picked language, else
+// Dutch — never the browser's, which says nothing about who uses the device.
+export function deviceLocale(): Locale {
+  return storedLocale() ?? DEFAULT_LOCALE
 }
 
 // Provided by LocaleProvider (./locale-provider.tsx) at a screen's root.

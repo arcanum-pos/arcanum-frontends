@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { cn } from 'cn'
 import { formatEuro } from '@/shared/format'
+import { useMessages } from '@/shared/i18n'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
 import { entryToPickerItem, filterSections, searchPick, type PickerItem } from './lib'
+import { KASSA_MESSAGES } from './messages'
 
 export type CatalogState = { status: 'loading' } | { status: 'none' } | { status: 'error'; message: string } | { status: 'ok'; catalog: KassaCatalog }
 
@@ -26,11 +28,12 @@ export function ItemPicker({
   // Right-click: take it off the order again (only what's not submitted yet).
   onRemove: (item: PickerItem, quantity: number) => void
 }) {
-  if (catalogState.status === 'loading') return <p className="py-10 text-center text-sm text-muted-foreground">Menukaart laden…</p>
+  const m = useMessages(KASSA_MESSAGES)
+  if (catalogState.status === 'loading') return <p className="py-10 text-center text-sm text-muted-foreground">{m.catalogLoading}</p>
   if (catalogState.status === 'none') {
     return (
       <div className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">
-        Nog geen menukaart — een beheerder maakt er een in de console.
+        {m.noCatalog}
       </div>
     )
   }
@@ -53,6 +56,7 @@ function Catalog({
   onAdd: Change
   onRemove: Change
 }) {
+  const m = useMessages(KASSA_MESSAGES)
   const [query, setQuery] = useState('')
   const [chosen, setChosen] = useState<string | null>(null)
   // A group that's gone after a catalog reload falls back to "Alles".
@@ -85,15 +89,15 @@ function Catalog({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onSearchKey}
-          placeholder="Zoek product of typ een code…"
-          aria-label="Zoek product"
+          placeholder={m.searchPlaceholder}
+          aria-label={m.searchLabel}
           autoComplete="off"
           className="h-[38px] min-w-[180px] flex-[1_1_220px] rounded-[9px] border bg-card px-3 text-[13.5px] outline-none placeholder:text-muted-foreground focus-visible:border-foreground"
         />
         {catalog.sections.length > 1 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label="Groep">
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label={m.group}>
             <button type="button" aria-pressed={group === null} className={chip(group === null)} onClick={() => setChosen(null)}>
-              Alles
+              {m.all}
             </button>
             {catalog.sections.map((s) => (
               <button key={s.id} type="button" aria-pressed={group === s.id} className={chip(group === s.id)} onClick={() => setChosen(group === s.id ? null : s.id)}>
@@ -106,7 +110,7 @@ function Catalog({
 
       {sections.length === 0 ? (
         <div className="rounded-xl border border-dashed bg-card p-8 text-center text-[13.5px] text-muted-foreground">
-          {query.trim() ? `Geen producten gevonden voor “${query.trim()}”.` : 'Geen producten in deze groep.'}
+          {query.trim() ? m.noMatches(query.trim()) : m.emptyGroup}
         </div>
       ) : (
         // Plain auto-fill tracks, like the design (no min()/percentages — Safari
@@ -151,11 +155,12 @@ const removeOnRightClick = (disabled: boolean, remove: () => void) => (e: React.
 }
 
 function EntryRow({ entry, quantity, disabled, onAdd, onRemove }: { entry: KassaEntry; quantity: number; disabled: boolean; onAdd: Change; onRemove: Change }) {
+  const m = useMessages(KASSA_MESSAGES)
   return (
     <button
       type="button"
       disabled={disabled}
-      title="Klik: +1 · rechtsklik: −1"
+      title={m.entryHint}
       onClick={() => onAdd(entryToPickerItem(entry), 1)}
       onContextMenu={removeOnRightClick(disabled, () => onRemove(entryToPickerItem(entry), 1))}
       className="flex min-h-12 w-full items-center gap-2.5 border-b border-border/60 px-3.5 py-2.5 text-left transition-colors outline-none last:rounded-b-xl last:border-b-0 hover:bg-muted/60 focus-visible:bg-muted active:bg-muted disabled:opacity-50"
@@ -177,11 +182,12 @@ function EntryRow({ entry, quantity, disabled, onAdd, onRemove }: { entry: Kassa
 }
 
 function QuickEntry({ entry, disabled, onAdd, onRemove }: { entry: KassaEntry; disabled: boolean; onAdd: Change; onRemove: Change }) {
+  const m = useMessages(KASSA_MESSAGES)
   const item = entryToPickerItem(entry)
   return (
     <div className="flex flex-col gap-3 p-3.5">
       <p className="text-xs text-muted-foreground">
-        <span className="font-medium text-foreground">{entry.name}</span> · {formatEuro(entry.priceCents)} per stuk · tik een aantal
+        <span className="font-medium text-foreground">{entry.name}</span> · {m.perPiece(formatEuro(entry.priceCents))}
       </p>
       <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(120px,1fr))]">
         {entry.quickQuantities!.map((n) => (
@@ -190,7 +196,7 @@ function QuickEntry({ entry, disabled, onAdd, onRemove }: { entry: KassaEntry; d
             type="button"
             aria-label={`${n} × ${entry.name}`}
             disabled={disabled}
-            title={`Klik: +${n} · rechtsklik: −${n}`}
+            title={m.quickHint(n)}
             onClick={() => onAdd(item, n)}
             onContextMenu={removeOnRightClick(disabled, () => onRemove(item, n))}
             className="flex h-[84px] flex-col items-start justify-between rounded-xl border bg-card px-3.5 py-3 text-left transition-colors outline-none hover:border-foreground hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[.985] disabled:opacity-50"

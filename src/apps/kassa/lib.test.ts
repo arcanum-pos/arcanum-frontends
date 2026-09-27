@@ -24,7 +24,9 @@ import {
   tabBreakdownLines,
   type CurrentPayment,
 } from './lib'
-import { netQuantity, tabTitle, toLineInputs, type DraftLine, type TabDetail, type TabLine } from './tabs-api'
+import { netQuantity, QUICK_SALE_LABEL, tabTitle, toLineInputs, type DraftLine, type TabDetail, type TabLine } from './tabs-api'
+import m from './messages/nl'
+import en from './messages/en'
 
 const bon = { itemCode: 'bon', name: 'Bon', unitPriceCents: 100, variantId: 'v-bon' }
 
@@ -169,16 +171,17 @@ describe('tabBreakdownLines', () => {
   ]
 
   it('lists net quantities and leaves out void lines and fully voided lines', () => {
-    expect(tabBreakdownLines(tab(lines))).toEqual(['1 × Wandeltocht à € 6,00 = € 6,00'])
+    expect(tabBreakdownLines(m, tab(lines))).toEqual(['1 × Wandeltocht à € 6,00 = € 6,00'])
   })
 
   it('adds the tip of this payment as a last line', () => {
-    expect(tabBreakdownLines(tab(lines), 150)).toEqual(['1 × Wandeltocht à € 6,00 = € 6,00', 'Fooi = € 1,50'])
+    expect(tabBreakdownLines(m, tab(lines), 150)).toEqual(['1 × Wandeltocht à € 6,00 = € 6,00', 'Fooi = € 1,50'])
   })
 
   it('still shows an old fooi line (from before 3d) as "Fooi"', () => {
     const old = [line({ id: 'f', name: 'Fooi', itemCode: FOOI_CODE, unitPriceCents: 250 })]
-    expect(tabBreakdownLines(tab(old))).toEqual(['Fooi = € 2,50'])
+    expect(tabBreakdownLines(m, tab(old))).toEqual(['Fooi = € 2,50'])
+    expect(tabBreakdownLines(en, tab(old))).toEqual(['Tip = € 2,50'])
   })
 })
 
@@ -235,11 +238,17 @@ describe('isPaymentResolved', () => {
 
 describe('tabTitle', () => {
   it('shows number and label', () => {
-    expect(tabTitle({ number: 12, label: 'Jan' })).toBe('#12 Jan')
+    expect(tabTitle(m, { number: 12, label: 'Jan' })).toBe('#12 Jan')
   })
 
   it('falls back to "Rekening #n" without a label', () => {
-    expect(tabTitle({ number: 12, label: '' })).toBe('Rekening #12')
+    expect(tabTitle(m, { number: 12, label: '' })).toBe('Rekening #12')
+    expect(tabTitle(en, { number: 12, label: '' })).toBe('Bill #12')
+  })
+
+  it('shows a Toog tab in the kassa\'s language (stored as "Toog" in every language)', () => {
+    expect(tabTitle(m, { number: 3, label: QUICK_SALE_LABEL })).toBe('#3 Toog')
+    expect(tabTitle(en, { number: 3, label: QUICK_SALE_LABEL })).toBe('#3 Counter')
   })
 })
 

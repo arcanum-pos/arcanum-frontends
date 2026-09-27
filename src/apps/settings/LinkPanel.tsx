@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { useMessages } from '@/shared/i18n'
+import { SETTINGS_MESSAGES } from './messages'
 
 const DEVICES_URL = '/api/devices'
 
@@ -14,6 +16,7 @@ export function LinkPanel({
   posOrgId: string
   refreshSignal: number
 }) {
+  const m = useMessages(SETTINGS_MESSAGES)
   const [loading, setLoading] = useState(true)
   const [linkedId, setLinkedId] = useState<string | null>(null)
   const [unlinked, setUnlinked] = useState<{ terminal_id: string }[]>([])
@@ -76,10 +79,10 @@ export function LinkPanel({
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-sm text-muted-foreground">{loading ? 'Gekoppeld: laden...' : linkedId ? `Gekoppeld: ${linkedId}` : 'Niets gekoppeld.'}</p>
+      <p className="text-sm text-muted-foreground">{loading ? m.linkedLoading : linkedId ? m.linked(linkedId) : m.nothingLinked}</p>
       {linkedId && (
         <Button variant="outline" size="sm" className="w-fit" disabled={unlinking} onClick={handleUnlink}>
-          Ontkoppelen
+          {m.unlink}
         </Button>
       )}
       {unlinked.length > 0 && (
@@ -88,14 +91,14 @@ export function LinkPanel({
             <div key={d.terminal_id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
               <span>{d.terminal_id}</span>
               <Button size="sm" variant="secondary" disabled={linkingId === d.terminal_id} onClick={() => handleLink(d.terminal_id)}>
-                Koppel
+                {m.link}
               </Button>
             </div>
           ))}
         </div>
       )}
       <Button variant="ghost" size="sm" className="w-fit" onClick={refresh}>
-        Vernieuwen
+        {m.refresh}
       </Button>
     </div>
   )

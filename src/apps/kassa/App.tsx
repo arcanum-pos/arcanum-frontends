@@ -13,6 +13,7 @@ import {
 } from '@/shared/terminal'
 import { getCurrentSlotId } from '@/shared/slots'
 import { formatEuro } from '@/shared/format'
+import { useMessages } from '@/shared/i18n'
 import {
   addToDraft,
   clampTip,
@@ -22,11 +23,11 @@ import {
   type ItemSelection,
   draftTotalCents,
   isPaymentResolved,
-  MANUAL_METHOD_LABELS,
   readAmountCents,
   reconcileDrafts,
   tabBreakdownLines,
   type CurrentPayment,
+  type ManualStatus,
   type PaymentMethod,
   type PickerItem,
 } from './lib'
@@ -34,11 +35,12 @@ import { fetchKassaCatalog, listEvents, type KassaCatalog } from './catalog-api'
 import { ItemPicker, type CatalogState } from './ItemPicker'
 import { PaymentStatus } from './PaymentStatus'
 import { NameDialog, VoidDialog } from './TabDialogs'
+import { KASSA_MESSAGES } from './messages'
 import { SplitDialog } from './SplitDialog'
 import { TabPanel } from './TabPanel'
-import { QUICK_SALE_LABEL, TabStrip, type ActiveKey } from './TabStrip'
+import { TabStrip, type ActiveKey } from './TabStrip'
 import * as tabsApi from './tabs-api'
-import { netQuantity, TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
+import { netQuantity, QUICK_SALE_LABEL, TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
 
 const WORKER_URL = '/api/bancontact'
 const DEVICES_URL = '/api/devices'
@@ -52,6 +54,9 @@ type NameDialogMode = 'new' | 'park' | 'rename'
 // — the open-tab list reloads on focus, on switching and after every
 // action, and the server refuses anything based on a stale view (409).
 export default function App() {
+  // Fixed while the page is open (the language is changed in Instellingen),
+  // so texts put in state below are safe to build from it right away.
+  const m = useMessages(KASSA_MESSAGES)
   // What this kassa sells from: the device's chosen catalog, else the org
   // default (see loadCatalog).
   const [catalogState, setCatalogState] = useState<CatalogState>({ status: 'loading' })
@@ -65,7 +70,7 @@ export default function App() {
   // outstanding amount; reset once a payment completes.
   const [tipInput, setTipInput] = useState('')
   const [current, setCurrent] = useState<CurrentPayment | null>(null)
-  const [manualStatusText, setManualStatusText] = useState('')
+  const [manualStatus, setManualStatus] = useState<ManualStatus | null>(null)
   const [countdownText, setCountdownText] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -133,7 +138,7 @@ export default function App() {
     const expiryTime = new Date(expiresAt).getTime()
     countdownTimerRef.current = setInterval(() => {
       const secondsLeft = Math.max(0, Math.round((expiryTime - Date.now()) / 1000))
-      setCountdownText(secondsLeft > 0 ? `Vervalt over ${secondsLeft}s` : 'Verlopen')
+      setCountdownText(secondsLeft > 0 ? m.expiresIn(secondsLeft) : m.expired)
       if (secondsLeft <= 0 && countdownTimerRef.current) clearInterval(countdownTimerRef.current)
     }, 1000)
   }
@@ -176,7 +181,7 @@ export default function App() {
         catalog = await fetchKassaCatalog(org, selection.id)
         if (!catalog) {
           setCatalogSelection(null)
-          setNotice(`De gekozen menukaart "${selection.name}" is niet meer beschikbaar — de standaardmenukaart wordt gebruikt.`)
+          setNotice(m.catalogGone(selection.name))
         }
       }
       if (!catalog) catalog = await fetchKassaCatalog(org, null)
@@ -189,15 +194,11 @@ export default function App() {
       const { drafts: next, dropped } = reconcileDrafts(draftsRef.current, catalog, switched)
       setDrafts(next)
       if (dropped > 0) {
-        setNotice(
-          dropped === 1
-            ? 'Andere menukaart geladen — 1 lijn die er niet op staat, is uit de bestelling gehaald.'
-            : `Andere menukaart geladen — ${dropped} lijnen die er niet op staan, zijn uit de bestelling gehaald.`
-        )
+        setNotice(m.linesDropped(dropped))
       }
     } catch (err) {
       console.error('Kon menukaart niet laden', err)
-      if (!catalogRef.current) setCatalogState({ status: 'error', message: 'Kon de menukaart niet laden. Probeer opnieuw.' })
+      if (!catalogRef.current) setCatalogState({ status: 'error', message: m.catalogFailed })
     }
   }
 
@@ -215,7 +216,7 @@ export default function App() {
       if (!current) {
         setEventSelection(null)
         setEvent(null)
-        setNotice(`Het gekozen evenement "${chosen.name}" bestaat niet meer — verkopen worden niet meer aan een evenement gekoppeld.`)
+        setNotice(m.eventGone(chosen.name))
         return
       }
       const fresh = { id: current.id, name: current.name, date: current.date }
@@ -263,7 +264,7 @@ export default function App() {
     const list = await refreshTabs()
     const key = activeRef.current
     if (list && key !== 'quick' && !list.some((t) => t.id === key) && !currentRef.current) {
-      setError('Deze rekening is intussen afgesloten, mogelijk op een andere kassa.')
+      setError(m.tabClosedElsewhere)
       setDraftFor(key, [])
       selectTab('quick')
       return
@@ -303,7 +304,7 @@ export default function App() {
   async function runTabAction(action: (org: string) => Promise<void>) {
     const org = posOrgIdRef.current
     if (!org) {
-      setError('Organisatie van dit toestel nog niet bekend.')
+      setError(m.orgUnknown)
       return
     }
     setError('')
@@ -431,7 +432,7 @@ export default function App() {
       const items = itemModeRef.current?.tabId === tab.id ? itemModeRef.current.selection : null
       if (items) {
         if (selectionCents(tab, items) < 1) {
-          setError('Kies eerst wat deze persoon betaalt.')
+          setError(m.pickFirst)
           return
         }
         await startCharge(org, tab, tipCents, items)
@@ -439,7 +440,7 @@ export default function App() {
       }
 
       if (tab.outstandingCents < 1) {
-        setError('Niets te betalen op deze rekening.')
+        setError(m.nothingToPay)
         return
       }
       await startCharge(org, tab, tipCents)
@@ -457,10 +458,10 @@ export default function App() {
     const part = split ? { index: Math.min(split.paid + 1, split.parts), of: split.parts } : undefined
     const remainsOpen = amountCents - tipCents < tab.outstandingCents
     const breakdown = picked
-      ? [...picked.map((x) => `${x.quantity} × ${x.line.name}`), ...(tipCents > 0 ? [`Fooi = ${formatEuro(tipCents)}`] : [])]
-      : tabBreakdownLines(tab, tipCents)
+      ? [...picked.map((x) => `${x.quantity} × ${x.line.name}`), ...(tipCents > 0 ? [m.breakdownTip(formatEuro(tipCents))] : [])]
+      : tabBreakdownLines(m, tab, tipCents)
     const order = {
-      ...customerOrderFromTab(tab),
+      ...customerOrderFromTab(m, tab),
       paying: picked ? picked.map((x) => ({ name: x.line.name, quantity: x.quantity, unitPriceCents: x.line.unitPriceCents })) : null,
     }
     const common = {
@@ -483,7 +484,7 @@ export default function App() {
         body: JSON.stringify(common),
       })
       const data = await res.json()
-      if (!res.ok) throw new TabApiError(data.error ? `${data.error}${data.details ? `: ${JSON.stringify(data.details)}` : ''}` : 'Onbekende fout', res.status)
+      if (!res.ok) throw new TabApiError(data.error ? `${data.error}${data.details ? `: ${JSON.stringify(data.details)}` : ''}` : m.unknownError, res.status)
 
       setCurrentBoth({
         method: 'bancontact',
@@ -516,7 +517,7 @@ export default function App() {
       body: JSON.stringify({ ...common, method, readerId }),
     })
     const data = await res.json()
-    if (!res.ok || !data.chargeId) throw new TabApiError(data.error || 'Kon betaling niet registreren', res.status)
+    if (!res.ok || !data.chargeId) throw new TabApiError(data.error || m.chargeFailed, res.status)
 
     setCurrentBoth({
       method,
@@ -531,7 +532,7 @@ export default function App() {
       remainsOpen,
       dispatchedToReader: !!readerId,
     })
-    setManualStatusText(MANUAL_METHOD_LABELS[method].waiting)
+    setManualStatus({ kind: 'waiting' })
     broadcastCurrent()
     if (method === 'sumup') checkSumupStatus(data.chargeId)
   }
@@ -571,12 +572,10 @@ export default function App() {
 
       if (data.status === 'succeeded') {
         setCurrentBoth({ ...cur, status: 'RESOLVED' })
-        setManualStatusText(MANUAL_METHOD_LABELS.sumup.paid)
+        setManualStatus({ kind: 'paid' })
         channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
       } else if (data.status === 'failed') {
-        setManualStatusText(
-          data.errorMessage ? `SumUp betaling mislukt: ${data.errorMessage}` : 'SumUp betaling mislukt. Probeer opnieuw of bevestig handmatig.'
-        )
+        setManualStatus({ kind: 'failed', error: data.errorMessage || null })
       }
     } catch (err) {
       console.error('Kon SumUp status niet ophalen', err)
@@ -602,7 +601,7 @@ export default function App() {
     if (!cur || (cur.method !== 'cash' && cur.method !== 'sumup') || cur.status === 'RESOLVED') return
     stopCountdown()
     setCurrentBoth({ ...cur, status: 'RESOLVED' })
-    setManualStatusText(MANUAL_METHOD_LABELS[cur.method].paid)
+    setManualStatus({ kind: 'paid' })
     channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
     // Backend records the sale and closes the tab once it resolves the charge.
     resolveTrackedCharge(cur.chargeId, true)
@@ -611,7 +610,7 @@ export default function App() {
   function clearPaymentView() {
     stopCountdown()
     setCurrentBoth(null)
-    setManualStatusText('')
+    setManualStatus(null)
     setError('')
     broadcastCurrent()
 
@@ -670,7 +669,7 @@ export default function App() {
       return
     }
     if (!posTerminalIdRef.current || !posOrgIdRef.current) {
-      setError('Wacht tot dit toestel geregistreerd is voor u een klantscherm opent.')
+      setError(m.waitForRegistration)
       return
     }
 
@@ -701,7 +700,7 @@ export default function App() {
       displayWindowRef.current = window.open(`/display.html?terminal=${encodeURIComponent(cfdTerminalId)}`, 'arcanum-display', features)
     } catch (err) {
       console.error('Kon klantscherm niet koppelen/openen', err)
-      setError('Kon klantscherm niet openen.')
+      setError(m.displayFailed)
     } finally {
       setOpeningDisplay(false)
     }
@@ -793,9 +792,9 @@ export default function App() {
 
   const showConfirmButton = current !== null && current.status !== 'RESOLVED'
   const draftKeys = new Set(Object.keys(drafts))
-  const panelTitle = active === 'quick' ? `${QUICK_SALE_LABEL} — direct afrekenen` : shownTab ? tabTitle(shownTab) : 'Laden…'
+  const panelTitle = active === 'quick' ? m.quickTitle : shownTab ? tabTitle(m, shownTab) : m.loading
   const itemCount = draft.reduce((n, l) => n + l.quantity, 0) + (shownTab?.lines || []).filter((l) => !l.voidsLineId).reduce((n, l) => n + netQuantity(l), 0)
-  const panelSubtitle = `${active === 'quick' ? 'Nieuwe rekening bij afrekenen' : 'Open rekening'} · ${itemCount === 1 ? '1 item' : `${itemCount} items`}`
+  const panelSubtitle = `${active === 'quick' ? m.quickSubtitle : m.openTab} · ${m.items(itemCount)}`
   const draftQuantities = Object.fromEntries(draft.map((l) => [l.variantId, l.quantity]))
   const catalogName = catalogState.status === 'ok' ? catalogState.catalog.name : null
 
@@ -810,11 +809,11 @@ export default function App() {
             </div>
             <div className="flex min-w-0 flex-col gap-px">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-[14.5px] font-semibold tracking-tight">{orgName || 'Kassa'}</span>
+                <span className="truncate text-[14.5px] font-semibold tracking-tight">{orgName || m.kassa}</span>
                 {event && (
                   <span
                     className="shrink-0 rounded-md border bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold tracking-[0.01em] text-foreground/80"
-                    title="Verkopen worden aan dit evenement gekoppeld (Instellingen → Evenement)"
+                    title={m.eventHint}
                     data-testid="kassa-event"
                   >
                     {event.name}
@@ -822,17 +821,17 @@ export default function App() {
                 )}
               </div>
               <span className="truncate text-[11.5px] text-muted-foreground">
-                {[getDeviceName(), catalogName && `Menukaart ${catalogName}`, terminalIdLabel && `POS ${terminalIdLabel.slice(0, 8)}`].filter(Boolean).join(' · ')}
+                {[getDeviceName(), catalogName && m.catalogNamed(catalogName), terminalIdLabel && `POS ${terminalIdLabel.slice(0, 8)}`].filter(Boolean).join(' · ')}
               </span>
             </div>
           </div>
           <div className="min-w-5 flex-1" />
           <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={openingDisplay} onClick={openDisplay}>
-              Klantscherm openen
+              {m.openDisplay}
             </Button>
             <Button variant="outline" className="h-[34px] px-3 text-[13px]" asChild>
-              <a href="/settings.html">Instellingen</a>
+              <a href="/settings.html">{m.settings}</a>
             </Button>
             {user && (
               <div className="flex items-center gap-2 border-l pl-2.5">
@@ -842,14 +841,14 @@ export default function App() {
                 <div className="flex flex-col leading-tight">
                   <span className="text-xs font-medium">{user.name}</span>
                   <a href="/logout" className="text-[10.5px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-                    Uitloggen
+                    {m.logout}
                   </a>
                 </div>
               </div>
             )}
             {!user && (
               <a href="/logout" className="text-[13px] text-muted-foreground underline-offset-4 hover:underline">
-                Uitloggen
+                {m.logout}
               </a>
             )}
           </div>
@@ -865,7 +864,7 @@ export default function App() {
           <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
             <p>{notice}</p>
             <Button variant="ghost" size="sm" onClick={() => setNotice('')}>
-              Sluiten
+              {m.close}
             </Button>
           </div>
         )}
@@ -911,7 +910,7 @@ export default function App() {
           <div className="flex flex-1 items-start justify-center pt-6">
             <PaymentStatus
               current={current}
-              manualStatusText={manualStatusText}
+              manualStatus={manualStatus}
               countdownText={countdownText}
               showConfirmButton={showConfirmButton}
               onConfirm={confirmManualPayment}
@@ -925,9 +924,9 @@ export default function App() {
       <NameDialog
         key={nameDialog ?? 'closed'}
         open={nameDialog !== null}
-        title={nameDialog === 'rename' ? 'Naam wijzigen' : nameDialog === 'park' ? 'Op rekening zetten' : 'Nieuwe rekening'}
-        description={nameDialog === 'park' ? 'De bestelling komt op een nieuwe rekening die open blijft tot ze betaald wordt.' : undefined}
-        confirmLabel={nameDialog === 'rename' ? 'Opslaan' : 'Rekening openen'}
+        title={nameDialog === 'rename' ? m.rename : nameDialog === 'park' ? m.park : m.newTabTitle}
+        description={nameDialog === 'park' ? m.parkDescription : undefined}
+        confirmLabel={nameDialog === 'rename' ? m.save : m.openTabButton}
         initialValue={nameDialog === 'rename' ? shownTab?.label || '' : ''}
         onConfirm={confirmNameDialog}
         onClose={() => setNameDialog(null)}

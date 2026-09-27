@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { getEventSelection, setEventSelection, type EventSelection } from '@/shared/device'
+import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
 import { listEvents, type KassaEvent } from '../kassa/catalog-api'
+import { SETTINGS_MESSAGES } from './messages'
 
 // Which event this kassa's sales are tagged with — optional ("Geen"),
 // independent of the menukaart. Goes on each new rekening; rekeningen
 // already open keep theirs.
 export function EventPanel({ posOrgId }: { posOrgId: string }) {
-  const [status, setStatus] = useState('Evenementen laden...')
+  const m = useMessages(SETTINGS_MESSAGES)
+  const { locale } = useLocale()
+  const [phase, setPhase] = useState<'loading' | 'failed' | 'ready'>('loading')
   const [events, setEvents] = useState<KassaEvent[]>([])
   const [selected, setSelected] = useState<EventSelection | null>(null)
 
@@ -20,21 +24,20 @@ export function EventPanel({ posOrgId }: { posOrgId: string }) {
     }
     setEvents(list)
     setSelected(sel)
-    if (list.length === 0) setStatus('Nog geen evenementen — een beheerder maakt ze aan in de console (Evenementen).')
-    else setStatus(sel ? `Actief: ${sel.name}` : 'Geen evenement — verkopen worden niet aan een evenement gekoppeld.')
+    setPhase('ready')
   }, [])
 
   const refresh = useCallback(() => {
     listEvents(posOrgId)
       .then(apply)
-      .catch(() => setStatus('Kon evenementen niet ophalen.'))
+      .catch(() => setPhase('failed'))
   }, [posOrgId, apply])
 
   useEffect(() => {
     let cancelled = false
     listEvents(posOrgId)
       .then((list) => !cancelled && apply(list))
-      .catch(() => !cancelled && setStatus('Kon evenementen niet ophalen.'))
+      .catch(() => !cancelled && setPhase('failed'))
     return () => {
       cancelled = true
     }
@@ -45,15 +48,26 @@ export function EventPanel({ posOrgId }: { posOrgId: string }) {
     refresh()
   }
 
+  const status =
+    phase === 'loading'
+      ? m.eventsLoading
+      : phase === 'failed'
+        ? m.eventsFailed
+        : events.length === 0
+          ? m.eventsNone
+          : selected
+            ? m.activeIs(selected.name)
+            : m.eventNoneActive
+
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm text-muted-foreground">{status}</p>
       {events.length > 0 && (
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-            <span>Geen evenement</span>
-            <Button size="sm" variant={selected ? 'secondary' : 'outline'} disabled={!selected} aria-label={selected ? 'Kies geen evenement' : 'Geen evenement actief'} onClick={() => choose(null)}>
-              {selected ? 'Kies' : 'Actief'}
+            <span>{m.noEvent}</span>
+            <Button size="sm" variant={selected ? 'secondary' : 'outline'} disabled={!selected} aria-label={selected ? m.chooseNoEvent : m.noEventActive} onClick={() => choose(null)}>
+              {selected ? m.choose : m.active}
             </Button>
           </div>
           {events.map((event) => {
@@ -61,16 +75,16 @@ export function EventPanel({ posOrgId }: { posOrgId: string }) {
             return (
               <div key={event.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
                 <span>
-                  {event.name} <span className="text-muted-foreground">· {formatDate(event.date)}</span>
+                  {event.name} <span className="text-muted-foreground">· {formatDate(event.date, INTL_LOCALES[locale])}</span>
                 </span>
                 <Button
                   size="sm"
                   variant={isSelected ? 'outline' : 'secondary'}
                   disabled={isSelected}
-                  aria-label={isSelected ? `${event.name} actief` : `Kies ${event.name}`}
+                  aria-label={isSelected ? m.activeNamed(event.name) : m.chooseNamed(event.name)}
                   onClick={() => choose({ id: event.id, name: event.name, date: event.date })}
                 >
-                  {isSelected ? 'Actief' : 'Kies'}
+                  {isSelected ? m.active : m.choose}
                 </Button>
               </div>
             )
@@ -82,18 +96,18 @@ export function EventPanel({ posOrgId }: { posOrgId: string }) {
         size="sm"
         className="w-fit"
         onClick={() => {
-          setStatus('Evenementen laden...')
+          setPhase('loading')
           refresh()
         }}
       >
-        Vernieuwen
+        {m.refresh}
       </Button>
     </div>
   )
 }
 
-// "2026-10-04" → "4 okt. 2026"
-function formatDate(date: string): string {
+// "2026-10-04" → "4 okt. 2026" (in nl-BE)
+function formatDate(date: string, intlLocale: string): string {
   const d = new Date(`${date}T12:00:00`)
-  return Number.isNaN(d.getTime()) ? date : d.toLocaleDateString('nl-BE', { day: 'numeric', month: 'short', year: 'numeric' })
+  return Number.isNaN(d.getTime()) ? date : d.toLocaleDateString(intlLocale, { day: 'numeric', month: 'short', year: 'numeric' })
 }

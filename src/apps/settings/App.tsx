@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { useMessages } from '@/shared/i18n'
+import { LanguagePicker } from '@/shared/i18n/language-picker'
 import { OrgBadge } from '@/shared/org-badge'
 import { getDevice, getDeviceId, setDeviceName } from '@/shared/device'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
@@ -11,8 +13,10 @@ import { CatalogPanel } from './CatalogPanel'
 import { EventPanel } from './EventPanel'
 import { SlotPanel } from './SlotPanel'
 import { useSourceUrl } from '@/shared/source-url'
+import { SETTINGS_MESSAGES } from './messages'
 
 export default function App() {
+  const m = useMessages(SETTINGS_MESSAGES)
   const sourceUrl = useSourceUrl()
   const [deviceNameInput, setDeviceNameInput] = useState(() => getDevice().name || '')
   const [deviceSaved, setDeviceSaved] = useState(false)
@@ -53,19 +57,19 @@ export default function App() {
       <OrgBadge />
 
       <div className="flex items-center justify-between border-b pb-4">
-        <h1 className="text-lg font-semibold">Instellingen</h1>
+        <h1 className="text-lg font-semibold">{m.title}</h1>
         <a href="/kassa.html" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-          ← Terug
+          {m.back}
         </a>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Dit toestel</CardTitle>
+          <CardTitle className="text-base">{m.thisDevice}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Input
-            placeholder="bv. Kassa 1"
+            placeholder={m.deviceNamePlaceholder}
             value={deviceNameInput}
             onChange={(e) => {
               setDeviceNameInput(e.target.value)
@@ -74,10 +78,20 @@ export default function App() {
             autoComplete="off"
           />
           <Button variant="outline" className="w-fit" onClick={handleSaveDeviceName}>
-            Naam opslaan
+            {m.saveName}
           </Button>
-          {deviceSaved && <p className="text-sm text-muted-foreground">Naam van dit toestel opgeslagen.</p>}
-          <p className="text-sm text-muted-foreground">Toestel-ID: {getDeviceId()}</p>
+          {deviceSaved && <p className="text-sm text-muted-foreground">{m.nameSaved}</p>}
+          <p className="text-sm text-muted-foreground">{m.deviceId(getDeviceId())}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{m.language}</CardTitle>
+          <p className="text-sm text-muted-foreground">{m.languageHint}</p>
+        </CardHeader>
+        <CardContent>
+          <LanguagePicker persist />
         </CardContent>
       </Card>
 
@@ -85,8 +99,8 @@ export default function App() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Menukaart</CardTitle>
-              <p className="text-sm text-muted-foreground">Welke menukaart deze kassa verkoopt.</p>
+              <CardTitle className="text-base">{m.catalog}</CardTitle>
+              <p className="text-sm text-muted-foreground">{m.catalogHint}</p>
             </CardHeader>
             <CardContent>
               <CatalogPanel posOrgId={posOrgId} />
@@ -95,8 +109,8 @@ export default function App() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Evenement</CardTitle>
-              <p className="text-sm text-muted-foreground">Optioneel: aan welk evenement de verkopen van deze kassa gekoppeld worden (voor de rapporten).</p>
+              <CardTitle className="text-base">{m.event}</CardTitle>
+              <p className="text-sm text-muted-foreground">{m.eventHint}</p>
             </CardHeader>
             <CardContent>
               <EventPanel posOrgId={posOrgId} />
@@ -105,7 +119,7 @@ export default function App() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Klantscherm koppelen</CardTitle>
+              <CardTitle className="text-base">{m.linkDisplay}</CardTitle>
             </CardHeader>
             <CardContent>
               <LinkPanel role="cfd" posTerminalId={posTerminalId} posOrgId={posOrgId} refreshSignal={linksChangedSignal} />
@@ -114,8 +128,8 @@ export default function App() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">SumUp-simulator koppelen</CardTitle>
-              <p className="text-sm text-muted-foreground">Voor test zonder echte SumUp-reader.</p>
+              <CardTitle className="text-base">{m.linkSimulator}</CardTitle>
+              <p className="text-sm text-muted-foreground">{m.simulatorHint}</p>
             </CardHeader>
             <CardContent>
               <LinkPanel role="sim" posTerminalId={posTerminalId} posOrgId={posOrgId} refreshSignal={linksChangedSignal} />
@@ -124,10 +138,8 @@ export default function App() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">SumUp Solo-reader</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Echte reader gekoppeld aan je SumUp-account. Betalingen gaan dan via de SumUp cloud-API (polling, nog geen callback).
-              </p>
+              <CardTitle className="text-base">{m.reader}</CardTitle>
+              <p className="text-sm text-muted-foreground">{m.readerHint}</p>
             </CardHeader>
             <CardContent>
               <ReaderPanel posOrgId={posOrgId} />
@@ -143,9 +155,9 @@ export default function App() {
       </Card>
 
       <p className="text-center text-xs text-muted-foreground">
-        Arcanum is vrije software (AGPL-3.0) ·{' '}
+        {m.freeSoftware} ·{' '}
         <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="underline-offset-4 hover:underline">
-          Broncode
+          {m.sourceCode}
         </a>
       </p>
     </div>

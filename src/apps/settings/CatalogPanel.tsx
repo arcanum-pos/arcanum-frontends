@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { getCatalogSelection, setCatalogSelection, type CatalogSelection } from '@/shared/device'
+import { useMessages } from '@/shared/i18n'
 import { listCatalogs, type CatalogSummary } from '../kassa/catalog-api'
+import { SETTINGS_MESSAGES } from './messages'
 
 // Which catalog (menukaart) this kassa sells from. None chosen = the org's
 // default, which follows the org when an admin changes it; choosing one
 // pins this device to it (see shared/device.ts's getCatalogSelection).
 export function CatalogPanel({ posOrgId }: { posOrgId: string }) {
-  const [status, setStatus] = useState('Menukaarten laden...')
+  const m = useMessages(SETTINGS_MESSAGES)
+  const [phase, setPhase] = useState<'loading' | 'failed' | 'ready'>('loading')
   const [catalogs, setCatalogs] = useState<CatalogSummary[]>([])
   const [selected, setSelected] = useState<CatalogSelection | null>(null)
 
@@ -15,21 +18,20 @@ export function CatalogPanel({ posOrgId }: { posOrgId: string }) {
     const sel = getCatalogSelection()
     setCatalogs(list)
     setSelected(sel)
-    if (list.length === 0) setStatus('Nog geen menukaart — een beheerder maakt er een in de console.')
-    else setStatus(sel ? `Actief: ${sel.name}` : 'Actief: standaardmenukaart van de organisatie.')
+    setPhase('ready')
   }, [])
 
   const refresh = useCallback(() => {
     listCatalogs(posOrgId)
       .then(apply)
-      .catch(() => setStatus('Kon menukaarten niet ophalen.'))
+      .catch(() => setPhase('failed'))
   }, [posOrgId, apply])
 
   useEffect(() => {
     let cancelled = false
     listCatalogs(posOrgId)
       .then((list) => !cancelled && apply(list))
-      .catch(() => !cancelled && setStatus('Kon menukaarten niet ophalen.'))
+      .catch(() => !cancelled && setPhase('failed'))
     return () => {
       cancelled = true
     }
@@ -41,6 +43,16 @@ export function CatalogPanel({ posOrgId }: { posOrgId: string }) {
   }
 
   const defaultCatalog = catalogs.find((c) => c.isDefault)
+  const status =
+    phase === 'loading'
+      ? m.catalogsLoading
+      : phase === 'failed'
+        ? m.catalogsFailed
+        : catalogs.length === 0
+          ? m.catalogsNone
+          : selected
+            ? m.activeIs(selected.name)
+            : m.catalogOrgDefaultActive
 
   return (
     <div className="flex flex-col gap-2">
@@ -48,9 +60,9 @@ export function CatalogPanel({ posOrgId }: { posOrgId: string }) {
       {catalogs.length > 0 && (
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
-            <span>Standaard van de organisatie{defaultCatalog ? ` (${defaultCatalog.name})` : ''}</span>
+            <span>{m.catalogOrgDefault(defaultCatalog?.name ?? null)}</span>
             <Button size="sm" variant={selected ? 'secondary' : 'outline'} disabled={!selected} onClick={() => choose(null)}>
-              {selected ? 'Kies' : 'Actief'}
+              {selected ? m.choose : m.active}
             </Button>
           </div>
           {catalogs.map((catalog) => {
@@ -62,10 +74,10 @@ export function CatalogPanel({ posOrgId }: { posOrgId: string }) {
                   size="sm"
                   variant={isSelected ? 'outline' : 'secondary'}
                   disabled={isSelected}
-                  aria-label={isSelected ? `${catalog.name} actief` : `Kies ${catalog.name}`}
+                  aria-label={isSelected ? m.activeNamed(catalog.name) : m.chooseNamed(catalog.name)}
                   onClick={() => choose({ id: catalog.id, name: catalog.name })}
                 >
-                  {isSelected ? 'Actief' : 'Kies'}
+                  {isSelected ? m.active : m.choose}
                 </Button>
               </div>
             )
@@ -77,11 +89,11 @@ export function CatalogPanel({ posOrgId }: { posOrgId: string }) {
         size="sm"
         className="w-fit"
         onClick={() => {
-          setStatus('Menukaarten laden...')
+          setPhase('loading')
           refresh()
         }}
       >
-        Vernieuwen
+        {m.refresh}
       </Button>
     </div>
   )

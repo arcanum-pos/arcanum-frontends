@@ -4,6 +4,7 @@
 // just fetches; the server enforces every rule (open, no payment pending,
 // amount at most what's outstanding).
 import { getDeviceId, getDeviceName } from '@/shared/device'
+import type { KassaMessages } from './messages/nl'
 
 export interface TabSummary {
   id: string
@@ -140,8 +141,14 @@ export function cancelTab(orgId: string, tabId: string, reason?: string) {
   return request<TabDetail>(orgId, `/${encodeURIComponent(tabId)}/cancel`, { method: 'POST', body: { reason } })
 }
 
-export function tabTitle(tab: Pick<TabSummary, 'number' | 'label'>): string {
-  return tab.label ? `#${tab.number} ${tab.label}` : `Rekening #${tab.number}`
+// A Toog sale's tab is stored under this name in every language — the
+// customer display recognises it (shared/customer-order.ts) — and is only
+// shown translated.
+export const QUICK_SALE_LABEL = 'Toog'
+
+export function tabTitle(m: Pick<KassaMessages, 'quickSale' | 'tabNumber'>, tab: Pick<TabSummary, 'number' | 'label'>): string {
+  if (!tab.label) return m.tabNumber(tab.number)
+  return `#${tab.number} ${tab.label === QUICK_SALE_LABEL ? m.quickSale : tab.label}`
 }
 
 // Net quantity still on the tab for an original (non-void) line.

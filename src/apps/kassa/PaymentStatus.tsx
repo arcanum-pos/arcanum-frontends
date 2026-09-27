@@ -1,14 +1,16 @@
 import { Button } from '@/components/ui/button'
 import { formatEuro } from '@/shared/format'
-import { STATUS_LABELS } from '@/shared/payment-labels'
-import { isPaymentResolved, MANUAL_METHOD_LABELS, PAYMENT_METHOD_OPTIONS, type CurrentPayment } from './lib'
+import { useMessages } from '@/shared/i18n'
+import { STATUS_MESSAGES } from '@/shared/payment-labels'
+import { isPaymentResolved, type CurrentPayment, type ManualStatus } from './lib'
+import { KASSA_MESSAGES } from './messages'
 
 // A payment in progress, in place of the kassa (styled after the payment
 // dialog in design_files/): the method, the amount, the QR or what to do,
 // and a clear "paid" state before the next customer.
 export function PaymentStatus({
   current,
-  manualStatusText,
+  manualStatus,
   countdownText,
   showConfirmButton,
   onConfirm,
@@ -16,7 +18,7 @@ export function PaymentStatus({
   onNext,
 }: {
   current: CurrentPayment
-  manualStatusText: string
+  manualStatus: ManualStatus | null
   countdownText: string
   showConfirmButton: boolean
   onConfirm: () => void
@@ -25,7 +27,19 @@ export function PaymentStatus({
 }) {
   const isManual = current.method === 'cash' || current.method === 'sumup'
   const resolved = isPaymentResolved(current)
-  const methodLabel = PAYMENT_METHOD_OPTIONS.find((o) => o.value === current.method)?.label ?? current.method
+  const m = useMessages(KASSA_MESSAGES)
+  const statusLabels = useMessages(STATUS_MESSAGES)
+  const methodLabel = m.methods[current.method] ?? current.method
+  const manual = isManual ? m.manual[current.method as 'cash' | 'sumup'] : null
+  const manualText = !manual || !manualStatus
+    ? ''
+    : manualStatus.kind === 'waiting'
+      ? manual.waiting
+      : manualStatus.kind === 'paid'
+        ? manual.paid
+        : manualStatus.error
+          ? m.sumupFailed(manualStatus.error)
+          : m.sumupFailedRetry
 
   return (
     <div className="mx-auto w-full max-w-[440px] animate-in fade-in zoom-in-95 slide-in-from-bottom-2 rounded-2xl border bg-card p-6 shadow-[0_24px_60px_rgba(0,0,0,.18)] duration-200">
@@ -34,7 +48,7 @@ export function PaymentStatus({
           <span className="text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{methodLabel}</span>
           {current.part && (
             <span className="ml-auto rounded-md border px-1.5 py-0.5 text-[11px] font-semibold" data-testid="payment-part">
-              Deel {current.part.index} van {current.part.of}
+              {m.part(current.part.index, current.part.of)}
             </span>
           )}
         </div>
@@ -60,13 +74,13 @@ export function PaymentStatus({
           <>
             {current.qrCodeUrl && !resolved && (
               <div className="rounded-2xl border bg-white p-3.5">
-                <img src={current.qrCodeUrl} alt="QR-code voor betaling" className="size-[min(60vw,280px)]" />
+                <img src={current.qrCodeUrl} alt={m.qrAlt} className="size-[min(60vw,280px)]" />
               </div>
             )}
             <p className="flex items-center gap-2 text-[13px] text-foreground/75">
               {!resolved && <Spinner />}
               <span>
-                Status: <strong>{STATUS_LABELS[current.status] || current.status}</strong>
+                {m.status} <strong>{statusLabels[current.status] || current.status}</strong>
               </span>
             </p>
             {countdownText && !resolved && <p className="font-mono text-xs text-muted-foreground">{countdownText}</p>}
@@ -77,11 +91,11 @@ export function PaymentStatus({
           <>
             <p className="flex items-center gap-2 text-[13px] text-foreground/75">
               {!resolved && current.method === 'sumup' && <Spinner />}
-              <span>{manualStatusText}</span>
+              <span>{manualText}</span>
             </p>
             {showConfirmButton && (
               <Button className="h-11 w-full rounded-[10px] text-sm" onClick={onConfirm}>
-                {MANUAL_METHOD_LABELS[current.method as 'cash' | 'sumup'].confirmBtn}
+                {manual?.confirm}
               </Button>
             )}
           </>
@@ -89,11 +103,11 @@ export function PaymentStatus({
 
         {resolved ? (
           <Button className="mt-1 h-11 w-full rounded-[10px] text-sm" onClick={onNext}>
-            {current.remainsOpen ? (current.part ? 'Volgend deel' : 'Volgende persoon') : 'Volgende klant'}
+            {current.remainsOpen ? (current.part ? m.nextPart : m.nextPerson) : m.nextCustomer}
           </Button>
         ) : (
           <Button variant="outline" className="h-10 w-full rounded-[10px]" onClick={onCancel}>
-            Terug naar rekening
+            {m.backToTab}
           </Button>
         )}
       </div>
