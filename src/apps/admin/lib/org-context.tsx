@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { createOrganization, listMyOrganizations, type Organization } from './api'
+import { createOrganization, getCapabilities, listMyOrganizations, type Capabilities, type Organization } from './api'
 
 const CURRENT_ORG_KEY = 'arcanum-admin-current-org'
 
@@ -17,6 +17,8 @@ interface OrgContextValue {
   // Refetches the org list (e.g. after an import created or removed one),
   // optionally selecting `selectId` afterwards.
   reloadOrgs: (selectId?: string) => Promise<void>
+  // May the caller create / import an organization here (null = loading).
+  capabilities: Capabilities | null
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
@@ -26,8 +28,10 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const [currentOrgId, setCurrentOrgIdState] = useState<string | null>(() => localStorage.getItem(CURRENT_ORG_KEY))
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [capabilities, setCapabilities] = useState<Capabilities | null>(null)
 
   useEffect(() => {
+    getCapabilities().then(setCapabilities)
     listMyOrganizations()
       .then((result) => {
         setOrgs(result)
@@ -53,11 +57,14 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     const org = await createOrganization(name)
     setOrgs((prev) => [...prev, org])
     setCurrentOrgId(org.id)
+    // An own instance allows only its first org.
+    getCapabilities().then(setCapabilities)
   }
 
   async function reloadOrgs(selectId?: string) {
     const result = await listMyOrganizations()
     setOrgs(result)
+    getCapabilities().then(setCapabilities)
     const keep = selectId ?? currentOrgId
     const next = result.some((o) => o.id === keep) ? keep : (result[0]?.id ?? null)
     if (next) setCurrentOrgId(next)
@@ -71,7 +78,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   const currentOrg = orgs.find((o) => o.id === currentOrgId) ?? orgs[0] ?? null
 
   return (
-    <OrgContext.Provider value={{ orgs, currentOrg, loading, error, setCurrentOrgId, addOrg, updateCurrentOrg, reloadOrgs }}>
+    <OrgContext.Provider value={{ orgs, currentOrg, loading, error, setCurrentOrgId, addOrg, updateCurrentOrg, reloadOrgs, capabilities }}>
       {children}
     </OrgContext.Provider>
   )

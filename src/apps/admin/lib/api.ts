@@ -37,6 +37,27 @@ export interface Organization {
   // The org's default language: its mails (the invite), and the language a
   // new kassa device starts in (chooser).
   locale?: Locale
+  // Set for a demo org (is_locked = 'N'): when arcanum-cleaner deletes it,
+  // and where to get an own installation.
+  demo?: { expiresAt: string; installUrl: string | null } | null
+}
+
+// What the caller may do on this installation (arcanum-backend's
+// ORG_CREATION: 'admins' | 'single' own instance | 'internal' demo instance).
+export interface Capabilities {
+  orgCreation: string
+  canCreateOrganization: boolean
+  canImportOrganization: boolean
+}
+
+// An older backend without the endpoint: today's behaviour (both allowed,
+// the backend still refuses what it must).
+export async function getCapabilities(): Promise<Capabilities> {
+  try {
+    return await request<Capabilities>('/capabilities')
+  } catch {
+    return { orgCreation: 'admins', canCreateOrganization: true, canImportOrganization: true }
+  }
 }
 
 export function listMyOrganizations(): Promise<Organization[]> {

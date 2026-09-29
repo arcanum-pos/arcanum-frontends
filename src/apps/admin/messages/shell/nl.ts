@@ -46,6 +46,12 @@ const nl = {
   name: 'Naam',
   orgNamePlaceholder: 'bv. Scouts Elewijt',
   importInstead: 'of importeer uit een exportbestand',
+  // Demo org banner
+  demoTitle: (when: string) => `Dit is een demo — ze verdwijnt vanzelf om ${when}.`,
+  demoHint: 'Probeer gerust alles uit. Wil je verder? Neem je demo mee als exportbestand, of maak je eigen installatie.',
+  demoTakeAlong: 'Neem je demo mee',
+  demoOwnInstall: 'Eigen installatie',
+  importNotHere: 'Op deze installatie kan je geen organisaties importeren. Importeer je exportbestand in je eigen installatie.',
   create: 'Aanmaken',
 
   // Unfinished-import banner

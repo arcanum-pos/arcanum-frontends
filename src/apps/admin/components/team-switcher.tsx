@@ -27,7 +27,11 @@ import { OrgImportDialog } from './org-import-dialog'
 export function TeamSwitcher() {
   const m = useMessages(ADMIN_SHELL_MESSAGES)
   const { isMobile } = useSidebar()
-  const { orgs, currentOrg, loading, setCurrentOrgId, addOrg } = useOrg()
+  const { orgs, currentOrg, loading, setCurrentOrgId, addOrg, capabilities } = useOrg()
+  // Only offered where the installation allows it (a demo instance never; an
+  // own instance only for its first org).
+  const canCreate = !!capabilities?.canCreateOrganization
+  const canImport = !!capabilities?.canImportOrganization
   const [createOpen, setCreateOpen] = useState(false)
   const [newOrgName, setNewOrgName] = useState('')
   const [creating, setCreating] = useState(false)
@@ -92,13 +96,17 @@ export function TeamSwitcher() {
                   {org.name}
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 p-2" onClick={() => setCreateOpen(true)}>
-                <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                  <Plus className="size-4" />
-                </div>
-                <div className="font-medium text-muted-foreground">{m.newOrg}</div>
-              </DropdownMenuItem>
+              {(canCreate || canImport) && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="gap-2 p-2" onClick={() => (canCreate ? setCreateOpen(true) : setImportOpen(true))}>
+                    <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                      <Plus className="size-4" />
+                    </div>
+                    <div className="font-medium text-muted-foreground">{m.newOrg}</div>
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </SidebarMenuItem>
@@ -120,16 +128,18 @@ export function TeamSwitcher() {
               autoComplete="off"
             />
             {createError && <p className="text-sm text-destructive">{createError}</p>}
-            <button
-              type="button"
-              className="justify-self-start text-sm text-muted-foreground underline-offset-4 hover:underline"
-              onClick={() => {
-                setCreateOpen(false)
-                setImportOpen(true)
-              }}
-            >
-              {m.importInstead}
-            </button>
+            {canImport && (
+              <button
+                type="button"
+                className="justify-self-start text-sm text-muted-foreground underline-offset-4 hover:underline"
+                onClick={() => {
+                  setCreateOpen(false)
+                  setImportOpen(true)
+                }}
+              >
+                {m.importInstead}
+              </button>
+            )}
           </div>
           <DialogFooter>
             <Button onClick={handleCreate} disabled={creating}>

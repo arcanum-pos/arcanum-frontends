@@ -21,6 +21,7 @@ interface FakeOrg {
   counts: Record<string, number>
   rows: Map<string, Set<string>>
   locale?: 'nl' | 'fr' | 'en'
+  demo?: { expiresAt: string; installUrl: string | null } | null
 }
 
 export function exportFile(overrides: Record<string, unknown> = {}) {
@@ -70,7 +71,11 @@ export class FakeOrgTransfer {
     return res
   }
 
+  // What GET /api/organizations/capabilities answers (the backend's ORG_CREATION).
+  capabilities = { orgCreation: 'admins', canCreateOrganization: true, canImportOrganization: true }
+
   private route(method: string, path: string, query: string, body: any) {
+    if (path === '/api/organizations/capabilities' && method === 'GET') return ok(this.capabilities)
     if (path === '/api/organizations' && method === 'GET') {
       return ok(this.orgs.map((o) => this.orgJson(o)))
     }
@@ -158,7 +163,7 @@ export class FakeOrgTransfer {
   }
 
   private orgJson(o: FakeOrg) {
-    return { id: o.id, name: o.name, logoUrl: null, theme: null, createdAt: '2026-01-01', customDomain: null, importStatus: o.importStatus, locale: o.locale ?? 'nl' }
+    return { id: o.id, name: o.name, logoUrl: null, theme: null, createdAt: '2026-01-01', customDomain: null, importStatus: o.importStatus, locale: o.locale ?? 'nl', demo: o.demo ?? null }
   }
 }
 

@@ -11,7 +11,7 @@ import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 // installation, or keep a copy), and import an export as a new org.
 export default function DataPage() {
   const m = useMessages(ADMIN_SHELL_MESSAGES)
-  const { currentOrg } = useOrg()
+  const { currentOrg, capabilities } = useOrg()
   const [includeSecrets, setIncludeSecrets] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -83,9 +83,13 @@ export default function DataPage() {
           <CardDescription>{m.importDescription}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button variant="outline" onClick={() => setImportOpen(true)}>
-            {m.importFromFile}
-          </Button>
+          {capabilities && !capabilities.canImportOrganization ? (
+            <p className="text-sm text-muted-foreground">{m.importNotHere}</p>
+          ) : (
+            <Button variant="outline" onClick={() => setImportOpen(true)}>
+              {m.importFromFile}
+            </Button>
+          )}
         </CardContent>
       </Card>
 

@@ -43,6 +43,11 @@ export default {
   name: 'Nom',
   orgNamePlaceholder: 'p. ex. Scouts Elewijt',
   importInstead: 'ou importez depuis un fichier d’export',
+  demoTitle: (when: string) => `Ceci est une démo — elle disparaît d’elle-même à ${when}.`,
+  demoHint: 'Essayez tout librement. Vous voulez continuer ? Emportez votre démo en fichier d’export, ou créez votre propre installation.',
+  demoTakeAlong: 'Emporter ma démo',
+  demoOwnInstall: 'Ma propre installation',
+  importNotHere: 'Sur cette installation, vous ne pouvez pas importer d’organisation. Importez votre fichier d’export dans votre propre installation.',
   create: 'Créer',
 
   // Unfinished-import banner
