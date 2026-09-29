@@ -6,10 +6,29 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from './app-sidebar'
 import { AppFooter } from './app-footer'
 import { DemoBanner } from './demo-banner'
+import { FirstOrganization } from './first-organization'
 import { ImportBanner } from './import-banner'
 import { AppBrand } from '@/shared/app-brand'
+import { useNeedsFirstOrganization } from '../lib/first-organization'
 import { OrgProvider } from '../lib/org-context'
 import { ThemeProvider } from '../lib/theme'
+
+// A fresh installation without an organization asks for its first one;
+// otherwise the page (plus the demo / unfinished-import banners).
+function MainContent() {
+  if (useNeedsFirstOrganization()) return <FirstOrganization />
+  return (
+    <>
+      <DemoBanner />
+      <ImportBanner />
+      {/* Route components are lazy-loaded (see router.tsx) — this
+          Suspense boundary covers the swap between them. */}
+      <Suspense fallback={null}>
+        <Outlet />
+      </Suspense>
+    </>
+  )
+}
 
 export function AppLayout() {
   return (
@@ -25,13 +44,7 @@ export function AppLayout() {
                 <AppBrand className="ml-auto" />
               </header>
               <main className="flex-1 p-6">
-                <DemoBanner />
-                <ImportBanner />
-                {/* Route components are lazy-loaded (see router.tsx) — this
-                    Suspense boundary covers the swap between them. */}
-                <Suspense fallback={null}>
-                  <Outlet />
-                </Suspense>
+                <MainContent />
               </main>
               <AppFooter />
             </SidebarInset>

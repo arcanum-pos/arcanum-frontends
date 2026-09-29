@@ -76,6 +76,13 @@ export class FakeOrgTransfer {
 
   private route(method: string, path: string, query: string, body: any) {
     if (path === '/api/organizations/capabilities' && method === 'GET') return ok(this.capabilities)
+    if (path === '/api/organizations' && method === 'POST') {
+      const org: FakeOrg = { id: `org-${++this.seq}`, name: String(body?.name ?? ''), importStatus: null, counts: {}, rows: new Map() }
+      this.orgs.push(org)
+      // An own instance allows only its first org (the backend's ORG_CREATION=single).
+      if (this.capabilities.orgCreation === 'single') this.capabilities = { ...this.capabilities, canCreateOrganization: false, canImportOrganization: false }
+      return { status: 201, body: this.orgJson(org) }
+    }
     if (path === '/api/organizations' && method === 'GET') {
       return ok(this.orgs.map((o) => this.orgJson(o)))
     }

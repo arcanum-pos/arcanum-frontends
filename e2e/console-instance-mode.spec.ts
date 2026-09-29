@@ -43,3 +43,26 @@ test('an ordinary org has no demo banner', async ({ console: open, page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Producten' })).toBeVisible()
   await expect(page.getByTestId('demo-banner')).toHaveCount(0)
 })
+
+test('a fresh own installation asks for its first organisation, then gets on with it', async ({ console: open, page, orgTransfer }) => {
+  orgTransfer.orgs = []
+  orgTransfer.capabilities = { orgCreation: 'single', canCreateOrganization: true, canImportOrganization: true }
+  await open('/dashboard')
+  const welcome = page.getByTestId('first-organization')
+  await expect(welcome.getByText('Welkom bij je Arcanum')).toBeVisible()
+  await expect(welcome.getByText('of importeer een organisatie uit een exportbestand (bv. je demo)')).toBeVisible()
+  await welcome.getByLabel('Naam').fill('Scouts Test')
+  await welcome.getByRole('button', { name: 'Organisatie aanmaken' }).click()
+  await expect(page.getByTestId('first-organization')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /Scouts Test/ }).first()).toBeVisible()
+  // Only its first: no more "Nieuwe organisatie".
+  await page.getByRole('button', { name: /Scouts Test/ }).first().click()
+  await expect(page.getByRole('menuitem', { name: 'Nieuwe organisatie' })).toHaveCount(0)
+})
+
+test('without an organisation and without the right to make one: no welcome form', async ({ console: open, page, orgTransfer }) => {
+  orgTransfer.orgs = []
+  orgTransfer.capabilities = { orgCreation: 'internal', canCreateOrganization: false, canImportOrganization: false }
+  await open('/dashboard')
+  await expect(page.getByTestId('first-organization')).toHaveCount(0)
+})

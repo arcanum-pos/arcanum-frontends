@@ -47,6 +47,10 @@ const nl = {
   orgNamePlaceholder: 'bv. Scouts Elewijt',
   importInstead: 'of importeer uit een exportbestand',
   // Demo org banner
+  firstOrgTitle: 'Welkom bij je Arcanum',
+  firstOrgText: 'Geef je organisatie een naam om te beginnen — je club, café of evenement. Je wordt er de beheerder van.',
+  firstOrgCreate: 'Organisatie aanmaken',
+  firstOrgImport: 'of importeer een organisatie uit een exportbestand (bv. je demo)',
   demoTitle: (when: string) => `Dit is een demo — ze verdwijnt vanzelf om ${when}.`,
   demoHint: 'Probeer gerust alles uit. Wil je verder? Neem je demo mee als exportbestand, of maak je eigen installatie.',
   demoTakeAlong: 'Neem je demo mee',
