@@ -22,8 +22,8 @@ export function isApiErrorCode(code: unknown): code is ApiErrorCode {
 // The error worded from `texts` (one language's API_ERROR_MESSAGES — in a
 // component: useMessages(API_ERROR_MESSAGES), so it follows a live switch).
 // An unknown or missing code falls back to the server's own text, then to
-// `fallback`. A provider's own message (params.detail: Cloudflare's,
-// SumUp's) is shown as the server sent it.
+// `fallback`. A provider's own message (params.detail: SumUp's) is shown
+// as the server sent it.
 export function apiErrorText(texts: ApiErrorMessages, body: ApiErrorBody | null | undefined, fallback: string): string {
   const serverText = typeof body?.error === 'string' && body.error ? body.error : fallback
   if (!body || !isApiErrorCode(body.code)) return serverText

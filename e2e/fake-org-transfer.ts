@@ -170,7 +170,7 @@ export class FakeOrgTransfer {
   }
 
   private orgJson(o: FakeOrg) {
-    return { id: o.id, name: o.name, logoUrl: null, theme: null, createdAt: '2026-01-01', customDomain: null, importStatus: o.importStatus, locale: o.locale ?? 'nl', demo: o.demo ?? null }
+    return { id: o.id, name: o.name, logoUrl: null, theme: null, createdAt: '2026-01-01', importStatus: o.importStatus, locale: o.locale ?? 'nl', demo: o.demo ?? null }
   }
 }
 

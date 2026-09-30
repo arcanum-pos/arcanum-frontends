@@ -10,7 +10,6 @@ const nl = {
   save: 'Opslaan',
   saved: 'Opgeslagen.',
   loading: 'Laden...',
-  copy: 'Kopiëren',
   custom: 'Aangepast',
   platformDefault: 'Platform-standaard',
   thisOrg: 'deze organisatie',
@@ -83,8 +82,6 @@ const nl = {
     profile: 'Profiel',
     paymentProviders: 'Betaalproviders',
     notifications: 'Meldingen',
-    branding: 'Huisstijl',
-    authentication: 'Aanmelding',
     data: 'Gegevens',
   },
 
@@ -159,55 +156,6 @@ const nl = {
     invite: { label: 'Nieuwe uitnodiging', description: 'E-mail wanneer iemand wordt uitgenodigd voor deze organisatie.' },
     paymentFailed: { label: 'Mislukte betaling', description: 'E-mail bij een mislukte of verlopen betaling.' },
   },
-
-  // Settings → Branding
-  removeDomainConfirm: (domain: string) => `${domain} verwijderen als aangepast domein?`,
-  brandingSubtitle: 'Optioneel: maak deze organisatie bereikbaar op een eigen domeinnaam in plaats van het standaardadres van dit platform.',
-  domainLoadFailed: (error: string) => `Kon domeininstellingen niet laden: ${error}`,
-  customDomain: 'Aangepast domein',
-  noDomainYet: 'Nog geen domein ingesteld',
-  active: 'Actief',
-  awaitingVerification: 'Wachten op verificatie',
-  inProgress: 'Bezig',
-  domainName: 'Domeinnaam',
-  domainPlaceholder: 'pos.mijnorganisatie.be',
-  change: 'Wijzigen',
-  setUp: 'Instellen',
-  // Around the domain name, shown as code.
-  cnameBefore: 'Maak bij je domeinprovider een CNAME-record aan dat ',
-  cnameAfter: ' naar het volgende adres verwijst:',
-  verify: 'Verifiëren',
-  domainActive: 'Domein geverifieerd en actief.',
-  domainNotActiveYet: (status: string, sslStatus: string) =>
-    `Nog niet actief (status: ${status} / ssl: ${sslStatus}). Dit kan enkele minuten duren nadat de CNAME zichtbaar is — klik op Verifiëren om de status te vernieuwen.`,
-  remove: 'Verwijderen',
-  domainNeedsOwnIdp:
-    'Vereist een eigen identity provider voor deze organisatie (zie Aanmelding) — leden melden zich na het instellen aan via dit domein zelf, niet meer via het standaardadres van dit platform.',
-
-  // Settings → Authentication
-  authenticationSubtitle:
-    'Optioneel: laat leden van deze organisatie inloggen via een eigen identity provider (bv. Google Workspace, Microsoft Entra ID, Keycloak) in plaats van het platform-standaardaccount. Laat leeg om de standaard te blijven gebruiken.',
-  idpLoadFailed: (error: string) => `Kon identity provider niet laden: ${error}`,
-  identityProvider: 'Identity provider',
-  clientSecretSet: 'Status: client-secret ingesteld',
-  clientSecretNotSet: 'Status: nog geen client-secret ingesteld',
-  issuerUrl: 'Issuer-URL',
-  deviceClientId: 'Client-ID voor device code flow',
-  clientSecret: 'Client-secret',
-  fillInToChange: 'Alleen invullen om te wijzigen.',
-  authCodeClientId: 'Client-ID voor authorization code flow (optioneel)',
-  authCodeClientHint: 'Alleen nodig als deze identity provider een aparte client per flow vereist. Leeg = gebruik de client hierboven voor beide.',
-  fillInToChangeState: (isSet: boolean) => `Alleen invullen om te wijzigen (${isSet ? 'momenteel ingesteld' : 'momenteel niet ingesteld'}).`,
-  // Around the callback URL, shown as code.
-  redirectUriBefore: (domain: string) =>
-    `Deze organisatie heeft een aangepast domein (${domain}) en een eigen client voor authorization code flow — vergeet niet om `,
-  redirectUriAfter: ' te registreren als toegestane redirect-URI bij deze identity provider zelf.',
-  scopes: 'Scopes (optioneel)',
-  scopesHint:
-    "Spatie-gescheiden — standaard 'openid profile email offline_access'. Google accepteert geen 'offline_access'; gebruik dan bv. 'openid profile email'.",
-  loginLinks: 'Aanmeldlinks',
-  deviceLinkHint: 'Gebruik deze link om aan te melden op een toestel:',
-  consoleLinkHint: 'Gebruik deze link om aan te melden in het beheerportaal:',
 
   // Settings → Gegevens
   dataSubtitle: 'Al je gegevens meenemen — bijvoorbeeld naar een eigen Arcanum-installatie op je eigen Cloudflare-account.',

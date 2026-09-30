@@ -15,13 +15,11 @@ const CatalogEditorPage = lazy(() => import('./routes/catalog-editor'))
 const DevicesPage = lazy(() => import('./routes/devices'))
 const UsersPage = lazy(() => import('./routes/users'))
 const SettingsLayout = lazy(() => import('./routes/settings/layout'))
-const BrandingPage = lazy(() => import('./routes/settings/branding'))
 const AppearancePage = lazy(() => import('./routes/settings/appearance'))
 const PreferencesPage = lazy(() => import('./routes/settings/preferences'))
 const ProfilePage = lazy(() => import('./routes/settings/profile'))
 const PaymentProvidersPage = lazy(() => import('./routes/settings/payment-providers'))
 const NotificationsPage = lazy(() => import('./routes/settings/notifications'))
-const AuthenticationPage = lazy(() => import('./routes/settings/authentication'))
 const DataPage = lazy(() => import('./routes/settings/data'))
 
 const rootRoute = createRootRoute({ component: AppLayout })
@@ -47,7 +45,6 @@ const settingsIndexRoute = createRoute({
   path: '/',
   component: () => <Navigate to="/settings/appearance" />,
 })
-const brandingRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/branding', component: BrandingPage })
 const appearanceRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/appearance', component: AppearancePage })
 const preferencesRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/preferences', component: PreferencesPage })
 const profileRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/profile', component: ProfilePage })
@@ -57,11 +54,6 @@ const paymentProvidersRoute = createRoute({
   component: PaymentProvidersPage,
 })
 const notificationsRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/notifications', component: NotificationsPage })
-const authenticationRoute = createRoute({
-  getParentRoute: () => settingsRoute,
-  path: '/authentication',
-  component: AuthenticationPage,
-})
 
 const dataRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/data', component: DataPage })
 
@@ -77,13 +69,11 @@ const routeTree = rootRoute.addChildren([
   usersRoute,
   settingsRoute.addChildren([
     settingsIndexRoute,
-    brandingRoute,
     appearanceRoute,
     preferencesRoute,
     profileRoute,
     paymentProvidersRoute,
     notificationsRoute,
-    authenticationRoute,
     dataRoute,
   ]),
 ])

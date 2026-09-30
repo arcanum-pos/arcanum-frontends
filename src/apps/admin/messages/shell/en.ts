@@ -7,7 +7,6 @@ export default {
   save: 'Save',
   saved: 'Saved.',
   loading: 'Loading...',
-  copy: 'Copy',
   custom: 'Custom',
   platformDefault: 'Platform default',
   thisOrg: 'this organisation',
@@ -79,8 +78,6 @@ export default {
     profile: 'Profile',
     paymentProviders: 'Payment providers',
     notifications: 'Notifications',
-    branding: 'Branding',
-    authentication: 'Authentication',
     data: 'Data',
   },
 
@@ -155,52 +152,6 @@ export default {
     invite: { label: 'New invitation', description: 'Email when someone is invited to this organisation.' },
     paymentFailed: { label: 'Failed payment', description: 'Email on a failed or expired payment.' },
   },
-
-  // Settings → Branding
-  removeDomainConfirm: (domain: string) => `Remove ${domain} as custom domain?`,
-  brandingSubtitle: 'Optional: make this organisation reachable on its own domain name instead of this platform’s default address.',
-  domainLoadFailed: (error: string) => `Could not load domain settings: ${error}`,
-  customDomain: 'Custom domain',
-  noDomainYet: 'No domain set up yet',
-  active: 'Active',
-  awaitingVerification: 'Awaiting verification',
-  inProgress: 'In progress',
-  domainName: 'Domain name',
-  domainPlaceholder: 'pos.myorganisation.be',
-  change: 'Change',
-  setUp: 'Set up',
-  cnameBefore: 'At your domain provider, create a CNAME record that points ',
-  cnameAfter: ' to the following address:',
-  verify: 'Verify',
-  domainActive: 'Domain verified and active.',
-  domainNotActiveYet: (status: string, sslStatus: string) =>
-    `Not active yet (status: ${status} / ssl: ${sslStatus}). This can take a few minutes after the CNAME becomes visible — click Verify to refresh the status.`,
-  remove: 'Remove',
-  domainNeedsOwnIdp:
-    'Requires this organisation’s own identity provider (see Authentication) — once it’s set up, members sign in through this domain itself, no longer through this platform’s default address.',
-
-  // Settings → Authentication
-  authenticationSubtitle:
-    'Optional: let members of this organisation sign in through their own identity provider (e.g. Google Workspace, Microsoft Entra ID, Keycloak) instead of the platform default account. Leave empty to keep using the default.',
-  idpLoadFailed: (error: string) => `Could not load identity provider: ${error}`,
-  identityProvider: 'Identity provider',
-  clientSecretSet: 'Status: client secret set',
-  clientSecretNotSet: 'Status: no client secret set yet',
-  issuerUrl: 'Issuer URL',
-  deviceClientId: 'Client ID for device code flow',
-  clientSecret: 'Client secret',
-  fillInToChange: 'Only fill in to change it.',
-  authCodeClientId: 'Client ID for authorization code flow (optional)',
-  authCodeClientHint: 'Only needed if this identity provider requires a separate client per flow. Empty = use the client above for both.',
-  fillInToChangeState: (isSet: boolean) => `Only fill in to change it (${isSet ? 'currently set' : 'currently not set'}).`,
-  redirectUriBefore: (domain: string) =>
-    `This organisation has a custom domain (${domain}) and its own client for authorization code flow — don’t forget to register `,
-  redirectUriAfter: ' as an allowed redirect URI with this identity provider itself.',
-  scopes: 'Scopes (optional)',
-  scopesHint: "Space-separated — default 'openid profile email offline_access'. Google doesn't accept 'offline_access'; use e.g. 'openid profile email' instead.",
-  loginLinks: 'Sign-in links',
-  deviceLinkHint: 'Use this link to sign in on a device:',
-  consoleLinkHint: 'Use this link to sign in to the admin portal:',
 
   // Settings → Gegevens
   dataSubtitle: 'Take all your data with you — for example to your own Arcanum installation on your own Cloudflare account.',

@@ -119,8 +119,9 @@ export interface NotificationSocket {
 //
 // Connects to this same origin's /devices/connect (arcanum-bff forwards it
 // to arcanum-devicehub via a service binding) rather than a separate
-// devicehub hostname — that's what lets an org's own custom domain work for
-// the notification channel too, with zero per-org configuration.
+// devicehub hostname — so the notification channel follows whatever address
+// the instance is on (its custom domain or workers.dev), with no extra
+// configuration.
 export function connectNotifications(terminalId: string, handlers: NotificationHandlers): NotificationSocket {
   let socket: WebSocket | null = null
   let retryDelayMs = 1000

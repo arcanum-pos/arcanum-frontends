@@ -7,14 +7,9 @@ import { useMessages } from '@/shared/i18n'
 import { KioskShell } from '@/shared/kiosk-shell'
 import { DEVICE_MESSAGES } from './messages'
 
-// Served at either /device (platform default) or /<orgId>/device (that
-// org's own identity provider) — derive the matching /device/start URL from
-// wherever this page itself was loaded from, so an org-scoped page actually
-// starts an org-scoped login rather than always falling back to the
-// default. /device/poll deliberately stays a single global path: the org is
-// carried in the pollId's own stored session server-side, so it needs no
-// prefix.
-const DEVICE_START_URL = window.location.pathname.replace(/\/device$/, '') + '/device/start'
+// Served at /device by arcanum-bff; the device grant runs against the
+// instance's identity provider (one per installation, for every org).
+const DEVICE_START_URL = '/device/start'
 
 interface StartResult {
   userCode: string

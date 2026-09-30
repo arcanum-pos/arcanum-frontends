@@ -46,7 +46,7 @@ describe('apiErrorMessage', () => {
 
   it("keeps a provider's own message as sent", () => {
     inLocale('en')
-    expect(apiErrorMessage({ error: 'Hostname already exists', code: 'domain_registration_failed', params: { detail: 'Hostname already exists' } }, 'x')).toBe('Hostname already exists')
-    expect(apiErrorMessage({ error: 'Kon domein niet registreren bij Cloudflare', code: 'domain_registration_failed' }, 'x')).toBe('Could not register the domain with Cloudflare')
+    expect(apiErrorMessage({ error: 'Reader offline', code: 'sumup_readers_failed', params: { detail: 'Reader offline' } }, 'x')).toBe('Reader offline')
+    expect(apiErrorMessage({ error: 'Kon SumUp readers niet ophalen', code: 'sumup_readers_failed' }, 'x')).toBe('Could not fetch the SumUp readers')
   })
 })

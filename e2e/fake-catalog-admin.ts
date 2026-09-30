@@ -101,7 +101,7 @@ export class FakeCatalogAdmin {
     const [path, query = ''] = fullPath.split('?')
     if (path === '/whoami') return ok({ sub: 'admin', email: 'admin@e2e.test', name: 'Admin', firstName: 'Admin', lastName: '', username: 'admin' })
     if (path === '/api/organizations' && method === 'GET') {
-      return ok([{ id: ORG_ID, name: 'E2E', logoUrl: null, theme: null, createdAt: '2026-01-01', customDomain: null }])
+      return ok([{ id: ORG_ID, name: 'E2E', logoUrl: null, theme: null, createdAt: '2026-01-01' }])
     }
 
     if (/^\/api\/organizations\/[^/]+\/reports\/sales$/.test(path) && method === 'GET') {

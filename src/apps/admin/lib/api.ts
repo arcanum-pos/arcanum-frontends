@@ -31,7 +31,6 @@ export interface Organization {
   logoUrl: string | null
   theme: string | null
   createdAt: string
-  customDomain: string | null
   // 'importing' while an org import (org-transfer.ts) isn't finished yet.
   importStatus?: string | null
   // The org's default language: its mails (the invite), and the language a
@@ -74,39 +73,6 @@ export function getOrganization(orgId: string): Promise<Organization> {
 
 export function setOrganizationLocale(orgId: string, locale: Locale): Promise<{ locale: Locale }> {
   return request(`/${encodeURIComponent(orgId)}/locale`, { method: 'PUT', body: JSON.stringify({ locale }) })
-}
-
-export interface CustomDomainConfig {
-  customDomain: string | null
-  // Mirrors Cloudflare's own `status` ('pending' | 'active' | ...) and
-  // `ssl.status` ('pending_validation' | 'pending_issuance' |
-  // 'pending_deployment' | 'active' | ...) — both must be 'active' before
-  // the domain is actually serving traffic with a valid certificate.
-  status: string | null
-  sslStatus: string | null
-  // The one CNAME target every org points at — identical for all of them.
-  cnameTarget: string
-}
-
-export interface CustomDomainVerifyResult extends CustomDomainConfig {
-  verificationErrors: string[]
-  sslValidationErrors: string[]
-}
-
-export function getCustomDomain(orgId: string): Promise<CustomDomainConfig> {
-  return request(`/${encodeURIComponent(orgId)}/custom-domain`)
-}
-
-export function setCustomDomain(orgId: string, hostname: string): Promise<CustomDomainConfig> {
-  return request(`/${encodeURIComponent(orgId)}/custom-domain`, { method: 'PUT', body: JSON.stringify({ hostname }) })
-}
-
-export function verifyCustomDomain(orgId: string): Promise<CustomDomainVerifyResult> {
-  return request(`/${encodeURIComponent(orgId)}/custom-domain/verify`, { method: 'POST' })
-}
-
-export function removeCustomDomain(orgId: string): Promise<{ ok: boolean }> {
-  return request(`/${encodeURIComponent(orgId)}/custom-domain`, { method: 'DELETE' })
 }
 
 export interface Member {
@@ -179,37 +145,6 @@ export async function listSumupReaders(orgId: string): Promise<{ configured: boo
   // the caller reads `error` off the body instead of a thrown exception.
   const res = await fetch(`${WORKER_URL}/sumup/readers?org_id=${encodeURIComponent(orgId)}`)
   return res.json()
-}
-
-export interface IdentityProviderConfig {
-  issuerUrl: string | null
-  clientId: string | null
-  hasClientSecret: boolean
-  scopes: string | null
-  // Optional override client, used only for the authorization-code flow
-  // (/login, /:orgId/console) — the device grant (/:orgId/device) always
-  // uses clientId/hasClientSecret above. Null/unset: use those for both.
-  authCodeClientId: string | null
-  hasAuthCodeClientSecret: boolean
-  updatedAt: string | null
-}
-
-export function getIdentityProvider(orgId: string): Promise<IdentityProviderConfig> {
-  return request(`/${encodeURIComponent(orgId)}/identity-provider`)
-}
-
-export function setIdentityProvider(
-  orgId: string,
-  fields: {
-    issuerUrl?: string
-    clientId?: string
-    clientSecret?: string
-    scopes?: string
-    authCodeClientId?: string
-    authCodeClientSecret?: string
-  }
-): Promise<IdentityProviderConfig> {
-  return request(`/${encodeURIComponent(orgId)}/identity-provider`, { method: 'PUT', body: JSON.stringify(fields) })
 }
 
 export interface SmtpCredentialsConfig {

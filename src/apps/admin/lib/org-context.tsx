@@ -11,7 +11,7 @@ interface OrgContextValue {
   setCurrentOrgId: (id: string) => void
   addOrg: (name: string) => Promise<void>
   // Patches the current org's local copy in place — used after a save (e.g.
-  // Branding's custom domain) so the UI reflects it immediately without a
+  // Preferences' org language) so the UI reflects it immediately without a
   // full org-list refetch.
   updateCurrentOrg: (patch: Partial<Organization>) => void
   // Refetches the org list (e.g. after an import created or removed one),

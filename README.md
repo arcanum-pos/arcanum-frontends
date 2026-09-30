@@ -82,9 +82,10 @@ worker/index.ts               # thin ASSETS passthrough — see wrangler.jsonc
 - **Settings** → Appearance (real, functional light/dark/system toggle),
   Preferences (language — disabled, not supported yet), Profile (real
   `/whoami`), Payment Providers (real, incl. Bancontact prod/preprod),
-  Notifications (disabled preview, waiting on the SMTP work), Authentication
-  (real OIDC issuer/client config + the org's device-flow link), Gegevens
-  (org data export/import, below).
+  Notifications (disabled preview, waiting on the SMTP work), Gegevens
+  (org data export/import, below). No per-org custom domain or login
+  provider pages anymore (hosting plan phase 6): both belong to the
+  instance, set up in the installer.
 - **Gegevens** (Instellingen) — export all of the org's data as one JSON
   file (secrets only when asked, with a warning), and import such a file as
   a **new** org — also offered from the team switcher's "Nieuwe

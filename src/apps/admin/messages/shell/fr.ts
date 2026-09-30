@@ -7,7 +7,6 @@ export default {
   save: 'Enregistrer',
   saved: 'Enregistré.',
   loading: 'Chargement...',
-  copy: 'Copier',
   custom: 'Personnalisé',
   platformDefault: 'Par défaut (plateforme)',
   thisOrg: 'cette organisation',
@@ -79,8 +78,6 @@ export default {
     profile: 'Profil',
     paymentProviders: 'Prestataires de paiement',
     notifications: 'Notifications',
-    branding: 'Image de marque',
-    authentication: 'Authentification',
     data: 'Données',
   },
 
@@ -155,56 +152,6 @@ export default {
     invite: { label: 'Nouvelle invitation', description: 'E-mail lorsque quelqu’un est invité dans cette organisation.' },
     paymentFailed: { label: 'Paiement échoué', description: 'E-mail en cas de paiement échoué ou expiré.' },
   },
-
-  // Settings → Branding
-  removeDomainConfirm: (domain: string) => `Supprimer ${domain} comme domaine personnalisé ?`,
-  brandingSubtitle:
-    'Facultatif : rendez cette organisation accessible sur son propre nom de domaine au lieu de l’adresse par défaut de cette plateforme.',
-  domainLoadFailed: (error: string) => `Impossible de charger les paramètres du domaine : ${error}`,
-  customDomain: 'Domaine personnalisé',
-  noDomainYet: 'Aucun domaine configuré',
-  active: 'Actif',
-  awaitingVerification: 'En attente de vérification',
-  inProgress: 'En cours',
-  domainName: 'Nom de domaine',
-  domainPlaceholder: 'pos.monorganisation.be',
-  change: 'Modifier',
-  setUp: 'Configurer',
-  cnameBefore: 'Chez votre fournisseur de domaine, créez un enregistrement CNAME qui fait pointer ',
-  cnameAfter: ' vers l’adresse suivante :',
-  verify: 'Vérifier',
-  domainActive: 'Domaine vérifié et actif.',
-  domainNotActiveYet: (status: string, sslStatus: string) =>
-    `Pas encore actif (statut : ${status} / ssl : ${sslStatus}). Cela peut prendre quelques minutes une fois le CNAME visible — cliquez sur Vérifier pour actualiser le statut.`,
-  remove: 'Supprimer',
-  domainNeedsOwnIdp:
-    'Nécessite un fournisseur d’identité propre à cette organisation (voir Authentification) — une fois le domaine configuré, les membres se connectent via ce domaine, et non plus via l’adresse par défaut de cette plateforme.',
-
-  // Settings → Authentication
-  authenticationSubtitle:
-    'Facultatif : permettez aux membres de cette organisation de se connecter via leur propre fournisseur d’identité (p. ex. Google Workspace, Microsoft Entra ID, Keycloak) au lieu du compte par défaut de la plateforme. Laissez vide pour continuer à utiliser celui par défaut.',
-  idpLoadFailed: (error: string) => `Impossible de charger le fournisseur d’identité : ${error}`,
-  identityProvider: 'Fournisseur d’identité',
-  clientSecretSet: 'Statut : client secret configuré',
-  clientSecretNotSet: 'Statut : aucun client secret configuré',
-  issuerUrl: 'URL de l’émetteur (issuer)',
-  deviceClientId: 'Client ID pour le device code flow',
-  clientSecret: 'Client secret',
-  fillInToChange: 'À remplir uniquement pour le modifier.',
-  authCodeClientId: 'Client ID pour l’authorization code flow (facultatif)',
-  authCodeClientHint:
-    'Nécessaire uniquement si ce fournisseur d’identité exige un client distinct par flow. Vide = le client ci-dessus est utilisé pour les deux.',
-  fillInToChangeState: (isSet: boolean) =>
-    `À remplir uniquement pour le modifier (${isSet ? 'actuellement configuré' : 'actuellement non configuré'}).`,
-  redirectUriBefore: (domain: string) =>
-    `Cette organisation a un domaine personnalisé (${domain}) et son propre client pour l’authorization code flow — n’oubliez pas d’enregistrer `,
-  redirectUriAfter: ' comme URI de redirection autorisée auprès de ce fournisseur d’identité.',
-  scopes: 'Scopes (facultatif)',
-  scopesHint:
-    "Séparés par des espaces — par défaut 'openid profile email offline_access'. Google n’accepte pas 'offline_access' ; utilisez alors p. ex. 'openid profile email'.",
-  loginLinks: 'Liens de connexion',
-  deviceLinkHint: 'Utilisez ce lien pour vous connecter sur un appareil :',
-  consoleLinkHint: 'Utilisez ce lien pour vous connecter au portail d’administration :',
 
   // Settings → Gegevens
   dataSubtitle: 'Emportez toutes vos données — par exemple vers votre propre installation Arcanum sur votre propre compte Cloudflare.',
