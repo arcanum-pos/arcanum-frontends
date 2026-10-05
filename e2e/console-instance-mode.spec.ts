@@ -32,7 +32,8 @@ test('a demo org shows when it disappears, and how to keep going', async ({ cons
   await open('/products')
   const banner = page.getByTestId('demo-banner')
   const hhmm = expiresAt.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })
-  await expect(banner).toContainText(`Dit is een demo — ze verdwijnt vanzelf om ${hhmm}.`)
+  // After midnight (another day) the banner names the weekday too ("di 01:17").
+  await expect(banner).toContainText(new RegExp(`Dit is een demo — ze verdwijnt vanzelf om (\\S+ )?${hhmm}\\.`))
   await expect(banner.getByRole('link', { name: 'Eigen installatie' })).toHaveAttribute('href', 'https://start.kaboutersoft.be')
   await banner.getByRole('link', { name: 'Neem je demo mee' }).click()
   await expect(page).toHaveURL(/\/console\/settings\/data$/)

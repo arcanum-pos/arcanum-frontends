@@ -72,7 +72,7 @@ export class FakeOrgTransfer {
   }
 
   // What GET /api/organizations/capabilities answers (the backend's ORG_CREATION).
-  capabilities = { orgCreation: 'admins', canCreateOrganization: true, canImportOrganization: true }
+  capabilities: { orgCreation: string; canCreateOrganization: boolean; canImportOrganization: boolean; instanceAdmin?: boolean } = { orgCreation: 'admins', canCreateOrganization: true, canImportOrganization: true, instanceAdmin: true }
 
   private route(method: string, path: string, query: string, body: any) {
     if (path === '/api/organizations/capabilities' && method === 'GET') return ok(this.capabilities)

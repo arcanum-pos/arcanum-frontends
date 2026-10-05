@@ -9,6 +9,7 @@ import {
 import { useMessages } from '@/shared/i18n'
 import { useVersionInfo } from '@/shared/source-url'
 import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
+import { useOrg } from '../lib/org-context'
 
 const NAV_ITEMS = [
   { key: 'dashboard', to: '/dashboard', icon: LayoutDashboard },
@@ -25,6 +26,10 @@ export function NavMain() {
   const m = useMessages(ADMIN_SHELL_MESSAGES)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { installer } = useVersionInfo()
+  const { capabilities } = useOrg()
+  // The installer behind this installation, for its own admins only (a demo's
+  // visitors never see it). A backend without `instanceAdmin` (older): as before.
+  const showInstaller = installer && !!capabilities && capabilities.instanceAdmin !== false
 
   return (
     <SidebarGroup>
@@ -39,7 +44,7 @@ export function NavMain() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         ))}
-        {installer && (
+        {showInstaller && (
           // arcanum-installer behind arcanum-bff (self-hosted installations
           // only) — its own page, not a console route: a full page load.
           <SidebarMenuItem>

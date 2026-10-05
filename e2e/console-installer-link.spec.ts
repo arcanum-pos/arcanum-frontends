@@ -18,3 +18,14 @@ test('no Installatie link without the installer', async ({ console: open, page }
   await expect(page.getByRole('link', { name: 'Producten' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Installatie' })).toHaveCount(0)
 })
+
+test("not for someone who isn't one of the installation's admins (a demo's visitors)", async ({ console: open, page, orgTransfer }) => {
+  orgTransfer.capabilities = { ...orgTransfer.capabilities, instanceAdmin: false }
+  await page.route('**/version', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ version: 'x', installer: true }) })
+  )
+  await open('/products')
+  await expect(page.getByRole('link', { name: 'Producten' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Installatie' })).toHaveCount(0)
+})
+

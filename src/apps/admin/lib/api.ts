@@ -47,6 +47,9 @@ export interface Capabilities {
   orgCreation: string
   canCreateOrganization: boolean
   canImportOrganization: boolean
+  // One of the installation's own admins (the installer's admin list) — the
+  // only ones who see the Installatie link. Absent: a backend from before it.
+  instanceAdmin?: boolean
 }
 
 // An older backend without the endpoint: today's behaviour (both allowed,
