@@ -1,7 +1,13 @@
 import type { LoginPromptMessages } from './nl'
 
-export default {
-  title: 'Sign-in required',
-  description: 'You need to be signed in to view this page.',
-  signIn: 'Sign in to continue',
-} satisfies LoginPromptMessages
+const en: LoginPromptMessages = {
+  title: 'Sign in',
+  description: 'You need to be signed in to continue. Choose how.',
+  hereTitle: 'On this device',
+  hereHint: 'With your password, Google or a passkey.',
+  signIn: 'Sign in',
+  phoneTitle: 'With your phone',
+  phoneHint: 'Scan the QR code and sign in on your phone — this device follows by itself. Handy for a till or customer display.',
+}
+
+export default en

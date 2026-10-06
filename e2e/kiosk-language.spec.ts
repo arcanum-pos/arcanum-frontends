@@ -24,8 +24,10 @@ test.describe('browser in French', () => {
 
   test('the login prompt', async ({ page }) => {
     await page.goto('/login-prompt.html')
-    await expect(page.getByText('Connexion requise')).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Se connecter pour continuer' })).toBeVisible()
+    await page.route(/\/device\/start/, (route) => route.fulfill({ status: 500, json: {} }))
+    await expect(page.getByText('Connexion', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Se connecter' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Avec votre téléphone' })).toBeVisible()
   })
 })
 
@@ -33,8 +35,9 @@ test.describe('browser in a language we do not speak', () => {
   test.use({ locale: 'de-DE' })
 
   test('falls back to Dutch', async ({ page }) => {
+    await page.route(/\/device\/start/, (route) => route.fulfill({ status: 500, json: {} }))
     await page.goto('/login-prompt.html')
-    await expect(page.getByText('Aanmelden vereist')).toBeVisible()
+    await expect(page.getByText('Aanmelden', { exact: true }).first()).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('lang', 'nl')
   })
 })
