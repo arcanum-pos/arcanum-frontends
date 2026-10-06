@@ -115,3 +115,28 @@ test('a device is listed by its name and removed after confirming', async ({ con
   await page.getByRole('menuitem', { name: 'Verwijderen' }).click()
   await expect(page.getByRole('row').filter({ hasText: 'Kassa toog' })).toHaveCount(0)
 })
+
+test('a customer display for a given kassa: chosen by name, linked as soon as it is paired', async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.orgDevices = [
+    { terminal_id: 'pos-1', role: 'pos', linked_to: null, created_at: '2026-10-01T10:00:00Z', online: true, name: 'Kassa toog' },
+    { terminal_id: 'pos-2', role: 'pos', linked_to: null, created_at: '2026-10-01T10:00:00Z', online: true, name: 'Kassa terras' },
+  ]
+  await open('/devices')
+  await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('combobox', { name: 'Voor welke kassa?' })).toHaveCount(0) // only for a display
+  await dialog.getByRole('combobox', { name: 'Type' }).click()
+  await page.getByRole('option', { name: 'Klantscherm' }).click()
+  await dialog.getByRole('combobox', { name: 'Voor welke kassa?' }).click()
+  await expect(page.getByRole('option')).toHaveText(['Later koppelen (in de Instellingen van de kassa)', 'Kassa toog', 'Kassa terras'])
+  await page.getByRole('option', { name: 'Kassa terras' }).click()
+  await dialog.getByLabel('Naam').fill('Tablet terras')
+  await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
+  await expect(dialog.getByTestId('pairing-code')).toBeVisible()
+  expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'cfd', name: 'Tablet terras', linkTo: 'pos-2' })
+
+  catalogAdmin.claimPairing(catalogAdmin.pairings[0].code)
+  await expect(dialog.getByTestId('pairing-claimed')).toHaveText('Tablet terras is gekoppeld en toont de betalingen van Kassa terras.', { timeout: 10_000 })
+  await dialog.getByRole('button', { name: 'Klaar' }).click()
+  await expect(page.getByRole('row').filter({ hasText: 'Tablet terras' })).toContainText('Kassa terras')
+})

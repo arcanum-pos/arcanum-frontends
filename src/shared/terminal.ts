@@ -115,9 +115,9 @@ export async function openCompanionDisplay(orgId: string, posTerminalId: string)
   return terminalId
 }
 
-export async function getLinkedDevice(orgId: string, posTerminalId: string): Promise<{ terminal_id: string } | null> {
+export async function getLinkedDevice(orgId: string, posTerminalId: string): Promise<{ terminal_id: string; name?: string | null } | null> {
   try {
-    return await call<{ terminal_id: string } | null>(devicesPath(orgId, `/${encodeURIComponent(posTerminalId)}/linked`))
+    return await call<{ terminal_id: string; name?: string | null } | null>(devicesPath(orgId, `/${encodeURIComponent(posTerminalId)}/linked`))
   } catch {
     return null
   }

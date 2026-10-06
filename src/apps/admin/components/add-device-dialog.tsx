@@ -7,18 +7,23 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMessages } from '@/shared/i18n'
-import { createDevicePairing, listDevicePairings, type DevicePairing } from '../lib/api'
+import { createDevicePairing, listDevicePairings, type DevicePairing, type OrgDevice } from '../lib/api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 
 // Toestellen → "Toestel toevoegen": a pairing code for a new kassa or
 // customer display (arcanum-backend devices.ts). The code and its QR are
 // shown once; the device enters it on the start page (root `/` — the QR
 // opens it with the code filled in). Polls until it's claimed or expired.
-export function AddDeviceDialog({ orgId, onPaired }: { orgId: string; onPaired: () => void }) {
+// A customer display can be meant for one kassa (`kassas`, by name): it's
+// linked to it as soon as it's paired.
+const LATER = 'later'
+
+export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; kassas: OrgDevice[]; onPaired: () => void }) {
   const m = useMessages(ADMIN_ORG_MESSAGES).devices
   const [open, setOpen] = useState(false)
   const [role, setRole] = useState<'pos' | 'cfd'>('pos')
   const [name, setName] = useState('')
+  const [linkTo, setLinkTo] = useState<string>(LATER)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pairing, setPairing] = useState<(DevicePairing & { code: string }) | null>(null)
@@ -28,6 +33,7 @@ export function AddDeviceDialog({ orgId, onPaired }: { orgId: string; onPaired: 
   function reset() {
     setRole('pos')
     setName('')
+    setLinkTo(LATER)
     setError(null)
     setPairing(null)
     setStatus('open')
@@ -38,7 +44,7 @@ export function AddDeviceDialog({ orgId, onPaired }: { orgId: string; onPaired: 
     setBusy(true)
     setError(null)
     try {
-      setPairing(await createDevicePairing(orgId, role, name.trim()))
+      setPairing(await createDevicePairing(orgId, role, name.trim(), linkTo === LATER ? null : linkTo))
       setStatus('open')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -110,6 +116,24 @@ export function AddDeviceDialog({ orgId, onPaired }: { orgId: string; onPaired: 
               <Label htmlFor="device-name">{m.deviceName}</Label>
               <Input id="device-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === 'pos' ? m.namePlaceholderPos : m.namePlaceholderCfd} autoComplete="off" />
             </div>
+            {role === 'cfd' && (
+              <div className="grid gap-2">
+                <Label>{m.forKassa}</Label>
+                <Select value={linkTo} onValueChange={setLinkTo}>
+                  <SelectTrigger aria-label={m.forKassa}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={LATER}>{m.linkLater}</SelectItem>
+                    {kassas.map((k) => (
+                      <SelectItem key={k.terminal_id} value={k.terminal_id}>
+                        {k.name || k.terminal_id}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
         )}
@@ -126,7 +150,7 @@ export function AddDeviceDialog({ orgId, onPaired }: { orgId: string; onPaired: 
         {pairing && shownStatus === 'claimed' && (
           <p className="flex items-center gap-2 text-sm font-medium" data-testid="pairing-claimed">
             <CheckCircle2 className="size-5 text-green-600" aria-hidden="true" />
-            {m.pairedDevice(pairing.name)}
+            {pairing.linkTo ? m.pairedDisplayFor(pairing.name, kassas.find((k) => k.terminal_id === pairing.linkTo)?.name || pairing.linkTo) : m.pairedDevice(pairing.name)}
           </p>
         )}
         {pairing && (shownStatus === 'expired' || shownStatus === 'revoked') && <p className="text-sm text-muted-foreground">{m.codeExpired}</p>}

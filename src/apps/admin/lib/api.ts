@@ -279,12 +279,14 @@ export interface DevicePairing {
   claimedAt: string | null
   claimedBy: string | null
   terminalId: string | null
+  linkTo: string | null
   // Only in the answer to createDevicePairing — never stored readable.
   code?: string
 }
 
-export function createDevicePairing(orgId: string, role: 'pos' | 'cfd', name: string): Promise<DevicePairing & { code: string }> {
-  return request(`/${encodeURIComponent(orgId)}/device-pairings`, { method: 'POST', body: JSON.stringify({ role, name }) })
+// `linkTo`: for a customer display, the kassa it's for — linked as soon as it's paired.
+export function createDevicePairing(orgId: string, role: 'pos' | 'cfd', name: string, linkTo?: string | null): Promise<DevicePairing & { code: string }> {
+  return request(`/${encodeURIComponent(orgId)}/device-pairings`, { method: 'POST', body: JSON.stringify({ role, name, linkTo: role === 'cfd' ? linkTo || null : null }) })
 }
 
 export function listDevicePairings(orgId: string): Promise<DevicePairing[]> {

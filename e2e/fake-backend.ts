@@ -326,9 +326,10 @@ export class FakeBackend {
       }
     }
     if (action === 'display') {
+      // Like the backend: the kassa's own display, the same one every time.
       for (const d of this.devices.values()) if (d.linked_to === id) d.linked_to = null
-      const terminalId = nextId('cfd-')
-      this.devices.set(terminalId, { terminal_id: terminalId, org_id: 'org-e2e', role: 'cfd', linked_to: id, name: null })
+      const terminalId = `display-of-${id}`
+      this.devices.set(terminalId, { terminal_id: terminalId, org_id: 'org-e2e', role: 'cfd', linked_to: id, name: `${device.name ?? 'Kassa'} · klantscherm` })
       return { status: 201, body: { terminalId } }
     }
     if (action === 'linked') return { status: 200, body: [...this.devices.values()].find((d) => d.linked_to === id) ?? null }

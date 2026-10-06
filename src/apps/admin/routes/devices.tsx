@@ -148,6 +148,7 @@ export default function DevicesPage() {
           {orgId && (
             <AddDeviceDialog
               orgId={orgId}
+              kassas={(devices ?? []).filter((d) => d.role === 'pos')}
               onPaired={() => {
                 reload()
                 reloadPairings()

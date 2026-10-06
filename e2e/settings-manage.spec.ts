@@ -39,3 +39,25 @@ test('an admin: the console in a new tab, and unpairing this device', async ({ k
   // (The stored identity is cleared too — terminal.ts unpairThisDevice — but
   // the kassa fixture puts it back on every load, so it can't be checked here.)
 })
+
+test('linking a customer display: by name, not by id', async ({ kassa, backend }) => {
+  backend.devices.set('cfd-7', { terminal_id: 'cfd-7', org_id: 'org-e2e', role: 'cfd', linked_to: null, name: 'Tablet toog' })
+  await openSettings(kassa)
+  const row = kassa.locator('div.rounded-md').filter({ hasText: 'Tablet toog' })
+  await expect(row).toBeVisible()
+  await row.getByRole('button', { name: 'Koppel' }).click()
+  await expect(kassa.getByText('Gekoppeld: Tablet toog')).toBeVisible()
+  expect(backend.devices.get('cfd-7')!.linked_to).toBe('pos-e2e')
+})
+
+test('"Klantscherm openen": a window with the kassa\'s own display — the same one the next time', async ({ kassa, backend }) => {
+  const opened: string[] = []
+  for (let i = 0; i < 2; i++) {
+    const [popup] = await Promise.all([kassa.waitForEvent('popup'), kassa.getByRole('button', { name: 'Klantscherm openen' }).click()])
+    opened.push(new URL(popup.url()).searchParams.get('terminal')!)
+    await popup.close()
+  }
+  expect(opened).toEqual(['display-of-pos-e2e', 'display-of-pos-e2e'])
+  expect([...backend.devices.values()].filter((d) => d.role === 'cfd')).toHaveLength(1)
+  expect(backend.devices.get('display-of-pos-e2e')).toMatchObject({ linked_to: 'pos-e2e', name: 'Kassa 1 · klantscherm' })
+})

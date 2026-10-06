@@ -138,7 +138,7 @@ export class FakeCatalogAdmin {
 
   // Toestellen → Toestel toevoegen: codes as the backend makes them. A test
   // "claims" one on a device with claimPairing (the start page's side).
-  pairings: { id: string; role: 'pos' | 'cfd'; name: string; status: string; code: string; createdAt: string; expiresAt: string; claimedAt: string | null; claimedBy: string | null; terminalId: string | null; createdBy: string }[] = []
+  pairings: { id: string; role: 'pos' | 'cfd'; name: string; status: string; code: string; createdAt: string; expiresAt: string; claimedAt: string | null; claimedBy: string | null; terminalId: string | null; createdBy: string; linkTo: string | null }[] = []
 
   private pairingRoute(method: string, path: string, body: any): FakeResponse {
     const id = path.split('/device-pairings/')[1]
@@ -156,6 +156,7 @@ export class FakeCatalogAdmin {
         claimedAt: null,
         claimedBy: null,
         terminalId: null,
+        linkTo: body.linkTo ?? null,
       }
       this.pairings.push(pairing)
       return { status: 201, body: pairing }
@@ -176,7 +177,7 @@ export class FakeCatalogAdmin {
     pairing.claimedAt = new Date().toISOString()
     pairing.claimedBy = 'Ann'
     pairing.terminalId = `pos-${pairing.id}`
-    this.orgDevices.push({ terminal_id: pairing.terminalId, role: pairing.role, linked_to: null, created_at: pairing.claimedAt, online: true, name: pairing.name })
+    this.orgDevices.push({ terminal_id: pairing.terminalId, role: pairing.role, linked_to: pairing.linkTo, created_at: pairing.claimedAt, online: true, name: pairing.name })
   }
 
   private sumupRoute(method: string, path: string, body: any): FakeResponse {
