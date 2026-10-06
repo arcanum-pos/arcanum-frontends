@@ -75,6 +75,10 @@ const nl = {
   mail_send_failed: 'Verzenden mislukt',
   bancontact_not_configured: 'Bancontact niet geconfigureerd voor deze organisatie',
   sumup_readers_failed: 'Kon SumUp readers niet ophalen',
+  sumup_not_configured: 'SumUp is niet ingesteld voor deze organisatie',
+  sumup_pairing_code_invalid: 'Een koppelcode bestaat uit 8 of 9 letters en cijfers',
+  sumup_pair_failed: 'Koppelen van de reader mislukt',
+  sumup_remove_failed: 'Loskoppelen van de reader mislukt',
 }
 
 export type ApiErrorCode = keyof typeof nl

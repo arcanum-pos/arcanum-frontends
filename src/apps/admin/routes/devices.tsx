@@ -1,7 +1,18 @@
 import { useState } from 'react'
-import { MoreHorizontal } from 'lucide-react'
+import { Link2, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { listOrgDevices, listSumupReaders, removeDevice, type SumupReader } from '../lib/api'
+import { listOrgDevices, listSumupReaders, pairSumupReader, removeDevice, removeSumupReader, type SumupReader } from '../lib/api'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
@@ -43,10 +54,9 @@ export default function DevicesPage() {
     () => (orgId ? listOrgDevices(orgId) : Promise.resolve([])),
     [orgId]
   )
-  // Fetched live from SumUp, not stored by us — read-only here on purpose:
-  // pairing/unpairing a reader happens in the SumUp app or Instellingen, not
-  // this list.
-  const { data: sumupReaders, error: sumupError } = useAsync(
+  // Fetched live from SumUp, not stored by us. Pairing (by the code the
+  // reader shows) and unpairing go to SumUp too; the list shows the result.
+  const { data: sumupReaders, error: sumupError, reload: reloadReaders } = useAsync(
     () =>
       orgId
         ? listSumupReaders(orgId)
@@ -55,6 +65,45 @@ export default function DevicesPage() {
   )
 
   const [removingId, setRemovingId] = useState<string | null>(null)
+  const [pairOpen, setPairOpen] = useState(false)
+  const [pairingCode, setPairingCode] = useState('')
+  const [readerName, setReaderName] = useState('')
+  const [pairing, setPairing] = useState(false)
+  const [pairError, setPairError] = useState<string | null>(null)
+  const [readerNotice, setReaderNotice] = useState<string | null>(null)
+
+  async function handlePair() {
+    if (!orgId || !pairingCode.trim()) return
+    setPairing(true)
+    setPairError(null)
+    try {
+      const reader = await pairSumupReader(orgId, pairingCode, readerName)
+      setPairingCode('')
+      setReaderName('')
+      setPairOpen(false)
+      setReaderNotice(m.devices.paired(reader.name))
+      reloadReaders()
+    } catch (err) {
+      setPairError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPairing(false)
+    }
+  }
+
+  async function handleUnpair(reader: SumupReader) {
+    if (!orgId) return
+    if (!window.confirm(m.devices.confirmUnpair(reader.name))) return
+    setRemovingId(reader.id)
+    setReaderNotice(null)
+    try {
+      await removeSumupReader(orgId, reader.id)
+      reloadReaders()
+    } catch (err) {
+      setReaderNotice(m.devices.unpairError(err instanceof Error ? err.message : String(err)))
+    } finally {
+      setRemovingId(null)
+    }
+  }
 
   async function handleRemove(terminalId: string) {
     if (!window.confirm(m.devices.confirmRemove(terminalId))) return
@@ -69,10 +118,51 @@ export default function DevicesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{m.devices.title}</h1>
-        <p className="text-muted-foreground">{m.devices.subtitle(currentOrg?.name ?? m.thisOrg)}</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{m.devices.title}</h1>
+          <p className="text-muted-foreground">{m.devices.subtitle(currentOrg?.name ?? m.thisOrg)}</p>
+        </div>
+        {sumupReaders?.configured && (
+          <Dialog open={pairOpen} onOpenChange={setPairOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Link2 />
+                {m.devices.pairReader}
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{m.devices.pairReader}</DialogTitle>
+                <DialogDescription>{m.devices.pairHint}</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="pairing-code">{m.devices.pairingCode}</Label>
+                  <Input
+                    id="pairing-code"
+                    value={pairingCode}
+                    onChange={(e) => setPairingCode(e.target.value)}
+                    autoComplete="off"
+                    className="font-mono uppercase"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="reader-name">{m.devices.readerName}</Label>
+                  <Input id="reader-name" value={readerName} onChange={(e) => setReaderName(e.target.value)} placeholder="Solo" autoComplete="off" />
+                </div>
+                {pairError && <p className="text-sm text-destructive">{pairError}</p>}
+              </div>
+              <DialogFooter>
+                <Button onClick={handlePair} disabled={pairing || !pairingCode.trim()}>
+                  {pairing ? m.busy : m.devices.pair}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
+      {readerNotice && <p className="text-sm text-muted-foreground">{readerNotice}</p>}
 
       {error && <p className="text-sm text-destructive">{m.devices.loadError(error)}</p>}
       {(sumupError || sumupReaders?.error) && (
@@ -121,7 +211,20 @@ export default function DevicesPage() {
                   <TableCell>
                     <Badge variant={READER_STATUS_BADGE[status]}>{m.devices.readerStatus[status]}</Badge>
                   </TableCell>
-                  <TableCell />
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="size-8" disabled={removingId === reader.id} aria-label={m.devices.readerActions(reader.name)}>
+                          <MoreHorizontal />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem variant="destructive" onClick={() => handleUnpair(reader)}>
+                          {m.devices.unpair}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               )
             })}

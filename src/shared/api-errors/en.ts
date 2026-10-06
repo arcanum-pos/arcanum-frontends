@@ -74,4 +74,8 @@ export default {
   mail_send_failed: 'Sending failed',
   bancontact_not_configured: 'Bancontact is not configured for this organisation',
   sumup_readers_failed: 'Could not fetch the SumUp readers',
+  sumup_not_configured: 'SumUp isn’t set up for this organisation',
+  sumup_pairing_code_invalid: 'A pairing code is 8 or 9 letters and digits',
+  sumup_pair_failed: 'Pairing the reader failed',
+  sumup_remove_failed: 'Unpairing the reader failed',
 } satisfies ApiErrorMessages

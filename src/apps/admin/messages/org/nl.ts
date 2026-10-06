@@ -121,11 +121,23 @@ const nl = {
     online: 'Online',
     offline: 'Offline',
     confirmRemove: (id: string) => `Toestel ${id} verwijderen? Dit kan niet ongedaan worden gemaakt.`,
+    pairReader: 'Reader koppelen',
+    pairHint:
+      'Kies op de SumUp Solo voor koppelen via API (in de verbindingsinstellingen): hij toont een code van 8 of 9 tekens. ' +
+      'De Virtual Solo (virtual-solo.sumup.com, om te testen met een sandbox-account) toont die code meteen.',
+    pairingCode: 'Koppelcode',
+    readerName: 'Naam',
+    pair: 'Koppelen',
+    paired: (name: string) => `${name} is gekoppeld. Bevestig op de reader als die erom vraagt; daarna staat hij op "Gekoppeld".`,
+    readerActions: (name: string) => `Acties voor ${name}`,
+    unpair: 'Loskoppelen',
+    confirmUnpair: (name: string) => `${name} loskoppelen van je SumUp-account? Om hem opnieuw te gebruiken, koppel je hem opnieuw met een nieuwe code.`,
+    unpairError: (error: string) => `Loskoppelen mislukt: ${error}`,
     footnote:
       'Offline betekent enkel dat er nu geen live verbinding is (bv. het scherm staat uit of de kassa toont een ' +
       'andere pagina) — het toestel en zijn koppeling blijven bestaan. Gebruik "Verwijderen" enkel voor toestellen ' +
-      'die echt niet meer gebruikt worden. SumUp-readers staan hier enkel ter info (live opgehaald uit je SumUp-account) ' +
-      '— koppelen of loskoppelen doe je in de SumUp-app of in Instellingen, niet hier.',
+      'die echt niet meer gebruikt worden. SumUp-readers worden live opgehaald uit je SumUp-account; koppelen en ' +
+      'loskoppelen gaan ook rechtstreeks naar SumUp.',
   },
 
   // Users

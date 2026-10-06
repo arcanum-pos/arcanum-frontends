@@ -107,11 +107,22 @@ export default {
     online: 'Online',
     offline: 'Offline',
     confirmRemove: (id: string) => `Remove device ${id}? This can’t be undone.`,
+    pairReader: 'Pair reader',
+    pairHint:
+      'On the SumUp Solo, choose pairing via API (in its connection settings): it shows a code of 8 or 9 characters. ' +
+      'The Virtual Solo (virtual-solo.sumup.com, for testing with a sandbox account) shows that code right away.',
+    pairingCode: 'Pairing code',
+    readerName: 'Name',
+    pair: 'Pair',
+    paired: (name: string) => `${name} is paired. Confirm on the reader if it asks; it then shows as "Paired".`,
+    readerActions: (name: string) => `Actions for ${name}`,
+    unpair: 'Unpair',
+    confirmUnpair: (name: string) => `Unpair ${name} from your SumUp account? To use it again, pair it again with a new code.`,
+    unpairError: (error: string) => `Unpairing failed: ${error}`,
     footnote:
       'Offline only means there’s no live connection right now (e.g. the screen is off or the till is showing ' +
       'another page) — the device and its link remain. Only use "Remove" for devices that are really no longer ' +
-      'in use. SumUp readers are listed here for information only (fetched live from your SumUp account) ' +
-      '— pairing or unpairing is done in the SumUp app or in Settings, not here.',
+      'in use. SumUp readers are fetched live from your SumUp account; pairing and unpairing go straight to SumUp too.',
   },
 
   users: {

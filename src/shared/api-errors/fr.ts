@@ -74,4 +74,8 @@ export default {
   mail_send_failed: 'L’envoi a échoué',
   bancontact_not_configured: 'Bancontact n’est pas configuré pour cette organisation',
   sumup_readers_failed: 'Impossible de récupérer les lecteurs SumUp',
+  sumup_not_configured: 'SumUp n’est pas configuré pour cette organisation',
+  sumup_pairing_code_invalid: 'Un code de couplage compte 8 ou 9 lettres et chiffres',
+  sumup_pair_failed: 'Le couplage du lecteur a échoué',
+  sumup_remove_failed: 'Le découplage du lecteur a échoué',
 } satisfies ApiErrorMessages

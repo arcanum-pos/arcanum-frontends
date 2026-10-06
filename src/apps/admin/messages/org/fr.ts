@@ -107,11 +107,23 @@ export default {
     online: 'En ligne',
     offline: 'Hors ligne',
     confirmRemove: (id: string) => `Supprimer l’appareil ${id} ? Cette action est irréversible.`,
+    pairReader: 'Coupler un lecteur',
+    pairHint:
+      'Sur la SumUp Solo, choisissez le couplage via API (dans ses paramètres de connexion) : elle affiche un code de 8 ou 9 caractères. ' +
+      'La Virtual Solo (virtual-solo.sumup.com, pour tester avec un compte sandbox) affiche ce code tout de suite.',
+    pairingCode: 'Code de couplage',
+    readerName: 'Nom',
+    pair: 'Coupler',
+    paired: (name: string) => `${name} est couplé. Confirmez sur le lecteur s’il le demande ; il apparaît ensuite comme « Couplé ».`,
+    readerActions: (name: string) => `Actions pour ${name}`,
+    unpair: 'Découpler',
+    confirmUnpair: (name: string) => `Découpler ${name} de votre compte SumUp ? Pour le réutiliser, couplez-le à nouveau avec un nouveau code.`,
+    unpairError: (error: string) => `Le découplage a échoué : ${error}`,
     footnote:
       'Hors ligne signifie seulement qu’il n’y a pas de connexion en direct pour le moment (p. ex. l’écran est éteint ou la ' +
       'caisse affiche une autre page) — l’appareil et son couplage restent en place. N’utilisez « Supprimer » que pour les ' +
-      'appareils qui ne servent vraiment plus. Les lecteurs SumUp ne figurent ici qu’à titre d’information (récupérés en direct ' +
-      'depuis votre compte SumUp) — le couplage et le découplage se font dans l’app SumUp ou dans Paramètres, pas ici.',
+      'appareils qui ne servent vraiment plus. Les lecteurs SumUp sont récupérés en direct depuis votre compte SumUp ; ' +
+      'le couplage et le découplage passent eux aussi directement par SumUp.',
   },
 
   users: {

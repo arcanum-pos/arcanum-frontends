@@ -150,6 +150,24 @@ export async function listSumupReaders(orgId: string): Promise<{ configured: boo
   return res.json()
 }
 
+async function workerCall(path: string, init: RequestInit): Promise<any> {
+  const res = await fetch(`${WORKER_URL}${path}`, { headers: { 'Content-Type': 'application/json' }, ...init })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(apiErrorMessage(data, '') || `status ${res.status}`)
+  return data
+}
+
+// Pairs a reader with the org's SumUp account by the code the Solo (or the
+// Virtual Solo) shows; it stays 'processing' until the device confirms.
+export async function pairSumupReader(orgId: string, pairingCode: string, name: string): Promise<SumupReader> {
+  const data = await workerCall('/sumup/readers', { method: 'POST', body: JSON.stringify({ orgId, pairingCode, name }) })
+  return data.reader
+}
+
+export async function removeSumupReader(orgId: string, readerId: string): Promise<void> {
+  await workerCall(`/sumup/readers/${encodeURIComponent(readerId)}?org_id=${encodeURIComponent(orgId)}`, { method: 'DELETE' })
+}
+
 export interface SmtpCredentialsConfig {
   host: string | null
   port: number | null

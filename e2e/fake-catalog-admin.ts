@@ -91,6 +91,12 @@ export class FakeCatalogAdmin {
   // Every import call (dry run or apply) as received — tests assert on the
   // raw rows the browser sent.
   importRequests: any[] = []
+  // Toestellen: SumUp as the backend relays it (null = no SumUp account set
+  // up), and every pair/unpair call as received. `pairError` answers the next
+  // pairing like the backend does when SumUp refuses the code.
+  sumupReaders: { id: string; name: string; status: string; model: string | null }[] | null = null
+  sumupCalls: { method: string; path: string; body: any }[] = []
+  pairError: string | null = null
   private seq = 0
 
   private id(prefix: string) {
@@ -112,12 +118,33 @@ export class FakeCatalogAdmin {
       return ok({ ...this.salesReport, ...range })
     }
     if (path === '/api/bancontact/transactions' && method === 'GET') return ok(this.transactions)
+    if (/^\/api\/devices\/by-org\/[^/]+$/.test(path) && method === 'GET') return ok([])
+    if (path.startsWith('/api/bancontact/sumup/readers')) return this.sumupRoute(method, path, body)
     if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'GET') return ok(this.events)
 
     const m = path.match(/^\/api\/organizations\/[^/]+\/(catalog|catalogs)(?:\/(.*))?$/)
     if (!m) return { status: 404, body: { error: 'Not found' } }
     const parts = m[2] ? m[2].split('/') : []
     return m[1] === 'catalog' ? this.catalogRoute(method, parts, query, body || {}) : this.catalogsRoute(method, parts, body || {})
+  }
+
+  private sumupRoute(method: string, path: string, body: any): FakeResponse {
+    if (method === 'GET') return ok(this.sumupReaders ? { configured: true, readers: this.sumupReaders } : { configured: false, readers: [] })
+    this.sumupCalls.push({ method, path, body })
+    if (!this.sumupReaders) return { status: 409, body: { error: 'x', code: 'sumup_not_configured' } }
+    if (method === 'POST') {
+      if (this.pairError) {
+        const detail = this.pairError
+        this.pairError = null
+        return { status: 502, body: { error: detail, code: 'sumup_pair_failed', params: { detail } } }
+      }
+      const reader = { id: this.id('rdr'), name: body.name || 'Solo', status: 'processing', model: 'virtual-solo' }
+      this.sumupReaders.push(reader)
+      return { status: 201, body: { reader } }
+    }
+    const id = decodeURIComponent(path.split('/').pop()!)
+    this.sumupReaders = this.sumupReaders.filter((r) => r.id !== id)
+    return ok({ ok: true })
   }
 
   // --- /catalog/{categories,stations,products,variants} ---
