@@ -7,7 +7,6 @@ import { apiErrorMessage } from '@/shared/api-errors'
 import type { Locale } from '@/shared/i18n'
 
 const ORGANIZATIONS_URL = '/api/organizations';
-const DEVICES_URL = '/api/devices';
 const WORKER_URL = '/api/bancontact';
 
 // Exported for sibling clients (catalog-api.ts) that talk to the same
@@ -238,8 +237,8 @@ export async function whoami(): Promise<Whoami> {
   return res.json()
 }
 
-// arcanum-devicehub, proxied at /api/devices — same contract as
-// webapp/src/lib/terminal.ts's listOrgDevices/removeDevice.
+// The organisation's devices and their pairing codes — arcanum-backend's
+// devices.ts (it checks the role, then asks arcanum-devicehub).
 // 'sim': the SumUp simulator, removed 2026-10-06 — only still listed so an
 // old registration can be recognised and removed.
 export type DeviceRole = 'pos' | 'cfd' | 'sim'
@@ -249,26 +248,51 @@ export interface OrgDevice {
   role: DeviceRole
   linked_to: string | null
   created_at: string
+  // From its pairing code, or renamed since; null for an older device.
+  name: string | null
   // Live presence, display-only — an offline device is still fully
   // registered (and keeps any link it holds); removeDevice is the only
-  // way a row actually goes away. See arcanum-devicehub's identity_providers
-  // design note in CLAUDE.md for why presence never auto-deletes.
+  // way a row actually goes away.
   online: boolean
 }
 
-export async function listOrgDevices(orgId: string): Promise<OrgDevice[]> {
-  const res = await fetch(`${DEVICES_URL}/by-org/${encodeURIComponent(orgId)}`)
-  if (!res.ok) throw new Error(`status ${res.status}`)
-  return res.json()
+export function listOrgDevices(orgId: string): Promise<OrgDevice[]> {
+  return request(`/${encodeURIComponent(orgId)}/devices`)
 }
 
-export async function removeDevice(terminalId: string): Promise<void> {
-  const res = await fetch(`${DEVICES_URL}/remove`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ terminal_id: terminalId }),
-  })
-  if (!res.ok) throw new Error(`status ${res.status}`)
+export async function removeDevice(orgId: string, terminalId: string): Promise<void> {
+  await request(`/${encodeURIComponent(orgId)}/devices/${encodeURIComponent(terminalId)}`, { method: 'DELETE' })
+}
+
+export async function renameOrgDevice(orgId: string, terminalId: string, name: string): Promise<void> {
+  await request(`/${encodeURIComponent(orgId)}/devices/${encodeURIComponent(terminalId)}`, { method: 'PATCH', body: JSON.stringify({ name }) })
+}
+
+export interface DevicePairing {
+  id: string
+  role: 'pos' | 'cfd'
+  name: string
+  status: 'open' | 'claimed' | 'revoked' | 'expired'
+  createdBy: string
+  createdAt: string
+  expiresAt: string
+  claimedAt: string | null
+  claimedBy: string | null
+  terminalId: string | null
+  // Only in the answer to createDevicePairing — never stored readable.
+  code?: string
+}
+
+export function createDevicePairing(orgId: string, role: 'pos' | 'cfd', name: string): Promise<DevicePairing & { code: string }> {
+  return request(`/${encodeURIComponent(orgId)}/device-pairings`, { method: 'POST', body: JSON.stringify({ role, name }) })
+}
+
+export function listDevicePairings(orgId: string): Promise<DevicePairing[]> {
+  return request(`/${encodeURIComponent(orgId)}/device-pairings`)
+}
+
+export async function revokeDevicePairing(orgId: string, id: string): Promise<void> {
+  await request(`/${encodeURIComponent(orgId)}/device-pairings/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
 // worker's shared transactions ledger (one row per recorded payment),

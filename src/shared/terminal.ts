@@ -1,7 +1,11 @@
-// Local counterpart of arcanum-webapp's src/lib/terminal.ts (device-identity
-// storage + notification channel + CFD link management). Same
-// localStorage key/shape — kept byte-for-byte compatible in case any
-// not-yet-migrated screen still reads it directly.
+// This browser's device identity (`arcanum-terminal`) and the calls about
+// devices: pairing, checking itself, customer-display links — all through
+// arcanum-backend (/api/organizations/:org/devices…, which checks who's
+// asking). Only the notification socket's token comes from devicehub.
+// DOMAIN_MODEL.md "Devices: control plane and data plane".
+
+import { apiErrorMessage } from '@/shared/api-errors'
+import { setDeviceName } from '@/shared/device'
 
 export type Role = 'pos' | 'cfd'
 
@@ -17,6 +21,8 @@ export interface Terminal {
   role: Role
   orgId: string
   orgName?: string
+  // From the pairing code (older devices have none).
+  name?: string
 }
 
 const TERMINAL_KEY = 'arcanum-terminal'
@@ -31,81 +37,107 @@ function getStoredTerminal(): Terminal | null {
 
 // A role this app no longer has (the SumUp simulator's 'sim', removed
 // 2026-10-06 — SumUp's Virtual Solo replaces it) counts as not registered:
-// the chooser asks again.
+// the start page asks again.
 export function getStoredTerminalInfo(): Terminal | null {
   const stored = getStoredTerminal()
   return stored && stored.role in PAGE_FOR_ROLE ? stored : null
 }
 
-async function callRegister(terminal: Terminal): Promise<void> {
-  try {
-    const res = await fetch(`${DEVICES_URL}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ terminal_id: terminal.terminalId, role: terminal.role, org_id: terminal.orgId }),
-    })
-    if (!res.ok) console.error(`Kon toestel niet registreren: ${res.status} ${await res.text().catch(() => '')}`)
-  } catch (err) {
-    console.error('Kon toestel niet registreren (netwerkfout)', err)
-  }
+export function forgetTerminal(): void {
+  localStorage.removeItem(TERMINAL_KEY)
 }
 
-// Called only by the chooser, once it has determined both a role and an
-// organization — establishes this browser's device identity.
-export async function registerNewTerminal(role: Role, orgId: string, orgName?: string): Promise<void> {
-  const terminal: Terminal = { terminalId: crypto.randomUUID(), role, orgId, orgName }
+const devicesPath = (orgId: string, suffix = '') => `/api/organizations/${encodeURIComponent(orgId)}/devices${suffix}`
+
+async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...init })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw Object.assign(new Error(apiErrorMessage(data, `status ${res.status}`)), { status: res.status, code: data?.code })
+  return data as T
+}
+
+export interface ClaimedDevice {
+  terminalId: string
+  role: Role
+  orgId: string
+  orgName: string
+  orgLocale: string | null
+  name: string
+}
+
+// "Dit toestel koppelen": claims the code an admin made in the console;
+// this browser becomes that device (its role, organisation and name).
+export async function claimPairingCode(code: string): Promise<ClaimedDevice> {
+  const device = await call<ClaimedDevice>('/api/organizations/device-pairings/claim', { method: 'POST', body: JSON.stringify({ code }) })
+  const terminal: Terminal = { terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name }
   localStorage.setItem(TERMINAL_KEY, JSON.stringify(terminal))
-  await callRegister(terminal)
+  setDeviceName(device.name)
+  return device
 }
 
-// Called by a target page (kassa, customer display) on load. Re-confirms the
-// already-stored identity with the server (idempotent) but never invents
-// one — if nothing's stored yet, or it's stored under a different role,
-// returns null so the caller can send them back to the chooser instead of
-// registering blind with no organization.
+// Called by a device page (kassa, customer display, Instellingen) on load:
+// the stored identity, if it has this role and the organisation still
+// knows it. Removed in the console (or never paired) → null, and the
+// stored identity is forgotten, so the caller sends the browser to the
+// start page. Offline → the stored identity as is (keep selling).
 export async function getRegisteredTerminal(expectedRole: Role): Promise<Terminal | null> {
-  const stored = getStoredTerminal()
+  const stored = getStoredTerminalInfo()
   if (!stored || stored.role !== expectedRole || !stored.orgId) return null
-  await callRegister(stored)
+  try {
+    await call(devicesPath(stored.orgId, `/${encodeURIComponent(stored.terminalId)}`))
+  } catch (err) {
+    const status = (err as { status?: number }).status
+    if (status === 404 || status === 403) {
+      forgetTerminal()
+      return null
+    }
+  }
   return stored
 }
 
-// Spawning a linked CFD in a second window ("Klantscherm openen") —
-// deliberately does NOT use registerNewTerminal/localStorage: localStorage
-// is shared across every window on this origin, so writing this new CFD's
-// identity there would silently overwrite the POS's own stored terminal in
-// the window that's opening it. The spawned window is instead handed its
-// terminal id directly (as a URL query param), and only ever API-registers
-// it, never stores it.
-export async function registerRemoteTerminal(role: Role, orgId: string): Promise<string> {
-  const terminalId = crypto.randomUUID()
-  await callRegister({ terminalId, role, orgId })
+// Unpairs this browser (admins only — the backend refuses anyone else).
+export async function unpairThisDevice(): Promise<void> {
+  const stored = getStoredTerminalInfo()
+  if (stored) await call(devicesPath(stored.orgId, `/${encodeURIComponent(stored.terminalId)}`), { method: 'DELETE' })
+  forgetTerminal()
+}
+
+// Renames this device in the organisation's list (the console's Toestellen).
+export async function renameDevice(orgId: string, terminalId: string, name: string): Promise<void> {
+  await call(devicesPath(orgId, `/${encodeURIComponent(terminalId)}`), { method: 'PATCH', body: JSON.stringify({ name }) })
+}
+
+// The kassa's "Klantscherm openen": a customer display for a second window
+// of this kassa, registered and linked by the backend (replacing the one
+// it had). Returns its terminal id, handed to the window in its URL.
+export async function openCompanionDisplay(orgId: string, posTerminalId: string): Promise<string> {
+  const { terminalId } = await call<{ terminalId: string }>(devicesPath(orgId, `/${encodeURIComponent(posTerminalId)}/display`), { method: 'POST' })
   return terminalId
 }
 
-export async function getLinkedDevice(posTerminalId: string, role: 'cfd'): Promise<{ terminal_id: string } | null> {
+export async function getLinkedDevice(orgId: string, posTerminalId: string): Promise<{ terminal_id: string } | null> {
   try {
-    const res = await fetch(`${DEVICES_URL}/${encodeURIComponent(posTerminalId)}/linked?role=${role}`)
-    return res.ok ? await res.json() : null
+    return await call<{ terminal_id: string } | null>(devicesPath(orgId, `/${encodeURIComponent(posTerminalId)}/linked`))
   } catch {
     return null
   }
 }
 
-export async function unlinkTerminal(terminalId: string): Promise<void> {
-  await fetch(`${DEVICES_URL}/unlink`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ terminal_id: terminalId }),
-  })
+export async function listLinkableDisplays(orgId: string, posTerminalId: string): Promise<{ terminal_id: string; name?: string | null }[]> {
+  return call(devicesPath(orgId, `/${encodeURIComponent(posTerminalId)}/linkable`))
 }
 
-export async function linkTerminals(posTerminalId: string, terminalId: string): Promise<void> {
-  await fetch(`${DEVICES_URL}/link`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ pos_terminal_id: posTerminalId, terminal_id: terminalId }),
-  })
+export async function linkTerminals(orgId: string, posTerminalId: string, terminalId: string): Promise<void> {
+  await call(devicesPath(orgId, `/${encodeURIComponent(posTerminalId)}/link`), { method: 'POST', body: JSON.stringify({ terminalId }) })
+}
+
+export async function unlinkTerminal(orgId: string, terminalId: string): Promise<void> {
+  await call(devicesPath(orgId, `/${encodeURIComponent(terminalId)}/unlink`), { method: 'POST' })
+}
+
+// Tells the kassa and its customer display to start over (after a payment).
+export async function resetKassa(orgId: string, posTerminalId: string): Promise<void> {
+  await call(devicesPath(orgId, `/${encodeURIComponent(posTerminalId)}/reset`), { method: 'POST' })
 }
 
 export type NotificationHandlers = Record<string, (msg: Record<string, any>) => void>

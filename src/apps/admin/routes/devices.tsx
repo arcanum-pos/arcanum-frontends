@@ -21,7 +21,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { listOrgDevices, listSumupReaders, pairSumupReader, removeDevice, removeSumupReader, type SumupReader } from '../lib/api'
+import { listDevicePairings, listOrgDevices, listSumupReaders, pairSumupReader, removeDevice, removeSumupReader, revokeDevicePairing, type OrgDevice, type SumupReader } from '../lib/api'
+import { AddDeviceDialog } from '../components/add-device-dialog'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
@@ -65,6 +66,16 @@ export default function DevicesPage() {
     [orgId]
   )
 
+  // Open pairing codes (admins only — anyone else gets none).
+  const { data: pairings, reload: reloadPairings } = useAsync(
+    () => (orgId ? listDevicePairings(orgId).catch(() => []) : Promise.resolve([])),
+    [orgId]
+  )
+  const openPairings = (pairings ?? []).filter((p) => p.status === 'open' && Date.parse(p.expiresAt) > Date.now())
+  const [deviceError, setDeviceError] = useState<string | null>(null)
+  // "Gekoppeld aan": the kassa's name when it has one.
+  const nameOf = (terminalId: string) => devices?.find((d) => d.terminal_id === terminalId)?.name ?? null
+
   const [removingId, setRemovingId] = useState<string | null>(null)
   const [pairOpen, setPairOpen] = useState(false)
   const [pairingCode, setPairingCode] = useState('')
@@ -106,15 +117,24 @@ export default function DevicesPage() {
     }
   }
 
-  async function handleRemove(terminalId: string) {
-    if (!window.confirm(m.devices.confirmRemove(terminalId))) return
-    setRemovingId(terminalId)
+  async function handleRemove(device: OrgDevice) {
+    if (!orgId || !window.confirm(m.devices.confirmRemoveDevice(device.name || device.terminal_id))) return
+    setRemovingId(device.terminal_id)
+    setDeviceError(null)
     try {
-      await removeDevice(terminalId)
+      await removeDevice(orgId, device.terminal_id)
       reload()
+    } catch (err) {
+      setDeviceError(m.devices.removeFailed(err instanceof Error ? err.message : String(err)))
     } finally {
       setRemovingId(null)
     }
+  }
+
+  async function handleRevoke(id: string) {
+    if (!orgId) return
+    await revokeDevicePairing(orgId, id).catch(() => {})
+    reloadPairings()
   }
 
   return (
@@ -124,53 +144,83 @@ export default function DevicesPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{m.devices.title}</h1>
           <p className="text-muted-foreground">{m.devices.subtitle(currentOrg?.name ?? m.thisOrg)}</p>
         </div>
-        {sumupReaders?.configured && (
-          <Dialog open={pairOpen} onOpenChange={setPairOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Link2 />
-                {m.devices.pairReader}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{m.devices.pairReader}</DialogTitle>
-                <DialogDescription>
-                  {m.devices.pairHint}{' '}
-                  <a href={docsUrl('sumup')} target="_blank" rel="noopener" className="underline underline-offset-4">
-                    {m.devices.moreInfo}
-                  </a>
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="pairing-code">{m.devices.pairingCode}</Label>
-                  <Input
-                    id="pairing-code"
-                    value={pairingCode}
-                    onChange={(e) => setPairingCode(e.target.value)}
-                    autoComplete="off"
-                    className="font-mono uppercase"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="reader-name">{m.devices.readerName}</Label>
-                  <Input id="reader-name" value={readerName} onChange={(e) => setReaderName(e.target.value)} placeholder="Solo" autoComplete="off" />
-                </div>
-                {pairError && <p className="text-sm text-destructive">{pairError}</p>}
-              </div>
-              <DialogFooter>
-                <Button onClick={handlePair} disabled={pairing || !pairingCode.trim()}>
-                  {pairing ? m.busy : m.devices.pair}
+        <div className="flex flex-wrap gap-2">
+          {orgId && (
+            <AddDeviceDialog
+              orgId={orgId}
+              onPaired={() => {
+                reload()
+                reloadPairings()
+              }}
+            />
+          )}
+          {sumupReaders?.configured && (
+            <Dialog open={pairOpen} onOpenChange={setPairOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Link2 />
+                  {m.devices.pairReader}
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        )}
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{m.devices.pairReader}</DialogTitle>
+                  <DialogDescription>
+                    {m.devices.pairHint}{' '}
+                    <a href={docsUrl('sumup')} target="_blank" rel="noopener" className="underline underline-offset-4">
+                      {m.devices.moreInfo}
+                    </a>
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="pairing-code">{m.devices.pairingCode}</Label>
+                    <Input
+                      id="pairing-code"
+                      value={pairingCode}
+                      onChange={(e) => setPairingCode(e.target.value)}
+                      autoComplete="off"
+                      className="font-mono uppercase"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="reader-name">{m.devices.readerName}</Label>
+                    <Input id="reader-name" value={readerName} onChange={(e) => setReaderName(e.target.value)} placeholder="Solo" autoComplete="off" />
+                  </div>
+                  {pairError && <p className="text-sm text-destructive">{pairError}</p>}
+                </div>
+                <DialogFooter>
+                  <Button onClick={handlePair} disabled={pairing || !pairingCode.trim()}>
+                    {pairing ? m.busy : m.devices.pair}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
       {readerNotice && <p className="text-sm text-muted-foreground">{readerNotice}</p>}
 
       {error && <p className="text-sm text-destructive">{m.devices.loadError(error)}</p>}
+      {deviceError && <p className="text-sm text-destructive">{deviceError}</p>}
+      {openPairings.length > 0 && (
+        <div className="flex flex-col gap-2" data-testid="open-pairings">
+          <h2 className="text-sm font-medium">{m.devices.openCodes}</h2>
+          {openPairings.map((p) => {
+            const minutes = Math.max(1, Math.round((Date.parse(p.expiresAt) - Date.now()) / 60_000))
+            return (
+              <div key={p.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
+                <span>
+                  {m.devices.roles[p.role]} · {m.devices.codeFor(p.name, `${minutes} min`)}
+                </span>
+                <Button size="sm" variant="ghost" onClick={() => handleRevoke(p.id)}>
+                  {m.devices.revoke}
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      )}
       {(sumupError || sumupReaders?.error) && (
         <p className="text-sm text-destructive">{m.devices.readersError(sumupError ?? sumupReaders?.error ?? '')}</p>
       )}
@@ -237,9 +287,14 @@ export default function DevicesPage() {
           {!loading &&
             devices?.map((device) => (
               <TableRow key={device.terminal_id}>
-                <TableCell className="font-mono text-xs">{device.terminal_id}</TableCell>
+                <TableCell>
+                  {device.name && <div className="font-medium">{device.name}</div>}
+                  <div className="font-mono text-xs text-muted-foreground">{device.terminal_id}</div>
+                </TableCell>
                 <TableCell>{m.devices.roles[device.role] ?? device.role}</TableCell>
-                <TableCell className="font-mono text-xs">{device.linked_to ?? '—'}</TableCell>
+                <TableCell className={device.linked_to && nameOf(device.linked_to) ? undefined : 'font-mono text-xs'}>
+                  {device.linked_to ? (nameOf(device.linked_to) ?? device.linked_to) : '—'}
+                </TableCell>
                 <TableCell>{new Date(device.created_at).toLocaleString(intlLocale)}</TableCell>
                 <TableCell>
                   <Badge variant={device.online ? 'default' : 'secondary'}>
@@ -254,7 +309,7 @@ export default function DevicesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem variant="destructive" onClick={() => handleRemove(device.terminal_id)}>
+                      <DropdownMenuItem variant="destructive" onClick={() => handleRemove(device)}>
                         {m.remove}
                       </DropdownMenuItem>
                     </DropdownMenuContent>

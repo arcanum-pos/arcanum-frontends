@@ -1,15 +1,22 @@
 import type { Role } from '@/shared/terminal'
 
-// The org/device-role chooser's texts — the source of truth; fr.ts and en.ts
+// The start page's texts (root `/`) — the source of truth; fr.ts and en.ts
 // must match this shape (see src/shared/i18n).
 const nl = {
-  whichOrg: 'Voor welke organisatie is dit toestel?',
-  whichRole: 'Wat is dit toestel?',
+  title: 'Wat wil je doen?',
+  pairTitle: 'Dit toestel koppelen',
+  pairHint: 'Als kassa of klantscherm, met een koppelcode. Een beheerder maakt die in de console bij Toestellen → Toestel toevoegen.',
+  code: 'Koppelcode',
+  pair: 'Koppelen',
+  busy: 'Bezig…',
+  manageTitle: 'Beheer',
+  manageHint: 'De console: menukaarten, toestellen, gebruikers en rapporten.',
+  manage: 'Naar de console',
+  removed: 'Dit toestel is niet meer gekoppeld (het werd verwijderd in de console). Koppel het opnieuw met een nieuwe code.',
+  pairedTitle: (name: string) => `Dit toestel is ${name}`,
   org: (name: string) => `Organisatie: ${name}`,
-  roles: {
-    pos: { title: 'Kassa', hint: 'Bonnen verkopen en betalingen aanmaken' },
-    cfd: { title: 'Klantscherm', hint: 'Toont QR-codes en betaalstatus aan de klant' },
-  } satisfies Record<Role, { title: string; hint: string }>,
+  open: 'Openen',
+  roles: { pos: 'een kassa', cfd: 'een klantscherm' } satisfies Record<Role, string>,
 }
 
 export type ChooserMessages = typeof nl

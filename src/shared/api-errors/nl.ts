@@ -79,6 +79,12 @@ const nl = {
   sumup_pairing_code_invalid: 'Een koppelcode bestaat uit 8 of 9 letters en cijfers',
   sumup_pair_failed: 'Koppelen van de reader mislukt',
   sumup_remove_failed: 'Loskoppelen van de reader mislukt',
+  device_name_required: 'Geef het toestel een naam',
+  device_not_found: 'Dit toestel is niet (meer) gekoppeld aan deze organisatie',
+  pairing_code_invalid: 'Deze koppelcode klopt niet, is al gebruikt of is verlopen — vraag een beheerder om een nieuwe',
+  pairing_too_many_attempts: 'Te veel foute koppelcodes — probeer over 10 minuten opnieuw',
+  pairing_not_member: 'Je bent geen lid van de organisatie van deze koppelcode — meld je aan met het juiste account',
+  devicehub_failed: 'Toestellen zijn even niet bereikbaar — probeer opnieuw',
 }
 
 export type ApiErrorCode = keyof typeof nl

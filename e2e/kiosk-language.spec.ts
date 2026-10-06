@@ -1,36 +1,24 @@
 import { expect, test } from './fixtures'
 
-// The setup screens (chooser, login prompt, device login) speak the device's
+// The setup screens (start page, login prompt, device login) speak the device's
 // picked language, else the browser's, else Dutch. A pick is remembered on
 // the device — the customer display starts from it too (see cfd.spec.ts).
 
 test.describe('browser in French', () => {
   test.use({ locale: 'fr-BE' })
 
-  test('the chooser follows the browser, and a pick sticks over it', async ({ page }) => {
-    await page.route(/\/api\/organizations\/memberships/, (route) =>
-      route.fulfill({
-        contentType: 'application/json',
-        body: JSON.stringify([
-          { orgId: 'org-1', orgName: 'Scouts', role: 'admin' },
-          { orgId: 'org-2', orgName: 'Chiro', role: 'cashier' },
-        ]),
-      })
-    )
+  test('the start page follows the browser, and a pick sticks over it', async ({ page }) => {
     await page.goto('/chooser.html')
-    await expect(page.getByRole('heading', { name: 'Pour quelle organisation est cet appareil ?' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Que voulez-vous faire ?' })).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
-
-    await page.getByRole('button', { name: 'Scouts' }).click()
-    await expect(page.getByText('Organisation : Scouts')).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Écran client/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Coupler', exact: true })).toBeVisible()
 
     await page.getByRole('button', { name: 'English' }).click()
-    await expect(page.getByRole('heading', { name: 'What is this device?' })).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Customer display/ })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'What would you like to do?' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Pair this device' })).toBeVisible()
 
     await page.reload()
-    await expect(page.getByRole('heading', { name: 'Which organisation is this device for?' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'What would you like to do?' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'English' })).toHaveAttribute('aria-pressed', 'true')
   })
 

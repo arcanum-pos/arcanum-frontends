@@ -59,44 +59,30 @@ test('a French kassa: a cash sale end to end, and the Toog tab is still stored a
   await expect(kassa.getByText('Comptoir — payer directement')).toBeVisible()
 })
 
-async function registerOnChooser(browser: import('@playwright/test').Browser, browserLocale: string, orgLocale: string | undefined, pick?: string) {
+// Pairing a device on the start page (root `/`, chooser.html) with a code
+// from the console: the device then speaks a language picked there, else
+// the organisation's, else the browser's.
+async function pairOnStartPage(browser: import('@playwright/test').Browser, browserLocale: string, orgLocale: string | null, pick?: string) {
   const context = await browser.newContext({ locale: browserLocale })
   const page = await context.newPage()
-  await page.route(/\/api\/organizations\/memberships/, (route) =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ orgId: 'org-1', orgName: 'Scouts', role: 'admin', orgLocale }]) })
+  await page.route(/\/api\/organizations\/device-pairings\/claim$/, (route) =>
+    route.fulfill({ status: 201, json: { terminalId: 'pos-new', role: 'pos', orgId: 'org-1', orgName: 'Scouts', orgLocale, name: 'Kassa 1' } })
   )
-  await page.route(/\/api\/devices\//, (route) => route.fulfill({ contentType: 'application/json', body: '{}' }))
+  // The kassa itself isn't under test here — stop at its URL.
   await page.route(/\/kassa(\.html)?$/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>kassa</p>' }))
-  await page.goto('/chooser.html')
+  await page.goto('/chooser.html?code=K7PMQ2X4')
   if (pick) await page.getByRole('button', { name: pick }).click()
-  await page.getByRole('button', { name: /^(Kassa|Caisse|Till)/ }).click()
+  await page.getByRole('button', { name: /^(Koppelen|Coupler|Pair)$/ }).click()
   await page.waitForURL(/\/kassa/)
   const stored = await page.evaluate(() => localStorage.getItem('arcanum-locale'))
   await context.close()
   return stored
 }
 
-test("registering a device: a language picked on the chooser, else the org's default, else the browser's", async ({ browser }) => {
-  expect(await registerOnChooser(browser, 'nl-BE', 'fr')).toBe('fr')
-  expect(await registerOnChooser(browser, 'nl-BE', 'fr', 'English')).toBe('en')
-  expect(await registerOnChooser(browser, 'fr-BE', undefined)).toBe('fr')
-})
-
-test('the chooser hands the language it was set up in to the device', async ({ browser }) => {
-  const context = await browser.newContext({ locale: 'fr-BE' })
-  const page = await context.newPage()
-  await page.route(/\/api\/organizations\/memberships/, (route) =>
-    route.fulfill({ contentType: 'application/json', body: JSON.stringify([{ orgId: 'org-1', orgName: 'Scouts', role: 'admin' }]) })
-  )
-  await page.route(/\/api\/devices\//, (route) => route.fulfill({ contentType: 'application/json', body: '{}' }))
-  // The kassa itself isn't under test here — stop at its URL.
-  await page.route(/\/kassa(\.html)?$/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>kassa</p>' }))
-
-  await page.goto('/chooser.html')
-  await page.getByRole('button', { name: /^Caisse/ }).click()
-  await expect(page.getByText('kassa')).toBeVisible()
-  expect(await page.evaluate(() => localStorage.getItem('arcanum-locale'))).toBe('fr')
-  await context.close()
+test("pairing a device: a language picked on the start page, else the org's default, else the browser's", async ({ browser }) => {
+  expect(await pairOnStartPage(browser, 'nl-BE', 'fr')).toBe('fr')
+  expect(await pairOnStartPage(browser, 'nl-BE', 'fr', 'English')).toBe('en')
+  expect(await pairOnStartPage(browser, 'fr-BE', null)).toBe('fr')
 })
 
 test("a French kassa shows the backend's refusals in French (by error code)", async ({ kassa, backend }) => {

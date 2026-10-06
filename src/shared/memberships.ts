@@ -1,3 +1,4 @@
+// The organisations the signed-in person is an active member of, with their role.
 import { apiErrorMessage } from '@/shared/api-errors'
 
 export interface Membership {

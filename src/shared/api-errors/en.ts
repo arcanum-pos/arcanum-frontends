@@ -78,4 +78,10 @@ export default {
   sumup_pairing_code_invalid: 'A pairing code is 8 or 9 letters and digits',
   sumup_pair_failed: 'Pairing the reader failed',
   sumup_remove_failed: 'Unpairing the reader failed',
+  device_name_required: 'Give the device a name',
+  device_not_found: 'This device is not (or no longer) paired with this organisation',
+  pairing_code_invalid: 'This pairing code is wrong, already used or expired — ask an admin for a new one',
+  pairing_too_many_attempts: 'Too many wrong pairing codes — try again in 10 minutes',
+  pairing_not_member: 'You’re not a member of this pairing code’s organisation — sign in with the right account',
+  devicehub_failed: 'Devices are briefly unreachable — try again',
 } satisfies ApiErrorMessages

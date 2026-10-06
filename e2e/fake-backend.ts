@@ -286,16 +286,77 @@ export class FakeBackend {
     return !!tab && tab.status === 'open' && !this.summary(tab).paymentPending
   }
 
+  // --- Devices (arcanum-backend devices.ts) ---
+  // The registry, as the backend answers it for org-e2e. The kassa fixture's
+  // own terminal is in it; remove it to play "removed in the console".
+  devices = new Map<string, { terminal_id: string; org_id: string; role: string; linked_to: string | null; name: string | null }>([
+    ['pos-e2e', { terminal_id: 'pos-e2e', org_id: 'org-e2e', role: 'pos', linked_to: null, name: 'Kassa 1' }],
+  ])
+  // Pairing codes a test made "in the console": code (as shown) → role + name.
+  pairingCodes = new Map<string, { role: 'pos' | 'cfd'; name: string }>()
+  // The signed-in person's role in org-e2e (Instellingen's Beheer is for admins).
+  memberRole: 'admin' | 'cashier' = 'cashier'
+  deviceCalls: { method: string; id: string; action?: string; body?: any }[] = []
+
+  private claim(code: string): FakeResponse {
+    const key = code.toUpperCase().replace(/[\s-]/g, '')
+    const entry = [...this.pairingCodes].find(([c]) => c.replace('-', '') === key)
+    if (!entry) return { status: 400, body: { error: 'Deze koppelcode klopt niet, is al gebruikt of is verlopen — vraag een beheerder om een nieuwe', code: 'pairing_code_invalid' } }
+    this.pairingCodes.delete(entry[0])
+    const terminalId = nextId('dev-')
+    this.devices.set(terminalId, { terminal_id: terminalId, org_id: 'org-e2e', role: entry[1].role, linked_to: null, name: entry[1].name })
+    return { status: 201, body: { terminalId, role: entry[1].role, orgId: 'org-e2e', orgName: 'E2E', orgLocale: this.orgLocale, name: entry[1].name } }
+  }
+  orgLocale: string | null = null
+
+  private handleDevice(method: string, id: string, action: string | undefined, body: any): FakeResponse {
+    this.deviceCalls.push({ method, id, action, body })
+    const device = this.devices.get(id)
+    if (!device) return { status: 404, body: { error: 'Dit toestel is niet (meer) gekoppeld aan deze organisatie', code: 'device_not_found' } }
+    if (!action) {
+      if (method === 'GET') return { status: 200, body: device }
+      if (method === 'PATCH') {
+        device.name = body?.name ?? device.name
+        return { status: 200, body: device }
+      }
+      if (method === 'DELETE') {
+        if (this.memberRole !== 'admin') return { status: 403, body: { error: 'Forbidden' } }
+        this.devices.delete(id)
+        return { status: 200, body: { ok: true } }
+      }
+    }
+    if (action === 'display') {
+      for (const d of this.devices.values()) if (d.linked_to === id) d.linked_to = null
+      const terminalId = nextId('cfd-')
+      this.devices.set(terminalId, { terminal_id: terminalId, org_id: 'org-e2e', role: 'cfd', linked_to: id, name: null })
+      return { status: 201, body: { terminalId } }
+    }
+    if (action === 'linked') return { status: 200, body: [...this.devices.values()].find((d) => d.linked_to === id) ?? null }
+    if (action === 'linkable') return { status: 200, body: [...this.devices.values()].filter((d) => d.role === 'cfd' && !d.linked_to) }
+    if (action === 'link') {
+      const target = this.devices.get(body?.terminalId)
+      if (!target) return { status: 404, body: { error: 'x', code: 'device_not_found' } }
+      target.linked_to = id
+      return { status: 200, body: target }
+    }
+    if (action === 'unlink') {
+      device.linked_to = null
+      return { status: 200, body: device }
+    }
+    return { status: 200, body: { ok: true } } // reset
+  }
+
   // The request handler — method, path (without origin) and parsed JSON body.
   handle(method: string, path: string, body: any): FakeResponse {
     const url = new URL(path, 'http://fake')
     const p = url.pathname
 
     if (p === '/whoami') return { status: 200, body: { name: 'Test Kassier', email: 'kassier@example.test' } }
-    if (p.startsWith('/api/devices/')) {
-      if (p.endsWith('/ws-token')) return { status: 200, body: { token: 'test-token' } }
-      return { status: 200, body: { ok: true } }
-    }
+    if (p === '/api/devices/ws-token') return { status: 200, body: { token: 'test-token' } }
+    if (p === '/api/organizations/memberships' && method === 'GET') return { status: 200, body: [{ orgId: 'org-e2e', orgName: 'E2E', role: this.memberRole }] }
+    if (p === '/api/organizations/device-pairings/claim' && method === 'POST') return this.claim(String(body?.code ?? ''))
+    const device = p.match(/^\/api\/organizations\/([^/]+)\/devices\/([^/]+)(?:\/(display|linked|linkable|link|unlink|reset))?$/)
+    if (device) return this.handleDevice(method, decodeURIComponent(device[2]), device[3], body)
 
     if (/^\/api\/organizations\/[^/]+\/events$/.test(p) && method === 'GET') return { status: 200, body: this.events }
 

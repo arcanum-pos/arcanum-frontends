@@ -120,7 +120,13 @@ export class FakeCatalogAdmin {
       return ok({ ...this.salesReport, ...range })
     }
     if (path === '/api/bancontact/transactions' && method === 'GET') return ok(this.transactions)
-    if (/^\/api\/devices\/by-org\/[^/]+$/.test(path) && method === 'GET') return ok(this.orgDevices)
+    if (/^\/api\/organizations\/[^/]+\/devices$/.test(path) && method === 'GET') return ok(this.orgDevices)
+    const device = path.match(/^\/api\/organizations\/[^/]+\/devices\/([^/]+)$/)
+    if (device && method === 'DELETE') {
+      this.orgDevices = this.orgDevices.filter((d) => d.terminal_id !== decodeURIComponent(device[1]))
+      return ok({ ok: true })
+    }
+    if (/^\/api\/organizations\/[^/]+\/device-pairings(\/.*)?$/.test(path)) return this.pairingRoute(method, path, body)
     if (path.startsWith('/api/bancontact/sumup/readers')) return this.sumupRoute(method, path, body)
     if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'GET') return ok(this.events)
 
@@ -128,6 +134,49 @@ export class FakeCatalogAdmin {
     if (!m) return { status: 404, body: { error: 'Not found' } }
     const parts = m[2] ? m[2].split('/') : []
     return m[1] === 'catalog' ? this.catalogRoute(method, parts, query, body || {}) : this.catalogsRoute(method, parts, body || {})
+  }
+
+  // Toestellen → Toestel toevoegen: codes as the backend makes them. A test
+  // "claims" one on a device with claimPairing (the start page's side).
+  pairings: { id: string; role: 'pos' | 'cfd'; name: string; status: string; code: string; createdAt: string; expiresAt: string; claimedAt: string | null; claimedBy: string | null; terminalId: string | null; createdBy: string }[] = []
+
+  private pairingRoute(method: string, path: string, body: any): FakeResponse {
+    const id = path.split('/device-pairings/')[1]
+    if (method === 'POST' && !id) {
+      const n = this.pairings.length + 1
+      const pairing = {
+        id: this.id('pair'),
+        role: body.role,
+        name: body.name,
+        status: 'open',
+        code: `K7PM-4XQ${n}`,
+        createdBy: 'Admin',
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        claimedAt: null,
+        claimedBy: null,
+        terminalId: null,
+      }
+      this.pairings.push(pairing)
+      return { status: 201, body: pairing }
+    }
+    if (method === 'GET' && !id) return ok(this.pairings.map(({ code: _code, ...p }) => p))
+    if (method === 'DELETE' && id) {
+      const pairing = this.pairings.find((p) => p.id === id && p.status === 'open')
+      if (!pairing) return { status: 404, body: { error: 'Not found' } }
+      pairing.status = 'revoked'
+      return ok({ ok: true })
+    }
+    return { status: 404, body: { error: 'Not found' } }
+  }
+
+  claimPairing(code: string) {
+    const pairing = this.pairings.find((p) => p.code === code && p.status === 'open')!
+    pairing.status = 'claimed'
+    pairing.claimedAt = new Date().toISOString()
+    pairing.claimedBy = 'Ann'
+    pairing.terminalId = `pos-${pairing.id}`
+    this.orgDevices.push({ terminal_id: pairing.terminalId, role: pairing.role, linked_to: null, created_at: pairing.claimedAt, online: true, name: pairing.name })
   }
 
   private sumupRoute(method: string, path: string, body: any): FakeResponse {

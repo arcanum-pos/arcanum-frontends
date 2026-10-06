@@ -7,7 +7,8 @@ import { LanguagePicker } from '@/shared/i18n/language-picker'
 import { OrgBadge } from '@/shared/org-badge'
 import { ThemePicker } from '@/shared/theme-picker'
 import { getDevice, getDeviceId, setDeviceName } from '@/shared/device'
-import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
+import { connectNotifications, getRegisteredTerminal, renameDevice, unpairThisDevice } from '@/shared/terminal'
+import { listMyMemberships } from '@/shared/memberships'
 import { LinkPanel } from './LinkPanel'
 import { ReaderPanel } from './ReaderPanel'
 import { CatalogPanel } from './CatalogPanel'
@@ -24,6 +25,11 @@ export default function App() {
   const [posTerminalId, setPosTerminalId] = useState<string | null>(null)
   const [posOrgId, setPosOrgId] = useState<string | null>(null)
   const [linksChangedSignal, setLinksChangedSignal] = useState(0)
+  const [nameError, setNameError] = useState<string | null>(null)
+  // Beheer (the console link, unpairing): admins of this device's org only.
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [unpairing, setUnpairing] = useState(false)
+  const [unpairError, setUnpairError] = useState<string | null>(null)
 
   useEffect(() => {
     let socket: ReturnType<typeof connectNotifications> | null = null
@@ -35,6 +41,9 @@ export default function App() {
       }
       setPosTerminalId(terminal.terminalId)
       setPosOrgId(terminal.orgId)
+      listMyMemberships()
+        .then((memberships) => setIsAdmin(memberships.some((ms) => ms.orgId === terminal.orgId && ms.role === 'admin')))
+        .catch(() => setIsAdmin(false))
 
       // A link can also change from elsewhere (e.g. kassa's "Klantscherm
       // openen" button spawning a new CFD in a second window) while this
@@ -48,9 +57,32 @@ export default function App() {
     return () => socket?.close()
   }, [])
 
-  function handleSaveDeviceName() {
+  // On this device, and in the organisation's list (the console's Toestellen).
+  async function handleSaveDeviceName() {
     setDeviceName(deviceNameInput)
+    setNameError(null)
+    if (posOrgId && posTerminalId && deviceNameInput.trim()) {
+      try {
+        await renameDevice(posOrgId, posTerminalId, deviceNameInput.trim())
+      } catch (err) {
+        setNameError(m.nameSaveFailed(err instanceof Error ? err.message : String(err)))
+        return
+      }
+    }
     setDeviceSaved(true)
+  }
+
+  async function handleUnpair() {
+    if (!window.confirm(m.confirmUnpair(deviceNameInput.trim() || m.thisDevice))) return
+    setUnpairing(true)
+    setUnpairError(null)
+    try {
+      await unpairThisDevice()
+      window.location.replace('/')
+    } catch (err) {
+      setUnpairError(m.unpairFailed(err instanceof Error ? err.message : String(err)))
+      setUnpairing(false)
+    }
   }
 
   return (
@@ -82,6 +114,7 @@ export default function App() {
             {m.saveName}
           </Button>
           {deviceSaved && <p className="text-sm text-muted-foreground">{m.nameSaved}</p>}
+          {nameError && <p className="text-sm text-destructive">{nameError}</p>}
           <p className="text-sm text-muted-foreground">{m.deviceId(getDeviceId())}</p>
         </CardContent>
       </Card>
@@ -133,7 +166,7 @@ export default function App() {
               <CardTitle className="text-base">{m.linkDisplay}</CardTitle>
             </CardHeader>
             <CardContent>
-              <LinkPanel role="cfd" posTerminalId={posTerminalId} posOrgId={posOrgId} refreshSignal={linksChangedSignal} />
+              <LinkPanel posTerminalId={posTerminalId} posOrgId={posOrgId} refreshSignal={linksChangedSignal} />
             </CardContent>
           </Card>
 
@@ -161,6 +194,25 @@ export default function App() {
           {m.sourceCode}
         </a>
       </p>
+      {isAdmin && posTerminalId && (
+        <Card data-testid="manage">
+          <CardHeader>
+            <CardTitle className="text-base">{m.manage}</CardTitle>
+            <p className="text-sm text-muted-foreground">{m.manageHint}</p>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" asChild>
+              <a href="/console" target="_blank" rel="noopener">
+                {m.openConsole}
+              </a>
+            </Button>
+            <Button variant="destructive" disabled={unpairing} onClick={handleUnpair}>
+              {m.unpair}
+            </Button>
+            {unpairError && <p className="w-full text-sm text-destructive">{unpairError}</p>}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

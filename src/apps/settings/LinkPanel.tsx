@@ -1,17 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useMessages } from '@/shared/i18n'
+import { getLinkedDevice, linkTerminals, listLinkableDisplays, unlinkTerminal } from '@/shared/terminal'
 import { SETTINGS_MESSAGES } from './messages'
 
-const DEVICES_URL = '/api/devices'
-
 export function LinkPanel({
-  role,
   posTerminalId,
   posOrgId,
   refreshSignal,
 }: {
-  role: 'cfd'
   posTerminalId: string
   posOrgId: string
   refreshSignal: number
@@ -30,16 +27,15 @@ export function LinkPanel({
   // "unlinked" option under a different registration.
   const refresh = useCallback(async () => {
     setLoading(true)
-    const [linkedRes, unlinkedRes] = await Promise.all([
-      fetch(`${DEVICES_URL}/${encodeURIComponent(posTerminalId)}/linked?role=${role}`),
-      fetch(`${DEVICES_URL}/unlinked?role=${role}&org_id=${encodeURIComponent(posOrgId)}`),
+    // Through arcanum-backend, which checks both devices are this org's.
+    const [linked, unlinkedList] = await Promise.all([
+      getLinkedDevice(posOrgId, posTerminalId),
+      listLinkableDisplays(posOrgId, posTerminalId).catch(() => []),
     ])
-    const linked = await linkedRes.json().catch(() => null)
-    const unlinkedList = await unlinkedRes.json().catch(() => [])
     setLinkedId(linked?.terminal_id || null)
     setUnlinked(unlinkedList || [])
     setLoading(false)
-  }, [role, posTerminalId, posOrgId])
+  }, [posTerminalId, posOrgId])
 
   useEffect(() => {
     refresh()
@@ -48,11 +44,7 @@ export function LinkPanel({
   async function handleLink(terminalId: string) {
     setLinkingId(terminalId)
     try {
-      await fetch(`${DEVICES_URL}/link`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pos_terminal_id: posTerminalId, terminal_id: terminalId }),
-      })
+      await linkTerminals(posOrgId, posTerminalId, terminalId)
       await refresh()
     } finally {
       setLinkingId(null)
@@ -60,17 +52,12 @@ export function LinkPanel({
   }
 
   async function handleUnlink() {
-    const linkedRes = await fetch(`${DEVICES_URL}/${encodeURIComponent(posTerminalId)}/linked?role=${role}`)
-    const linked = await linkedRes.json().catch(() => null)
+    const linked = await getLinkedDevice(posOrgId, posTerminalId)
     if (!linked?.terminal_id) return
 
     setUnlinking(true)
     try {
-      await fetch(`${DEVICES_URL}/unlink`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ terminal_id: linked.terminal_id }),
-      })
+      await unlinkTerminal(posOrgId, linked.terminal_id)
       await refresh()
     } finally {
       setUnlinking(false)

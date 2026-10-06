@@ -59,3 +59,59 @@ test('the pairing dialog links to the SumUp guide on the website', async ({ cons
   await page.getByRole('button', { name: 'Reader koppelen' }).click()
   await expect(page.getByRole('dialog').getByRole('link', { name: 'Meer uitleg' })).toHaveAttribute('href', 'https://arcanum.kaboutersoft.be/docs/sumup')
 })
+
+test('Toestel toevoegen: a pairing code with its QR, until a device claims it', async ({ console: open, page, catalogAdmin }) => {
+  await open('/devices')
+  await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('button', { name: 'Koppelcode maken' })).toBeDisabled()
+  await dialog.getByLabel('Naam').fill('Kassa toog')
+  await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
+
+  const code = dialog.getByTestId('pairing-code')
+  await expect(code).toContainText('K7PM-4XQ1')
+  await expect(code).toContainText(/Nog (9:5\d|10:00) geldig/)
+  await expect(code.locator('svg')).toBeVisible() // the QR
+  await expect(dialog).toContainText('kies "Dit toestel koppelen" en geef deze code in')
+  expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'pos', name: 'Kassa toog' })
+
+  // A device claims it: the dialog notices, and the list shows the new kassa by name.
+  catalogAdmin.claimPairing('K7PM-4XQ1')
+  await expect(dialog.getByTestId('pairing-claimed')).toHaveText('Kassa toog is gekoppeld.', { timeout: 10_000 })
+  await dialog.getByRole('button', { name: 'Klaar' }).click()
+  await expect(page.getByRole('row').filter({ hasText: 'Kassa toog' })).toContainText('Kassa')
+})
+
+test('a customer display, and an open code revoked from the list', async ({ console: open, page, catalogAdmin }) => {
+  await open('/devices')
+  await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Type' }).click()
+  await page.getByRole('option', { name: 'Klantscherm' }).click()
+  await dialog.getByLabel('Naam').fill('Scherm toog')
+  await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
+  await expect(dialog.getByTestId('pairing-code')).toBeVisible()
+  expect(catalogAdmin.pairings[0].role).toBe('cfd')
+  await page.keyboard.press('Escape')
+
+  await page.reload()
+  const open_ = page.getByTestId('open-pairings')
+  await expect(open_).toContainText('Klantscherm · Scherm toog · nog 10 min geldig')
+  await open_.getByRole('button', { name: 'Intrekken' }).click()
+  await expect(page.getByTestId('open-pairings')).toHaveCount(0)
+  expect(catalogAdmin.pairings[0].status).toBe('revoked')
+})
+
+test('a device is listed by its name and removed after confirming', async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.orgDevices = [{ terminal_id: 'pos-1', role: 'pos', linked_to: null, created_at: '2026-10-01T10:00:00Z', online: true, name: 'Kassa toog' }]
+  await open('/devices')
+  const row = page.getByRole('row').filter({ hasText: 'Kassa toog' })
+  await expect(row).toContainText('pos-1')
+  page.once('dialog', (d) => {
+    expect(d.message()).toContain('Kassa toog verwijderen?')
+    d.accept()
+  })
+  await row.getByRole('button').click()
+  await page.getByRole('menuitem', { name: 'Verwijderen' }).click()
+  await expect(page.getByRole('row').filter({ hasText: 'Kassa toog' })).toHaveCount(0)
+})

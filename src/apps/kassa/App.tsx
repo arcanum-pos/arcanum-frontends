@@ -2,15 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import kabouterLogo from '@/shared/assets/kabouter.png'
 import { getCatalogSelection, getDeviceId, getDeviceName, getEventSelection, getSumupReader, setCatalogSelection, setEventSelection, type EventSelection } from '@/shared/device'
-import {
-  connectNotifications,
-  getLinkedDevice,
-  getRegisteredTerminal,
-  getStoredTerminalInfo,
-  linkTerminals,
-  registerRemoteTerminal,
-  unlinkTerminal,
-} from '@/shared/terminal'
+import { connectNotifications, getRegisteredTerminal, getStoredTerminalInfo, openCompanionDisplay, resetKassa } from '@/shared/terminal'
 import { getCurrentSlotId } from '@/shared/slots'
 import { formatEuro } from '@/shared/format'
 import type { ApiErrorCode } from '@/shared/api-errors'
@@ -48,7 +40,6 @@ const WORKER_URL = '/api/bancontact'
 
 // Refusals that mean this kassa's catalog is out of date.
 const CATALOG_ERRORS = new Set<ApiErrorCode>(['unknown_catalog', 'product_not_on_catalog', 'catalog_not_found', 'no_catalog', 'unknown_product'])
-const DEVICES_URL = '/api/devices'
 
 type NameDialogMode = 'new' | 'park' | 'rename'
 
@@ -645,12 +636,8 @@ export default function App() {
     setError('')
     broadcastCurrent()
 
-    if (posTerminalIdRef.current) {
-      fetch(`${DEVICES_URL}/reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pos_terminal_id: posTerminalIdRef.current }),
-      }).catch((err) => console.error('Kon klantscherm niet resetten', err))
+    if (posTerminalIdRef.current && posOrgIdRef.current) {
+      resetKassa(posOrgIdRef.current, posTerminalIdRef.current).catch((err) => console.error('Kon klantscherm niet resetten', err))
     }
   }
 
@@ -706,13 +693,8 @@ export default function App() {
 
     setOpeningDisplay(true)
     try {
-      const existingCfd = await getLinkedDevice(posTerminalIdRef.current, 'cfd')
-      if (existingCfd?.terminal_id) {
-        await unlinkTerminal(existingCfd.terminal_id)
-      }
-
-      const cfdTerminalId = await registerRemoteTerminal('cfd', posOrgIdRef.current)
-      await linkTerminals(posTerminalIdRef.current, cfdTerminalId)
+      // Registered and linked by the backend, replacing the display this kassa had.
+      const cfdTerminalId = await openCompanionDisplay(posOrgIdRef.current, posTerminalIdRef.current)
 
       let features = 'width=1024,height=768'
       const getScreenDetails = (window as any).getScreenDetails
@@ -754,8 +736,8 @@ export default function App() {
 
     getRegisteredTerminal('pos').then((terminal) => {
       if (!terminal) {
-        // Never went through the chooser (e.g. a bookmarked/direct URL) —
-        // send them there to pick an organization + role properly.
+        // Not paired (or removed in the console since): the start page,
+        // where a device is paired with a code.
         window.location.replace('/')
         return
       }

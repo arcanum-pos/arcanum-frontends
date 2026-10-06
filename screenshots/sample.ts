@@ -17,6 +17,8 @@ interface Names {
   tables: string[]
   // SumUp readers, by where they stand.
   readers: [string, string]
+  // A customer display, as named in the console.
+  display: string
   // Kassa buttons (src/apps/kassa/messages) used to get to a screen.
   ui: { overview: string; split: string; quick: string; pay: string }
 }
@@ -34,6 +36,7 @@ export const NAMES: Record<Lang, Names> = {
     items: { pils: 'Pils', cola: 'Cola', wine: 'Wijn', coffee: 'Koffie', bolo: 'Spaghetti bolognese', veggie: 'Spaghetti veggie', kids: 'Kinderportie', pancake: 'Pannenkoek', mousse: 'Chocomousse' },
     tables: ['Tafel 4', 'Tafel 7', 'Familie Peeters', 'Tafel 12'],
     readers: ['Toog', 'Ingang'],
+    display: 'Klantscherm toog',
     ui: { overview: 'Rekeningen', split: 'Splitsen', quick: 'Toog — direct afrekenen', pay: 'Afrekenen' },
   },
   fr: {
@@ -45,6 +48,7 @@ export const NAMES: Record<Lang, Names> = {
     items: { pils: 'Pils', cola: 'Coca', wine: 'Vin', coffee: 'Café', bolo: 'Spaghetti bolognaise', veggie: 'Spaghetti végétarien', kids: 'Portion enfant', pancake: 'Crêpe', mousse: 'Mousse au chocolat' },
     tables: ['Table 4', 'Table 7', 'Famille Dubois', 'Table 12'],
     readers: ['Comptoir', 'Entrée'],
+    display: 'Écran client comptoir',
     ui: { overview: 'Additions', split: 'Partager', quick: 'Comptoir — payer directement', pay: 'Encaisser' },
   },
   en: {
@@ -56,6 +60,7 @@ export const NAMES: Record<Lang, Names> = {
     items: { pils: 'Lager', cola: 'Cola', wine: 'Wine', coffee: 'Coffee', bolo: 'Spaghetti bolognese', veggie: 'Veggie spaghetti', kids: 'Kids’ portion', pancake: 'Pancake', mousse: 'Chocolate mousse' },
     tables: ['Table 4', 'Table 7', 'The Smiths', 'Table 12'],
     readers: ['Bar', 'Entrance'],
+    display: 'Bar customer display',
     ui: { overview: 'Bills', split: 'Split', quick: 'Counter — pay directly', pay: 'Charge' },
   },
 }

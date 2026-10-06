@@ -78,4 +78,10 @@ export default {
   sumup_pairing_code_invalid: 'Un code de couplage compte 8 ou 9 lettres et chiffres',
   sumup_pair_failed: 'Le couplage du lecteur a échoué',
   sumup_remove_failed: 'Le découplage du lecteur a échoué',
+  device_name_required: 'Donnez un nom à l’appareil',
+  device_not_found: 'Cet appareil n’est (plus) couplé à cette organisation',
+  pairing_code_invalid: 'Ce code de couplage est incorrect, déjà utilisé ou expiré — demandez-en un nouveau à un administrateur',
+  pairing_too_many_attempts: 'Trop de codes de couplage erronés — réessayez dans 10 minutes',
+  pairing_not_member: 'Vous n’êtes pas membre de l’organisation de ce code de couplage — connectez-vous avec le bon compte',
+  devicehub_failed: 'Les appareils sont momentanément injoignables — réessayez',
 } satisfies ApiErrorMessages

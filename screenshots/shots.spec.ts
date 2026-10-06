@@ -76,6 +76,7 @@ async function openKassa(page: Page, backend: FakeBackend, lang: Lang) {
 function evening(lang: Lang) {
   const backend = new FakeBackend()
   backend.catalogs = [eveningCatalog(lang)]
+  backend.devices.set('pos-1', { terminal_id: 'pos-1', org_id: 'org-e2e', role: 'pos', linked_to: null, name: 'Kassa 1' })
   const [t4, t7, name, terrace] = NAMES[lang].tables
   backend.openTab(t4, [line(lang, 'pils', 2), line(lang, 'cola', 2), line(lang, 'bolo', 2), line(lang, 'kids', 2), line(lang, 'pancake', 2)])
   backend.openTab(t7, [line(lang, 'wine', 2), line(lang, 'veggie', 1), line(lang, 'bolo', 1)])
@@ -159,9 +160,9 @@ for (const lang of LANGS) {
       ]
       const now = Date.now()
       catalogAdmin.orgDevices = [
-        { terminal_id: 'pos-7f3a9c21', role: 'pos', linked_to: null, created_at: new Date(now - 9 * 86400e3).toISOString(), online: true },
-        { terminal_id: 'pos-b81e44d0', role: 'pos', linked_to: null, created_at: new Date(now - 9 * 86400e3).toISOString(), online: true },
-        { terminal_id: 'cfd-25c0e7aa', role: 'cfd', linked_to: 'pos-7f3a9c21', created_at: new Date(now - 8 * 86400e3).toISOString(), online: true },
+        { terminal_id: 'pos-7f3a9c21', role: 'pos', linked_to: null, created_at: new Date(now - 9 * 86400e3).toISOString(), online: true, name: `${NAMES[lang].readers[0]} 1` },
+        { terminal_id: 'pos-b81e44d0', role: 'pos', linked_to: null, created_at: new Date(now - 9 * 86400e3).toISOString(), online: true, name: `${NAMES[lang].readers[0]} 2` },
+        { terminal_id: 'cfd-25c0e7aa', role: 'cfd', linked_to: 'pos-7f3a9c21', created_at: new Date(now - 8 * 86400e3).toISOString(), online: true, name: NAMES[lang].display },
       ]
       page = await open('/devices')
       await expect(page.getByText('rdr_3KQ8Z2V7XWJ4')).toBeVisible()
