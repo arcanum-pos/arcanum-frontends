@@ -7,16 +7,21 @@ import { AppSidebar } from './app-sidebar'
 import { AppFooter } from './app-footer'
 import { DemoBanner } from './demo-banner'
 import { FirstOrganization } from './first-organization'
+import { NoMembership } from './no-membership'
 import { ImportBanner } from './import-banner'
 import { AppBrand } from '@/shared/app-brand'
-import { useNeedsFirstOrganization } from '../lib/first-organization'
+import { useNeedsFirstOrganization, useNoMembership } from '../lib/first-organization'
 import { OrgProvider } from '../lib/org-context'
 import { ThemeProvider } from '../lib/theme'
 
 // A fresh installation without an organization asks for its first one;
+// someone who's a member of nothing (and may not create one) is told so;
 // otherwise the page (plus the demo / unfinished-import banners).
 function MainContent() {
-  if (useNeedsFirstOrganization()) return <FirstOrganization />
+  const needsFirst = useNeedsFirstOrganization()
+  const noMembership = useNoMembership()
+  if (needsFirst) return <FirstOrganization />
+  if (noMembership) return <NoMembership />
   return (
     <>
       <DemoBanner />

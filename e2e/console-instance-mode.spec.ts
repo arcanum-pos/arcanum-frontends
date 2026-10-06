@@ -67,3 +67,23 @@ test('without an organisation and without the right to make one: no welcome form
   await open('/dashboard')
   await expect(page.getByTestId('first-organization')).toHaveCount(0)
 })
+
+test('a member of nothing, who may not create an organisation, is told so — not shown an empty console', async ({ console: open, page, orgTransfer }) => {
+  orgTransfer.orgs = []
+  orgTransfer.capabilities = { orgCreation: 'internal', canCreateOrganization: false, canImportOrganization: false, instanceAdmin: false }
+  await open('/dashboard')
+  const notice = page.getByTestId('no-membership')
+  await expect(notice.getByText('Je bent geen lid van een organisatie')).toBeVisible()
+  await expect(notice.getByText('Je bent aangemeld als admin@e2e.test')).toBeVisible()
+  await expect(notice.getByText(/Vraag een beheerder van je organisatie om je uit te nodigen/)).toBeVisible()
+  await expect(notice.getByRole('button', { name: 'Afmelden en een ander account gebruiken' })).toBeVisible()
+  await expect(page.getByTestId('first-organization')).toHaveCount(0)
+})
+
+test('someone who may create the first organisation gets that, not the "not a member" notice', async ({ console: open, page, orgTransfer }) => {
+  orgTransfer.orgs = []
+  orgTransfer.capabilities = { orgCreation: 'admins', canCreateOrganization: true, canImportOrganization: true, instanceAdmin: true }
+  await open('/dashboard')
+  await expect(page.getByTestId('first-organization')).toBeVisible()
+  await expect(page.getByTestId('no-membership')).toHaveCount(0)
+})
