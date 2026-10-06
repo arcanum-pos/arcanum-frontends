@@ -237,3 +237,13 @@ hosting or support — but if you run a modified version for users over a
 network, you must offer those users its source code (AGPL §13). The app's
 "Broncode" link (the `SOURCE_URL` setting of arcanum-bff) is how an
 installation points its users to that source.
+
+## Screenshots for the website
+
+`npm run screenshots` (playwright.screenshots.config.ts, `screenshots/`)
+opens the kassa, the customer display and the console with a small café's
+sample data — the e2e fakes, no backend — and writes 1280×800 PNGs in
+Dutch, French and English to `../arcanum-bootstrapper/public/screenshots`
+(or `SHOTS_DIR`). Run it after a visible change to one of those screens,
+then commit the new images in arcanum-bootstrapper. Not part of the test
+suite.

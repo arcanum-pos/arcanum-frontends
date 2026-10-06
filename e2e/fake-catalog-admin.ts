@@ -97,6 +97,8 @@ export class FakeCatalogAdmin {
   sumupReaders: { id: string; name: string; status: string; model: string | null }[] | null = null
   sumupCalls: { method: string; path: string; body: any }[] = []
   pairError: string | null = null
+  // Toestellen: the registered kassa's and customer displays (devicehub's /by-org).
+  orgDevices: any[] = []
   private seq = 0
 
   private id(prefix: string) {
@@ -118,7 +120,7 @@ export class FakeCatalogAdmin {
       return ok({ ...this.salesReport, ...range })
     }
     if (path === '/api/bancontact/transactions' && method === 'GET') return ok(this.transactions)
-    if (/^\/api\/devices\/by-org\/[^/]+$/.test(path) && method === 'GET') return ok([])
+    if (/^\/api\/devices\/by-org\/[^/]+$/.test(path) && method === 'GET') return ok(this.orgDevices)
     if (path.startsWith('/api/bancontact/sumup/readers')) return this.sumupRoute(method, path, body)
     if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'GET') return ok(this.events)
 
