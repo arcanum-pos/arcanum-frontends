@@ -52,3 +52,10 @@ test('unpairs a reader after confirming', async ({ console: open, page, catalogA
   await expect(page.getByRole('row').filter({ hasText: 'Terras' })).toHaveCount(0)
   expect(catalogAdmin.sumupCalls).toEqual([{ method: 'DELETE', path: '/api/bancontact/sumup/readers/rdr_9', body: null }])
 })
+
+test('the pairing dialog links to the SumUp guide on the website', async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.sumupReaders = []
+  await open('/devices')
+  await page.getByRole('button', { name: 'Reader koppelen' }).click()
+  await expect(page.getByRole('dialog').getByRole('link', { name: 'Meer uitleg' })).toHaveAttribute('href', 'https://arcanum.kaboutersoft.be/docs/sumup')
+})

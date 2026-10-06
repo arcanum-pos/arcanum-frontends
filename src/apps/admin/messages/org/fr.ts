@@ -114,6 +114,7 @@ export default {
     pairingCode: 'Code de couplage',
     readerName: 'Nom',
     pair: 'Coupler',
+    moreInfo: 'En savoir plus',
     paired: (name: string) => `${name} est couplé. Confirmez sur le lecteur s’il le demande ; il apparaît ensuite comme « Couplé ».`,
     readerActions: (name: string) => `Actions pour ${name}`,
     unpair: 'Découpler',

@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMessages } from '@/shared/i18n'
+import { docsUrl } from '@/shared/docs-url'
 import {
   Dialog,
   DialogContent,
@@ -104,10 +105,18 @@ export default function PaymentProvidersPage() {
                     {cred?.configured ? m.configured : m.notConfigured}
                   </Badge>
                 </CardHeader>
-                <CardContent>
-                  <Button variant="outline" size="sm" onClick={() => openEditor(provider)}>
-                    {m.setKeys}
-                  </Button>
+                <CardContent className="flex flex-col gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    {m.providerHelp[provider]}{' '}
+                    <a href={docsUrl(provider)} target="_blank" rel="noopener" className="underline underline-offset-4 hover:text-foreground">
+                      {m.moreInfo}
+                    </a>
+                  </p>
+                  <div>
+                    <Button variant="outline" size="sm" onClick={() => openEditor(provider)}>
+                      {m.setKeys}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )

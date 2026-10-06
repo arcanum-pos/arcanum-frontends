@@ -18,7 +18,7 @@ const nl = {
   eventHint: 'Optioneel: aan welk evenement de verkopen van deze kassa gekoppeld worden (voor de rapporten).',
   linkDisplay: 'Klantscherm koppelen',
   reader: 'SumUp Solo-reader',
-  readerHint: 'Echte reader gekoppeld aan je SumUp-account. Betalingen gaan dan via de SumUp cloud-API (polling, nog geen callback).',
+  readerHint: 'Echte reader gekoppeld aan je SumUp-account. Betalingen van deze kassa gaan dan naar die reader.',
   freeSoftware: 'Arcanum is vrije software (AGPL-3.0)',
   sourceCode: 'Broncode',
 

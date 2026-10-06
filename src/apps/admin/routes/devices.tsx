@@ -26,6 +26,7 @@ import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
+import { docsUrl } from '@/shared/docs-url'
 
 const READER_MODEL_LABELS: Record<string, string> = {
   solo: 'SumUp Solo',
@@ -134,7 +135,12 @@ export default function DevicesPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{m.devices.pairReader}</DialogTitle>
-                <DialogDescription>{m.devices.pairHint}</DialogDescription>
+                <DialogDescription>
+                  {m.devices.pairHint}{' '}
+                  <a href={docsUrl('sumup')} target="_blank" rel="noopener" className="underline underline-offset-4">
+                    {m.devices.moreInfo}
+                  </a>
+                </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4">
                 <div className="grid gap-2">

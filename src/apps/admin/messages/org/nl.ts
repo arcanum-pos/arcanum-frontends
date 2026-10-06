@@ -128,6 +128,7 @@ const nl = {
     pairingCode: 'Koppelcode',
     readerName: 'Naam',
     pair: 'Koppelen',
+    moreInfo: 'Meer uitleg',
     paired: (name: string) => `${name} is gekoppeld. Bevestig op de reader als die erom vraagt; daarna staat hij op "Gekoppeld".`,
     readerActions: (name: string) => `Acties voor ${name}`,
     unpair: 'Loskoppelen',

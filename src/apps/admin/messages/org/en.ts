@@ -114,6 +114,7 @@ export default {
     pairingCode: 'Pairing code',
     readerName: 'Name',
     pair: 'Pair',
+    moreInfo: 'More information',
     paired: (name: string) => `${name} is paired. Confirm on the reader if it asks; it then shows as "Paired".`,
     readerActions: (name: string) => `Actions for ${name}`,
     unpair: 'Unpair',

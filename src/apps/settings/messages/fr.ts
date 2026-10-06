@@ -18,7 +18,7 @@ export default {
   eventHint: 'Facultatif : l’événement auquel les ventes de cette caisse sont liées (pour les rapports).',
   linkDisplay: 'Lier un écran client',
   reader: 'Lecteur SumUp Solo',
-  readerHint: 'Un vrai lecteur lié à votre compte SumUp. Les paiements passent alors par l’API cloud de SumUp (polling, pas encore de callback).',
+  readerHint: 'Un vrai lecteur lié à votre compte SumUp. Les paiements de cette caisse vont alors vers ce lecteur.',
   freeSoftware: 'Arcanum est un logiciel libre (AGPL-3.0)',
   sourceCode: 'Code source',
 

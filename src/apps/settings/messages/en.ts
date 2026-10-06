@@ -18,7 +18,7 @@ export default {
   eventHint: 'Optional: which event this till’s sales are linked to (for the reports).',
   linkDisplay: 'Link customer display',
   reader: 'SumUp Solo reader',
-  readerHint: 'A real reader linked to your SumUp account. Payments then go through the SumUp cloud API (polling, no callback yet).',
+  readerHint: 'A real reader linked to your SumUp account. Payments from this till then go to that reader.',
   freeSoftware: 'Arcanum is free software (AGPL-3.0)',
   sourceCode: 'Source code',
 

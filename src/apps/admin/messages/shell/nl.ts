@@ -122,6 +122,11 @@ const nl = {
   environment: 'Omgeving',
   production: 'Productie',
   preprod: 'Test (preprod)',
+  providerHelp: {
+    bancontact: 'De klant scant een QR-code op het klantscherm met de Bancontact-app. Nodig: een Bancontact Pro-contract en de API-sleutel uit het Bancontact Pro-portaal. Testen kan in Bancontacts testomgeving (preprod), op aanvraag.',
+    sumup: 'Kaartbetalingen op een SumUp Solo. Nodig: je merchant code en een API-sleutel uit je SumUp-dashboard; koppel de reader daarna bij Toestellen. Testen zonder echt geld: een sandbox-account en de Virtual Solo.',
+  },
+  moreInfo: 'Meer uitleg',
 
   // Settings → Notifications
   notificationsSubtitle: 'E-mailconfiguratie voor deze organisatie. Laat leeg om het platform-standaardaccount te blijven gebruiken.',

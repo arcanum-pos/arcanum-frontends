@@ -118,6 +118,11 @@ export default {
   environment: 'Environnement',
   production: 'Production',
   preprod: 'Test (préprod)',
+  providerHelp: {
+    bancontact: 'Le client scanne un QR code sur l’écran client avec l’app Bancontact. Il faut : un contrat Bancontact Pro et la clé API du portail Bancontact Pro. Les tests se font dans l’environnement de test de Bancontact (préprod), sur demande.',
+    sumup: 'Paiements par carte sur une SumUp Solo. Il faut : votre code marchand et une clé API de votre tableau de bord SumUp ; couplez ensuite le lecteur dans Appareils. Tester sans argent réel : un compte sandbox et la Virtual Solo.',
+  },
+  moreInfo: 'En savoir plus',
 
   // Settings → Notifications
   notificationsSubtitle: 'Configuration e-mail de cette organisation. Laissez vide pour continuer à utiliser le compte par défaut de la plateforme.',
