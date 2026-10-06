@@ -11,6 +11,6 @@ export default defineConfig({
   fullyParallel: true,
   retries: 0,
   reporter: 'list',
-  use: { ...base.use, viewport: { width: 1280, height: 800 }, colorScheme: 'light', trace: 'off' },
+  use: { ...base.use, viewport: { width: 1024, height: 640 }, deviceScaleFactor: 2, colorScheme: 'light', trace: 'off' },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
 })

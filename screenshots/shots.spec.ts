@@ -1,6 +1,6 @@
 // The website's screenshots (npm run screenshots, playwright.screenshots.config.ts):
-// the kassa, the customer display and the console with a small café's
-// sample data (sample.ts), in Dutch, French and English. Each is written as
+// the kassa, the customer display and the console with a scouts group's
+// spaghetti evening as sample data (sample.ts), in Dutch, French and English. Each is written as
 // <name>-<lang>.png to SHOTS_DIR (default: the website's public/screenshots).
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
@@ -12,7 +12,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { expect, test } from '../e2e/console-fixtures'
 import { FakeBackend } from '../e2e/fake-backend'
 import { ORG_ID, type FakeCatalogAdmin } from '../e2e/fake-catalog-admin'
-import { BROWSER_LOCALE, cafeCatalog, LANGS, line, NAMES, salesReport, type Lang } from './sample'
+import { BROWSER_LOCALE, eveningCatalog, LANGS, line, NAMES, salesReport, type Lang } from './sample'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const OUT = process.env.SHOTS_DIR ?? path.resolve(HERE, '../../arcanum-bootstrapper/public/screenshots')
@@ -33,7 +33,7 @@ async function openKassa(page: Page, backend: FakeBackend, lang: Lang) {
     sockets.push(ws)
   })
   await page.addInitScript((locale) => {
-    localStorage.setItem('arcanum-terminal', JSON.stringify({ terminalId: 'pos-1', role: 'pos', orgId: 'org-e2e', orgName: 'Café De Kabouter' }))
+    localStorage.setItem('arcanum-terminal', JSON.stringify({ terminalId: 'pos-1', role: 'pos', orgId: 'org-e2e', orgName: 'Scouts Kabouterland' }))
     localStorage.setItem('arcanum-locale', locale)
     localStorage.setItem('arcanum-device', JSON.stringify({ id: 'k1', name: { nl: 'Kassa 1', fr: 'Caisse 1', en: 'Till 1' }[locale] }))
   }, lang)
@@ -49,15 +49,15 @@ async function openKassa(page: Page, backend: FakeBackend, lang: Lang) {
   await expect(page.getByText(NAMES[lang].ui.quick)).toBeVisible()
 }
 
-// An evening at the café: three open tabs, one already paid.
+// The spaghetti evening: three open tabs, one already paid.
 function evening(lang: Lang) {
   const backend = new FakeBackend()
-  backend.catalogs = [cafeCatalog(lang)]
+  backend.catalogs = [eveningCatalog(lang)]
   const [t4, t7, name, terrace] = NAMES[lang].tables
-  backend.openTab(t4, [line(lang, 'pils', 2), line(lang, 'wine', 1), line(lang, 'spaghetti', 2), line(lang, 'croque', 1)])
-  backend.openTab(t7, [line(lang, 'cola', 2), line(lang, 'fries', 2)])
-  backend.openTab(name, [line(lang, 'coffee', 1), line(lang, 'dame', 1)])
-  const paid = backend.openTab(terrace, [line(lang, 'pils', 4), line(lang, 'fries', 1)])
+  backend.openTab(t4, [line(lang, 'pils', 2), line(lang, 'cola', 2), line(lang, 'bolo', 2), line(lang, 'kids', 2), line(lang, 'pancake', 2)])
+  backend.openTab(t7, [line(lang, 'wine', 2), line(lang, 'veggie', 1), line(lang, 'bolo', 1)])
+  backend.openTab(name, [line(lang, 'pils', 1), line(lang, 'bolo', 1), line(lang, 'kids', 3), line(lang, 'cola', 3)])
+  const paid = backend.openTab(terrace, [line(lang, 'pils', 4), line(lang, 'bolo', 4), line(lang, 'mousse', 2)])
   backend.resolveCharge(backend.startCharge(paid.id, 'bancontact').id, true)
   // Opened over the evening, on two kassa's.
   const till = { nl: 'Kassa', fr: 'Caisse', en: 'Till' }[lang]
@@ -78,7 +78,7 @@ for (const lang of LANGS) {
       const backend = evening(lang)
       await openKassa(page, backend, lang)
       await openTab4(page)
-      await expect(page.getByTestId('tab-panel')).toContainText(NAMES[lang].items.croque)
+      await expect(page.getByTestId('tab-panel')).toContainText(NAMES[lang].items.pancake)
       await shot(page, 'kassa', lang)
 
       await page.getByTestId('tab-panel').getByRole('button', { name: NAMES[lang].ui.split, exact: true }).click()
@@ -109,15 +109,15 @@ for (const lang of LANGS) {
     })
 
     test('console: menu, reports, devices', async ({ console: open, catalogAdmin, page: consolePage }) => {
-      // The café and its admin instead of the fakes' test names (routes added
+      // The scouts group and its admin instead of the fakes' test names (routes added
       // later win over the fixture's).
       await consolePage.route(/\/api\/organizations$/, (route) =>
-        route.fulfill({ json: [{ id: ORG_ID, name: 'Café De Kabouter', logoUrl: null, theme: null, createdAt: '2026-01-01' }] })
+        route.fulfill({ json: [{ id: ORG_ID, name: 'Scouts Kabouterland', logoUrl: null, theme: null, createdAt: '2026-01-01' }] })
       )
       await consolePage.route(/\/whoami$/, (route) =>
-        route.fulfill({ json: { sub: 'admin', email: 'an@cafedekabouter.be', name: 'An Janssens', firstName: 'An', lastName: 'Janssens', username: 'an' } })
+        route.fulfill({ json: { sub: 'admin', email: 'an@scoutskabouterland.be', name: 'An Janssens', firstName: 'An', lastName: 'Janssens', username: 'an' } })
       )
-      seedCafe(catalogAdmin, lang)
+      seedMenu(catalogAdmin, lang)
       const catalog = catalogAdmin.catalogs[0]
       let page = await open(`/catalogs/${catalog.id}`)
       await expect(page.locator('[data-testid^=section-]').first()).toBeVisible()
@@ -129,8 +129,8 @@ for (const lang of LANGS) {
       await shot(page, 'console-reports', lang)
 
       catalogAdmin.sumupReaders = [
-        { id: 'rdr_3KQ8Z2V7XWJ4', name: NAMES[lang].drinks === 'Drinks' ? 'Bar' : lang === 'fr' ? 'Comptoir' : 'Toog', status: 'paired', model: 'solo' },
-        { id: 'rdr_9TF2M6P1HDC8', name: NAMES[lang].tables[3], status: 'paired', model: 'solo' },
+        { id: 'rdr_3KQ8Z2V7XWJ4', name: NAMES[lang].readers[0], status: 'paired', model: 'solo' },
+        { id: 'rdr_9TF2M6P1HDC8', name: NAMES[lang].readers[1], status: 'paired', model: 'solo' },
       ]
       const now = Date.now()
       catalogAdmin.orgDevices = [
@@ -145,16 +145,16 @@ for (const lang of LANGS) {
   })
 }
 
-// The café's products and menu, through the fake's own API (as console-catalog.spec.ts does).
-function seedCafe(admin: FakeCatalogAdmin, lang: Lang) {
+// The evening's products and menu, through the fake's own API (as console-catalog.spec.ts does).
+function seedMenu(admin: FakeCatalogAdmin, lang: Lang) {
   const call = (method: string, p: string, body?: unknown): any => {
     const res = admin.handle(method, `/api/organizations/${ORG_ID}${p}`, body ?? null)
     if (res.status >= 300) throw new Error(`${method} ${p} → ${res.status} ${JSON.stringify(res.body)}`)
     return res.body
   }
-  const cafe = cafeCatalog(lang)
-  const catalog = call('POST', '/catalogs', { name: cafe.name })
-  for (const section of cafe.sections) {
+  const menu = eveningCatalog(lang)
+  const catalog = call('POST', '/catalogs', { name: menu.name })
+  for (const section of menu.sections) {
     const category = call('POST', '/catalog/categories', { name: section.name })
     const s = call('POST', `/catalogs/${catalog.id}/sections`, { name: section.name })
     for (const entry of section.entries) {

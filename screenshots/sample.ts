@@ -1,5 +1,6 @@
-// Sample data for the website's screenshots: a small café, named in the
-// screenshot's language (what an organisation in that language would type).
+// Sample data for the website's screenshots: a scouts group's spaghetti
+// evening, named in the screenshot's language (what an organisation in that
+// language would type).
 import { fakeEntry, type FakeCatalog, type FakeLineInput } from '../e2e/fake-backend'
 
 export type Lang = 'nl' | 'fr' | 'en'
@@ -7,81 +8,94 @@ export const LANGS: Lang[] = ['nl', 'fr', 'en']
 export const BROWSER_LOCALE: Record<Lang, string> = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' }
 
 interface Names {
+  org: string
   catalog: string
   drinks: string
   food: string
   desserts: string
-  items: Record<'pils' | 'cola' | 'wine' | 'coffee' | 'spaghetti' | 'croque' | 'fries' | 'dame' | 'pancake', string>
+  items: Record<Item, string>
   tables: string[]
+  // SumUp readers, by where they stand.
+  readers: [string, string]
   // Kassa buttons (src/apps/kassa/messages) used to get to a screen.
   ui: { overview: string; split: string; quick: string; pay: string }
 }
 
+type Item = 'pils' | 'cola' | 'wine' | 'coffee' | 'bolo' | 'veggie' | 'kids' | 'pancake' | 'mousse'
+
+// Scouts Kabouterland's spaghetti evening — the kind of event Arcanum is for.
 export const NAMES: Record<Lang, Names> = {
   nl: {
-    catalog: 'Café',
+    org: 'Scouts Kabouterland',
+    catalog: 'Spaghettiavond',
     drinks: 'Dranken',
-    food: 'Eten',
-    desserts: 'Desserts',
-    items: { pils: 'Pils', cola: 'Cola', wine: 'Huiswijn', coffee: 'Koffie', spaghetti: 'Spaghetti', croque: 'Croque monsieur', fries: 'Portie frietjes', dame: 'Dame blanche', pancake: 'Pannenkoek' },
-    tables: ['Tafel 4', 'Tafel 7', 'Jan', 'Terras 2'],
+    food: 'Spaghetti',
+    desserts: 'Dessert',
+    items: { pils: 'Pils', cola: 'Cola', wine: 'Wijn', coffee: 'Koffie', bolo: 'Spaghetti bolognese', veggie: 'Spaghetti veggie', kids: 'Kinderportie', pancake: 'Pannenkoek', mousse: 'Chocomousse' },
+    tables: ['Tafel 4', 'Tafel 7', 'Familie Peeters', 'Tafel 12'],
+    readers: ['Toog', 'Ingang'],
     ui: { overview: 'Rekeningen', split: 'Splitsen', quick: 'Toog — direct afrekenen', pay: 'Afrekenen' },
   },
   fr: {
-    catalog: 'Café',
+    org: 'Scouts Kabouterland',
+    catalog: 'Souper spaghetti',
     drinks: 'Boissons',
-    food: 'Plats',
-    desserts: 'Desserts',
-    items: { pils: 'Pils', cola: 'Coca', wine: 'Vin maison', coffee: 'Café', spaghetti: 'Spaghetti', croque: 'Croque-monsieur', fries: 'Portion de frites', dame: 'Dame blanche', pancake: 'Crêpe' },
-    tables: ['Table 4', 'Table 7', 'Jean', 'Terrasse 2'],
+    food: 'Spaghetti',
+    desserts: 'Dessert',
+    items: { pils: 'Pils', cola: 'Coca', wine: 'Vin', coffee: 'Café', bolo: 'Spaghetti bolognaise', veggie: 'Spaghetti végétarien', kids: 'Portion enfant', pancake: 'Crêpe', mousse: 'Mousse au chocolat' },
+    tables: ['Table 4', 'Table 7', 'Famille Dubois', 'Table 12'],
+    readers: ['Comptoir', 'Entrée'],
     ui: { overview: 'Additions', split: 'Partager', quick: 'Comptoir — payer directement', pay: 'Encaisser' },
   },
   en: {
-    catalog: 'Café',
+    org: 'Scouts Kabouterland',
+    catalog: 'Spaghetti dinner',
     drinks: 'Drinks',
-    food: 'Food',
-    desserts: 'Desserts',
-    items: { pils: 'Lager', cola: 'Cola', wine: 'House wine', coffee: 'Coffee', spaghetti: 'Spaghetti', croque: 'Croque monsieur', fries: 'Fries', dame: 'Dame blanche', pancake: 'Pancake' },
-    tables: ['Table 4', 'Table 7', 'John', 'Terrace 2'],
+    food: 'Spaghetti',
+    desserts: 'Dessert',
+    items: { pils: 'Lager', cola: 'Cola', wine: 'Wine', coffee: 'Coffee', bolo: 'Spaghetti bolognese', veggie: 'Veggie spaghetti', kids: 'Kids’ portion', pancake: 'Pancake', mousse: 'Chocolate mousse' },
+    tables: ['Table 4', 'Table 7', 'The Smiths', 'Table 12'],
+    readers: ['Bar', 'Entrance'],
     ui: { overview: 'Bills', split: 'Split', quick: 'Counter — pay directly', pay: 'Charge' },
   },
 }
 
-const PRICES = { pils: 250, cola: 250, wine: 400, coffee: 220, spaghetti: 1200, croque: 750, fries: 400, dame: 600, pancake: 450 }
+const PRICES: Record<Item, number> = { pils: 220, cola: 220, wine: 350, coffee: 200, bolo: 1200, veggie: 1200, kids: 700, pancake: 300, mousse: 350 }
 
-export function cafeCatalog(lang: Lang): FakeCatalog {
+export function eveningCatalog(lang: Lang): FakeCatalog {
   const n = NAMES[lang]
-  const e = (key: keyof typeof PRICES) => fakeEntry(`v-${key}`, n.items[key], PRICES[key], key)
+  const e = (key: Item) => fakeEntry(`v-${key}`, n.items[key], PRICES[key], key)
   return {
-    id: 'cat-cafe',
+    id: 'cat-spaghetti',
     name: n.catalog,
     isDefault: true,
     archived: false,
     sections: [
       { id: 's-drinks', name: n.drinks, entries: [e('pils'), e('cola'), e('wine'), e('coffee')] },
-      { id: 's-food', name: n.food, entries: [e('spaghetti'), e('croque'), e('fries')] },
-      { id: 's-desserts', name: n.desserts, entries: [e('dame'), e('pancake')] },
+      { id: 's-food', name: n.food, entries: [e('bolo'), e('veggie'), e('kids')] },
+      { id: 's-desserts', name: n.desserts, entries: [e('pancake'), e('mousse')] },
     ],
   }
 }
 
-export function line(lang: Lang, key: keyof typeof PRICES, quantity: number): FakeLineInput {
+export function line(lang: Lang, key: Item, quantity: number): FakeLineInput {
   return { itemCode: key, name: NAMES[lang].items[key], unitPriceCents: PRICES[key], quantity }
 }
 
 // The Rapporten page's report, as arcanum-backend would answer it for an evening.
 export function salesReport(lang: Lang) {
   const n = NAMES[lang]
-  const product = (key: keyof typeof PRICES, category: string, quantity: number) => ({ name: n.items[key], category, quantity, revenueCents: PRICES[key] * quantity })
+  const product = (key: Item, category: string, quantity: number) => ({ name: n.items[key], category, quantity, revenueCents: PRICES[key] * quantity })
   const byProduct = [
-    product('pils', n.drinks, 86),
-    product('spaghetti', n.food, 23),
-    product('wine', n.drinks, 31),
-    product('croque', n.food, 14),
-    product('cola', n.drinks, 27),
-    product('dame', n.desserts, 12),
-    product('fries', n.food, 18),
-    product('coffee', n.drinks, 22),
+    product('bolo', n.food, 96),
+    product('pils', n.drinks, 142),
+    product('veggie', n.food, 31),
+    product('kids', n.food, 38),
+    product('wine', n.drinks, 47),
+    product('cola', n.drinks, 66),
+    product('pancake', n.desserts, 54),
+    product('mousse', n.desserts, 29),
+    product('coffee', n.drinks, 41),
   ]
   const sum = (rows: { revenueCents: number }[]) => rows.reduce((t, r) => t + r.revenueCents, 0)
   const byCategory = [n.drinks, n.food, n.desserts].map((category) => {
