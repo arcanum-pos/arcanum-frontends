@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { guardCsp } from './csp-guard'
 import { test as base, expect, type Page } from '@playwright/test'
 import { FakeCatalogAdmin, type FakeResponse } from './fake-catalog-admin'
 import { FakeOrgTransfer } from './fake-org-transfer'
@@ -20,6 +21,12 @@ type Fixtures = {
 }
 
 export const test = base.extend<Fixtures>({
+  // Fails the test on any Content-Security-Policy violation (e2e/csp-guard.ts).
+  context: async ({ context }, provide) => {
+    const violations = guardCsp(context)
+    await provide(context)
+    expect(violations(), 'Content-Security-Policy violations').toEqual([])
+  },
   // Playwright reads fixture dependencies from the destructuring pattern,
   // so an empty one is required here; the callback is named `provide`
   // (not `use`) so React's hooks lint rule doesn't mistake it for a hook.

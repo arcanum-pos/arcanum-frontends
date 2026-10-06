@@ -1,3 +1,4 @@
+import { guardCsp } from './csp-guard'
 import { test as base, expect, type Page, type WebSocketRoute } from '@playwright/test'
 import { FakeBackend } from './fake-backend'
 
@@ -12,6 +13,12 @@ type Fixtures = {
 }
 
 export const test = base.extend<Fixtures>({
+  // Fails the test on any Content-Security-Policy violation (e2e/csp-guard.ts).
+  context: async ({ context }, provide) => {
+    const violations = guardCsp(context)
+    await provide(context)
+    expect(violations(), 'Content-Security-Policy violations').toEqual([])
+  },
   // Playwright reads fixture dependencies from the destructuring pattern,
   // so an empty one is required here. The callback is named `provide`, not
   // Playwright's usual `use`, so React's hooks lint rule doesn't mistake it

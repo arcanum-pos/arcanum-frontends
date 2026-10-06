@@ -163,6 +163,19 @@ colours. The one deliberate exception is the customer display's payment
 panel beside the order list: the opposite of the theme (`bg-neutral-950 …
 dark:bg-white`), next to an order list in the theme itself.
 
+## Content-Security-Policy
+
+Every screen's page is sent with one policy, `worker/csp.ts`: scripts only
+from this address (no inline script, no eval), styles from here plus inline,
+images from anywhere over https (the Bancontact QR code, an org's logo),
+connections only to this address (the API, the notification socket), never
+in another site's frame. The Worker (`worker/index.ts`) adds it to HTML
+pages; `vite preview` serves it too, so the Playwright suite runs every
+screen under exactly this policy — and `e2e/csp-guard.ts` fails a test on
+any violation the browser reports. A screen that needs something new (an
+external image host is fine; a script or a connection elsewhere isn't)
+shows up there first.
+
 ## Local dev
 
 ```

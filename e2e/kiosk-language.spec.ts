@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 // The setup screens (chooser, login prompt, device login) speak the device's
 // picked language, else the browser's, else Dutch. A pick is remembered on
