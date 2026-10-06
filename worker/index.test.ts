@@ -1,5 +1,6 @@
 // The Worker in front of the built screens: every HTML page gets the
 // screens' Content-Security-Policy (worker/csp.ts); everything else is passed on as is.
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import worker from './index'
 import { CONTENT_SECURITY_POLICY } from './csp'
@@ -25,5 +26,14 @@ describe('the screens Worker', () => {
     expect(CONTENT_SECURITY_POLICY).not.toMatch(/script-src[^;]*('unsafe-inline'|'unsafe-eval'|https:)/)
     expect(CONTENT_SECURITY_POLICY).toContain("frame-ancestors 'none'")
     expect(CONTENT_SECURITY_POLICY).toContain("object-src 'none'")
+  })
+
+  // Cloudflare serves an existing file without running the Worker unless
+  // told otherwise — then no page would carry the policy.
+  it('runs for every page, not only for missing files', () => {
+    const config = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8')
+    const runFirst = config.match(/"run_worker_first":\s*(\[[^\]]*\])/)
+    expect(runFirst, 'assets.run_worker_first').not.toBeNull()
+    expect(JSON.parse(runFirst![1])).toEqual(['/*', '!/assets/*'])
   })
 })
