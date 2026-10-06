@@ -382,7 +382,14 @@ export class FakeBackend {
         status: 200,
         body: {
           status: c.status,
-          providerStatus: c.method === 'bancontact' ? { pending: 'PENDING', succeeded: 'SUCCEEDED', failed: 'FAILED' }[c.status] : null,
+          // As the real backend stores it: each provider's own word (SumUp's
+          // reader callback: 'successful' / 'failed').
+          providerStatus:
+            c.method === 'bancontact'
+              ? { pending: 'PENDING', succeeded: 'SUCCEEDED', failed: 'FAILED' }[c.status]
+              : c.method === 'sumup'
+                ? ({ succeeded: 'successful', failed: 'failed' } as Record<string, string>)[c.status] ?? null
+                : null,
           amountCents: c.amountCents,
           tipCents: c.tipCents,
           method: c.method,

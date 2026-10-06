@@ -97,7 +97,11 @@ export default function App() {
         order: readCustomerOrder(data.order),
         qrCodeUrl: data.qrCodeUrl || undefined,
         expiresAt: data.expiresAt || undefined,
-        status: data.providerStatus || data.status,
+        // Finished: the backend's own verdict (succeeded/failed) decides — a
+        // provider's word for it ("successful" from SumUp) would otherwise
+        // override the "paid" the kassa already sent over the channel.
+        // Still pending: the provider's detail (Bancontact's IDENTIFIED…).
+        status: data.status && data.status !== 'pending' ? data.status : data.providerStatus || data.status,
         errorMessage: data.status === 'failed' ? data.errorMessage || undefined : undefined,
         part: readPart(data.splitPart, data.order?.split?.parts),
       })

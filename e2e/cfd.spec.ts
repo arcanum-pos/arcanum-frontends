@@ -143,6 +143,42 @@ test('the customer can switch the language, and the next customer starts in Dutc
   expect(cfd.errors).toEqual([])
 })
 
+test('same device, SumUp on a reader: the display turns to "Bedankt!" — also when its own status check comes in after the kassa\'s message', async ({ kassa, backend, push }) => {
+  // A Solo (or the Virtual Solo) chosen in Instellingen: the charge goes to the reader.
+  await kassa.evaluate(() => localStorage.setItem('arcanum-sumup-reader', JSON.stringify({ id: 'rdr_1', name: 'Toog' })))
+  await kassa.reload()
+  const display = await kassa.context().newPage()
+  const cfd = await openDisplay(display, backend)
+
+  await kassa.getByRole('button', { name: '10 × Bon', exact: true }).click()
+  await kassa.getByLabel('SumUp').check()
+  await kassa.getByRole('button', { name: /^Afrekenen/ }).click()
+  const waiting = display.getByTestId('cfd-waiting')
+  await expect(waiting).toContainText('€ 10,00')
+
+  // SumUp's callback resolves it ("successful"); devicehub pushes to the kassa and its display.
+  const charge = backend.charges[0]
+  backend.resolveCharge(charge.id, true)
+  push({ event: 'payment_updated', payment_id: charge.id, method: 'sumup' })
+  await expect(display.getByTestId('cfd-paid').getByText('Bedankt!')).toBeVisible()
+  // The display's own check of the same push, a moment later, keeps it paid.
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'sumup' })
+  await display.waitForTimeout(300)
+  await expect(display.getByTestId('cfd-paid').getByText('Bedankt!')).toBeVisible()
+  expect(cfd.errors).toEqual([])
+})
+
+test('another device, SumUp: the push alone turns the display to "Bedankt!"', async ({ page, backend }) => {
+  const tab = backend.openTab('Tafel 1', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 5 }])
+  const charge = backend.startCharge(tab.id, 'sumup')
+  const cfd = await openDisplay(page, backend)
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'sumup' })
+  await expect(page.getByTestId('cfd-waiting')).toContainText('€ 5,00')
+  backend.resolveCharge(charge.id, true)
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'sumup' })
+  await expect(page.getByTestId('cfd-paid').getByText('Bedankt!')).toBeVisible()
+})
+
 test('the device language picked on the chooser is the CFD\'s home language, not the browser\'s', async ({ page, backend }) => {
   await page.addInitScript(() => localStorage.setItem('arcanum-locale', 'fr'))
   await page.routeWebSocket(/\/devices\/connect/, () => {})

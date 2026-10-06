@@ -598,6 +598,7 @@ export default function App() {
         channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
       } else if (data.status === 'failed') {
         setManualStatus({ kind: 'failed', error: data.errorMessage || null })
+        channelRef.current?.postMessage({ type: 'status', status: 'FAILED' })
       }
     } catch (err) {
       console.error('Kon SumUp status niet ophalen', err)
