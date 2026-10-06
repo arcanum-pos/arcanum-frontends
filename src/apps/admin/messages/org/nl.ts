@@ -102,7 +102,7 @@ const nl = {
   // Devices
   devices: {
     title: 'Toestellen',
-    subtitle: (org: string) => `Alle kassa's, klantschermen, simulatoren en SumUp-readers gekoppeld aan ${org}.`,
+    subtitle: (org: string) => `Alle kassa's, klantschermen en SumUp-readers gekoppeld aan ${org}.`,
     loadError: (error: string) => `Kon toestellen niet laden: ${error}`,
     readersError: (error: string) => `Kon SumUp-readers niet ophalen: ${error}`,
     id: 'Toestel-ID',
@@ -110,7 +110,7 @@ const nl = {
     linkedTo: 'Gekoppeld aan',
     registeredAt: 'Geregistreerd op',
     empty: 'Nog geen toestellen geregistreerd voor deze organisatie.',
-    roles: { pos: 'Kassa', cfd: 'Klantscherm', sim: 'SumUp-simulator' } satisfies Record<DeviceRole, string>,
+    roles: { pos: 'Kassa', cfd: 'Klantscherm', sim: 'SumUp-simulator (vervallen)' } satisfies Record<DeviceRole, string>,
     reader: 'SumUp-reader',
     readerStatus: {
       paired: 'Gekoppeld',

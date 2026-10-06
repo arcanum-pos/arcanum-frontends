@@ -88,7 +88,7 @@ export default {
 
   devices: {
     title: 'Devices',
-    subtitle: (org: string) => `All tills, customer displays, simulators and SumUp readers linked to ${org}.`,
+    subtitle: (org: string) => `All tills, customer displays and SumUp readers linked to ${org}.`,
     loadError: (error: string) => `Couldn’t load devices: ${error}`,
     readersError: (error: string) => `Couldn’t fetch SumUp readers: ${error}`,
     id: 'Device ID',
@@ -96,7 +96,7 @@ export default {
     linkedTo: 'Linked to',
     registeredAt: 'Registered on',
     empty: 'No devices registered for this organisation yet.',
-    roles: { pos: 'Till', cfd: 'Customer display', sim: 'SumUp simulator' },
+    roles: { pos: 'Till', cfd: 'Customer display', sim: 'SumUp simulator (discontinued)' },
     reader: 'SumUp reader',
     readerStatus: {
       paired: 'Paired',

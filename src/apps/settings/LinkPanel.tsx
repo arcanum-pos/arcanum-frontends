@@ -11,7 +11,7 @@ export function LinkPanel({
   posOrgId,
   refreshSignal,
 }: {
-  role: 'cfd' | 'sim'
+  role: 'cfd'
   posTerminalId: string
   posOrgId: string
   refreshSignal: number

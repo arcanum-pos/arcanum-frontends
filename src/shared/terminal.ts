@@ -1,14 +1,13 @@
 // Local counterpart of arcanum-webapp's src/lib/terminal.ts (device-identity
-// storage + notification channel + CFD/sim link management). Same
+// storage + notification channel + CFD link management). Same
 // localStorage key/shape — kept byte-for-byte compatible in case any
 // not-yet-migrated screen still reads it directly.
 
-export type Role = 'pos' | 'cfd' | 'sim'
+export type Role = 'pos' | 'cfd'
 
 export const PAGE_FOR_ROLE: Record<Role, string> = {
   pos: '/kassa.html',
   cfd: '/display.html',
-  sim: '/simulator.html',
 }
 
 const DEVICES_URL = '/api/devices'
@@ -30,8 +29,12 @@ function getStoredTerminal(): Terminal | null {
   }
 }
 
+// A role this app no longer has (the SumUp simulator's 'sim', removed
+// 2026-10-06 — SumUp's Virtual Solo replaces it) counts as not registered:
+// the chooser asks again.
 export function getStoredTerminalInfo(): Terminal | null {
-  return getStoredTerminal()
+  const stored = getStoredTerminal()
+  return stored && stored.role in PAGE_FOR_ROLE ? stored : null
 }
 
 async function callRegister(terminal: Terminal): Promise<void> {
@@ -55,7 +58,7 @@ export async function registerNewTerminal(role: Role, orgId: string, orgName?: s
   await callRegister(terminal)
 }
 
-// Called by a target page (e.g. simulator) on load. Re-confirms the
+// Called by a target page (kassa, customer display) on load. Re-confirms the
 // already-stored identity with the server (idempotent) but never invents
 // one — if nothing's stored yet, or it's stored under a different role,
 // returns null so the caller can send them back to the chooser instead of
@@ -80,7 +83,7 @@ export async function registerRemoteTerminal(role: Role, orgId: string): Promise
   return terminalId
 }
 
-export async function getLinkedDevice(posTerminalId: string, role: 'cfd' | 'sim'): Promise<{ terminal_id: string } | null> {
+export async function getLinkedDevice(posTerminalId: string, role: 'cfd'): Promise<{ terminal_id: string } | null> {
   try {
     const res = await fetch(`${DEVICES_URL}/${encodeURIComponent(posTerminalId)}/linked?role=${role}`)
     return res.ok ? await res.json() : null

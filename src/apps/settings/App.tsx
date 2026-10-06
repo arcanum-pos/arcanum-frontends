@@ -139,16 +139,6 @@ export default function App() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">{m.linkSimulator}</CardTitle>
-              <p className="text-sm text-muted-foreground">{m.simulatorHint}</p>
-            </CardHeader>
-            <CardContent>
-              <LinkPanel role="sim" posTerminalId={posTerminalId} posOrgId={posOrgId} refreshSignal={linksChangedSignal} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <CardTitle className="text-base">{m.reader}</CardTitle>
               <p className="text-sm text-muted-foreground">{m.readerHint}</p>
             </CardHeader>

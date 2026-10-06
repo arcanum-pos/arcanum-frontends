@@ -7,6 +7,5 @@ export default {
   roles: {
     pos: { title: 'Till', hint: 'Sell vouchers and create payments' },
     cfd: { title: 'Customer display', hint: 'Shows QR codes and the payment status to the customer' },
-    sim: { title: 'SumUp simulator', hint: 'For testing without a real SumUp reader' },
   },
 } satisfies ChooserMessages

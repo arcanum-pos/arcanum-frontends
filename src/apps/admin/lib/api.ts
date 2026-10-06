@@ -240,6 +240,8 @@ export async function whoami(): Promise<Whoami> {
 
 // arcanum-devicehub, proxied at /api/devices — same contract as
 // webapp/src/lib/terminal.ts's listOrgDevices/removeDevice.
+// 'sim': the SumUp simulator, removed 2026-10-06 — only still listed so an
+// old registration can be recognised and removed.
 export type DeviceRole = 'pos' | 'cfd' | 'sim'
 
 export interface OrgDevice {

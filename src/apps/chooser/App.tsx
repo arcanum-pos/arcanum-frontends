@@ -7,7 +7,7 @@ import { listMyMemberships, type Membership } from './lib'
 import { CHOOSER_MESSAGES } from './messages'
 import { getStoredTerminalInfo, PAGE_FOR_ROLE, registerNewTerminal, type Role } from '@/shared/terminal'
 
-const ROLES: Role[] = ['pos', 'cfd', 'sim']
+const ROLES: Role[] = ['pos', 'cfd']
 
 type View = { step: 'loading' } | { step: 'org-picker'; memberships: Membership[] } | { step: 'role-picker'; orgId: string; orgName: string; orgLocale?: string }
 

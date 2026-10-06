@@ -7,6 +7,5 @@ export default {
   roles: {
     pos: { title: 'Caisse', hint: 'Vendre des bons et créer des paiements' },
     cfd: { title: 'Écran client', hint: 'Affiche les codes QR et le statut du paiement au client' },
-    sim: { title: 'Simulateur SumUp', hint: 'Pour tester sans vrai lecteur SumUp' },
   },
 } satisfies ChooserMessages

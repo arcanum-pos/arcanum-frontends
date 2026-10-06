@@ -766,7 +766,7 @@ export default function App() {
       setTerminalIdLabel(terminal.terminalId)
 
       // Replaces polling: the notification socket pushes payment_updated
-      // the moment a linked reader/simulator resolves a charge this POS
+      // the moment a reader resolves a charge this POS
       // created.
       socket = connectNotifications(terminal.terminalId, {
         payment_updated: (msg) => {

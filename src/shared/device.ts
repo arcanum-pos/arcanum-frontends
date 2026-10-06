@@ -49,8 +49,8 @@ export function setDeviceName(name: string): void {
 
 // Which real SumUp Solo reader (if any) this POS should dispatch SumUp
 // charges to via the Cloud API — set from Settings' readers panel. No reader
-// selected means SumUp charges keep using the local pending-queue flow
-// (simulator / iOS bridge). Per-browser, not synced to the backend.
+// selected means a SumUp charge stays pending until the cashier confirms
+// it on the kassa. Per-browser, not synced to the backend.
 const SUMUP_READER_KEY = 'arcanum-sumup-reader'
 
 export interface SumupReaderSelection {

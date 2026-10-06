@@ -88,7 +88,7 @@ export default {
 
   devices: {
     title: 'Appareils',
-    subtitle: (org: string) => `Toutes les caisses, tous les écrans client, simulateurs et lecteurs SumUp liés à ${org}.`,
+    subtitle: (org: string) => `Toutes les caisses, tous les écrans client et lecteurs SumUp liés à ${org}.`,
     loadError: (error: string) => `Impossible de charger les appareils : ${error}`,
     readersError: (error: string) => `Impossible de récupérer les lecteurs SumUp : ${error}`,
     id: 'ID de l’appareil',
@@ -96,7 +96,7 @@ export default {
     linkedTo: 'Lié à',
     registeredAt: 'Enregistré le',
     empty: 'Aucun appareil enregistré pour cette organisation.',
-    roles: { pos: 'Caisse', cfd: 'Écran client', sim: 'Simulateur SumUp' },
+    roles: { pos: 'Caisse', cfd: 'Écran client', sim: 'Simulateur SumUp (abandonné)' },
     reader: 'Lecteur SumUp',
     readerStatus: {
       paired: 'Couplé',

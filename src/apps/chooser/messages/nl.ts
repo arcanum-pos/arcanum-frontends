@@ -9,7 +9,6 @@ const nl = {
   roles: {
     pos: { title: 'Kassa', hint: 'Bonnen verkopen en betalingen aanmaken' },
     cfd: { title: 'Klantscherm', hint: 'Toont QR-codes en betaalstatus aan de klant' },
-    sim: { title: 'SumUp-simulator', hint: 'Voor test zonder echte SumUp-reader' },
   } satisfies Record<Role, { title: string; hint: string }>,
 }
 

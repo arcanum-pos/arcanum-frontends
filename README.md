@@ -2,7 +2,7 @@
 
 
 Every UI screen the platform serves — the admin portal (`admin`, at
-`/console`), kassa, settings, the customer display, the SumUp simulator, the
+`/console`), kassa, settings, the customer display, the
 org/device chooser, the login prompt, and the device-grant QR page, all
 reached behind `arcanum-bff` — as one Vite project with multiple independent
 HTML entry points, not one Worker per screen type. `arcanum-webapp`, which
@@ -102,7 +102,9 @@ Deployed as the `arcanum-frontends` Worker. `arcanum-webapp`'s old
 `/admin.html`/`/admin-org.html` pages the admin app replaced are gone, and
 every other screen it used to serve (kassa, settings, the customer display,
 the SumUp simulator, the org/device chooser) has since moved here too —
-`arcanum-webapp` has nothing left to serve. Real data wiring is in — see
+`arcanum-webapp` has nothing left to serve. (The SumUp simulator was
+removed on 2026-10-06: SumUp's Virtual Solo with a sandbox account, paired
+in Toestellen, replaces it.) Real data wiring is in — see
 `src/apps/admin/lib/api.ts`.
 
 ## Translations (nl / fr / en)
@@ -125,7 +127,7 @@ sets (the admin console: `src/apps/admin/messages/{shell,catalog,org}`).
     the browser's). It's picked in Instellingen → Taal, or set when the
     device is registered on the chooser: a language picked there, else the
     org's default language, else the one the chooser showed.
-  - The setup screens (chooser, login prompt, device login, simulator —
+  - The setup screens (chooser, login prompt, device login —
     `KioskShell languagePicker`) fall back to the browser's language
     (`preferredLocale`).
   - The admin console follows the admin's own pick (Settings → Preferences,
