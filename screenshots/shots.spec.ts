@@ -6,9 +6,6 @@ import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Page, WebSocketRoute } from '@playwright/test'
-import { createElement } from 'react'
-import { renderToStaticMarkup } from 'react-dom/server'
-import { QRCodeSVG } from 'qrcode.react'
 import { expect, test } from '../e2e/console-fixtures'
 import { FakeBackend } from '../e2e/fake-backend'
 import { ORG_ID, type FakeCatalogAdmin } from '../e2e/fake-catalog-admin'
@@ -20,10 +17,36 @@ mkdirSync(OUT, { recursive: true })
 
 const shot = (page: Page, name: string, lang: Lang) => page.screenshot({ path: path.join(OUT, `${name}-${lang}.png`), animations: 'disabled' })
 
-// A real QR code for the customer display (the fake's is a black square).
-// React leaves out the xmlns a standalone SVG image needs.
-const qrSvg = renderToStaticMarkup(createElement(QRCodeSVG, { value: 'https://payconiq.com/pay/2/arcanum-demo-0001', size: 256, marginSize: 2 })).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')
-const QR = `data:image/svg+xml,${encodeURIComponent(qrSvg)}`
+// The customer display's QR code (the fake's is a black square): looks like
+// one — the three finder squares and the timing lines are real — but the
+// rest is a fixed pseudo-random pattern without valid format information,
+// so no app can scan it. A screenshot must never carry a payment link.
+function fakeQr(size = 29): string {
+  let seed = 7
+  const random = () => ((seed = (seed * 1103515245 + 12345) % 2 ** 31) / 2 ** 31)
+  const finder = (x: number, y: number) => {
+    for (const [ox, oy] of [[0, 0], [size - 7, 0], [0, size - 7]]) {
+      const dx = x - ox
+      const dy = y - oy
+      if (dx >= -1 && dx <= 7 && dy >= -1 && dy <= 7) {
+        if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return 0 // the white ring around it
+        return dx === 0 || dy === 0 || dx === 6 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4) ? 1 : 0
+      }
+    }
+    return null
+  }
+  const cells: string[] = []
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const f = finder(x, y)
+      const on = f ?? (x === 6 || y === 6 ? (x + y) % 2 === 0 : random() < 0.5)
+      if (on) cells.push(`<rect x="${x + 2}" y="${y + 2}" width="1" height="1"/>`)
+    }
+  }
+  const box = size + 4
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${box} ${box}" width="256" height="256" shape-rendering="crispEdges"><rect width="${box}" height="${box}" fill="#fff"/>${cells.join('')}</svg>`
+}
+const QR = `data:image/svg+xml,${encodeURIComponent(fakeQr())}`
 
 // The kassa on a fake backend, as kassa-*.spec.ts's fixture sets it up, but
 // in the device language `lang` (arcanum-locale).
@@ -95,6 +118,8 @@ for (const lang of LANGS) {
       const backend = evening(lang)
       await openKassa(page, backend, lang)
       const display = await page.context().newPage()
+      // Full size: at 640 high its help text runs into the buttons below it.
+      await display.setViewportSize({ width: 1280, height: 800 })
       await display.routeWebSocket(/\/devices\/connect/, () => {})
       await display.goto('/display.html?terminal=cfd-1')
       await openTab4(page)
