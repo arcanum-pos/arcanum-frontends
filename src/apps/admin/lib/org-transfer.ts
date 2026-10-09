@@ -154,10 +154,7 @@ export const EXPORT_TABLES = [
   'order_lines',
   'charges',
   'transactions',
-  'mail_provider',
   'payment_provider_credentials',
-  'smtp_credentials',
-  'gmail_api_credentials',
 ] as const
 
 export type ExportTable = (typeof EXPORT_TABLES)[number]

@@ -9,7 +9,6 @@ const PAGES = [
   ['Voorkeuren', '/settings/preferences'],
   ['Profiel', '/settings/profile'],
   ['Betaalproviders', '/settings/payment-providers'],
-  ['Meldingen', '/settings/notifications'],
   ['Gegevens', '/settings/data'],
 ] as const
 

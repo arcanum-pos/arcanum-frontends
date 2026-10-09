@@ -82,10 +82,14 @@ worker/index.ts               # thin ASSETS passthrough — see wrangler.jsonc
 - **Settings** → Appearance (real, functional light/dark/system toggle),
   Preferences (language — disabled, not supported yet), Profile (real
   `/whoami`), Payment Providers (real, incl. Bancontact prod/preprod),
-  Notifications (disabled preview, waiting on the SMTP work), Gegevens
-  (org data export/import, below). No per-org custom domain or login
-  provider pages anymore (hosting plan phase 6): both belong to the
-  instance, set up in the installer.
+  Gegevens (org data export/import, below). No per-org custom domain,
+  login provider or mail pages anymore: all three belong to the instance,
+  set up in the installer (hosting plan phase 6; MAIL.md).
+- **Gebruikers** — invite by e-mail. When the installation sent no invite
+  mail (none set up, or it failed: the backend answers `mailSent: false`)
+  the console shows the invitation to pass on yourself (WhatsApp, sms), in
+  the org's language (`lib/invite-text.ts`); a pending member's row menu
+  offers "Uitnodiging kopiëren" for the same text later.
 - **Gegevens** (Instellingen) — export all of the org's data as one JSON
   file (secrets only when asked, with a warning), and import such a file as
   a **new** org — also offered from the team switcher's "Nieuwe

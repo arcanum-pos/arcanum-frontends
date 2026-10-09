@@ -8,7 +8,6 @@ const SETTINGS_NAV = [
   { key: 'preferences', to: '/settings/preferences' },
   { key: 'profile', to: '/settings/profile' },
   { key: 'paymentProviders', to: '/settings/payment-providers' },
-  { key: 'notifications', to: '/settings/notifications' },
   { key: 'data', to: '/settings/data' },
 ] as const
 

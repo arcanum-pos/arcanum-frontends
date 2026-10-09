@@ -24,7 +24,7 @@ test('exports all data, with secrets only when asked (and warned)', async ({ con
   expect(JSON.parse(readFileSync(await plain.path(), 'utf8')).includesSecrets).toBe(false)
   expect(orgTransfer.exportQueries).toEqual([''])
 
-  await page.getByLabel('Inclusief geheimen (betaal- en mailinstellingen, onversleuteld)').check()
+  await page.getByLabel('Inclusief geheimen (betaalinstellingen, onversleuteld)').check()
   await expect(page.getByRole('alert')).toContainText('wachtwoorden en API-sleutels')
   const [withSecrets] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Alle gegevens exporteren' }).click()])
   expect(JSON.parse(readFileSync(await withSecrets.path(), 'utf8')).includesSecrets).toBe(true)
@@ -39,7 +39,7 @@ test('imports an export as a new org: summary, progress, report, switch', async 
 
   await expect(dialog.getByLabel('Naam van de organisatie')).toHaveValue('Scouts Elewijt')
   await expect(dialog.getByRole('row', { name: /Producten/ })).toContainText('3')
-  await expect(dialog).toContainText('geen betaal- of mailinstellingen')
+  await expect(dialog).toContainText('geen betaalinstellingen')
   await dialog.getByLabel('Naam van de organisatie').fill('Scouts kopie')
   await dialog.getByRole('button', { name: 'Importeren' }).click()
 

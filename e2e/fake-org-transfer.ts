@@ -10,8 +10,7 @@ import { ORG_ID, type FakeResponse } from './fake-catalog-admin'
 
 export const TABLE_ORDER = [
   'memberships', 'events', 'categories', 'prep_stations', 'products', 'product_variants', 'catalogs', 'catalog_sections', 'catalog_entries',
-  'org_counters', 'tabs', 'orders', 'order_lines', 'charges', 'transactions', 'mail_provider', 'payment_provider_credentials',
-  'smtp_credentials', 'gmail_api_credentials',
+  'org_counters', 'tabs', 'orders', 'order_lines', 'charges', 'transactions', 'payment_provider_credentials',
 ]
 
 interface FakeOrg {

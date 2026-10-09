@@ -91,7 +91,9 @@ export function listMembers(orgId: string): Promise<Member[]> {
   return request(`/${encodeURIComponent(orgId)}/members`)
 }
 
-export function inviteMember(orgId: string, email: string, role: 'admin' | 'cashier'): Promise<Member> {
+// mailSent false: the installation sent no invite mail (none set up, or it
+// failed) — the console then offers the invitation to pass on yourself.
+export function inviteMember(orgId: string, email: string, role: 'admin' | 'cashier'): Promise<Member & { mailSent?: boolean; loginUrl?: string }> {
   return request(`/${encodeURIComponent(orgId)}/members`, {
     method: 'POST',
     body: JSON.stringify({ email, role }),
@@ -167,61 +169,6 @@ export async function removeSumupReader(orgId: string, readerId: string): Promis
   await workerCall(`/sumup/readers/${encodeURIComponent(readerId)}?org_id=${encodeURIComponent(orgId)}`, { method: 'DELETE' })
 }
 
-export interface SmtpCredentialsConfig {
-  host: string | null
-  port: number | null
-  username: string | null
-  fromAddress: string | null
-  fromName: string | null
-  hasPassword: boolean
-  updatedAt: string | null
-}
-
-export function getSmtpCredentials(orgId: string): Promise<SmtpCredentialsConfig> {
-  return request(`/${encodeURIComponent(orgId)}/smtp-credentials`)
-}
-
-export function setSmtpCredentials(
-  orgId: string,
-  fields: { host?: string; port?: number; username?: string; password?: string; fromAddress?: string; fromName?: string }
-): Promise<SmtpCredentialsConfig> {
-  return request(`/${encodeURIComponent(orgId)}/smtp-credentials`, { method: 'PUT', body: JSON.stringify(fields) })
-}
-
-export function sendTestEmail(orgId: string): Promise<{ ok: true; provider: MailProvider }> {
-  return request(`/${encodeURIComponent(orgId)}/smtp-credentials/test`, { method: 'POST' })
-}
-
-export type MailProvider = 'smtp' | 'gmail_api'
-
-export function getMailProvider(orgId: string): Promise<{ provider: MailProvider }> {
-  return request(`/${encodeURIComponent(orgId)}/mail-provider`)
-}
-
-export function setMailProvider(orgId: string, provider: MailProvider): Promise<{ provider: MailProvider }> {
-  return request(`/${encodeURIComponent(orgId)}/mail-provider`, { method: 'PUT', body: JSON.stringify({ provider }) })
-}
-
-export interface GmailApiCredentialsConfig {
-  clientEmail: string | null
-  impersonatedUser: string | null
-  fromName: string | null
-  hasPrivateKey: boolean
-  updatedAt: string | null
-}
-
-export function getGmailApiCredentials(orgId: string): Promise<GmailApiCredentialsConfig> {
-  return request(`/${encodeURIComponent(orgId)}/gmail-api-credentials`)
-}
-
-export function setGmailApiCredentials(
-  orgId: string,
-  fields: { clientEmail?: string; privateKey?: string; impersonatedUser?: string; fromName?: string }
-): Promise<GmailApiCredentialsConfig> {
-  return request(`/${encodeURIComponent(orgId)}/gmail-api-credentials`, { method: 'PUT', body: JSON.stringify(fields) })
-}
-
-// arcanum-bff's own top-level endpoint, not under /api/organizations.
 export interface Whoami {
   sub: string
   email: string

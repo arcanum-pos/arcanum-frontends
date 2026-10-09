@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MoreHorizontal, UserPlus } from 'lucide-react'
+import { Copy, MoreHorizontal, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -28,7 +28,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { inviteMember, listMembers, removeMember, whoami } from '../lib/api'
+import { inviteMember, listMembers, removeMember, whoami, type Member } from '../lib/api'
+import { inviteText, loginUrl } from '../lib/invite-text'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { useMessages } from '@/shared/i18n'
@@ -55,6 +56,20 @@ export default function UsersPage() {
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
+  // The invitation to pass on yourself: right after an invite whose mail
+  // wasn't sent (notSent), or for any pending member from the row menu.
+  const [share, setShare] = useState<{ email: string; text: string; notSent: boolean } | null>(null)
+
+  function openShare(member: Pick<Member, 'invitedEmail' | 'role'>, notSent: boolean, url = loginUrl()) {
+    const text = inviteText({
+      orgName: currentOrg?.name ?? '',
+      role: member.role,
+      email: member.invitedEmail,
+      loginUrl: url,
+      locale: currentOrg?.locale,
+    })
+    setShare({ email: member.invitedEmail, text, notSent })
+  }
 
   async function handleInvite() {
     if (!orgId) return
@@ -63,10 +78,11 @@ export default function UsersPage() {
     setInviting(true)
     setInviteError(null)
     try {
-      await inviteMember(orgId, email, inviteRole)
+      const invited = await inviteMember(orgId, email, inviteRole)
       setInviteEmail('')
       setInviteOpen(false)
       reload()
+      if (invited.mailSent === false) openShare(invited, true, invited.loginUrl || undefined)
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -180,6 +196,12 @@ export default function UsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {member.status === 'pending' && (
+                          <DropdownMenuItem onClick={() => openShare(member, false)}>
+                            <Copy />
+                            {m.users.copyInvite}
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem variant="destructive" onClick={() => handleRemove(member.id, member.invitedEmail)}>
                           {m.remove}
                         </DropdownMenuItem>
@@ -191,6 +213,63 @@ export default function UsersPage() {
             ))}
         </TableBody>
       </Table>
+
+      <ShareInviteDialog share={share} onClose={() => setShare(null)} />
     </div>
+  )
+}
+
+function ShareInviteDialog({ share, onClose }: { share: { email: string; text: string; notSent: boolean } | null; onClose: () => void }) {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    if (!share) return
+    try {
+      await navigator.clipboard.writeText(share.text)
+      setCopied(true)
+    } catch {
+      // No clipboard (an insecure context, a refused permission): the text
+      // stays selectable in the box.
+    }
+  }
+
+  return (
+    <Dialog
+      open={share !== null}
+      onOpenChange={(open) => {
+        if (!open) {
+          setCopied(false)
+          onClose()
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{m.users.shareTitle}</DialogTitle>
+          <DialogDescription>{share && (share.notSent ? m.users.shareNotSent(share.email) : m.users.shareHint(share.email))}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-2">
+          <Label htmlFor="invite-text">{m.users.shareText}</Label>
+          <textarea
+            id="invite-text"
+            readOnly
+            rows={7}
+            value={share?.text ?? ''}
+            onFocus={(e) => e.currentTarget.select()}
+            className="w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setCopied(false); onClose() }}>
+            {m.users.close}
+          </Button>
+          <Button onClick={copy}>
+            <Copy />
+            {copied ? m.users.copied : m.users.copy}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

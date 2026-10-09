@@ -19,7 +19,6 @@ const AppearancePage = lazy(() => import('./routes/settings/appearance'))
 const PreferencesPage = lazy(() => import('./routes/settings/preferences'))
 const ProfilePage = lazy(() => import('./routes/settings/profile'))
 const PaymentProvidersPage = lazy(() => import('./routes/settings/payment-providers'))
-const NotificationsPage = lazy(() => import('./routes/settings/notifications'))
 const DataPage = lazy(() => import('./routes/settings/data'))
 
 const rootRoute = createRootRoute({ component: AppLayout })
@@ -53,7 +52,6 @@ const paymentProvidersRoute = createRoute({
   path: '/payment-providers',
   component: PaymentProvidersPage,
 })
-const notificationsRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/notifications', component: NotificationsPage })
 
 const dataRoute = createRoute({ getParentRoute: () => settingsRoute, path: '/data', component: DataPage })
 
@@ -73,7 +71,6 @@ const routeTree = rootRoute.addChildren([
     preferencesRoute,
     profileRoute,
     paymentProvidersRoute,
-    notificationsRoute,
     dataRoute,
   ]),
 ])
