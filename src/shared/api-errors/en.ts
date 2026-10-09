@@ -72,6 +72,8 @@ export default {
   import_not_abortable: 'Only an unfinished import can be cancelled',
   mail_not_configured: 'No email configuration found (and no platform default either)',
   mail_send_failed: 'Sending failed',
+  invalid_email: 'That isn’t a valid email address',
+  too_many_test_mails: 'Too many test emails — try again in an hour',
   bancontact_not_configured: 'Bancontact is not configured for this organisation',
   sumup_readers_failed: 'Could not fetch the SumUp readers',
   sumup_not_configured: 'SumUp isn’t set up for this organisation',

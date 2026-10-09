@@ -73,6 +73,8 @@ const nl = {
   import_not_abortable: 'Alleen een onafgewerkte import kan geannuleerd worden',
   mail_not_configured: 'Geen e-mailconfiguratie gevonden (en ook geen platform-standaard)',
   mail_send_failed: 'Verzenden mislukt',
+  invalid_email: 'Dat is geen geldig e-mailadres',
+  too_many_test_mails: 'Te veel testmails — probeer het over een uur opnieuw',
   bancontact_not_configured: 'Bancontact niet geconfigureerd voor deze organisatie',
   sumup_readers_failed: 'Kon SumUp readers niet ophalen',
   sumup_not_configured: 'SumUp is niet ingesteld voor deze organisatie',
