@@ -13,12 +13,14 @@ export function vatLabel(m: Pick<AdminCatalogMessages, 'vatNone'>, value: number
   return value === null ? m.vatNone : `${value / 100}%`
 }
 
-// "2,50" / "2.50" / "€ 2,5" / "3" → cents; null when it isn't a valid,
-// non-negative amount with at most two decimals.
+// "2,50" / "2.50" / "€ 2,5" / "3" → cents; "-1,50" / "-€ 1,50" → a
+// discount (negative); null when it isn't a valid amount with at most two
+// decimals.
 export function parseEuroInput(input: string): number | null {
-  const cleaned = input.replace(/€/g, '').replace(/\s/g, '').replace(',', '.')
-  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null
-  return Math.round(Number(cleaned) * 100)
+  const cleaned = input.replace(/€/g, '').replace(/\s/g, '').replace(/^−/, '-').replace(',', '.')
+  if (!/^-?\d+(\.\d{1,2})?$/.test(cleaned)) return null
+  const cents = Math.round(Number(cleaned) * 100)
+  return Object.is(cents, -0) ? 0 : cents
 }
 
 // Cents → the editable text form, without a currency sign ("2,50").

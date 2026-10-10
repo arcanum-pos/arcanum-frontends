@@ -52,17 +52,25 @@ describe('parseEuroInput', () => {
     ['€ 1,25', 125],
     ['0', 0],
     [' 12,00 ', 1200],
+    // A discount.
+    ['-1', -100],
+    ['-1,50', -150],
+    ['-€ 2,00', -200],
+    ['−0,50', -50],
+    ['-0', 0],
   ])('%s → %i cents', (input, cents) => {
     expect(parseEuroInput(input)).toBe(cents)
   })
 
-  it.each(['', 'abc', '-1', '1,234', '1,2,3', '1.000,00'])('rejects %j', (input) => {
+  it.each(['', 'abc', '--1', '1-', '1,234', '1,2,3', '1.000,00'])('rejects %j', (input) => {
     expect(parseEuroInput(input)).toBeNull()
   })
 
   it('round-trips with formatEuroInput', () => {
     expect(formatEuroInput(250)).toBe('2,50')
     expect(parseEuroInput(formatEuroInput(1999))).toBe(1999)
+    expect(formatEuroInput(-150)).toBe('-1,50')
+    expect(parseEuroInput(formatEuroInput(-150))).toBe(-150)
   })
 })
 

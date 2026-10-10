@@ -403,7 +403,7 @@ export class FakeCatalogAdmin {
       return ok({ ok: true })
     }
     if (action === 'entries' && !childId) {
-      if (!Number.isInteger(body.priceCents) || body.priceCents < 0) return bad('priceCents must be an integer between 0 and 1000000')
+      if (!Number.isInteger(body.priceCents) || Math.abs(body.priceCents) > 1_000_000) return bad('priceCents must be an integer between -1000000 and 1000000')
       if (!this.sections.some((s) => s.id === body.sectionId && s.catalogId === catalog.id)) return bad('Onbekende groep voor deze menukaart')
       if (this.entries.some((e) => e.catalogId === catalog.id && e.variantId === body.variantId)) return conflict('Dit product staat al op deze menukaart')
       const entry = {
@@ -427,7 +427,7 @@ export class FakeCatalogAdmin {
         return ok({ ok: true })
       }
       if (body.priceCents !== undefined) {
-        if (!Number.isInteger(body.priceCents) || body.priceCents < 0) return bad('priceCents must be an integer between 0 and 1000000')
+        if (!Number.isInteger(body.priceCents) || Math.abs(body.priceCents) > 1_000_000) return bad('priceCents must be an integer between -1000000 and 1000000')
         entry.priceCents = body.priceCents
       }
       if (body.visible !== undefined) entry.visible = !!body.visible

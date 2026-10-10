@@ -319,7 +319,7 @@ export interface PreviewSummary {
 
 // Amounts are "€ 2,50" in every language (see formatEuro).
 function euro(cents: number): string {
-  return `€ ${(cents / 100).toFixed(2).replace('.', ',')}`
+  return `${cents < 0 ? '-' : ''}€ ${(Math.abs(cents) / 100).toFixed(2).replace('.', ',')}`
 }
 
 // The preview dialog's sections, in reading order, leaving out empty ones.

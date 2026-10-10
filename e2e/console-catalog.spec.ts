@@ -214,6 +214,15 @@ test.describe('Menukaarten', () => {
     await expect(page.getByLabel('Prijs Pils')).toHaveValue('2,75')
     expect(catalogAdmin.entries[0].priceCents).toBe(275)
 
+    // A discount: a negative price.
+    await page.getByLabel('Prijs Pils').fill('-1,50')
+    await page.getByLabel('Prijs Pils').press('Enter')
+    await expect(page.getByLabel('Prijs Pils')).toHaveValue('-1,50')
+    expect(catalogAdmin.entries[0].priceCents).toBe(-150)
+    await page.getByLabel('Prijs Pils').fill('2,75')
+    await page.getByLabel('Prijs Pils').press('Enter')
+    await expect.poll(() => catalogAdmin.entries[0].priceCents).toBe(275)
+
     await page.getByLabel('Prijs Pils').fill('twee')
     await page.getByLabel('Prijs Pils').press('Enter')
     await expect(page.getByText('Ongeldige prijs voor Pils')).toBeVisible()

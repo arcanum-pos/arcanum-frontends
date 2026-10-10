@@ -115,3 +115,20 @@ test('switching to another catalog drops draft lines that are not on it', async 
   await expect(panel(kassa).getByText('Wandeltocht')).toHaveCount(0)
   await expect(kassa.getByRole('button', button('Afrekenen € 5,00'))).toBeVisible()
 })
+
+test('a discount (a product with a negative price) lowers what is charged, shown as "-€ …"', async ({ kassa, backend }) => {
+  backend.catalogs[0].sections.push({ id: 's-korting', name: 'Korting', entries: [fakeEntry('v-korting', 'Korting lid', -200, 'korting')] })
+  await kassa.reload()
+  const discount = kassa.getByRole('button', button(/^Korting lid/))
+  await expect(discount).toContainText('-€ 2,00')
+  await kassa.getByRole('button', button(/^Fietstocht \(niet-lid\)/)).click()
+  await discount.click()
+  await expect(panel(kassa)).toContainText('-€ 2,00')
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', button('Afrekenen € 6,00')).click()
+  await kassa.getByRole('button', button('Bevestig ontvangst contant geld')).click()
+  expect(backend.lines.map((l) => [l.name, l.unitPriceCents, l.quantity])).toEqual([
+    ['Fietstocht (niet-lid)', 800, 1],
+    ['Korting lid', -200, 1],
+  ])
+})
