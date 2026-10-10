@@ -8,6 +8,8 @@ export default {
   settings: 'Settings',
   logout: 'Log out',
   close: 'Close',
+  demoBar: (when: string) => `This is a demo — it disappears by itself at ${when}.`,
+  demoConsole: 'Manage in the console (menu, devices, reports) →',
 
   quickSale: 'Counter',
   payDirectly: 'Pay directly',

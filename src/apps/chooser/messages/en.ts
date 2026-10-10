@@ -14,6 +14,9 @@ const en: ChooserMessages = {
   pairedTitle: (name: string) => `This device is ${name}`,
   org: (name: string) => `Organisation: ${name}`,
   open: 'Open',
+  replaceHint: 'You opened a pairing code. If you pair this browser with it, it stops being this device and you’ll have to pair that again later.',
+  replaceYes: 'Pair with the new code',
+  replaceNo: (name: string) => `No, open ${name}`,
   roles: { pos: 'a till', cfd: 'a customer display' },
 }
 

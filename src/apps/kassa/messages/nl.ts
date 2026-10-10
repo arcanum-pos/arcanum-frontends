@@ -12,6 +12,8 @@ const nl = {
   settings: 'Instellingen',
   logout: 'Uitloggen',
   close: 'Sluiten',
+  demoBar: (when: string) => `Dit is een demo — ze verdwijnt vanzelf om ${when}.`,
+  demoConsole: 'Beheer in de console (menukaart, toestellen, rapporten) →',
 
   // Tab strip and ticket header. A Toog tab is stored as "Toog" whatever
   // the language (the customer display recognises it); `quickSale` is only

@@ -70,8 +70,10 @@ async function pairOnStartPage(browser: import('@playwright/test').Browser, brow
   )
   // The kassa itself isn't under test here — stop at its URL.
   await page.route(/\/kassa(\.html)?$/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>kassa</p>' }))
-  await page.goto('/chooser.html?code=K7PMQ2X4')
+  // Typed in (a QR link pairs right away, before a language can be picked).
+  await page.goto('/chooser.html')
   if (pick) await page.getByRole('button', { name: pick }).click()
+  await page.getByRole('textbox').fill('K7PMQ2X4')
   await page.getByRole('button', { name: /^(Koppelen|Coupler|Pair)$/ }).click()
   await page.waitForURL(/\/kassa/)
   const stored = await page.evaluate(() => localStorage.getItem('arcanum-locale'))

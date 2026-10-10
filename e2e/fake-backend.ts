@@ -296,6 +296,8 @@ export class FakeBackend {
   pairingCodes = new Map<string, { role: 'pos' | 'cfd'; name: string }>()
   // The signed-in person's role in org-e2e (Instellingen's Beheer is for admins).
   memberRole: 'admin' | 'cashier' = 'cashier'
+  // Set: org-e2e is a demo that disappears then (the kassa's demo bar).
+  demoExpiresAt: string | null = null
   deviceCalls: { method: string; id: string; action?: string; body?: any }[] = []
 
   private claim(code: string): FakeResponse {
@@ -354,6 +356,8 @@ export class FakeBackend {
 
     if (p === '/whoami') return { status: 200, body: { name: 'Test Kassier', email: 'kassier@example.test' } }
     if (p === '/api/devices/ws-token') return { status: 200, body: { token: 'test-token' } }
+    if (p === '/api/organizations' && method === 'GET')
+      return { status: 200, body: [{ id: 'org-e2e', name: 'E2E', demo: this.demoExpiresAt ? { expiresAt: this.demoExpiresAt, installUrl: null } : null }] }
     if (p === '/api/organizations/memberships' && method === 'GET') return { status: 200, body: [{ orgId: 'org-e2e', orgName: 'E2E', role: this.memberRole }] }
     if (p === '/api/organizations/device-pairings/claim' && method === 'POST') return this.claim(String(body?.code ?? ''))
     const device = p.match(/^\/api\/organizations\/([^/]+)\/devices\/([^/]+)(?:\/(display|linked|linkable|link|unlink|reset))?$/)

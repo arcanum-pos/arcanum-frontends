@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import kabouterLogo from '@/shared/assets/kabouter.png'
 import { getCatalogSelection, getDeviceId, getDeviceName, getEventSelection, getSumupReader, setCatalogSelection, setEventSelection, type EventSelection } from '@/shared/device'
 import { connectNotifications, getRegisteredTerminal, getStoredTerminalInfo, openCompanionDisplay, resetKassa } from '@/shared/terminal'
+import { DemoBar } from './DemoBar'
 import { getCurrentSlotId } from '@/shared/slots'
 import { formatEuro } from '@/shared/format'
 import type { ApiErrorCode } from '@/shared/api-errors'
@@ -818,6 +819,7 @@ export default function App() {
 
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
+      {orgId && <DemoBar orgId={orgId} />}
       {/* Header: where this kassa is (org · device · menukaart), who's on it, and the open tabs. */}
       <header className="border-b bg-card">
         <div className="flex flex-wrap items-center gap-3.5 px-5 pt-3 pb-2.5">

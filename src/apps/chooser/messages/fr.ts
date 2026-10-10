@@ -14,6 +14,9 @@ const fr: ChooserMessages = {
   pairedTitle: (name: string) => `Cet appareil est ${name}`,
   org: (name: string) => `Organisation : ${name}`,
   open: 'Ouvrir',
+  replaceHint: 'Vous avez ouvert un code de couplage. Si vous l’utilisez pour ce navigateur, il ne sera plus cet appareil et vous devrez le coupler à nouveau plus tard.',
+  replaceYes: 'Coupler avec le nouveau code',
+  replaceNo: (name: string) => `Non, ouvrir ${name}`,
   roles: { pos: 'une caisse', cfd: 'un écran client' },
 }
 

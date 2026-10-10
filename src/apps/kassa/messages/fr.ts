@@ -8,6 +8,8 @@ export default {
   settings: 'Paramètres',
   logout: 'Se déconnecter',
   close: 'Fermer',
+  demoBar: (when: string) => `Ceci est une démo — elle disparaît d’elle-même à ${when}.`,
+  demoConsole: 'Gestion dans la console (carte, appareils, rapports) →',
 
   quickSale: 'Comptoir',
   payDirectly: 'Payer directement',
