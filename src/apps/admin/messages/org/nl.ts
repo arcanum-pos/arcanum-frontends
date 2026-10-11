@@ -139,6 +139,8 @@ const nl = {
     modeName: 'Naam van de bestelwijze',
     modeChoose: 'Bestelwijze om in te stellen',
     addMode: 'Toevoegen',
+    addModeOption: 'Bestelwijze toevoegen',
+    cancel: 'Annuleren',
     newMode: 'Nieuwe bestelwijze',
     addModePlaceholder: 'bv. Take away',
     modeSuggestions: ['Ter plaatse', 'Take away', 'Alleen aan de kassa'],

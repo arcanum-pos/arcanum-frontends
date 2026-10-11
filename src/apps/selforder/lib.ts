@@ -31,10 +31,16 @@ export interface Menu {
   modes: MenuMode[]
 }
 
-// The mode ordered in: the one chosen — or, with only one, that one.
+// The mode ordered in: the one chosen — or, with only one, that one. A
+// direct link carries a mode's first 8 characters (enough within an event).
 export function pickMode(menu: Menu | null, modeId: string | null): MenuMode | null {
   const modes = menu?.modes ?? []
-  if (modeId) return modes.find((mode) => mode.id === modeId) ?? null
+  if (modeId) {
+    const exact = modes.find((mode) => mode.id === modeId)
+    if (exact) return exact
+    const prefixed = modeId.length >= 8 ? modes.filter((mode) => mode.id.startsWith(modeId)) : []
+    return prefixed.length === 1 ? prefixed[0] : null
+  }
   return modes.length === 1 ? modes[0] : null
 }
 

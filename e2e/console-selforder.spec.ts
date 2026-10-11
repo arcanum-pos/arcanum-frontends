@@ -47,13 +47,14 @@ test('an event: add an ordering mode with a menu, switch self-ordering on, and g
   await pay.getByRole('switch', { name: 'Met Bancontact, op hun telefoon' }).click()
   await expect(pay.getByRole('switch', { name: 'Met Bancontact, op hun telefoon' })).toBeChecked()
   expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ payBancontact: true })
-  // Ordering on a tab, paid when leaving.
-  await pay.getByRole('switch', { name: 'Bijbestellen op hun rekening, betalen bij vertrek' }).click()
-  await expect(pay.getByRole('switch', { name: 'Bijbestellen op hun rekening, betalen bij vertrek' })).toBeChecked()
+  // Ordering on a tab, paid when leaving: its own section.
+  const tab = mode.getByTestId('tab-settings')
+  await tab.getByRole('switch', { name: 'Bijbestellen op hun rekening, betalen bij vertrek' }).click()
+  await expect(tab.getByRole('switch', { name: 'Bijbestellen op hun rekening, betalen bij vertrek' })).toBeChecked()
   expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ tabs: true })
   // On a tab: who's behind it, asked when it opens.
-  await pay.getByRole('switch', { name: 'Naam en gsm-nummer of e-mail vragen' }).click()
-  await expect(pay.getByRole('switch', { name: 'Naam en gsm-nummer of e-mail vragen' })).toBeChecked()
+  await tab.getByRole('switch', { name: 'Naam en gsm-nummer of e-mail vragen' }).click()
+  await expect(tab.getByRole('switch', { name: 'Naam en gsm-nummer of e-mail vragen' })).toBeChecked()
   expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ tabContact: true })
 
   // Another name in the readable link.
@@ -107,7 +108,7 @@ test('several ordering modes: renamed, moved, a direct link each, removed — th
   await expect(card).toHaveCount(1)
   await expect(card).toHaveAttribute('data-name', 'Ter plaatse')
   await choose.click()
-  await expect(page.getByRole('option')).toHaveText(['Ter plaatse', 'Meenemen'])
+  await expect(page.getByRole('option')).toHaveText(['Ter plaatse', 'Meenemen', 'Bestelwijze toevoegen'])
   await page.getByRole('option', { name: 'Meenemen' }).click()
   await expect(card).toHaveAttribute('data-name', 'Meenemen')
   // Each QR mode a direct link (a poster at the take-away window).
@@ -122,11 +123,13 @@ test('several ordering modes: renamed, moved, a direct link each, removed — th
   await expect(card.getByRole('button', { name: 'Hoger' })).toBeDisabled()
   await expect(card).toHaveAttribute('data-name', 'Take away')
   await choose.click()
-  await expect(page.getByRole('option')).toHaveText(['Take away', 'Ter plaatse'])
+  await expect(page.getByRole('option')).toHaveText(['Take away', 'Ter plaatse', 'Bestelwijze toevoegen'])
   await page.keyboard.press('Escape')
   expect(catalogAdmin.eventCalls.map((c: any) => c.body)).toEqual([{ name: 'Take away' }, { move: 'up' }])
 
-  // A kassa-only mode: added, and shown to set it up.
+  // A kassa-only mode: added from the dropdown's last entry, and shown to set it up.
+  await choose.click()
+  await page.getByRole('option', { name: 'Bestelwijze toevoegen' }).click()
   await dialog.getByRole('combobox', { name: 'Nieuwe bestelwijze' }).fill('Alleen aan de kassa')
   await dialog.getByRole('button', { name: 'Toevoegen' }).click()
   await expect(card).toHaveAttribute('data-name', 'Alleen aan de kassa')

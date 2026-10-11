@@ -126,6 +126,8 @@ export default {
     modeName: 'Name of the ordering mode',
     modeChoose: 'Ordering mode to set up',
     addMode: 'Add',
+    addModeOption: 'Add an ordering mode',
+    cancel: 'Cancel',
     newMode: 'New ordering mode',
     addModePlaceholder: 'e.g. Take away',
     modeSuggestions: ['Eat in', 'Take away', 'Till only'],

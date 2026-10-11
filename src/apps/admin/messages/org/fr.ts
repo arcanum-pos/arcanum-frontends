@@ -126,6 +126,8 @@ export default {
     modeName: 'Nom du mode de commande',
     modeChoose: 'Mode de commande à régler',
     addMode: 'Ajouter',
+    addModeOption: 'Ajouter un mode de commande',
+    cancel: 'Annuler',
     newMode: 'Nouveau mode de commande',
     addModePlaceholder: 'p. ex. À emporter',
     modeSuggestions: ['Sur place', 'À emporter', 'Caisse uniquement'],

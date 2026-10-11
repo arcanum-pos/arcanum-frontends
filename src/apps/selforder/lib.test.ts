@@ -24,6 +24,10 @@ describe('self-order pages', () => {
     expect(pickMode(two, null)).toBeNull()
     expect(pickMode(two, 'm2')?.name).toBe('Take away')
     expect(pickMode(two, 'gone')).toBeNull()
+    // A direct link's short id: the mode it starts.
+    const long = menu([mode('d097c0096f124485b66aaaaaaaaaaaaa', 'Take away'), mode('a1b2c3d4e5f6', 'Ter plaatse')])
+    expect(pickMode(long, 'd097c009')?.name).toBe('Take away')
+    expect(pickMode(long, 'd09')).toBeNull()
     expect(modeFromSearch('?m=abc123')).toBe('abc123')
     expect(modeFromSearch('?m=<script>')).toBeNull()
     expect(modeFromSearch('')).toBeNull()
