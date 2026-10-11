@@ -178,13 +178,14 @@ function TicketCard({ ticket, busy, onMove }: { ticket: Ticket; busy: boolean; o
   const previous = previousStatus(ticket.status)
   const minutes = Math.floor((Date.now() - Date.parse(ticket.createdAt)) / 60_000)
   return (
-    <article className={`flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ${ticket.paid ? 'ring-foreground/10' : 'ring-amber-500/60'}`} data-testid="ticket" data-number={ticket.number}>
+    <article className={`flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ${ticket.paid || ticket.payLater ? 'ring-foreground/10' : 'ring-amber-500/60'}`} data-testid="ticket" data-number={ticket.number}>
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-3xl font-bold tabular-nums">#{ticket.number}</span>
         <span className="text-xs text-muted-foreground">{m.ago(minutes)}</span>
       </div>
       <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
-        {!ticket.paid && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">{m.unpaid}</span>}
+        {!ticket.paid && ticket.payLater && <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-violet-700 dark:text-violet-300">{m.onTab}</span>}
+        {!ticket.paid && !ticket.payLater && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">{m.unpaid}</span>}
         {ticket.selfOrder && <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-sky-700 dark:text-sky-300">{m.selfOrder}</span>}
         {ticket.label && <span className="rounded bg-muted px-1.5 py-0.5">{ticket.label}</span>}
       </div>

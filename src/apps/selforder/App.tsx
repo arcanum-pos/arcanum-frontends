@@ -6,7 +6,7 @@ import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
 import { SELF_ORDER_MESSAGES } from './messages'
-import { bancontactTarget, cartLines, cartTotals, changeQuantity, isFinal, loadSaved, newlyReady, readyPlaces, route, save, type BancontactLinks, type Cart, type FollowStatus, type Menu } from './lib'
+import { bancontactTarget, cartLines, cartTotals, changeQuantity, isDone, loadSaved, newlyReady, readyPlaces, route, save, type BancontactLinks, type Cart, type FollowStatus, type Menu } from './lib'
 
 // A guest's own phone — DOMAIN_MODEL.md "Self-ordering and station screens".
 //   /bestel/<event code>: 1 menu → 2 cart → 3 pay ("Betaal aan de toog") → 4 your order
@@ -80,6 +80,8 @@ function SelfOrder({ code }: { code: string }) {
   const [token, setToken] = useState<string | null>(() => loadSaved(code).token)
   const [step, setStep] = useState<0 | 1 | 2 | 3>(() => (loadSaved(code).token ? 3 : 0))
   const [placing, setPlacing] = useState(false)
+  // Adding a round to the open tab (token) rather than a new order.
+  const [round, setRound] = useState(false)
 
   useEffect(() => {
     call<Menu>(`/api/public/self-order/${encodeURIComponent(code)}`)
@@ -101,7 +103,7 @@ function SelfOrder({ code }: { code: string }) {
 
   // Places the order — then, for Bancontact, straight on to paying it (the
   // order is remembered first, so coming back lands on step 4).
-  async function place(pay: 'counter' | 'bancontact') {
+  async function place(pay: 'counter' | 'bancontact' | 'tab') {
     setPlacing(true)
     setError(null)
     unlockSound()
@@ -126,15 +128,42 @@ function SelfOrder({ code }: { code: string }) {
     }
   }
 
+  // One more round on the open tab.
+  async function addRound() {
+    if (!token) return
+    setPlacing(true)
+    setError(null)
+    unlockSound()
+    try {
+      await call(`/api/public/orders/${encodeURIComponent(token)}/orders`, {
+        method: 'POST',
+        body: JSON.stringify({ lines: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })) }),
+      })
+      setCart({})
+      setRound(false)
+      setStep(3)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPlacing(false)
+    }
+  }
+
   const startOver = useCallback(() => {
     setToken(null)
+    setRound(false)
+    setStep(0)
+  }, [])
+
+  const orderMore = useCallback(() => {
+    setRound(true)
     setStep(0)
   }, [])
 
   if (step === 3 && token) {
     return (
       <Shell title={menu?.eventName} step={3}>
-        <Follow token={token} onStartOver={startOver} />
+        <Follow token={token} onStartOver={startOver} onOrderMore={orderMore} />
       </Shell>
     )
   }
@@ -156,6 +185,11 @@ function SelfOrder({ code }: { code: string }) {
   if (step === 0) {
     return (
       <Shell title={menu.eventName} step={0}>
+        {round && token && (
+          <Button variant="ghost" className="mb-2 self-start" onClick={() => setStep(3)}>
+            ← {m.steps.done}
+          </Button>
+        )}
         <div className="flex flex-col gap-6 pb-24">
           {menu.catalog.sections.map((section) => (
             <section key={section.id} className="flex flex-col gap-2">
@@ -227,6 +261,51 @@ function SelfOrder({ code }: { code: string }) {
     )
   }
 
+  // step 2, another round on the tab: just add it.
+  if (round && token) {
+    return (
+      <Shell title={menu.eventName} step={2}>
+        <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="add-round">
+          <h2 className="text-xl font-bold">{m.addRoundTitle}</h2>
+          <div className="flex items-baseline justify-between text-lg font-semibold">
+            <span>{m.total}</span>
+            <span className="tabular-nums">{formatEuro(totals.cents)}</span>
+          </div>
+          <Button size="lg" className="h-14 text-base" onClick={addRound} disabled={placing || lines.length === 0}>
+            {placing ? m.placing : m.addRound}
+          </Button>
+        </section>
+        {error && <p className="mt-3 text-sm text-destructive" role="alert">{error}</p>}
+        <Button variant="ghost" size="lg" className="mt-3 h-12" onClick={() => setStep(1)} disabled={placing}>
+          {m.steps.cart}
+        </Button>
+      </Shell>
+    )
+  }
+
+  // step 2, an event with tabs: the order goes on the tab, paid when leaving.
+  if (menu.payment?.tab) {
+    return (
+      <Shell title={menu.eventName} step={2}>
+        <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="tab-order">
+          <h2 className="text-xl font-bold">{m.tabOrder}</h2>
+          <p className="text-sm">{m.tabOrderHint}</p>
+          <div className="flex items-baseline justify-between border-t pt-3 text-lg font-semibold">
+            <span>{m.total}</span>
+            <span className="tabular-nums">{formatEuro(totals.cents)}</span>
+          </div>
+          <Button size="lg" className="h-14 text-base" onClick={() => place('tab')} disabled={placing || lines.length === 0}>
+            {placing ? m.placing : m.tabOrder}
+          </Button>
+        </section>
+        {error && <p className="mt-3 text-sm text-destructive" role="alert">{error}</p>}
+        <Button variant="ghost" size="lg" className="mt-3 h-12" onClick={() => setStep(1)} disabled={placing}>
+          {m.steps.cart}
+        </Button>
+      </Shell>
+    )
+  }
+
   // step 2: pay — the ways this event allows: Bancontact on the phone, and/or at the toog.
   const payment = menu.payment ?? { counter: true, bancontact: false }
   return (
@@ -294,17 +373,25 @@ function Stepper({ name, quantity, onChange }: { name: string; quantity: number;
 
 // --- Step 4: your order, live ---
 
-function Follow({ token, onStartOver }: { token: string; onStartOver?: () => void }) {
+function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOver?: () => void; onOrderMore?: () => void }) {
   const m = useMessages(SELF_ORDER_MESSAGES)
   const { status, error, live } = useFollow(token)
 
-  // Everything collected: a self-order phone goes back to the menu.
+  // Everything collected (and, on a tab, paid): a self-order phone goes back to the menu.
   useEffect(() => {
-    if (status?.state !== 'delivered' && status?.state !== 'cancelled') return
-    if (!onStartOver || status.state === 'cancelled') return
+    if (status?.state !== 'delivered' || status.tabOpen || !onStartOver) return
     const t = setTimeout(onStartOver, 6000)
     return () => clearTimeout(t)
-  }, [status?.state, onStartOver])
+  }, [status?.state, status?.tabOpen, onStartOver])
+
+  // Order more from a follow page opened on its own (back from Bancontact in
+  // another browser): this browser remembers the tab, then the menu.
+  function orderMore() {
+    if (onOrderMore) return onOrderMore()
+    if (!status?.selfOrderCode) return
+    save(status.selfOrderCode, { cart: {}, token })
+    window.location.assign(`/bestel/${status.selfOrderCode}`)
+  }
 
   if (!status) return <p className="py-10 text-center text-muted-foreground" role={error ? 'alert' : undefined}>{error ?? m.loading}</p>
 
@@ -313,13 +400,28 @@ function Follow({ token, onStartOver }: { token: string; onStartOver?: () => voi
   return (
     <div className="flex flex-col gap-4" data-testid="follow" data-state={status.state}>
       <section className={`flex flex-col items-center gap-1 rounded-2xl p-6 text-center ring-1 ${ready ? 'bg-emerald-500/15 ring-emerald-500/50' : 'bg-card ring-foreground/10'}`}>
-        <p className="text-sm text-muted-foreground">{m.yourNumber}</p>
+        <p className="text-sm text-muted-foreground">{status.tabOpen ? m.yourTab(status.number) : m.yourNumber}</p>
         <p className="text-7xl font-black tabular-nums" data-testid="order-number">{status.number}</p>
         {ready && <p className="mt-2 text-3xl font-bold text-emerald-700 dark:text-emerald-300" role="status">{m.ready}</p>}
         <p className="mt-2 text-base font-medium" data-testid="follow-message">{message(m, status, places)}</p>
       </section>
 
       {status.state === 'awaiting_payment' && status.payment?.bancontact && <PayAgain token={token} status={status} />}
+
+      {status.tabOpen && (
+        <div className="flex flex-col gap-3">
+          <Button size="lg" className="h-14 text-base" onClick={orderMore} data-testid="order-more">
+            {m.addRoundTitle}
+          </Button>
+          <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="settle">
+            <h2 className="text-lg font-bold">
+              {m.settleTitle} · <span className="tabular-nums">{formatEuro(status.totalCents)}</span>
+            </h2>
+            {status.payment?.counter !== false && <p className="text-sm">{m.settleCounter(status.number)}</p>}
+            {status.payment?.bancontact && <PayAgain token={token} status={status} inline />}
+          </section>
+        </div>
+      )}
 
       {status.stations.length > 0 && status.state !== 'awaiting_payment' && status.state !== 'cancelled' && (
         <ul className="flex flex-col divide-y rounded-xl bg-card ring-1 ring-foreground/10" data-testid="stations">
@@ -334,7 +436,7 @@ function Follow({ token, onStartOver }: { token: string; onStartOver?: () => voi
         </ul>
       )}
 
-      {!isFinal(status.state) && (
+      {!isDone(status) && (
         <p className="text-center text-sm text-muted-foreground">
           {m.keepOpen} <span className={live ? 'text-emerald-600' : ''}>{live ? `● ${m.live}` : ''}</span>
         </p>
@@ -357,7 +459,7 @@ function Follow({ token, onStartOver }: { token: string; onStartOver?: () => voi
         </ul>
       </details>
 
-      {(status.state === 'cancelled' || status.state === 'delivered' || status.state === 'nothing_to_prepare') && (onStartOver || status.selfOrderCode) && (
+      {!status.tabOpen && (status.state === 'cancelled' || status.state === 'delivered' || status.state === 'nothing_to_prepare') && (onStartOver || status.selfOrderCode) && (
         onStartOver ? (
           <Button size="lg" className="h-12" onClick={onStartOver}>
             {m.newOrder}
@@ -375,7 +477,7 @@ function Follow({ token, onStartOver }: { token: string; onStartOver?: () => voi
 // Waiting for payment, Bancontact allowed: the payment in progress (open the
 // app again), a failed one (try again), or none yet — and the counter as the
 // alternative when the event takes it.
-function PayAgain({ token, status }: { token: string; status: FollowStatus }) {
+function PayAgain({ token, status, inline = false }: { token: string; status: FollowStatus; inline?: boolean }) {
   const m = useMessages(SELF_ORDER_MESSAGES)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -392,13 +494,13 @@ function PayAgain({ token, status }: { token: string; status: FollowStatus }) {
     }
   }
   return (
-    <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="pay-again">
+    <section className={inline ? 'flex flex-col gap-3' : 'flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10'} data-testid="pay-again">
       {pay.pending && <p className="font-medium">{m.bancontactPending}</p>}
       {pay.failed && <p className="font-medium text-destructive">{m.bancontactFailed}</p>}
-      <Button size="lg" className="h-14 text-base" onClick={go} disabled={busy}>
-        {busy ? m.placing : pay.pending ? m.bancontactOpen : pay.failed ? m.bancontactRetry : m.payBancontact}
+      <Button size="lg" variant={inline ? 'outline' : 'default'} className="h-14 text-base" onClick={go} disabled={busy}>
+        {busy ? m.placing : pay.pending ? m.bancontactOpen : pay.failed ? m.bancontactRetry : inline ? m.settleBancontact : m.payBancontact}
       </Button>
-      {pay.counter && <p className="text-sm text-muted-foreground">{m.orAtCounter(status.number)}</p>}
+      {pay.counter && !inline && <p className="text-sm text-muted-foreground">{m.orAtCounter(status.number)}</p>}
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
     </section>
   )
@@ -413,7 +515,7 @@ function message(m: ReturnType<typeof useMessages<typeof SELF_ORDER_MESSAGES.nl>
     case 'nothing_to_prepare':
       return m.nothingToPrepare
     case 'delivered':
-      return m.delivered
+      return status.tabOpen ? m.tabDelivered : m.delivered
     default:
       return places.length ? m.readyHint(places.join(', ')) : m.preparing
   }
@@ -443,7 +545,7 @@ function useFollow(token: string) {
         previous.current = next
         setStatus(next)
         setError(null)
-        if (isFinal(next.state)) socket?.close()
+        if (isDone(next)) socket?.close()
         else if (!socket && next.hubTicket) connect(next.hubTicket)
       } catch (err) {
         if (stopped) return
@@ -470,7 +572,7 @@ function useFollow(token: string) {
       ws.onclose = () => {
         if (socket === ws) socket = null
         setLive(false)
-        if (!stopped && !(previous.current && isFinal(previous.current.state))) reconnectLater()
+        if (!stopped && !(previous.current && isDone(previous.current))) reconnectLater()
       }
       ws.onerror = () => ws.close()
     }

@@ -142,6 +142,7 @@ export class FakeCatalogAdmin {
         if (body.selfOrderEnabled !== undefined) e.selfOrder.enabled = body.selfOrderEnabled
         if (body.payAtCounter !== undefined) e.selfOrder.payAtCounter = body.payAtCounter
         if (body.payBancontact !== undefined) e.selfOrder.payBancontact = body.payBancontact
+        if (body.tabs !== undefined) e.selfOrder.tabs = body.tabs
         if (e.selfOrder.enabled && !e.catalogId) return { status: 400, body: { error: 'Kies eerst een menukaart voor dit evenement', code: 'self_order_needs_menu' } }
         if (e.selfOrder.enabled && !e.selfOrder.code) e.selfOrder.code = `code-${this.id('c')}`
         this.eventCalls.push({ path, body })

@@ -12,6 +12,7 @@ const nl = {
   next: { ordered: 'Start', in_progress: 'Klaar', ready: 'Afgeleverd' } as Record<string, string>,
   back: 'Terug',
   unpaid: 'Nog niet betaald',
+  onTab: 'Op rekening',
   selfOrder: 'Zelfbestelling',
   ago: (minutes: number) => (minutes < 1 ? 'net besteld' : `${minutes} min geleden`),
   voided: (count: number) => `${count} geannuleerd`,

@@ -98,6 +98,8 @@ export default {
     payCounter: 'Au comptoir, avec leur numéro',
     payBancontact: 'Avec Bancontact, sur leur téléphone',
     payBancontactHint: 'Uniquement si Bancontact est configuré (Paramètres → Paiements). Au moins l’un des deux doit être activé.',
+    tabs: 'Commander sur leur note, payer en partant',
+    tabsHint: 'Tout va sur une seule note ; les postes préparent sans paiement. Le paiement se fait en partant, au comptoir ou avec Bancontact. Rien ne garantit que chacun paie.',
     link: 'Lien pour les invités',
     copy: 'Copier le lien',
     copied: 'Copié',

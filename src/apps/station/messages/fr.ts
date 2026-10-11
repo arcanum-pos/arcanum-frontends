@@ -12,6 +12,7 @@ const fr: StationMessages = {
   next: { ordered: 'Commencer', in_progress: 'Prêt', ready: 'Remis' },
   back: 'Retour',
   unpaid: 'Pas encore payée',
+  onTab: 'Sur la note',
   selfOrder: 'Commande en ligne',
   ago: (minutes: number) => (minutes < 1 ? 'à l’instant' : `il y a ${minutes} min`),
   voided: (count: number) => `${count} annulé(s)`,

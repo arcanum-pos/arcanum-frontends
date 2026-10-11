@@ -33,6 +33,10 @@ test('an event: pick a menu, switch self-ordering on, and get its link and QR co
   await pay.getByRole('switch', { name: 'Met Bancontact, op hun telefoon' }).click()
   await expect(pay.getByRole('switch', { name: 'Met Bancontact, op hun telefoon' })).toBeChecked()
   expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ payBancontact: true })
+  // Ordering on a tab, paid when leaving.
+  await pay.getByRole('switch', { name: 'Bijbestellen op hun rekening, betalen bij vertrek' }).click()
+  await expect(pay.getByRole('switch', { name: 'Bijbestellen op hun rekening, betalen bij vertrek' })).toBeChecked()
+  expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ tabs: true })
 
   // A new link replaces the old one, after confirming.
   const before = await link.getByLabel('Link voor gasten').inputValue()

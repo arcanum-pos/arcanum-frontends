@@ -14,5 +14,8 @@ describe('station screen', () => {
     expect(visibleTickets(list, { onlyPaid: true, showDelivered: false })).toEqual({ shown: [list[0]], hiddenUnpaid: 1 })
     expect(visibleTickets(list, { onlyPaid: false, showDelivered: false }).shown.map((t) => t.id)).toEqual(['a', 'b'])
     expect(visibleTickets(list, { onlyPaid: false, showDelivered: true }).shown.map((t) => t.id)).toEqual(['a', 'b', 'c', 'd'])
+    // On a tab paid when leaving: shown even with "only paid".
+    const onTab = { ...ticket('e', 'ordered', false), payLater: true }
+    expect(visibleTickets([...list, onTab], { onlyPaid: true, showDelivered: false })).toEqual({ shown: [list[0], onTab], hiddenUnpaid: 1 })
   })
 })

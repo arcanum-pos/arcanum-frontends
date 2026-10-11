@@ -11,6 +11,8 @@ export interface Ticket {
   number: number
   label: string
   paid: boolean
+  // On a tab paid when the guest leaves: prepared unpaid.
+  payLater?: boolean
   selfOrder: boolean
   lines: { name: string; quantity: number; voided: number; note: string | null }[]
 }
@@ -26,9 +28,11 @@ export function previousStatus(status: TicketStatus): TicketStatus | null {
 }
 
 // What the filters let through, and how many unpaid ones they hide (said on
-// screen, so nobody wonders where an order went).
+// screen, so nobody wonders where an order went). "Only paid" never hides an
+// order on a tab paid when leaving — those are made unpaid on purpose.
 export function visibleTickets(tickets: Ticket[], filters: { onlyPaid: boolean; showDelivered: boolean }) {
-  const shown = tickets.filter((t) => (!filters.onlyPaid || t.paid) && (filters.showDelivered || t.status !== 'delivered'))
-  const hiddenUnpaid = filters.onlyPaid ? tickets.filter((t) => !t.paid && t.status !== 'delivered').length : 0
+  const payable = (t: Ticket) => t.paid || !!t.payLater
+  const shown = tickets.filter((t) => (!filters.onlyPaid || payable(t)) && (filters.showDelivered || t.status !== 'delivered'))
+  const hiddenUnpaid = filters.onlyPaid ? tickets.filter((t) => !payable(t) && t.status !== 'delivered').length : 0
   return { shown, hiddenUnpaid }
 }

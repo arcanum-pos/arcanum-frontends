@@ -12,6 +12,7 @@ const en: StationMessages = {
   next: { ordered: 'Start', in_progress: 'Ready', ready: 'Delivered' },
   back: 'Back',
   unpaid: 'Not paid yet',
+  onTab: 'On a tab',
   selfOrder: 'Self-order',
   ago: (minutes: number) => (minutes < 1 ? 'just now' : `${minutes} min ago`),
   voided: (count: number) => `${count} cancelled`,

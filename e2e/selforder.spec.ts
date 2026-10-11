@@ -16,7 +16,9 @@ type Station = { name: string; status: 'ordered' | 'in_progress' | 'ready' | 'de
 
 class FakeSelfOrder {
   open = true
-  payment = { counter: true, bancontact: false }
+  payment: { counter: boolean; bancontact: boolean; tab?: boolean } = { counter: true, bancontact: false }
+  tabOpen = false
+  rounds: any[] = []
   // The follow page's payment block (a self-order waiting for payment).
   followPayment: { counter: boolean; bancontact: boolean; pending: boolean; failed: boolean } | null = null
   bancontactCalls = 0
@@ -50,13 +52,16 @@ class FakeSelfOrder {
       orgName: 'Scouts Kabouterland',
       locale: 'nl',
       selfOrder: true,
+      payLater: this.tabOpen,
+      tabOpen: this.tabOpen,
       state: this.state,
       stations: this.stations,
       lines: [{ name: 'Pils', quantity: 2, unitPriceCents: 250 }, { name: 'Frieten', quantity: 1, unitPriceCents: 400 }],
       totalCents: 900,
       selfOrderCode: CODE,
-      payment: this.state === 'awaiting_payment' ? this.followPayment : null,
-      hubTicket: ['delivered', 'cancelled', 'nothing_to_prepare'].includes(this.state) ? null : 'ticket-7',
+      payment: this.state === 'awaiting_payment' || this.tabOpen ? this.followPayment : null,
+      // Like the backend: no live updates once it's done — an open tab isn't.
+      hubTicket: !this.tabOpen && ['delivered', 'cancelled', 'nothing_to_prepare'].includes(this.state) ? null : 'ticket-7',
     }
   }
 }
@@ -75,7 +80,16 @@ const test = base.extend<{ fake: FakeSelfOrder; hub: { sockets: WebSocketRoute[]
       expect(new URL(ws.url()).searchParams.get('ticket')).toBe('ticket-7')
       sockets.push(ws)
     })
-    await provide({ sockets, push: () => sockets.forEach((ws) => ws.send(JSON.stringify({ event: 'order_updated' }))) })
+    // Every socket that's still open (a page reopens one after a step).
+    const push = () =>
+      sockets.forEach((ws) => {
+        try {
+          ws.send(JSON.stringify({ event: 'order_updated' }))
+        } catch {
+          // closed
+        }
+      })
+    await provide({ sockets, push })
   },
   phone: async ({ page, fake, hub }, provide) => {
     void hub
@@ -92,6 +106,10 @@ const test = base.extend<{ fake: FakeSelfOrder; hub: { sockets: WebSocketRoute[]
         return route.fulfill({ status: 201, json: { token: TOKEN, number: 7 } })
       }
       if (url.pathname === `/api/public/orders/${TOKEN}`) return route.fulfill({ json: fake.status() })
+      if (url.pathname === `/api/public/orders/${TOKEN}/orders`) {
+        fake.rounds.push(route.request().postDataJSON())
+        return route.fulfill({ status: 201, json: { ok: true } })
+      }
       if (url.pathname === `/api/public/orders/${TOKEN}/bancontact`) {
         fake.bancontactCalls++
         return route.fulfill({ status: 201, json: { deeplinkUrl: 'https://bancontact.test/deeplink/1', checkoutUrl: 'https://bancontact.test/checkout/1', qrCodeUrl: null } })
@@ -260,4 +278,53 @@ test('Bancontact only: no counter option', async ({ phone: page, fake }) => {
   await page.getByRole('button', { name: 'Verder' }).click()
   await expect(page.getByTestId('pay-bancontact')).toBeVisible()
   await expect(page.getByTestId('pay-counter')).toHaveCount(0)
+})
+
+test('on a tab: order, order more on the same tab, settle at the end — on a phone', async ({ phone: page, fake, hub }) => {
+  fake.payment = { counter: true, bancontact: true, tab: true }
+  fake.state = 'preparing'
+  fake.tabOpen = true
+  fake.followPayment = { counter: true, bancontact: true, pending: false, failed: false }
+  await page.goto(`/bestel/${CODE}`)
+  await page.getByRole('button', { name: 'Pils toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  // No payment yet: it goes on the tab.
+  const order = page.getByTestId('tab-order')
+  await expect(order).toContainText('betalen doe je bij vertrek')
+  await noSidewaysScroll(page)
+  await order.getByRole('button', { name: 'Bestellen' }).click()
+  expect(fake.placed).toHaveLength(1)
+
+  // Your tab: being prepared, order more, settle up.
+  await expect(page.getByText('Je rekening #7')).toBeVisible()
+  await expect(page.getByTestId('settle')).toContainText('Ga bij vertrek naar de toog en zeg: nummer 7.')
+  await expect(page.getByTestId('settle').getByRole('button', { name: 'Betaal je rekening met Bancontact' })).toBeVisible()
+  await noSidewaysScroll(page)
+
+  // All delivered, still open: not the end — no "new order", it stays your tab.
+  fake.state = 'delivered'
+  fake.stations = [{ name: 'Bar', status: 'delivered' }, { name: 'Keuken', status: 'delivered' }]
+  await expect.poll(() => hub.sockets.length).toBe(1)
+  hub.push()
+  await expect(page.getByTestId('follow-message')).toHaveText('Alles afgehaald. Bestel gerust bij.')
+  await page.waitForTimeout(500)
+  await expect(page.getByTestId('order-more')).toBeVisible()
+
+  // A second round: menu → cart → add to the tab.
+  await page.getByTestId('order-more').click()
+  await page.getByRole('button', { name: 'Frieten toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  await page.getByTestId('add-round').getByRole('button', { name: 'Toevoegen aan mijn rekening' }).click()
+  expect(fake.rounds).toEqual([{ lines: [{ variantId: 'v-frieten', quantity: 1 }] }])
+  expect(fake.placed).toHaveLength(1)
+  await expect(page.getByText('Je rekening #7')).toBeVisible()
+
+  // Paid at the toog and all delivered: back to the menu.
+  fake.tabOpen = false
+  hub.push()
+  await expect(page.getByTestId('follow-message')).toHaveText('Alles afgehaald. Smakelijk!')
+  await page.getByRole('button', { name: 'Nieuwe bestelling' }).click()
+  await expect(page.getByRole('button', { name: 'Pils toevoegen' })).toBeVisible()
 })

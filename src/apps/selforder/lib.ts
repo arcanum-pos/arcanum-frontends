@@ -12,7 +12,8 @@ export interface Menu {
   locale: string
   open: boolean
   // How guests of this event may pay (absent: the counter only, as before).
-  payment?: { counter: boolean; bancontact: boolean }
+  // tab: guests keep ordering on their tab and pay when they leave.
+  payment?: { counter: boolean; bancontact: boolean; tab?: boolean }
   catalog: { id: string; sections: { id: string; name: string; entries: MenuEntry[] }[] } | null
 }
 
@@ -36,6 +37,9 @@ export interface FollowStatus {
   orgName: string
   locale: string
   selfOrder: boolean
+  // A tab paid when leaving, still open: more rounds, and settling it.
+  payLater?: boolean
+  tabOpen?: boolean
   state: FollowState
   stations: { name: string; status: 'ordered' | 'in_progress' | 'ready' | 'delivered' }[]
   lines: { name: string; quantity: number; unitPriceCents: number }[]
@@ -115,3 +119,7 @@ export function newlyReady(before: FollowStatus | null, after: FollowStatus): bo
 }
 
 export const isFinal = (state: FollowState) => state === 'delivered' || state === 'cancelled' || state === 'nothing_to_prepare'
+
+// Nothing more will happen to it: final, and not a tab that's still open
+// (more rounds can come, it still has to be settled).
+export const isDone = (status: Pick<FollowStatus, 'state' | 'tabOpen'>) => !status.tabOpen && isFinal(status.state)

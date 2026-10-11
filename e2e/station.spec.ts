@@ -15,6 +15,7 @@ interface FakeTicket {
   number: number
   label: string
   paid: boolean
+  payLater?: boolean
   selfOrder: boolean
   lines: { name: string; quantity: number; voided: number; note: string | null }[]
 }
@@ -25,6 +26,8 @@ class FakeStation {
     ticket('t1', 5, true, [{ name: 'Frieten', quantity: 2, voided: 0, note: 'zonder zout' }]),
     ticket('t2', 6, false, [{ name: 'Croque', quantity: 1, voided: 0, note: null }], true),
     ticket('t3', 4, true, [{ name: 'Soep', quantity: 3, voided: 1, note: null }]),
+    // On a tab paid when the guest leaves: made unpaid.
+    { ...ticket('t4', 8, false, [{ name: 'Croque', quantity: 2, voided: 0, note: null }], true), payLater: true },
   ]
   listCalls: string[] = []
   moves: { id: string; status: string }[] = []
@@ -84,7 +87,9 @@ const column = (page: Page, status: Status) => page.getByTestId(`column-${status
 test('shows its station; only paid orders by default — saying how many unpaid ones are hidden', async ({ station: page }) => {
   await expect(page.getByTestId('station-name')).toHaveText('Keuken')
   const ordered = column(page, 'ordered')
-  await expect(ordered.getByTestId('ticket')).toHaveCount(2)
+  await expect(ordered.getByTestId('ticket')).toHaveCount(3)
+  // A tab's order shows even with "only paid", marked.
+  await expect(ordered.locator('[data-number="8"]')).toContainText('Op rekening')
   await expect(ordered).toContainText('#5')
   await expect(ordered).toContainText('2× Frieten')
   await expect(ordered).toContainText('zonder zout')
@@ -96,7 +101,7 @@ test('shows its station; only paid orders by default — saying how many unpaid 
 
   // Unpaid ones too, when asked: marked.
   await page.getByRole('switch', { name: 'Alleen betaald' }).click()
-  await expect(ordered.getByTestId('ticket')).toHaveCount(3)
+  await expect(ordered.getByTestId('ticket')).toHaveCount(4)
   const unpaid = ordered.locator('[data-number="6"]')
   await expect(unpaid).toContainText('Nog niet betaald')
   await expect(unpaid).toContainText('Zelfbestelling')
@@ -123,7 +128,7 @@ test('a tap moves a ticket on: start → ready → delivered; delivered ones onl
 })
 
 test('live: a push makes it fetch its tickets again — no polling in between', async ({ station: page, fake, push }) => {
-  await expect(column(page, 'ordered').getByTestId('ticket')).toHaveCount(2)
+  await expect(column(page, 'ordered').getByTestId('ticket')).toHaveCount(3)
   await page.waitForTimeout(1500)
   const before = fake.listCalls.length
   fake.tickets.push(ticket('t9', 9, true, [{ name: 'Spaghetti', quantity: 1, voided: 0, note: null }]))

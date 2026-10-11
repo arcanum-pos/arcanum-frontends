@@ -125,6 +125,11 @@ export function EventSettingsDialog({
                     />
                   </label>
                   <p className="text-xs text-muted-foreground">{m.payBancontactHint}</p>
+                  <label className="mt-2 flex items-center justify-between gap-3 border-t pt-3 text-sm">
+                    {m.tabs}
+                    <Switch checked={!!current.selfOrder.tabs} disabled={busy} onCheckedChange={(on) => run(() => updateEvent(orgId, current.id, { tabs: on }))} aria-label={m.tabs} />
+                  </label>
+                  <p className="text-xs text-muted-foreground">{m.tabsHint}</p>
                 </div>
               )}
 

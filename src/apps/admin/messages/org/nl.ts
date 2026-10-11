@@ -111,6 +111,8 @@ const nl = {
     payCounter: 'Aan de toog, met hun nummer',
     payBancontact: 'Met Bancontact, op hun telefoon',
     payBancontactHint: 'Kan alleen als Bancontact ingesteld is (Instellingen → Betalingen). Minstens één van beide moet aan staan.',
+    tabs: 'Bijbestellen op hun rekening, betalen bij vertrek',
+    tabsHint: 'Alles komt op één rekening; stations maken het onbetaald klaar. Betalen gebeurt bij vertrek, aan de toog of met Bancontact. Er is geen controle dat iedereen betaalt.',
     link: 'Link voor gasten',
     copy: 'Link kopiëren',
     copied: 'Gekopieerd',
