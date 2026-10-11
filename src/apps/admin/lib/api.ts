@@ -293,9 +293,8 @@ export interface OrderMode {
   id: string
   name: string
   catalogId: string | null
-  // Where it's used: with the event's QR code, at the kassa.
+  // Guests order with it themselves, with the event's QR code.
   selfOrder: boolean
-  kassa: boolean
   // With the QR: how guests pay, and ordering on their tab.
   payAtCounter: boolean
   payBancontact: boolean
@@ -316,11 +315,13 @@ export interface Event {
   modes?: OrderMode[]
   // Whether this installation can send SMS (installer → Geavanceerd → Sms).
   sms?: boolean
+  // The kassa shows the ordering modes and labels a new order with the one chosen (off by default).
+  kassaModes?: boolean
   // The last order number given out (0: the next is #1).
   lastOrderNumber?: number
 }
 
-export function updateEvent(orgId: string, eventId: string, fields: { name?: string; date?: string; selfOrderEnabled?: boolean; linkName?: string }): Promise<Event> {
+export function updateEvent(orgId: string, eventId: string, fields: { name?: string; date?: string; selfOrderEnabled?: boolean; linkName?: string; kassaModes?: boolean }): Promise<Event> {
   return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify(fields) })
 }
 

@@ -127,21 +127,21 @@ test('a CFD on another device learns the event from the payment', async ({ page,
   await expect(page.getByTestId('cfd-event')).toHaveText('Fietstocht 2026') // remembered when idle again
 })
 
-test('ordering modes at the kassa: the one chosen marks every new rekening; sticky until changed', async ({ kassa, backend }) => {
+test('ordering modes at the kassa, when the event says so: the one chosen marks every new rekening; sticky until changed', async ({ kassa, backend }) => {
   backend.events = [
     {
       ...FIETSTOCHT,
+      kassaModes: true,
       modes: [
-        { id: 'm-plaatse', name: 'Ter plaatse', kassa: true },
-        { id: 'm-mee', name: 'Take away', kassa: true },
-        { id: 'm-qr', name: 'Alleen met de QR', kassa: false },
+        { id: 'm-plaatse', name: 'Ter plaatse' },
+        { id: 'm-mee', name: 'Take away' },
       ],
     },
   ]
   await kassa.evaluate((e) => localStorage.setItem('arcanum-event', JSON.stringify(e)), FIETSTOCHT)
   await kassa.reload()
   const modes = kassa.getByTestId('kassa-modes')
-  // Only the modes used at the kassa; the first one chosen.
+  // The event's modes; the first one chosen.
   await expect(modes.getByRole('button')).toHaveText(['Ter plaatse', 'Take away'])
   await expect(modes.getByRole('button', { name: 'Ter plaatse' })).toHaveAttribute('aria-pressed', 'true')
   await payToog(kassa)
@@ -157,11 +157,20 @@ test('ordering modes at the kassa: the one chosen marks every new rekening; stic
   await expect(panel(kassa).getByRole('heading', { name: /Tafel 2 · Take away/ })).toBeVisible()
 })
 
-test('one ordering mode at the kassa: no choice to make, the backend sets it', async ({ kassa, backend }) => {
-  backend.events = [{ ...FIETSTOCHT, modes: [{ id: 'm-plaatse', name: 'Ter plaatse', kassa: true }] }]
+test('ordering modes, but the event doesn\'t let the kassa pick one (the default): no buttons, no label', async ({ kassa, backend }) => {
+  backend.events = [{ ...FIETSTOCHT, modes: [{ id: 'm-plaatse', name: 'Ter plaatse' }, { id: 'm-mee', name: 'Take away' }] }]
   await kassa.evaluate((e) => localStorage.setItem('arcanum-event', JSON.stringify(e)), FIETSTOCHT)
   await kassa.reload()
   await expect(kassa.getByTestId('kassa-event')).toHaveText('Fietstocht 2026')
+  await expect(kassa.getByTestId('kassa-modes')).toHaveCount(0)
+  await payToog(kassa)
+  expect(backend.tabs[0].orderModeId).toBeNull()
+})
+
+test('one ordering mode, picked at the kassa: no choice to make, the backend sets it', async ({ kassa, backend }) => {
+  backend.events = [{ ...FIETSTOCHT, kassaModes: true, modes: [{ id: 'm-plaatse', name: 'Ter plaatse' }] }]
+  await kassa.evaluate((e) => localStorage.setItem('arcanum-event', JSON.stringify(e)), FIETSTOCHT)
+  await kassa.reload()
   await expect(kassa.getByTestId('kassa-modes')).toHaveCount(0)
   await payToog(kassa)
   expect(backend.tabs[0].orderModeId).toBe('m-plaatse')

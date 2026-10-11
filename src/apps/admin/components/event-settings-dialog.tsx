@@ -210,6 +210,21 @@ export function EventSettingsDialog({
                   </div>
                 )}
 
+                {modes.length > 0 && (
+                  <div className="grid gap-2">
+                    <label className="flex items-center justify-between gap-3 font-medium">
+                      {m.kassaModes}
+                      <Switch
+                        checked={!!current.kassaModes}
+                        disabled={busy}
+                        onCheckedChange={(on) => run(() => updateEvent(orgId, current.id, { kassaModes: on }))}
+                        aria-label={m.kassaModes}
+                      />
+                    </label>
+                    <p className="text-sm text-muted-foreground">{m.kassaModesHint}</p>
+                  </div>
+                )}
+
                 <div className="grid gap-2">
                   <Label>{m.numbers}</Label>
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -311,13 +326,6 @@ function ModeCard({
         {m.modeQr}
         <Switch checked={mode.selfOrder} disabled={busy || !mode.catalogId} onCheckedChange={(on) => onChange({ selfOrder: on })} aria-label={`${m.modeQr} — ${mode.name}`} />
       </label>
-      <div className="grid gap-1">
-        <label className="flex items-center justify-between gap-3 text-sm">
-          {m.modeKassa}
-          <Switch checked={mode.kassa} disabled={busy} onCheckedChange={(on) => onChange({ kassa: on })} aria-label={`${m.modeKassa} — ${mode.name}`} />
-        </label>
-        <p className="text-xs text-muted-foreground">{m.modeKassaHint}</p>
-      </div>
       {mode.selfOrder && (
         <div className="grid gap-2 rounded-md bg-muted/40 p-3" data-testid="pay-methods">
           <Label>{m.payMethods}</Label>

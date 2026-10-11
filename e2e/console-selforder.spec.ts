@@ -29,12 +29,17 @@ test('an event: add an ordering mode with a menu, switch self-ordering on, and g
   await mode.getByRole('combobox', { name: 'Menukaart — Ter plaatse' }).click()
   await page.getByRole('option', { name: 'Fuifkaart' }).click()
   await expect(mode.getByRole('switch', { name: /^Met de QR-code/ })).toBeChecked()
-  await expect(mode.getByRole('switch', { name: /^Aan de kassa/ })).toBeChecked()
+  // The kassa picking a mode: one switch for the event, off by default.
+  const kassaModes = dialog.getByRole('switch', { name: 'Bestelwijze kiezen aan de kassa' })
+  await expect(kassaModes).not.toBeChecked()
   await dialog.getByRole('switch', { name: 'Zelfbestellen' }).click()
   const link = dialog.getByTestId('self-order-link')
   await expect(link.getByLabel('Link voor gasten')).toHaveValue(/\/bestel\/code-/)
   await expect(link.locator('svg title')).toHaveText('QR-code om te bestellen')
   expect(catalogAdmin.eventCalls.map((c: any) => c.body)).toEqual([{ name: 'Ter plaatse' }, { catalogId: expect.any(String), selfOrder: true }, { selfOrderEnabled: true }])
+  await kassaModes.click()
+  await expect(kassaModes).toBeChecked()
+  expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ kassaModes: true })
 
   // How guests pay in this mode: the counter by default, Bancontact as well.
   const pay = mode.getByTestId('pay-methods')
@@ -77,7 +82,7 @@ test('an event: add an ordering mode with a menu, switch self-ordering on, and g
 test('several ordering modes: renamed, moved, a direct link each, removed — the last QR mode gone switches self-ordering off', async ({ console: open, page, catalogAdmin }) => {
   const menu = call(catalogAdmin, 'POST', '/catalogs', { name: 'Fuifkaart' }).body
   const takeAwayMenu = call(catalogAdmin, 'POST', '/catalogs', { name: 'Take away' }).body
-  const qrMode = (id: string, name: string, catalogId: string) => ({ id, name, catalogId, selfOrder: true, kassa: true, payAtCounter: true, payBancontact: false, tabs: false })
+  const qrMode = (id: string, name: string, catalogId: string) => ({ id, name, catalogId, selfOrder: true, payAtCounter: true, payBancontact: false, tabs: false })
   catalogAdmin.events = [
     {
       id: 'ev1',
@@ -140,7 +145,7 @@ test('several ordering modes: renamed, moved, a direct link each, removed — th
 
 test('an SMS per ordering mode: only when the installation sends SMS', async ({ console: open, page, catalogAdmin }) => {
   const menu = call(catalogAdmin, 'POST', '/catalogs', { name: 'Fuifkaart' }).body
-  const mode = { id: 'm1', name: 'Take away', catalogId: menu.id, selfOrder: true, kassa: true, payAtCounter: true, payBancontact: false, tabs: false, notifySms: false }
+  const mode = { id: 'm1', name: 'Take away', catalogId: menu.id, selfOrder: true, payAtCounter: true, payBancontact: false, tabs: false, notifySms: false }
   catalogAdmin.events = [{ id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: true, code: 'c1' }, modes: [mode], sms: false, lastOrderNumber: 0 }]
   await open('/events')
   await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()

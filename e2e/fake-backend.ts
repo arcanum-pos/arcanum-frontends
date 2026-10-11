@@ -117,7 +117,8 @@ export interface FakeEvent {
   id: string
   name: string
   date: string
-  modes?: { id: string; name: string; kassa: boolean }[]
+  kassaModes?: boolean
+  modes?: { id: string; name: string }[]
 }
 
 export interface FakeCharge {
@@ -482,7 +483,8 @@ export class FakeBackend {
         const priced = body.lines?.length ? this.priceLines(body.lines, body.catalogId) : []
         if (typeof priced === 'string') return { status: 400, body: { error: priced, code: REFUSAL_CODES[priced] } }
         // Like the backend: a kassa mode of that event; left out, its only one.
-        const kassaModes = (this.events.find((e) => e.id === body.eventId)?.modes ?? []).filter((mode) => mode.kassa)
+        const ev = this.events.find((e) => e.id === body.eventId)
+        const kassaModes = ev?.kassaModes ? (ev.modes ?? []) : []
         const mode = body.orderModeId ? kassaModes.find((x) => x.id === body.orderModeId) : kassaModes.length === 1 ? kassaModes[0] : undefined
         if (body.orderModeId && !mode) return { status: 400, body: { error: 'Onbekende bestelwijze — kies ze opnieuw', code: 'unknown_order_mode' } }
         const tab = this.openTab(body.label || '')

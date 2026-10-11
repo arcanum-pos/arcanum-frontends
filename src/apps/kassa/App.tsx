@@ -61,9 +61,9 @@ export default function App() {
   const [event, setEvent] = useState<EventSelection | null>(() => getEventSelection())
   const eventRef = useRef<EventSelection | null>(event)
   eventRef.current = event
-  // The event's ordering modes used at the kassa; with more than one, the
-  // one a new order gets (sticky until changed) — information for the
-  // stations, never routing.
+  // The event's ordering modes, when it lets the kassa pick one; with more
+  // than one, the one a new order gets (sticky until changed) — information
+  // for the stations, never routing.
   const [kassaModes, setKassaModes] = useState<{ id: string; name: string }[]>([])
   const [orderModeId, setOrderModeId] = useState<string | null>(null)
   const orderModeRef = useRef<string | null>(null)
@@ -229,7 +229,7 @@ export default function App() {
         setNotice(m.eventGone(chosen.name))
         return
       }
-      const modes = (current.modes || []).filter((mode) => mode.kassa).map((mode) => ({ id: mode.id, name: mode.name }))
+      const modes = current.kassaModes ? (current.modes || []).map((mode) => ({ id: mode.id, name: mode.name })) : []
       setKassaModes(modes)
       setOrderModeId((chosenMode) => (modes.some((mode) => mode.id === chosenMode) ? chosenMode : (modes[0]?.id ?? null)))
       const fresh = { id: current.id, name: current.name, date: current.date }

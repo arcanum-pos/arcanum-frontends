@@ -141,7 +141,7 @@ export class FakeCatalogAdmin {
       if (!modeRoute[2] && method === 'POST') {
         if (!body.name?.trim()) return { status: 400, body: { error: 'Geef de bestelwijze een naam', code: 'order_mode_needs_name' } }
         const catalogId = body.catalogId ?? null
-        e.modes.push({ id: this.id('mode'), name: body.name.trim(), catalogId, selfOrder: !!catalogId, kassa: true, payAtCounter: true, payBancontact: false, tabs: false })
+        e.modes.push({ id: this.id('mode'), name: body.name.trim(), catalogId, selfOrder: !!catalogId, payAtCounter: true, payBancontact: false, tabs: false })
         return { status: 201, body: e }
       }
       const index = e.modes.findIndex((mode: any) => mode.id === modeRoute[2])
@@ -150,7 +150,7 @@ export class FakeCatalogAdmin {
       if (method === 'PATCH') {
         const mode = e.modes[index]
         if (body.notifySms === true && !e.sms) return { status: 400, body: { error: 'Sms is niet ingesteld voor deze installatie (installer → Geavanceerd → Sms)', code: 'sms_not_configured' } }
-        for (const key of ['name', 'catalogId', 'selfOrder', 'kassa', 'payAtCounter', 'payBancontact', 'tabs', 'tabContact', 'notifySms']) if (body[key] !== undefined) mode[key] = body[key]
+        for (const key of ['name', 'catalogId', 'selfOrder', 'payAtCounter', 'payBancontact', 'tabs', 'tabContact', 'notifySms']) if (body[key] !== undefined) mode[key] = body[key]
         if (!mode.catalogId) mode.selfOrder = false
         const to = body.move === 'up' ? index - 1 : body.move === 'down' ? index + 1 : index
         if (to !== index && e.modes[to]) [e.modes[index], e.modes[to]] = [e.modes[to], e.modes[index]]
@@ -169,6 +169,7 @@ export class FakeCatalogAdmin {
         if (body.selfOrderEnabled === true && !e.modes.some((mode: any) => mode.selfOrder && mode.catalogId))
           return { status: 400, body: { error: 'Kies eerst een menukaart voor dit evenement', code: 'self_order_needs_menu' } }
         if (body.selfOrderEnabled !== undefined) e.selfOrder.enabled = body.selfOrderEnabled
+        if (body.kassaModes !== undefined) e.kassaModes = body.kassaModes
         if (e.selfOrder.enabled && !e.selfOrder.code) e.selfOrder.code = `code-${this.id('c')}`
         if (body.linkName !== undefined) {
           const name = String(body.linkName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')

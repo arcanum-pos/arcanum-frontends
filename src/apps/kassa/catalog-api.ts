@@ -45,9 +45,10 @@ export interface KassaEvent {
   id: string
   name: string
   date: string
-  // Its ordering modes ("Ter plaatse", "Take away", …): the kassa offers the
-  // ones used at the kassa (kassa), to mark a new order with.
-  modes?: { id: string; name: string; kassa: boolean }[]
+  // Its ordering modes ("Ter plaatse", "Take away", …): offered at the kassa
+  // to label a new order with, when the event says so (kassaModes).
+  kassaModes?: boolean
+  modes?: { id: string; name: string }[]
 }
 
 export async function listEvents(orgId: string): Promise<KassaEvent[]> {
