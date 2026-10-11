@@ -103,6 +103,31 @@ export function EventSettingsDialog({
                 <p className="text-sm text-muted-foreground">{m.selfOrderHint}</p>
               </div>
 
+              {current.selfOrder?.enabled && (
+                <div className="grid gap-2 rounded-lg border p-3" data-testid="pay-methods">
+                  <Label>{m.payMethods}</Label>
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    {m.payCounter}
+                    <Switch
+                      checked={current.selfOrder.payAtCounter !== false}
+                      disabled={busy}
+                      onCheckedChange={(on) => run(() => updateEvent(orgId, current.id, { payAtCounter: on }))}
+                      aria-label={m.payCounter}
+                    />
+                  </label>
+                  <label className="flex items-center justify-between gap-3 text-sm">
+                    {m.payBancontact}
+                    <Switch
+                      checked={!!current.selfOrder.payBancontact}
+                      disabled={busy}
+                      onCheckedChange={(on) => run(() => updateEvent(orgId, current.id, { payBancontact: on }))}
+                      aria-label={m.payBancontact}
+                    />
+                  </label>
+                  <p className="text-xs text-muted-foreground">{m.payBancontactHint}</p>
+                </div>
+              )}
+
               {current.selfOrder?.enabled && url && (
                 <div className="grid gap-3 rounded-lg border p-3" data-testid="self-order-link">
                   <Label htmlFor="self-order-url">{m.link}</Label>

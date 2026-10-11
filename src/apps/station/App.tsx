@@ -45,12 +45,18 @@ export default function App() {
   // Re-renders the "x min ago" once a minute — a local clock, no server calls.
   const [, setNow] = useState(Date.now())
   const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Bumped by every tap: a list that was already on its way from before the
+  // tap is stale — it must not put the ticket back where it was.
+  const generation = useRef(0)
 
   const load = useCallback(async () => {
     if (!device?.stationId) return
+    const started = generation.current
     try {
       const path = `/api/organizations/${encodeURIComponent(device.orgId)}/stations/${encodeURIComponent(device.stationId)}/tickets${filters.showDelivered ? '?delivered=1' : ''}`
-      setTickets(await call<Ticket[]>(path))
+      const list = await call<Ticket[]>(path)
+      if (started !== generation.current) return
+      setTickets(list)
       setError(null)
     } catch (err) {
       setError(m.loadError(err instanceof Error ? err.message : String(err)))
@@ -104,6 +110,7 @@ export default function App() {
   async function move(ticket: Ticket, status: TicketStatus) {
     if (!device) return
     setBusy(ticket.id)
+    generation.current++
     try {
       await call(`/api/organizations/${encodeURIComponent(device.orgId)}/tickets/${encodeURIComponent(ticket.id)}`, { method: 'POST', body: JSON.stringify({ status }) })
       setTickets((list) => list?.map((t) => (t.id === ticket.id ? { ...t, status } : t)) ?? list)

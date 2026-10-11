@@ -16,6 +16,10 @@ type Station = { name: string; status: 'ordered' | 'in_progress' | 'ready' | 'de
 
 class FakeSelfOrder {
   open = true
+  payment = { counter: true, bancontact: false }
+  // The follow page's payment block (a self-order waiting for payment).
+  followPayment: { counter: boolean; bancontact: boolean; pending: boolean; failed: boolean } | null = null
+  bancontactCalls = 0
   placed: any[] = []
   statusCalls = 0
   state = 'awaiting_payment'
@@ -26,6 +30,7 @@ class FakeSelfOrder {
       orgName: 'Scouts Kabouterland',
       locale: 'nl',
       open: this.open,
+      payment: this.payment,
       catalog: this.open
         ? {
             id: 'c',
@@ -50,6 +55,7 @@ class FakeSelfOrder {
       lines: [{ name: 'Pils', quantity: 2, unitPriceCents: 250 }, { name: 'Frieten', quantity: 1, unitPriceCents: 400 }],
       totalCents: 900,
       selfOrderCode: CODE,
+      payment: this.state === 'awaiting_payment' ? this.followPayment : null,
       hubTicket: ['delivered', 'cancelled', 'nothing_to_prepare'].includes(this.state) ? null : 'ticket-7',
     }
   }
@@ -86,6 +92,10 @@ const test = base.extend<{ fake: FakeSelfOrder; hub: { sockets: WebSocketRoute[]
         return route.fulfill({ status: 201, json: { token: TOKEN, number: 7 } })
       }
       if (url.pathname === `/api/public/orders/${TOKEN}`) return route.fulfill({ json: fake.status() })
+      if (url.pathname === `/api/public/orders/${TOKEN}/bancontact`) {
+        fake.bancontactCalls++
+        return route.fulfill({ status: 201, json: { deeplinkUrl: 'https://bancontact.test/deeplink/1', checkoutUrl: 'https://bancontact.test/checkout/1', qrCodeUrl: null } })
+      }
       return route.fulfill({ status: 404, json: { error: 'x', code: 'order_not_found' } })
     })
     await provide(page)
@@ -207,4 +217,47 @@ test('in French on a French phone', async ({ browser }) => {
   await page.goto(`/bestel/${CODE}`)
   await expect(page.getByRole('button', { name: 'Ajouter Pils' })).toBeVisible()
   await context.close()
+})
+
+test('pay with Bancontact: the order is placed, then off to Bancontact; back on the follow page it says what to do', async ({ phone: page, fake }) => {
+  fake.payment = { counter: true, bancontact: true }
+  // Bancontact's own page (this browser isn't a phone: the checkout page, not the app).
+  await page.route(/bancontact\.test/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>Bancontact</p>' }))
+  await page.goto(`/bestel/${CODE}`)
+  await page.getByRole('button', { name: 'Frieten toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  await expect(page.getByRole('heading', { name: 'Hoe wil je betalen?' })).toBeVisible()
+  await expect(page.getByTestId('pay-counter')).toBeVisible()
+  await noSidewaysScroll(page)
+  await page.getByTestId('pay-bancontact').getByRole('button', { name: 'Betaal met Bancontact' }).click()
+  await page.waitForURL('https://bancontact.test/checkout/1')
+  expect(fake.placed).toHaveLength(1)
+  expect(fake.bancontactCalls).toBe(1)
+
+  // Back from the app (on the follow page): the payment is still in progress.
+  fake.followPayment = { counter: true, bancontact: true, pending: true, failed: false }
+  await page.goto(`/volg/${TOKEN}`)
+  const again = page.getByTestId('pay-again')
+  await expect(again).toContainText('Je betaling loopt — bevestig ze in je Bancontact-app.')
+  await expect(again.getByRole('button', { name: 'Open Bancontact' })).toBeVisible()
+  await expect(again).toContainText('Of betaal aan de toog met nummer 7.')
+  await noSidewaysScroll(page)
+
+  // It failed: try again.
+  fake.followPayment = { counter: false, bancontact: true, pending: false, failed: true }
+  await page.reload()
+  await expect(again).toContainText('De betaling met Bancontact is niet gelukt.')
+  await expect(again.getByRole('button', { name: 'Opnieuw betalen met Bancontact' })).toBeVisible()
+  await expect(again).not.toContainText('toog')
+})
+
+test('Bancontact only: no counter option', async ({ phone: page, fake }) => {
+  fake.payment = { counter: false, bancontact: true }
+  await page.goto(`/bestel/${CODE}`)
+  await page.getByRole('button', { name: 'Pils toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  await expect(page.getByTestId('pay-bancontact')).toBeVisible()
+  await expect(page.getByTestId('pay-counter')).toHaveCount(0)
 })

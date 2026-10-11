@@ -295,12 +295,17 @@ export interface Event {
   date: string
   createdAt: string
   catalogId?: string | null
-  selfOrder?: { enabled: boolean; code: string | null }
+  // How guests may pay: at the counter and/or with Bancontact on their phone.
+  selfOrder?: { enabled: boolean; code: string | null; payAtCounter?: boolean; payBancontact?: boolean }
   // The last order number given out (0: the next is #1).
   lastOrderNumber?: number
 }
 
-export function updateEvent(orgId: string, eventId: string, fields: { name?: string; date?: string; catalogId?: string | null; selfOrderEnabled?: boolean }): Promise<Event> {
+export function updateEvent(
+  orgId: string,
+  eventId: string,
+  fields: { name?: string; date?: string; catalogId?: string | null; selfOrderEnabled?: boolean; payAtCounter?: boolean; payBancontact?: boolean }
+): Promise<Event> {
   return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify(fields) })
 }
 

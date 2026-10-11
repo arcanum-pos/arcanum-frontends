@@ -11,7 +11,21 @@ export interface Menu {
   orgName: string
   locale: string
   open: boolean
+  // How guests of this event may pay (absent: the counter only, as before).
+  payment?: { counter: boolean; bancontact: boolean }
   catalog: { id: string; sections: { id: string; name: string; entries: MenuEntry[] }[] } | null
+}
+
+export interface BancontactLinks {
+  deeplinkUrl: string | null
+  checkoutUrl: string | null
+  qrCodeUrl: string | null
+}
+
+// On a phone the Bancontact app opens on the payment (the deeplink); on a
+// computer Bancontact's own checkout page (a QR to scan with a phone).
+export function bancontactTarget(links: BancontactLinks, phone: boolean): string | null {
+  return (phone ? links.deeplinkUrl ?? links.checkoutUrl : links.checkoutUrl ?? links.deeplinkUrl) ?? null
 }
 
 export type FollowState = 'cancelled' | 'awaiting_payment' | 'nothing_to_prepare' | 'preparing' | 'ready' | 'delivered'
@@ -28,6 +42,9 @@ export interface FollowStatus {
   totalCents: number
   selfOrderCode: string | null
   hubTicket: string | null
+  // While waiting for payment (a self-order): how it can be paid, a payment
+  // in progress, the last one failed.
+  payment?: { counter: boolean; bancontact: boolean; pending: boolean; failed: boolean } | null
 }
 
 export type Cart = Record<string, number>

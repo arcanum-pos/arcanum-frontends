@@ -27,6 +27,13 @@ test('an event: pick a menu, switch self-ordering on, and get its link and QR co
   await expect(link.locator('svg title')).toHaveText('QR-code om te bestellen')
   expect(catalogAdmin.eventCalls.map((c: any) => c.body)).toEqual([{ catalogId: expect.any(String) }, { selfOrderEnabled: true }])
 
+  // How guests pay: the counter by default, Bancontact as well.
+  const pay = dialog.getByTestId('pay-methods')
+  await expect(pay.getByRole('switch', { name: 'Aan de toog, met hun nummer' })).toBeChecked()
+  await pay.getByRole('switch', { name: 'Met Bancontact, op hun telefoon' }).click()
+  await expect(pay.getByRole('switch', { name: 'Met Bancontact, op hun telefoon' })).toBeChecked()
+  expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ payBancontact: true })
+
   // A new link replaces the old one, after confirming.
   const before = await link.getByLabel('Link voor gasten').inputValue()
   page.once('dialog', (d) => d.accept())

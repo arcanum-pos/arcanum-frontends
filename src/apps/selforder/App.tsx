@@ -6,7 +6,7 @@ import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
 import { SELF_ORDER_MESSAGES } from './messages'
-import { cartLines, cartTotals, changeQuantity, isFinal, loadSaved, newlyReady, readyPlaces, route, save, type Cart, type FollowStatus, type Menu } from './lib'
+import { bancontactTarget, cartLines, cartTotals, changeQuantity, isFinal, loadSaved, newlyReady, readyPlaces, route, save, type BancontactLinks, type Cart, type FollowStatus, type Menu } from './lib'
 
 // A guest's own phone — DOMAIN_MODEL.md "Self-ordering and station screens".
 //   /bestel/<event code>: 1 menu → 2 cart → 3 pay ("Betaal aan de toog") → 4 your order
@@ -17,6 +17,17 @@ import { cartLines, cartTotals, changeQuantity, isFinal, loadSaved, newlyReady, 
 // Phone first: one column, large tap targets, a fixed bar at the bottom.
 
 const PAY_MINUTES = 10
+
+const isPhone = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia?.('(pointer: coarse)').matches
+
+// Pays a self-order with Bancontact: the payment (or the one already in
+// progress), then off to the Bancontact app (a computer: its checkout page).
+// The app sends the guest back to /volg/<token> — in whichever browser it opens.
+async function payWithBancontact(token: string) {
+  const links = await call<BancontactLinks>(`/api/public/orders/${encodeURIComponent(token)}/bancontact`, { method: 'POST' })
+  const target = bancontactTarget(links, isPhone())
+  if (target) window.location.assign(target)
+}
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...init })
@@ -88,20 +99,28 @@ function SelfOrder({ code }: { code: string }) {
   const lines = cartLines(cart, menu)
   const totals = cartTotals(lines)
 
-  async function place() {
+  // Places the order — then, for Bancontact, straight on to paying it (the
+  // order is remembered first, so coming back lands on step 4).
+  async function place(pay: 'counter' | 'bancontact') {
     setPlacing(true)
     setError(null)
     unlockSound()
+    let placedToken: string | null = null
     try {
       const placed = await call<{ token: string; number: number }>(`/api/public/self-order/${encodeURIComponent(code)}/orders`, {
         method: 'POST',
         body: JSON.stringify({ lines: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })) }),
       })
+      placedToken = placed.token
       setCart({})
       setToken(placed.token)
+      save(code, { cart: {}, token: placed.token })
+      if (pay === 'bancontact') await payWithBancontact(placed.token)
       setStep(3)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+      // Placed, but the payment couldn't start: step 4 offers it again.
+      if (placedToken) setStep(3)
     } finally {
       setPlacing(false)
     }
@@ -208,29 +227,40 @@ function SelfOrder({ code }: { code: string }) {
     )
   }
 
-  // step 2: pay — for now always at the toog.
+  // step 2: pay — the ways this event allows: Bancontact on the phone, and/or at the toog.
+  const payment = menu.payment ?? { counter: true, bancontact: false }
   return (
     <Shell title={menu.eventName} step={2}>
-      <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-        <h2 className="text-xl font-bold">{m.payTitle}</h2>
-        <p className="text-sm">{m.payHint}</p>
-        <p className="text-sm text-muted-foreground">{m.payWithin(PAY_MINUTES)}</p>
-        <div className="flex items-baseline justify-between border-t pt-3 text-lg font-semibold">
+      <div className="flex flex-col gap-3 pb-6">
+        <div className="flex items-baseline justify-between text-lg font-semibold">
           <span>{m.total}</span>
           <span className="tabular-nums">{formatEuro(totals.cents)}</span>
         </div>
-      </section>
-      {error && <p className="mt-3 text-sm text-destructive" role="alert">{error}</p>}
-      <div className="mt-6 flex flex-col gap-2 pb-24">
-        <Button variant="outline" size="lg" className="h-12" onClick={() => setStep(1)} disabled={placing}>
+        {payment.bancontact && payment.counter && <h2 className="text-base font-semibold">{m.payOptions}</h2>}
+        {payment.bancontact && (
+          <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="pay-bancontact">
+            <h2 className="text-xl font-bold">{m.payBancontact}</h2>
+            <p className="text-sm">{m.payBancontactHint}</p>
+            <Button size="lg" className="h-14 text-base" onClick={() => place('bancontact')} disabled={placing || lines.length === 0}>
+              {placing ? m.placing : m.payBancontact}
+            </Button>
+          </section>
+        )}
+        {payment.counter && (
+          <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="pay-counter">
+            <h2 className="text-xl font-bold">{m.payTitle}</h2>
+            <p className="text-sm">{m.payHint}</p>
+            <p className="text-sm text-muted-foreground">{m.payWithin(PAY_MINUTES)}</p>
+            <Button size="lg" variant={payment.bancontact ? 'outline' : 'default'} className="h-14 text-base" onClick={() => place('counter')} disabled={placing || lines.length === 0}>
+              {placing ? m.placing : m.place}
+            </Button>
+          </section>
+        )}
+        {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+        <Button variant="ghost" size="lg" className="h-12" onClick={() => setStep(1)} disabled={placing}>
           {m.steps.cart}
         </Button>
       </div>
-      <BottomBar>
-        <Button size="lg" className="h-14 w-full text-base" onClick={place} disabled={placing || lines.length === 0}>
-          {placing ? m.placing : m.place}
-        </Button>
-      </BottomBar>
     </Shell>
   )
 }
@@ -289,6 +319,8 @@ function Follow({ token, onStartOver }: { token: string; onStartOver?: () => voi
         <p className="mt-2 text-base font-medium" data-testid="follow-message">{message(m, status, places)}</p>
       </section>
 
+      {status.state === 'awaiting_payment' && status.payment?.bancontact && <PayAgain token={token} status={status} />}
+
       {status.stations.length > 0 && status.state !== 'awaiting_payment' && status.state !== 'cancelled' && (
         <ul className="flex flex-col divide-y rounded-xl bg-card ring-1 ring-foreground/10" data-testid="stations">
           {status.stations.map((s) => (
@@ -340,10 +372,42 @@ function Follow({ token, onStartOver }: { token: string; onStartOver?: () => voi
   )
 }
 
+// Waiting for payment, Bancontact allowed: the payment in progress (open the
+// app again), a failed one (try again), or none yet — and the counter as the
+// alternative when the event takes it.
+function PayAgain({ token, status }: { token: string; status: FollowStatus }) {
+  const m = useMessages(SELF_ORDER_MESSAGES)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const pay = status.payment!
+  async function go() {
+    setBusy(true)
+    setError(null)
+    try {
+      await payWithBancontact(token)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="pay-again">
+      {pay.pending && <p className="font-medium">{m.bancontactPending}</p>}
+      {pay.failed && <p className="font-medium text-destructive">{m.bancontactFailed}</p>}
+      <Button size="lg" className="h-14 text-base" onClick={go} disabled={busy}>
+        {busy ? m.placing : pay.pending ? m.bancontactOpen : pay.failed ? m.bancontactRetry : m.payBancontact}
+      </Button>
+      {pay.counter && <p className="text-sm text-muted-foreground">{m.orAtCounter(status.number)}</p>}
+      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+    </section>
+  )
+}
+
 function message(m: ReturnType<typeof useMessages<typeof SELF_ORDER_MESSAGES.nl>>, status: FollowStatus, places: string[]): string {
   switch (status.state) {
     case 'awaiting_payment':
-      return m.goPay(status.number)
+      return status.payment?.bancontact ? m.payNow : m.goPay(status.number)
     case 'cancelled':
       return m.cancelled
     case 'nothing_to_prepare':

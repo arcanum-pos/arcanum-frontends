@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cartLines, cartTotals, changeQuantity, newlyReady, route, type FollowStatus, type Menu } from './lib'
+import { bancontactTarget, cartLines, cartTotals, changeQuantity, newlyReady, route, type FollowStatus, type Menu } from './lib'
 
 const menu: Menu = {
   eventName: 'Fuif',
@@ -41,5 +41,12 @@ describe('self-order pages', () => {
     expect(newlyReady(before, barReady)).toBe(true)
     expect(newlyReady(barReady, barReady)).toBe(false)
     expect(newlyReady(barReady, status([{ name: 'Bar', status: 'ready' }, { name: 'Keuken', status: 'ready' }]))).toBe(true)
+  })
+
+  it('open the Bancontact app on a phone, its checkout page on a computer', () => {
+    const links = { deeplinkUrl: 'https://deeplink.test/1', checkoutUrl: 'https://checkout.test/1', qrCodeUrl: null }
+    expect(bancontactTarget(links, true)).toBe('https://deeplink.test/1')
+    expect(bancontactTarget(links, false)).toBe('https://checkout.test/1')
+    expect(bancontactTarget({ ...links, deeplinkUrl: null }, true)).toBe('https://checkout.test/1')
   })
 })

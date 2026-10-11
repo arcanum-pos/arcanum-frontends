@@ -73,6 +73,8 @@ export default {
   ticket_not_found: 'Ticket not found',
   event_not_found: 'Event not found',
   self_order_needs_menu: 'Choose a menu for this event first',
+  self_order_needs_payment: 'Choose at least one way to pay',
+  self_order_payment_unavailable: 'This way of paying isn’t available here',
   self_order_closed: 'Ordering isn’t possible here right now',
   self_order_busy: 'Too many unpaid orders waiting — try again in a moment, or order at the counter',
   self_order_too_large: 'Too much in one order — order the rest separately',
