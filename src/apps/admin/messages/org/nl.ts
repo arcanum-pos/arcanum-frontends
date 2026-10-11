@@ -143,6 +143,7 @@ const nl = {
     modeMenu: 'Menukaart',
     modeQr: 'Met de QR-code: gasten bestellen zelf',
     modeKassa: 'Aan de kassa',
+    modeKassaHint: 'Kassa’s kunnen een nieuwe bestelling deze bestelwijze geven — enkel als label op het station (bv. om in te pakken). Met meer dan één bestelwijze aan de kassa kies je ze aan de kassa met een knop; met één gaat het vanzelf. De kassa houdt haar eigen menukaart.',
     modeUp: 'Hoger',
     modeDown: 'Lager',
     modeDelete: 'Verwijderen',

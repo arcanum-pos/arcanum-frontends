@@ -311,10 +311,13 @@ function ModeCard({
         {m.modeQr}
         <Switch checked={mode.selfOrder} disabled={busy || !mode.catalogId} onCheckedChange={(on) => onChange({ selfOrder: on })} aria-label={`${m.modeQr} — ${mode.name}`} />
       </label>
-      <label className="flex items-center justify-between gap-3 text-sm">
-        {m.modeKassa}
-        <Switch checked={mode.kassa} disabled={busy} onCheckedChange={(on) => onChange({ kassa: on })} aria-label={`${m.modeKassa} — ${mode.name}`} />
-      </label>
+      <div className="grid gap-1">
+        <label className="flex items-center justify-between gap-3 text-sm">
+          {m.modeKassa}
+          <Switch checked={mode.kassa} disabled={busy} onCheckedChange={(on) => onChange({ kassa: on })} aria-label={`${m.modeKassa} — ${mode.name}`} />
+        </label>
+        <p className="text-xs text-muted-foreground">{m.modeKassaHint}</p>
+      </div>
       {mode.selfOrder && (
         <div className="grid gap-2 rounded-md bg-muted/40 p-3" data-testid="pay-methods">
           <Label>{m.payMethods}</Label>
@@ -389,12 +392,20 @@ function LinkName({ m, current, busy, onSave }: { m: Messages; current: string; 
   )
 }
 
+// A link shown whole (it wraps — a URL cut off can't be checked by eye), with a copy button.
 function CopyField({ id, value, m }: { id?: string; value: string; m: Messages }) {
   const [copied, setCopied] = useState(false)
   useEffect(() => setCopied(false), [value])
   return (
-    <div className="flex gap-2">
-      <Input id={id} readOnly value={value} onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
+    <div className="flex items-start gap-2">
+      <textarea
+        id={id}
+        readOnly
+        rows={2}
+        value={value}
+        onFocus={(e) => e.currentTarget.select()}
+        className="min-w-0 flex-1 resize-none rounded-lg border border-input bg-transparent px-2.5 py-1.5 font-mono text-xs break-all outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      />
       <Button
         variant="outline"
         onClick={async () => {

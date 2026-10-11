@@ -130,6 +130,7 @@ export default {
     modeMenu: 'Menu',
     modeQr: 'With the QR code: guests order themselves',
     modeKassa: 'At the till',
+    modeKassaHint: 'Tills can give a new order this ordering mode — only as a label on the station (e.g. to pack it). With more than one mode at the till, the cashier picks one with a button; with one, it’s automatic. The till keeps its own menu.',
     modeUp: 'Up',
     modeDown: 'Down',
     modeDelete: 'Remove',

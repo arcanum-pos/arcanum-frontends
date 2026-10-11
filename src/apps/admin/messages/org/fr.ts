@@ -130,6 +130,7 @@ export default {
     modeMenu: 'Carte',
     modeQr: 'Avec le code QR : les invités commandent eux-mêmes',
     modeKassa: 'À la caisse',
+    modeKassaHint: 'Les caisses peuvent donner ce mode à une nouvelle commande — uniquement comme étiquette au poste (p. ex. pour l’emballer). Avec plusieurs modes à la caisse, le caissier en choisit un par un bouton ; avec un seul, c’est automatique. La caisse garde sa propre carte.',
     modeUp: 'Monter',
     modeDown: 'Descendre',
     modeDelete: 'Supprimer',
