@@ -309,7 +309,8 @@ export interface Event {
   name: string
   date: string
   createdAt: string
-  selfOrder?: { enabled: boolean; code: string | null }
+  // code: what goes in the link and QR (readable: <name>-<4 characters>); linkName: its name part.
+  selfOrder?: { enabled: boolean; code: string | null; linkName?: string | null }
   modes?: OrderMode[]
   // Whether this installation can send SMS (installer → Geavanceerd → Sms).
   sms?: boolean
@@ -317,7 +318,7 @@ export interface Event {
   lastOrderNumber?: number
 }
 
-export function updateEvent(orgId: string, eventId: string, fields: { name?: string; date?: string; selfOrderEnabled?: boolean }): Promise<Event> {
+export function updateEvent(orgId: string, eventId: string, fields: { name?: string; date?: string; selfOrderEnabled?: boolean; linkName?: string }): Promise<Event> {
   return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify(fields) })
 }
 

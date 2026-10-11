@@ -170,6 +170,11 @@ export class FakeCatalogAdmin {
           return { status: 400, body: { error: 'Kies eerst een menukaart voor dit evenement', code: 'self_order_needs_menu' } }
         if (body.selfOrderEnabled !== undefined) e.selfOrder.enabled = body.selfOrderEnabled
         if (e.selfOrder.enabled && !e.selfOrder.code) e.selfOrder.code = `code-${this.id('c')}`
+        if (body.linkName !== undefined) {
+          const name = String(body.linkName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+          e.selfOrder.linkName = name
+          e.selfOrder.code = `${name}-${String(this.id('x')).replace(/\D/g, '').padStart(4, 'k')}`
+        }
         this.eventCalls.push({ path, body })
         return ok(e)
       }

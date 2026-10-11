@@ -155,6 +155,7 @@ export function EventSettingsDialog({
                 <div className="grid gap-3 rounded-lg border p-3" data-testid="self-order-link">
                   <Label htmlFor="self-order-url">{m.link}</Label>
                   <CopyField id="self-order-url" value={url} m={m} />
+                  <LinkName m={m} current={current.selfOrder.linkName ?? ''} busy={busy} onSave={(linkName) => run(() => updateEvent(orgId, current.id, { linkName }))} />
                   <div className="flex flex-col items-center gap-2">
                     <div className="rounded-lg bg-white p-3">
                       <QRCodeSVG value={url} size={200} marginSize={1} title={m.qrAlt} />
@@ -309,6 +310,30 @@ function ModeCard({
         </div>
       )}
     </div>
+  )
+}
+
+// The name part of the readable link (/bestel/<name>-<4 characters>).
+function LinkName({ m, current, busy, onSave }: { m: Messages; current: string; busy: boolean; onSave: (name: string) => void }) {
+  const [name, setName] = useState(current)
+  useEffect(() => setName(current), [current])
+  return (
+    <form
+      className="grid gap-1.5"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (name.trim() && name.trim() !== current) onSave(name.trim())
+      }}
+    >
+      <Label htmlFor="self-order-link-name" className="text-sm font-normal">{m.linkName}</Label>
+      <div className="flex gap-2">
+        <Input id="self-order-link-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={40} autoComplete="off" />
+        <Button type="submit" variant="outline" disabled={busy || !name.trim() || name.trim() === current}>
+          {m.linkNameSave}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">{m.linkNameHint}</p>
+    </form>
   )
 }
 

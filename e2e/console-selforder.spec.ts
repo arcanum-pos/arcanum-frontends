@@ -47,6 +47,12 @@ test('an event: add an ordering mode with a menu, switch self-ordering on, and g
   await expect(pay.getByRole('switch', { name: 'Bijbestellen op hun rekening, betalen bij vertrek' })).toBeChecked()
   expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ tabs: true })
 
+  // Another name in the readable link.
+  await link.getByLabel('Naam in de link').fill('Spaghetti Fouriers')
+  await link.getByRole('button', { name: 'Wijzig' }).click()
+  await expect(link.getByLabel('Link voor gasten')).toHaveValue(/\/bestel\/spaghetti-fouriers-[a-z0-9]{4}$/)
+  expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ linkName: 'Spaghetti Fouriers' })
+
   // A new link replaces the old one, after confirming.
   const before = await link.getByLabel('Link voor gasten').inputValue()
   page.once('dialog', (d) => d.accept())
