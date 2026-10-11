@@ -300,6 +300,8 @@ export interface OrderMode {
   payAtCounter: boolean
   payBancontact: boolean
   tabs: boolean
+  // An SMS to the guest when a station's part is ready (MESSAGING.md).
+  notifySms?: boolean
 }
 
 export interface Event {
@@ -309,6 +311,8 @@ export interface Event {
   createdAt: string
   selfOrder?: { enabled: boolean; code: string | null }
   modes?: OrderMode[]
+  // Whether this installation can send SMS (installer → Geavanceerd → Sms).
+  sms?: boolean
   // The last order number given out (0: the next is #1).
   lastOrderNumber?: number
 }

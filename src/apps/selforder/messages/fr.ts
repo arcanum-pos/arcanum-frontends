@@ -61,6 +61,16 @@ const fr: SelfOrderMessages = {
   shareText: (number: number) => `Ma commande n°${number}`,
   copyLink: 'Copier le lien',
   linkCopied: 'Copié',
+  smsTitle: 'SMS quand c’est prêt',
+  smsHint: 'Donnez votre numéro de GSM : dès qu’un poste a préparé votre commande, vous recevez un SMS. Même si cette page est fermée.',
+  smsPhone: 'Numéro de GSM',
+  smsPlaceholder: '0470 12 34 56',
+  smsSubmit: 'Envoyez-moi un SMS',
+  smsSet: (phone: string) => `Nous enverrons un SMS au ${phone} dès que quelque chose est prêt.`,
+  smsChange: 'Modifier',
+  smsPrivacy: 'Nous n’utilisons votre numéro que pour cela, et l’effaçons dès que votre commande est prête.',
+  smsSent: (station: string) => `SMS envoyé : ${station}`,
+  smsFailed: (station: string) => `Le SMS pour ${station} n’a pas pu être envoyé.`,
 }
 
 export default fr

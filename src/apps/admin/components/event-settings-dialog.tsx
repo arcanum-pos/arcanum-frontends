@@ -106,6 +106,7 @@ export function EventSettingsDialog({
                     last={i === modes.length - 1}
                     catalogs={active}
                     busy={busy}
+                    sms={!!current.sms}
                     directLink={qrModes.length > 1 && mode.selfOrder && url ? `${url}?m=${mode.id}` : null}
                     onChange={(fields) => run(() => updateOrderMode(orgId, current.id, mode.id, fields))}
                     onDelete={() => window.confirm(m.modeDeleteConfirm(mode.name)) && run(() => deleteOrderMode(orgId, current.id, mode.id))}
@@ -194,6 +195,7 @@ function ModeCard({
   last,
   catalogs,
   busy,
+  sms,
   directLink,
   onChange,
   onDelete,
@@ -204,6 +206,7 @@ function ModeCard({
   last: boolean
   catalogs: CatalogSummary[]
   busy: boolean
+  sms: boolean
   directLink: string | null
   onChange: (fields: OrderModeFields) => Promise<boolean>
   onDelete: () => void
@@ -287,6 +290,18 @@ function ModeCard({
           <p className="text-xs text-muted-foreground">{m.tabsHint}</p>
         </div>
       )}
+      <div className="grid gap-1">
+        <label className="flex items-center justify-between gap-3 text-sm">
+          {m.modeSms}
+          <Switch
+            checked={!!mode.notifySms}
+            disabled={busy || (!sms && !mode.notifySms)}
+            onCheckedChange={(on) => onChange({ notifySms: on })}
+            aria-label={`${m.modeSms} — ${mode.name}`}
+          />
+        </label>
+        <p className="text-xs text-muted-foreground">{sms ? m.modeSmsHint : m.modeSmsOff}</p>
+      </div>
       {directLink && (
         <div className="grid gap-1.5">
           <Label className="text-sm font-normal">{m.modeLink}</Label>

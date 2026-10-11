@@ -129,6 +129,9 @@ export default {
     modeDelete: 'Supprimer',
     modeDeleteConfirm: (name: string) => `Supprimer le mode « ${name} » ? Les commandes arrivées ainsi restent inchangées.`,
     modeLink: 'Lien direct (sans le choix)',
+    modeSms: 'SMS quand c’est prêt',
+    modeSmsHint: 'Les invités peuvent donner leur numéro de GSM sur leur page de commande ; quand un poste a préparé leur part, ils reçoivent un SMS. Uniquement pour les commandes payées (ou sur leur note).',
+    modeSmsOff: 'Les SMS ne sont pas configurés pour cette installation — cela se fait dans l’installateur (Avancé → SMS).',
     selfOrderNeedsMode: 'Activez d’abord « Avec le code QR » pour un mode de commande (avec une carte).'
   },
 

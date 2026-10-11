@@ -439,7 +439,7 @@ function Stepper({ name, quantity, onChange }: { name: string; quantity: number;
 
 function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOver?: () => void; onOrderMore?: (modeId: string | null) => void }) {
   const m = useMessages(SELF_ORDER_MESSAGES)
-  const { status, error, live } = useFollow(token)
+  const { status, error, live, refresh } = useFollow(token)
 
   // Everything collected (and, on a tab, paid): a self-order phone goes back to the menu.
   useEffect(() => {
@@ -501,6 +501,8 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
         </ul>
       )}
 
+      {status.sms && (status.sms.available || status.sms.stations.length > 0) && <SmsCard token={token} sms={status.sms} onChanged={refresh} />}
+
       {!isDone(status) && <KeepLink token={token} number={status.number} />}
 
       {!isDone(status) && (
@@ -538,6 +540,73 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
         )
       )}
     </div>
+  )
+}
+
+// "Text me when it's ready" (MESSAGING.md): a number, shown back masked
+// ("••• 56"), changeable; and per station whether its SMS went.
+function SmsCard({ token, sms, onChanged }: { token: string; sms: NonNullable<FollowStatus['sms']>; onChanged: () => void }) {
+  const m = useMessages(SELF_ORDER_MESSAGES)
+  const [phone, setPhone] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const path = `/api/public/orders/${encodeURIComponent(token)}/notify`
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      await call(path, { method: 'POST', body: JSON.stringify({ phone }) })
+      setEditing(false)
+      setPhone('')
+      onChanged()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  const asking = sms.available && (!sms.phone || editing)
+  return (
+    <section className="flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="sms">
+      <h2 className="font-semibold">{m.smsTitle}</h2>
+      {asking && (
+        <form className="flex flex-col gap-2" onSubmit={save}>
+          <p className="text-sm text-muted-foreground">{m.smsHint}</p>
+          <label className="sr-only" htmlFor="sms-phone">{m.smsPhone}</label>
+          <input
+            id="sms-phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            required
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder={m.smsPlaceholder}
+            className="h-12 w-full min-w-0 rounded-lg border bg-background px-3 text-base"
+          />
+          <Button type="submit" size="lg" className="h-12" disabled={busy || !phone.trim()}>
+            {busy ? m.placing : m.smsSubmit}
+          </Button>
+          <p className="text-xs text-muted-foreground">{m.smsPrivacy}</p>
+        </form>
+      )}
+      {sms.available && sms.phone && !editing && (
+        <div className="flex items-center justify-between gap-3">
+          <p className="min-w-0 text-sm" data-testid="sms-phone">{m.smsSet(sms.phone)}</p>
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setEditing(true)}>
+            {m.smsChange}
+          </Button>
+        </div>
+      )}
+      {sms.stations.map((s) => (
+        <p key={s.name} className={`text-sm ${s.status === 'failed' ? 'text-destructive' : 'text-muted-foreground'}`} data-testid="sms-station">
+          {s.status === 'failed' ? m.smsFailed(s.name) : s.status === 'sent' ? `✓ ${m.smsSent(s.name)}` : '…'}
+        </p>
+      ))}
+      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+    </section>
   )
 }
 
@@ -641,6 +710,8 @@ function useFollow(token: string) {
   const [error, setError] = useState<string | null>(null)
   const [live, setLive] = useState(false)
   const previous = useRef<FollowStatus | null>(null)
+  // The current refresh, for a change made on the page itself (a number for the SMS).
+  const refreshRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     let stopped = false
@@ -700,6 +771,7 @@ function useFollow(token: string) {
       if (document.visibilityState === 'visible' && !socket) refresh()
     }
 
+    refreshRef.current = refresh
     refresh()
     document.addEventListener('visibilitychange', onVisible)
     return () => {
@@ -710,7 +782,7 @@ function useFollow(token: string) {
     }
   }, [token])
 
-  return { status, error, live }
+  return { status, error, live, refresh: () => refreshRef.current() }
 }
 
 // --- The "ready" signal: a vibration and a short beep ---

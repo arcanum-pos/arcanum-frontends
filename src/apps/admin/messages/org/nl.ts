@@ -142,6 +142,9 @@ const nl = {
     modeDelete: 'Verwijderen',
     modeDeleteConfirm: (name: string) => `Bestelwijze "${name}" verwijderen? Bestellingen die zo binnenkwamen, blijven zoals ze zijn.`,
     modeLink: 'Rechtstreekse link (slaat de keuze over)',
+    modeSms: 'Sms als het klaar is',
+    modeSmsHint: 'Gasten kunnen op hun bestelpagina hun gsm-nummer geven; als een station hun deel klaarzet, krijgen ze een sms. Alleen voor betaalde bestellingen (of op rekening).',
+    modeSmsOff: 'Sms is niet ingesteld voor deze installatie — dat gebeurt in de installer (Geavanceerd → Sms).',
     selfOrderNeedsMode: 'Zet eerst bij een bestelwijze "Met de QR-code" aan (met een menukaart).'
   },
 

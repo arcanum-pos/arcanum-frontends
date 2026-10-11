@@ -72,6 +72,9 @@ export interface FollowStatus {
   // While waiting for payment (a self-order): how it can be paid, a payment
   // in progress, the last one failed.
   payment?: { counter: boolean; bancontact: boolean; pending: boolean; failed: boolean } | null
+  // An SMS when a station's part is ready (MESSAGING.md): whether a number
+  // can be given now, the one given (masked: "••• 56"), how each station's went.
+  sms?: { available: boolean; phone: string | null; stations: { name: string; status: 'sending' | 'sent' | 'failed' }[] } | null
 }
 
 export type Cart = Record<string, number>

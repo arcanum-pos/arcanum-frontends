@@ -31,6 +31,9 @@ class FakeSelfOrder {
   // The follow page: the tab's mode, and its name when there's more than one.
   modeId = 'm-plaatse'
   modeName: string | null = null
+  // The "ready" SMS: offered or not, the number given (masked), per station how it went.
+  sms: { available: boolean; phone: string | null; stations: { name: string; status: string }[] } | null = null
+  notifyCalls: any[] = []
   menu() {
     const modes = [
       {
@@ -71,6 +74,7 @@ class FakeSelfOrder {
       selfOrder: true,
       modeId: this.modeId,
       mode: this.modeName,
+      sms: this.sms,
       payLater: this.tabOpen,
       tabOpen: this.tabOpen,
       state: this.state,
@@ -135,6 +139,13 @@ const test = base.extend<{ fake: FakeSelfOrder; hub: { sockets: WebSocketRoute[]
       if (url.pathname === `/api/public/orders/${TOKEN}/orders`) {
         fake.rounds.push(route.request().postDataJSON())
         return route.fulfill({ status: 201, json: { ok: true } })
+      }
+      if (url.pathname === `/api/public/orders/${TOKEN}/notify`) {
+        const body = route.request().postDataJSON()
+        fake.notifyCalls.push(body)
+        if (!/^0\d{9}$/.test(String(body.phone).replace(/\s/g, ''))) return route.fulfill({ status: 400, json: { error: 'x', code: 'invalid_phone', params: { countries: '+32' } } })
+        fake.sms = { ...fake.sms!, phone: `••• ${String(body.phone).slice(-2)}` }
+        return route.fulfill({ json: { ok: true, phone: fake.sms.phone } })
       }
       if (url.pathname === `/api/public/orders/${TOKEN}/bancontact`) {
         fake.bancontactCalls++
@@ -428,4 +439,42 @@ test('on a tab: order, order more on the same tab, settle at the end — on a ph
   await expect(page.getByTestId('follow-message')).toHaveText('Alles afgehaald. Smakelijk!')
   await page.getByRole('button', { name: 'Nieuwe bestelling' }).click()
   await expect(page.getByRole('button', { name: 'Pils toevoegen' })).toBeVisible()
+})
+
+test('an SMS when it\'s ready: a number on the order page, shown back masked; per station whether it went — on a small phone', async ({ phone: page, fake, hub }) => {
+  fake.state = 'preparing'
+  fake.sms = { available: true, phone: null, stations: [] }
+  await page.goto(`/volg/${TOKEN}`)
+  const sms = page.getByTestId('sms')
+  await expect(sms).toContainText('Sms als het klaar is')
+  await noSidewaysScroll(page)
+  // Not a number we can use: says so.
+  await sms.getByLabel('Gsm-nummer').fill('12')
+  await sms.getByRole('button', { name: 'Stuur me een sms' }).click()
+  await expect(sms.getByRole('alert')).toHaveText('Dat is geen gsm-nummer dat we kunnen gebruiken (begint met +32, of met 0)')
+  await sms.getByLabel('Gsm-nummer').fill('0470 12 34 56')
+  await sms.getByRole('button', { name: 'Stuur me een sms' }).click()
+  await expect(sms.getByTestId('sms-phone')).toHaveText('We sturen een sms naar ••• 56 zodra iets klaar is.')
+  expect(fake.notifyCalls.at(-1)).toEqual({ phone: '0470 12 34 56' })
+  await noSidewaysScroll(page)
+
+  // The bar's part ready: its SMS went — live, through the order hub.
+  await expect.poll(() => hub.sockets.length).toBeGreaterThan(0)
+  fake.stations = [{ name: 'Bar', status: 'ready' }, { name: 'Keuken', status: 'in_progress' }]
+  fake.sms = { available: true, phone: '••• 56', stations: [{ name: 'Bar', status: 'sent' }, { name: 'Keuken', status: 'failed' }] }
+  hub.push()
+  await expect(sms.getByTestId('sms-station')).toHaveText(['✓ Sms verstuurd: Bar', 'Sms voor Keuken kon niet verstuurd worden.'])
+
+  // Change the number.
+  await sms.getByRole('button', { name: 'Wijzig' }).click()
+  await sms.getByLabel('Gsm-nummer').fill('0499 99 99 01')
+  await sms.getByRole('button', { name: 'Stuur me een sms' }).click()
+  await expect(sms.getByTestId('sms-phone')).toHaveText('We sturen een sms naar ••• 01 zodra iets klaar is.')
+})
+
+test('no SMS offered when the ordering mode has none', async ({ phone: page, fake }) => {
+  fake.state = 'preparing'
+  await page.goto(`/volg/${TOKEN}`)
+  await expect(page.getByTestId('order-number')).toHaveText('7')
+  await expect(page.getByTestId('sms')).toHaveCount(0)
 })

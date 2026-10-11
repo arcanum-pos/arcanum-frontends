@@ -61,6 +61,16 @@ const en: SelfOrderMessages = {
   shareText: (number: number) => `My order #${number}`,
   copyLink: 'Copy link',
   linkCopied: 'Copied',
+  smsTitle: 'SMS when it’s ready',
+  smsHint: 'Leave your mobile number: as soon as a station has your order ready, you get an SMS. Even with this page closed.',
+  smsPhone: 'Mobile number',
+  smsPlaceholder: '0470 12 34 56',
+  smsSubmit: 'Text me',
+  smsSet: (phone: string) => `We’ll text ${phone} as soon as something is ready.`,
+  smsChange: 'Change',
+  smsPrivacy: 'We only use your number for this, and erase it once your order is ready.',
+  smsSent: (station: string) => `SMS sent: ${station}`,
+  smsFailed: (station: string) => `The SMS for ${station} couldn’t be sent.`,
 }
 
 export default en

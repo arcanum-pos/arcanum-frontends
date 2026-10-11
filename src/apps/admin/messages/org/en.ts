@@ -129,6 +129,9 @@ export default {
     modeDelete: 'Remove',
     modeDeleteConfirm: (name: string) => `Remove ordering mode "${name}"? Orders that came in this way stay as they are.`,
     modeLink: 'Direct link (skips the choice)',
+    modeSms: 'SMS when it’s ready',
+    modeSmsHint: 'Guests can leave their mobile number on their order page; when a station has their part ready, they get an SMS. Only for paid orders (or on a tab).',
+    modeSmsOff: 'SMS isn’t set up for this installation — that’s done in the installer (Advanced → SMS).',
     selfOrderNeedsMode: 'First turn on "With the QR code" for an ordering mode (with a menu).'
   },
 

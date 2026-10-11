@@ -112,6 +112,26 @@ test('several ordering modes: renamed, moved, a direct link each, removed — th
   await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeDisabled()
 })
 
+test('an SMS per ordering mode: only when the installation sends SMS', async ({ console: open, page, catalogAdmin }) => {
+  const menu = call(catalogAdmin, 'POST', '/catalogs', { name: 'Fuifkaart' }).body
+  const mode = { id: 'm1', name: 'Take away', catalogId: menu.id, selfOrder: true, kassa: true, payAtCounter: true, payBancontact: false, tabs: false, notifySms: false }
+  catalogAdmin.events = [{ id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: true, code: 'c1' }, modes: [mode], sms: false, lastOrderNumber: 0 }]
+  await open('/events')
+  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
+  const card = page.getByRole('dialog').getByTestId('order-mode')
+  // Not set up in the installer: off, and says where.
+  await expect(card.getByRole('switch', { name: 'Sms als het klaar is — Take away' })).toBeDisabled()
+  await expect(card).toContainText('dat gebeurt in de installer (Geavanceerd → Sms)')
+  await page.keyboard.press('Escape')
+
+  catalogAdmin.events[0].sms = true
+  await page.reload()
+  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
+  await card.getByRole('switch', { name: 'Sms als het klaar is — Take away' }).click()
+  await expect(card.getByRole('switch', { name: 'Sms als het klaar is — Take away' })).toBeChecked()
+  expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ notifySms: true })
+})
+
 test('Toestel toevoegen: a station screen for one station', async ({ console: open, page, catalogAdmin }) => {
   call(catalogAdmin, 'POST', '/catalog/stations', { name: 'Keuken' })
   call(catalogAdmin, 'POST', '/catalog/stations', { name: 'Bar' })

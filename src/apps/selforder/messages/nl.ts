@@ -61,6 +61,16 @@ const nl = {
   shareText: (number: number) => `Mijn bestelling #${number}`,
   copyLink: 'Link kopiëren',
   linkCopied: 'Gekopieerd',
+  smsTitle: 'Sms als het klaar is',
+  smsHint: 'Geef je gsm-nummer: zodra een station je bestelling klaarzet, krijg je een sms. Ook als deze pagina dicht is.',
+  smsPhone: 'Gsm-nummer',
+  smsPlaceholder: '0470 12 34 56',
+  smsSubmit: 'Stuur me een sms',
+  smsSet: (phone: string) => `We sturen een sms naar ${phone} zodra iets klaar is.`,
+  smsChange: 'Wijzig',
+  smsPrivacy: 'We gebruiken je nummer alleen hiervoor, en wissen het zodra je bestelling klaar is.',
+  smsSent: (station: string) => `Sms verstuurd: ${station}`,
+  smsFailed: (station: string) => `Sms voor ${station} kon niet verstuurd worden.`,
 }
 
 export type SelfOrderMessages = typeof nl
