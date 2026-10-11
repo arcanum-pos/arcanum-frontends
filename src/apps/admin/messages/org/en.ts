@@ -141,7 +141,9 @@ export default {
     modeSms: 'SMS when it’s ready',
     modeSmsHint: 'Guests can leave their mobile number on their order page; when a station has their part ready, they get an SMS. Only for paid orders (or on a tab).',
     modeSmsOff: 'SMS isn’t set up for this installation — that’s done in the installer (Advanced → SMS).',
-    selfOrderNeedsMode: 'First turn on "With the QR code" for an ordering mode (with a menu).'
+    selfOrderMakesMode: 'Switch it on and we’ll set up an ordering mode "Eat in" with your menu; adjust it afterwards under Ordering modes.',
+    selfOrderUsesMode: 'Switch it on and we’ll switch on the QR code for your first ordering mode (with your menu, if it has none yet).',
+    selfOrderNeedsCatalog: 'First make a menu (Menus) — that’s what guests order from.',
   },
 
   devices: {

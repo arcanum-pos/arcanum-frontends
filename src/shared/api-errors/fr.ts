@@ -74,6 +74,7 @@ export default {
   ticket_not_found: 'Bon introuvable',
   event_not_found: 'Événement introuvable',
   self_order_needs_menu: 'Choisissez d’abord une carte pour cet événement',
+  self_order_needs_catalog: 'Créez d’abord une carte (Cartes)',
   self_order_needs_payment: 'Choisissez au moins un moyen de paiement',
   self_order_payment_unavailable: 'Ce moyen de paiement n’est pas disponible ici',
   self_order_closed: 'Commander n’est pas possible ici pour le moment',

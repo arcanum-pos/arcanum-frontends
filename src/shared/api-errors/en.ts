@@ -74,6 +74,7 @@ export default {
   ticket_not_found: 'Ticket not found',
   event_not_found: 'Event not found',
   self_order_needs_menu: 'Choose a menu for this event first',
+  self_order_needs_catalog: 'First make a menu (Menus)',
   self_order_needs_payment: 'Choose at least one way to pay',
   self_order_payment_unavailable: 'This way of paying isn’t available here',
   self_order_closed: 'Ordering isn’t possible here right now',

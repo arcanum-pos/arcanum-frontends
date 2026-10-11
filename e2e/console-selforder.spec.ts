@@ -16,9 +16,10 @@ test('an event: add an ordering mode with a menu, switch self-ordering on, and g
   await row.getByRole('button', { name: 'Instellen' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { name: 'Fuif — instellen' })).toBeVisible()
-  // No ordering mode yet: self-ordering can't be switched on.
+  // No ordering mode yet: the switch still works — it says it will make one.
   await expect(dialog.getByText('Nog geen bestelwijzen.')).toBeVisible()
-  await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeDisabled()
+  await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeEnabled()
+  await expect(dialog).toContainText('dan maken we een bestelwijze "Ter plaatse" met je menukaart klaar')
 
   // A mode, free text; then its menu — guests order with it.
   await dialog.getByRole('combobox', { name: 'Nieuwe bestelwijze' }).fill('Ter plaatse')
@@ -78,6 +79,29 @@ test('an event: add an ordering mode with a menu, switch self-ordering on, and g
   await page.keyboard.press('Escape')
   await expect(row).toContainText('Aan')
   await expect(row).toContainText('Ter plaatse')
+})
+
+test('self-ordering switched on for an event without modes: a mode is made ready, to adjust', async ({ console: open, page, catalogAdmin }) => {
+  call(catalogAdmin, 'POST', '/catalogs', { name: 'Fuifkaart' })
+  catalogAdmin.events = [{ id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 }]
+  await open('/events')
+  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('switch', { name: 'Zelfbestellen' }).click()
+  await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeChecked()
+  const card = dialog.getByTestId('order-mode')
+  await expect(card).toHaveAttribute('data-name', 'Ter plaatse')
+  await expect(card.getByRole('combobox', { name: 'Menukaart — Ter plaatse' })).toHaveText('Fuifkaart')
+  await expect(dialog.getByTestId('self-order-link')).toBeVisible()
+})
+
+test('no menu at all: self-ordering says to make one first', async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.events = [{ id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 }]
+  await open('/events')
+  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeDisabled()
+  await expect(dialog).toContainText('Maak eerst een menukaart (Menukaarten)')
 })
 
 test('several ordering modes: renamed, moved, a direct link each, removed — the last QR mode gone switches self-ordering off', async ({ console: open, page, catalogAdmin }) => {
@@ -143,7 +167,9 @@ test('several ordering modes: renamed, moved, a direct link each, removed — th
   await expect(card).toHaveAttribute('data-name', 'Ter plaatse')
   await card.getByRole('switch', { name: /^Met de QR-code/ }).click()
   await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).not.toBeChecked()
-  await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeDisabled()
+  // …and can be switched on again: it says what it will do with the modes there are.
+  await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeEnabled()
+  await expect(dialog).toContainText('dan zetten we de QR-code aan bij je eerste bestelwijze')
 })
 
 test('an SMS per ordering mode: only when the installation sends SMS', async ({ console: open, page, catalogAdmin }) => {

@@ -154,7 +154,9 @@ const nl = {
     modeSms: 'Sms als het klaar is',
     modeSmsHint: 'Gasten kunnen op hun bestelpagina hun gsm-nummer geven; als een station hun deel klaarzet, krijgen ze een sms. Alleen voor betaalde bestellingen (of op rekening).',
     modeSmsOff: 'Sms is niet ingesteld voor deze installatie — dat gebeurt in de installer (Geavanceerd → Sms).',
-    selfOrderNeedsMode: 'Zet eerst bij een bestelwijze "Met de QR-code" aan (met een menukaart).'
+    selfOrderMakesMode: 'Zet je dit aan, dan maken we een bestelwijze "Ter plaatse" met je menukaart klaar; die pas je daarna aan bij Bestelwijzen.',
+    selfOrderUsesMode: 'Zet je dit aan, dan zetten we de QR-code aan bij je eerste bestelwijze (met je menukaart, als ze er nog geen heeft).',
+    selfOrderNeedsCatalog: 'Maak eerst een menukaart (Menukaarten) — daar bestellen gasten uit.',
   },
 
   // Devices

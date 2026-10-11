@@ -166,8 +166,15 @@ export class FakeCatalogAdmin {
       e.modes ??= []
       e.lastOrderNumber ??= 0
       if (!event[2] && method === 'PATCH') {
-        if (body.selfOrderEnabled === true && !e.modes.some((mode: any) => mode.selfOrder && mode.catalogId))
-          return { status: 400, body: { error: 'Kies eerst een menukaart voor dit evenement', code: 'self_order_needs_menu' } }
+        // Like the backend: switched on without a mode to order with, one made ready.
+        if (body.selfOrderEnabled === true && !e.modes.some((mode: any) => mode.selfOrder && mode.catalogId)) {
+          const menu = this.catalogs.find((c: any) => !c.archived)
+          if (!menu) return { status: 400, body: { error: 'Maak eerst een menukaart (Menukaarten)', code: 'self_order_needs_catalog' } }
+          const withMenu = e.modes.find((mode: any) => mode.catalogId)
+          if (withMenu) withMenu.selfOrder = true
+          else if (e.modes.length) Object.assign(e.modes[0], { catalogId: menu.id, selfOrder: true })
+          else e.modes.push({ id: this.id('mode'), name: 'Ter plaatse', catalogId: menu.id, selfOrder: true, payAtCounter: true, payBancontact: false, tabs: false })
+        }
         if (body.selfOrderEnabled !== undefined) e.selfOrder.enabled = body.selfOrderEnabled
         if (body.kassaModes !== undefined) e.kassaModes = body.kassaModes
         if (e.selfOrder.enabled && !e.selfOrder.code) e.selfOrder.code = `code-${this.id('c')}`

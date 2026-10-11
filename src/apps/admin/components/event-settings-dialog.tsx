@@ -208,11 +208,13 @@ export function EventSettingsDialog({
               <div className="grid content-start divide-y">
                 <Section
                   title={m.selfOrderSwitch}
-                  hint={qrModes.length === 0 ? m.selfOrderNeedsMode : m.selfOrderHint}
+                  // Switching it on makes a mode ready when there's none (the backend); only
+                  // an org without any menu can't.
+                  hint={active.length === 0 ? m.selfOrderNeedsCatalog : qrModes.length === 0 && !current.selfOrder?.enabled ? (modes.length ? m.selfOrderUsesMode : m.selfOrderMakesMode) : m.selfOrderHint}
                   control={
                     <Switch
                       checked={!!current.selfOrder?.enabled}
-                      disabled={busy || qrModes.length === 0}
+                      disabled={busy || (active.length === 0 && !current.selfOrder?.enabled)}
                       onCheckedChange={(on) => run(() => updateEvent(orgId, current.id, { selfOrderEnabled: on }))}
                       aria-label={m.selfOrder}
                     />

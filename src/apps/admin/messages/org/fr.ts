@@ -141,7 +141,9 @@ export default {
     modeSms: 'SMS quand c’est prêt',
     modeSmsHint: 'Les invités peuvent donner leur numéro de GSM sur leur page de commande ; quand un poste a préparé leur part, ils reçoivent un SMS. Uniquement pour les commandes payées (ou sur leur note).',
     modeSmsOff: 'Les SMS ne sont pas configurés pour cette installation — cela se fait dans l’installateur (Avancé → SMS).',
-    selfOrderNeedsMode: 'Activez d’abord « Avec le code QR » pour un mode de commande (avec une carte).'
+    selfOrderMakesMode: 'Activez-le et nous préparons un mode de commande « Sur place » avec votre carte ; ajustez-le ensuite sous Modes de commande.',
+    selfOrderUsesMode: 'Activez-le et nous activons le code QR pour votre premier mode de commande (avec votre carte, s’il n’en a pas encore).',
+    selfOrderNeedsCatalog: 'Créez d’abord une carte (Cartes) — c’est là que les invités commandent.',
   },
 
   devices: {
