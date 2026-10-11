@@ -30,8 +30,12 @@ import {
 //                         → 2 cart → 3 pay ("Betaal aan de toog") → 4 your order
 //   /bestel/<code>?m=<mode>: straight to that mode's menu (a poster at the take-away window)
 //   /volg/<order token>:  4 only (a kassa customer scanned the customer display's QR)
-// Step 4 offers to keep its link (share or copy): in a private window, or
-// once the tab is closed, nothing else brings the guest back to it.
+// Once an order is placed, the address becomes its follow page (/volg/<token>,
+// replacing the entry — no extra Back step): Back and Forward, a reload, a
+// tab restored, or coming back from Bancontact all land on it. This phone
+// also remembers the order per event (localStorage), so the event's link
+// brings it back too. Only where the browser keeps nothing at all does step
+// 4 offer to keep its link (share or copy).
 // Step 4 follows the order live: the order hub says "changed", the page then
 // fetches its status — and fetches it once more after a reconnect (a phone
 // waking up). Never polling. Ready: a big message, a vibration and a beep.
@@ -50,6 +54,24 @@ async function payWithBancontact(token: string) {
   if (target) window.location.assign(target)
 }
 
+// The address shown, without a new history entry.
+function showUrl(path: string) {
+  if (window.location.pathname + window.location.search !== path) window.history.replaceState(window.history.state, '', path)
+}
+
+// Whether this browser keeps anything for the page (localStorage): not when
+// storage is blocked. A private window keeps it until it's closed — that
+// can't be told apart, and isn't meant to be.
+function storageWorks(): boolean {
+  try {
+    localStorage.setItem('arcanum-selforder:probe', '1')
+    localStorage.removeItem('arcanum-selforder:probe')
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(path, { headers: { 'Content-Type': 'application/json' }, ...init })
   const data = await res.json().catch(() => null)
@@ -58,7 +80,8 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 export default function App() {
-  const where = route(window.location.pathname)
+  // Where the page was opened — not re-read when the address changes under it (followUrl).
+  const [where] = useState(() => route(window.location.pathname))
   const m = useMessages(SELF_ORDER_MESSAGES)
   if (!where) return <Shell><p className="py-10 text-center text-muted-foreground">{m.notFound}</p></Shell>
   if (where.kind === 'follow') return <Shell><Follow token={where.token} /></Shell>
@@ -99,8 +122,9 @@ function SelfOrder({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null)
   const [cart, setCart] = useState<Cart>(() => loadSaved(code).cart)
   const [token, setToken] = useState<string | null>(() => loadSaved(code).token)
-  // The ordering mode: from a direct link, else what this phone chose before.
-  const [modeId, setModeId] = useState<string | null>(() => modeFromSearch(window.location.search) ?? loadSaved(code).modeId)
+  // The ordering mode: from a direct link (?m=), else what this phone chose for its current order.
+  const [directMode] = useState(() => modeFromSearch(window.location.search))
+  const [modeId, setModeId] = useState<string | null>(() => directMode ?? loadSaved(code).modeId)
   const [step, setStep] = useState<0 | 1 | 2 | 3>(() => (loadSaved(code).token ? 3 : 0))
   const [placing, setPlacing] = useState(false)
   // Adding a round to the open tab (token) rather than a new order.
@@ -120,6 +144,10 @@ function SelfOrder({ code }: { code: string }) {
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [step])
+  // The address: the order's follow page once there is one, else the event's.
+  useEffect(() => {
+    showUrl(step === 3 && token ? `/volg/${token}` : `/bestel/${code}${directMode ? `?m=${encodeURIComponent(directMode)}` : ''}`)
+  }, [step, token, code, directMode])
 
   const mode = pickMode(menu, modeId)
   const lines = cartLines(cart, mode?.catalog)
@@ -141,6 +169,8 @@ function SelfOrder({ code }: { code: string }) {
       setCart({})
       setToken(placed.token)
       save(code, { cart: {}, token: placed.token, modeId })
+      // Off to Bancontact from the follow page's address: Back from there lands on it.
+      showUrl(`/volg/${placed.token}`)
       if (pay === 'bancontact') await payWithBancontact(placed.token)
       setStep(3)
     } catch (err) {
@@ -173,11 +203,13 @@ function SelfOrder({ code }: { code: string }) {
     }
   }
 
+  // A new order: the way of ordering is chosen again (unless the link says which).
   const startOver = useCallback(() => {
+    setModeId(directMode)
     setToken(null)
     setRound(false)
     setStep(0)
-  }, [])
+  }, [directMode])
 
   // Another round: from the tab's own ordering mode's menu.
   const orderMore = useCallback((tabModeId: string | null) => {
@@ -503,7 +535,7 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
 
       {status.sms && (status.sms.available || status.sms.stations.length > 0) && <SmsCard token={token} sms={status.sms} onChanged={refresh} />}
 
-      {!isDone(status) && <KeepLink token={token} number={status.number} />}
+      {!isDone(status) && !storageWorks() && <KeepLink token={token} number={status.number} />}
 
       {!isDone(status) && (
         <p className="text-center text-sm text-muted-foreground">
@@ -534,8 +566,16 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
             {m.newOrder}
           </Button>
         ) : (
-          <Button size="lg" className="h-12" asChild>
-            <a href={`/bestel/${status.selfOrderCode}`}>{m.newOrder}</a>
+          <Button
+            size="lg"
+            className="h-12"
+            onClick={() => {
+              // A new order: this phone forgets the old one and its way of ordering.
+              save(status.selfOrderCode!, { cart: {}, token: null, modeId: null })
+              window.location.assign(`/bestel/${status.selfOrderCode}`)
+            }}
+          >
+            {m.newOrder}
           </Button>
         )
       )}

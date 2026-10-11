@@ -246,7 +246,22 @@ test("a customer from the toog follows their order from the customer display's Q
   await noSidewaysScroll(page)
 })
 
-test('step 4 offers to keep its link: copied to the clipboard (a private window forgets it)', async ({ phone: page, fake }) => {
+// A browser that keeps nothing for the page (storage blocked).
+const blockStorage = () => {
+  Storage.prototype.setItem = () => {
+    throw new DOMException('blocked', 'SecurityError')
+  }
+}
+
+test('step 4 asks nothing about its link where the browser remembers the order', async ({ phone: page, fake }) => {
+  fake.state = 'preparing'
+  await page.goto(`/volg/${TOKEN}`)
+  await expect(page.getByTestId('order-number')).toHaveText('7')
+  await expect(page.getByTestId('keep-link')).toHaveCount(0)
+})
+
+test('storage blocked: step 4 offers to keep its link — copied to the clipboard', async ({ phone: page, fake }) => {
+  await page.addInitScript(blockStorage)
   // The clipboard, stubbed (the same in every browser engine).
   await page.addInitScript(() => {
     ;(window as any).__copied = []
@@ -267,7 +282,8 @@ test('step 4 offers to keep its link: copied to the clipboard (a private window 
   await expect(keep).toHaveCount(0)
 })
 
-test('step 4 on a phone with a share sheet: shares the link', async ({ phone: page, fake }) => {
+test('storage blocked, a phone with a share sheet: shares the link', async ({ phone: page, fake }) => {
+  await page.addInitScript(blockStorage)
   await page.addInitScript(() => {
     ;(window as any).__shared = []
     Object.defineProperty(navigator, 'share', { value: async (data: unknown) => (window as any).__shared.push(data), configurable: true })
@@ -331,7 +347,9 @@ test('cancelled (not paid in time): says so, and offers a new order', async ({ p
   fake.state = 'cancelled'
   await page.goto(`/volg/${TOKEN}`)
   await expect(page.getByTestId('follow-message')).toHaveText('Niet betaald op tijd: deze bestelling is vervallen.')
-  await expect(page.getByRole('link', { name: 'Nieuwe bestelling' })).toHaveAttribute('href', `/bestel/${CODE}`)
+  await page.getByRole('button', { name: 'Nieuwe bestelling' }).click()
+  await page.waitForURL(`**/bestel/${CODE}`)
+  await expect(page.getByRole('button', { name: 'Pils toevoegen' })).toBeVisible()
 })
 
 test('in French on a French phone', async ({ browser }) => {
@@ -477,4 +495,73 @@ test('no SMS offered when the ordering mode has none', async ({ phone: page, fak
   await page.goto(`/volg/${TOKEN}`)
   await expect(page.getByTestId('order-number')).toHaveText('7')
   await expect(page.getByTestId('sms')).toHaveCount(0)
+})
+
+test('once placed, the address is the follow page: Back and Forward come back to it', async ({ phone: page, fake }) => {
+  await page.goto('/selforder.html') // something before the event's page
+  await page.goto(`/bestel/${CODE}`)
+  await page.getByRole('button', { name: 'Pils toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  await page.getByRole('button', { name: 'Bestelling plaatsen' }).click()
+  await expect(page.getByTestId('order-number')).toHaveText('7')
+  await expect(page).toHaveURL(new RegExp(`/volg/${TOKEN}$`))
+  fake.state = 'preparing'
+  await page.goBack()
+  await page.goForward()
+  await expect(page).toHaveURL(new RegExp(`/volg/${TOKEN}$`))
+  await expect(page.getByTestId('follow-message')).toHaveText('Je bestelling wordt klaargemaakt.')
+  // The event's link brings it back too (this phone remembers the order).
+  await page.goto(`/bestel/${CODE}`)
+  await expect(page.getByTestId('order-number')).toHaveText('7')
+  await expect(page).toHaveURL(new RegExp(`/volg/${TOKEN}$`))
+})
+
+test('paid with Bancontact: Back from Bancontact lands on the follow page', async ({ phone: page, fake }) => {
+  fake.payment = { counter: true, bancontact: true }
+  await page.route(/bancontact\.test/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>Bancontact</p>' }))
+  await page.goto(`/bestel/${CODE}`)
+  await page.getByRole('button', { name: 'Pils toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  await page.getByTestId('pay-bancontact').getByRole('button', { name: 'Betaal met Bancontact' }).click()
+  await page.waitForURL('https://bancontact.test/checkout/1')
+  fake.state = 'preparing'
+  await page.goBack()
+  await expect(page).toHaveURL(new RegExp(`/volg/${TOKEN}$`))
+  await expect(page.getByTestId('follow-message')).toHaveText('Je bestelling wordt klaargemaakt.')
+})
+
+test('a new order after one is done: the way of ordering is asked again', async ({ phone: page, fake }) => {
+  fake.takeAway = true
+  await page.goto(`/bestel/${CODE}`)
+  await page.getByTestId('choose-mode').getByRole('button', { name: 'Ter plaatse' }).click()
+  await page.getByRole('button', { name: 'Pils toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  await page.getByRole('button', { name: 'Bestelling plaatsen' }).click()
+  await expect(page.getByTestId('order-number')).toHaveText('7')
+  fake.state = 'cancelled'
+  await page.reload()
+  // On the follow page on its own (as after Bancontact): a new order starts at the choice.
+  await page.getByRole('button', { name: 'Nieuwe bestelling' }).click()
+  await expect(page.getByTestId('choose-mode')).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`/bestel/${CODE}$`))
+})
+
+test('a new order from the order page itself: the choice again too', async ({ phone: page, fake, hub }) => {
+  fake.takeAway = true
+  await page.goto(`/bestel/${CODE}`)
+  await page.getByTestId('choose-mode').getByRole('button', { name: 'Ter plaatse' }).click()
+  await page.getByRole('button', { name: 'Pils toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  await page.getByRole('button', { name: 'Bestelling plaatsen' }).click()
+  await expect.poll(() => hub.sockets.length).toBeGreaterThan(0)
+  fake.state = 'delivered'
+  fake.stations = [{ name: 'Bar', status: 'delivered' }, { name: 'Keuken', status: 'delivered' }]
+  hub.push()
+  await page.getByRole('button', { name: 'Nieuwe bestelling' }).click()
+  await expect(page.getByTestId('choose-mode')).toBeVisible()
+  await expect(page).toHaveURL(new RegExp(`/bestel/${CODE}$`))
 })
