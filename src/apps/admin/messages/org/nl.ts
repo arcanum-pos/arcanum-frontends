@@ -135,6 +135,7 @@ const nl = {
     modesHint: 'Hoe bestellingen binnenkomen, bv. Ter plaatse en Take away — elk met een eigen menukaart. Heeft het evenement er meer dan één, dan staat de bestelwijze bij elke bestelling op het station. Wie wat maakt, blijft het station van elk product bepalen.',
     noModes: 'Nog geen bestelwijzen.',
     modeName: 'Naam van de bestelwijze',
+    modeChoose: 'Bestelwijze om in te stellen',
     addMode: 'Toevoegen',
     newMode: 'Nieuwe bestelwijze',
     addModePlaceholder: 'bv. Take away',

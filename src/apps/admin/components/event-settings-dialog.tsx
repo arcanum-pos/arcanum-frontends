@@ -50,11 +50,13 @@ export function EventSettingsDialog({
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [newMode, setNewMode] = useState('')
+  const [shownId, setShownId] = useState<string | null>(null)
 
   useEffect(() => {
     setCurrent(event)
     setError(null)
     setNewMode('')
+    setShownId(null)
   }, [event])
 
   async function run(action: () => Promise<Event>) {
@@ -78,40 +80,79 @@ export function EventSettingsDialog({
   const qrModes = modes.filter((mode) => mode.selfOrder && mode.catalogId)
   const active = catalogs.filter((c) => !c.archived)
 
+  // The mode shown (one at a time, chosen in the dropdown): the one picked,
+  // else the first.
+  const shown = modes.find((mode) => mode.id === shownId) ?? modes[0] ?? null
+  const shownIndex = shown ? modes.indexOf(shown) : -1
+
   async function addMode() {
     if (!current || !newMode.trim()) return
-    if (await run(() => createOrderMode(orgId, current.id, { name: newMode.trim() }))) setNewMode('')
+    const name = newMode.trim()
+    let added: Event | null = null
+    if (
+      await run(async () => {
+        added = await createOrderMode(orgId, current.id, { name })
+        return added
+      })
+    ) {
+      setNewMode('')
+      // The new one is shown, to set it up.
+      const created = (added as Event | null)?.modes?.at(-1)
+      if (created) setShownId(created.id)
+    }
   }
 
   return (
     <Dialog open={event !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90svh] overflow-y-auto">
+      <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-4xl">
         {current && (
           <>
             <DialogHeader>
               <DialogTitle>{m.settingsTitle(current.name)}</DialogTitle>
               <DialogDescription>{m.settingsHint}</DialogDescription>
             </DialogHeader>
-            <div className="grid gap-5">
-              <div className="grid gap-2" data-testid="order-modes">
-                <Label>{m.modes}</Label>
-                <p className="text-sm text-muted-foreground">{m.modesHint}</p>
-                {modes.length === 0 && <p className="text-sm text-muted-foreground">{m.noModes}</p>}
-                {modes.map((mode, i) => (
+            {/* Wide: the event's own settings left, its ordering modes right; a phone: one under the other. */}
+            <div className="grid gap-6 md:grid-cols-2 md:gap-8">
+              <div className="grid content-start gap-5" data-testid="order-modes">
+                <div className="grid gap-2">
+                  <Label>{m.modes}</Label>
+                  <p className="text-sm text-muted-foreground">{m.modesHint}</p>
+                  {modes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">{m.noModes}</p>
+                  ) : (
+                    <Select value={shown?.id} onValueChange={setShownId} disabled={busy}>
+                      <SelectTrigger aria-label={m.modeChoose} className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {modes.map((mode) => (
+                          <SelectItem key={mode.id} value={mode.id}>
+                            {mode.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+                {shown && (
                   <ModeCard
-                    key={mode.id}
+                    key={shown.id}
                     m={m}
-                    mode={mode}
-                    first={i === 0}
-                    last={i === modes.length - 1}
+                    mode={shown}
+                    first={shownIndex === 0}
+                    last={shownIndex === modes.length - 1}
                     catalogs={active}
                     busy={busy}
                     sms={!!current.sms}
-                    directLink={qrModes.length > 1 && mode.selfOrder && url ? `${url}?m=${mode.id}` : null}
-                    onChange={(fields) => run(() => updateOrderMode(orgId, current.id, mode.id, fields))}
-                    onDelete={() => window.confirm(m.modeDeleteConfirm(mode.name)) && run(() => deleteOrderMode(orgId, current.id, mode.id))}
+                    directLink={qrModes.length > 1 && shown.selfOrder && url ? `${url}?m=${shown.id}` : null}
+                    onChange={(fields) => {
+                      // Stays the one shown, also when it moves away from the top.
+                      setShownId(shown.id)
+                      return run(() => updateOrderMode(orgId, current.id, shown.id, fields))
+                    }}
+                    onDelete={() => window.confirm(m.modeDeleteConfirm(shown.name)) && run(() => deleteOrderMode(orgId, current.id, shown.id)).then((ok) => ok && setShownId(null))}
                   />
-                ))}
+                )}
                 <form
                   className="flex gap-2"
                   onSubmit={(e) => {
@@ -138,47 +179,49 @@ export function EventSettingsDialog({
                 </form>
               </div>
 
-              <div className="grid gap-2 border-t pt-4">
-                <label className="flex items-center justify-between gap-3 font-medium">
-                  {m.selfOrderSwitch}
-                  <Switch
-                    checked={!!current.selfOrder?.enabled}
-                    disabled={busy || qrModes.length === 0}
-                    onCheckedChange={(on) => run(() => updateEvent(orgId, current.id, { selfOrderEnabled: on }))}
-                    aria-label={m.selfOrder}
-                  />
-                </label>
-                <p className="text-sm text-muted-foreground">{qrModes.length === 0 ? m.selfOrderNeedsMode : m.selfOrderHint}</p>
-              </div>
+              <div className="grid content-start gap-5 md:order-first">
+                <div className="grid gap-2">
+                  <label className="flex items-center justify-between gap-3 font-medium">
+                    {m.selfOrderSwitch}
+                    <Switch
+                      checked={!!current.selfOrder?.enabled}
+                      disabled={busy || qrModes.length === 0}
+                      onCheckedChange={(on) => run(() => updateEvent(orgId, current.id, { selfOrderEnabled: on }))}
+                      aria-label={m.selfOrder}
+                    />
+                  </label>
+                  <p className="text-sm text-muted-foreground">{qrModes.length === 0 ? m.selfOrderNeedsMode : m.selfOrderHint}</p>
+                </div>
 
-              {current.selfOrder?.enabled && url && (
-                <div className="grid gap-3 rounded-lg border p-3" data-testid="self-order-link">
-                  <Label htmlFor="self-order-url">{m.link}</Label>
-                  <CopyField id="self-order-url" value={url} m={m} />
-                  <LinkName m={m} current={current.selfOrder.linkName ?? ''} busy={busy} onSave={(linkName) => run(() => updateEvent(orgId, current.id, { linkName }))} />
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="rounded-lg bg-white p-3">
-                      <QRCodeSVG value={url} size={200} marginSize={1} title={m.qrAlt} />
+                {current.selfOrder?.enabled && url && (
+                  <div className="grid gap-3 rounded-lg border p-3" data-testid="self-order-link">
+                    <Label htmlFor="self-order-url">{m.link}</Label>
+                    <CopyField id="self-order-url" value={url} m={m} />
+                    <LinkName m={m} current={current.selfOrder.linkName ?? ''} busy={busy} onSave={(linkName) => run(() => updateEvent(orgId, current.id, { linkName }))} />
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="rounded-lg bg-white p-3">
+                        <QRCodeSVG value={url} size={180} marginSize={1} title={m.qrAlt} />
+                      </div>
+                      <p className="text-center text-xs text-muted-foreground">{m.printHint}</p>
                     </div>
-                    <p className="text-center text-xs text-muted-foreground">{m.printHint}</p>
+                    <Button variant="ghost" size="sm" disabled={busy} onClick={() => window.confirm(m.newCodeConfirm) && run(() => newSelfOrderCode(orgId, current.id))}>
+                      {m.newCode}
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" disabled={busy} onClick={() => window.confirm(m.newCodeConfirm) && run(() => newSelfOrderCode(orgId, current.id))}>
-                    {m.newCode}
-                  </Button>
-                </div>
-              )}
+                )}
 
-              <div className="grid gap-2">
-                <Label>{m.numbers}</Label>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm" data-testid="last-number">{m.lastNumber(current.lastOrderNumber ?? 0)}</p>
-                  <Button variant="outline" size="sm" disabled={busy} onClick={() => window.confirm(m.resetConfirm) && run(() => resetEventNumbers(orgId, current.id))}>
-                    {m.resetNumbers}
-                  </Button>
+                <div className="grid gap-2">
+                  <Label>{m.numbers}</Label>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm" data-testid="last-number">{m.lastNumber(current.lastOrderNumber ?? 0)}</p>
+                    <Button variant="outline" size="sm" disabled={busy} onClick={() => window.confirm(m.resetConfirm) && run(() => resetEventNumbers(orgId, current.id))}>
+                      {m.resetNumbers}
+                    </Button>
+                  </div>
                 </div>
               </div>
-              {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
             </div>
+            {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
           </>
         )}
       </DialogContent>
@@ -251,7 +294,7 @@ function ModeCard({
           onValueChange={(v) => onChange(v === NONE ? { catalogId: null } : { catalogId: v, ...(mode.catalogId ? {} : { selfOrder: true }) })}
           disabled={busy}
         >
-          <SelectTrigger aria-label={`${m.modeMenu} — ${mode.name}`}>
+          <SelectTrigger aria-label={`${m.modeMenu} — ${mode.name}`} className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

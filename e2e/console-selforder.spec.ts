@@ -92,32 +92,48 @@ test('several ordering modes: renamed, moved, a direct link each, removed — th
   await open('/events')
   await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
   const dialog = page.getByRole('dialog')
-  const modes = dialog.getByTestId('order-mode')
-  await expect(modes).toHaveCount(2)
+  const card = dialog.getByTestId('order-mode')
+  const choose = dialog.getByRole('combobox', { name: 'Bestelwijze om in te stellen' })
+  const pick = async (name: string) => {
+    await choose.click()
+    await page.getByRole('option', { name }).click()
+  }
+  // One mode at a time, chosen in the dropdown: the first to start with.
+  await expect(card).toHaveCount(1)
+  await expect(card).toHaveAttribute('data-name', 'Ter plaatse')
+  await choose.click()
+  await expect(page.getByRole('option')).toHaveText(['Ter plaatse', 'Meenemen'])
+  await page.getByRole('option', { name: 'Meenemen' }).click()
+  await expect(card).toHaveAttribute('data-name', 'Meenemen')
   // Each QR mode a direct link (a poster at the take-away window).
-  await expect(modes.nth(1).getByRole('textbox').last()).toHaveValue(/\/bestel\/code-1\?m=m2$/)
+  await expect(card.getByRole('textbox').last()).toHaveValue(/\/bestel\/code-1\?m=m2$/)
 
-  // Renamed (saved when leaving the field), then moved up.
-  const name = modes.nth(1).getByRole('textbox', { name: 'Naam van de bestelwijze' })
+  // Renamed (saved when leaving the field), then moved up — still the one shown.
+  const name = card.getByRole('textbox', { name: 'Naam van de bestelwijze' })
   await name.fill('Take away')
   await name.press('Enter')
-  await expect(page.locator('[data-testid="order-mode"][data-name="Take away"]')).toBeVisible()
-  await modes.nth(1).getByRole('button', { name: 'Hoger' }).click()
-  await expect(modes.first()).toHaveAttribute('data-name', 'Take away')
+  await expect(card).toHaveAttribute('data-name', 'Take away')
+  await card.getByRole('button', { name: 'Hoger' }).click()
+  await expect(card.getByRole('button', { name: 'Hoger' })).toBeDisabled()
+  await expect(card).toHaveAttribute('data-name', 'Take away')
+  await choose.click()
+  await expect(page.getByRole('option')).toHaveText(['Take away', 'Ter plaatse'])
+  await page.keyboard.press('Escape')
   expect(catalogAdmin.eventCalls.map((c: any) => c.body)).toEqual([{ name: 'Take away' }, { move: 'up' }])
 
-  // A kassa-only mode, from the suggestions' wording.
+  // A kassa-only mode: added, and shown to set it up.
   await dialog.getByRole('combobox', { name: 'Nieuwe bestelwijze' }).fill('Alleen aan de kassa')
   await dialog.getByRole('button', { name: 'Toevoegen' }).click()
-  await expect(modes).toHaveCount(3)
-  await expect(modes.nth(2).getByRole('switch', { name: /^Met de QR-code/ })).not.toBeChecked()
-  await expect(modes.nth(2).getByTestId('pay-methods')).toHaveCount(0)
+  await expect(card).toHaveAttribute('data-name', 'Alleen aan de kassa')
+  await expect(card.getByRole('switch', { name: /^Met de QR-code/ })).not.toBeChecked()
+  await expect(card.getByTestId('pay-methods')).toHaveCount(0)
 
   // Both QR modes off the QR (one removed, one switched off): self-ordering goes off.
+  await pick('Take away')
   page.once('dialog', (d) => d.accept())
-  await modes.first().getByRole('button', { name: 'Verwijderen' }).click()
-  await expect(modes).toHaveCount(2)
-  await modes.first().getByRole('switch', { name: /^Met de QR-code/ }).click()
+  await card.getByRole('button', { name: 'Verwijderen' }).click()
+  await expect(card).toHaveAttribute('data-name', 'Ter plaatse')
+  await card.getByRole('switch', { name: /^Met de QR-code/ }).click()
   await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).not.toBeChecked()
   await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeDisabled()
 })

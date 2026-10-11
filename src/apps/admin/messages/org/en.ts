@@ -122,6 +122,7 @@ export default {
     modesHint: 'How orders come in, e.g. Eat in and Take away — each with its own menu. When the event has more than one, the station shows each order’s mode. Who makes what is still decided by each product’s station.',
     noModes: 'No ordering modes yet.',
     modeName: 'Name of the ordering mode',
+    modeChoose: 'Ordering mode to set up',
     addMode: 'Add',
     newMode: 'New ordering mode',
     addModePlaceholder: 'e.g. Take away',

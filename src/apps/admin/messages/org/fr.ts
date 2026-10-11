@@ -122,6 +122,7 @@ export default {
     modesHint: 'Comment les commandes arrivent, p. ex. Sur place et À emporter — chacun avec sa propre carte. Si l’événement en a plusieurs, le poste affiche le mode de chaque commande. Qui prépare quoi reste déterminé par le poste de chaque produit.',
     noModes: 'Pas encore de mode de commande.',
     modeName: 'Nom du mode de commande',
+    modeChoose: 'Mode de commande à régler',
     addMode: 'Ajouter',
     newMode: 'Nouveau mode de commande',
     addModePlaceholder: 'p. ex. À emporter',
