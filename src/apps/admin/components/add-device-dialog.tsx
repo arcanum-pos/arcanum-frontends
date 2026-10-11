@@ -91,7 +91,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
 
   const secondsLeft = pairing ? Math.max(0, Math.round((Date.parse(pairing.expiresAt) - now) / 1000)) : 0
   const shownStatus = status === 'open' && pairing && secondsLeft === 0 ? 'expired' : status
-  const url = pairing ? `${window.location.origin}/?code=${encodeURIComponent(pairing.code.replace('-', ''))}` : ''
+  const url = pairing ? `${window.location.origin}/pair?code=${encodeURIComponent(pairing.code.replace('-', ''))}` : ''
 
   return (
     <Dialog

@@ -17,6 +17,12 @@ async function stopAtKassa(page: Page) {
   await page.route(KASSA, (route) => route.fulfill({ contentType: 'text/html', body: '<p>kassa</p>' }))
 }
 
+// A kassa's code at /api/public/pair (no sign-in): "sign in first" — then
+// the start page claims it with the session.
+function kassaNeedsSession(page: Page) {
+  return page.route(/\/api\/public\/pair$/, (route) => route.fulfill({ status: 401, json: { error: 'x', code: 'pairing_needs_login', role: 'pos' } }))
+}
+
 function storeTerminal(page: Page, terminal: Record<string, unknown>) {
   return page.addInitScript((t) => localStorage.setItem('arcanum-terminal', JSON.stringify(t)), terminal)
 }
@@ -36,6 +42,7 @@ test("the console's QR (or a demo) brings the code: pairs right away, no click, 
     claimed.push(route.request().postDataJSON())
     await route.fulfill({ status: 201, json: { terminalId: 'pos-9', role: 'pos', orgId: 'org-1', orgName: 'Scouts Kabouterland', orgLocale: 'nl', name: 'Kassa toog' } })
   })
+  await kassaNeedsSession(page)
   await stopAtKassa(page)
   await page.goto('/chooser.html?code=K7PM4XQ2')
   await page.waitForURL(KASSA)
@@ -51,7 +58,7 @@ test("the console's QR (or a demo) brings the code: pairs right away, no click, 
 })
 
 test('a wrong code: the reason, and nothing stored', async ({ page }) => {
-  await page.route(/\/api\/organizations\/device-pairings\/claim$/, (route) =>
+  await page.route(/\/api\/public\/pair$/, (route) =>
     route.fulfill({ status: 400, json: { error: 'x', code: 'pairing_code_invalid' } })
   )
   await page.goto('/chooser.html')
@@ -91,11 +98,13 @@ test('removed in the console: says so, forgets it, and offers pairing again', as
 })
 
 // Pairing by link (`?code=`): never replaces a device that still exists unseen.
-const claimRoute = (page: Page, claimed: unknown[]) =>
-  page.route(/\/api\/organizations\/device-pairings\/claim$/, async (route) => {
+const claimRoute = async (page: Page, claimed: unknown[]) => {
+  await kassaNeedsSession(page)
+  await page.route(/\/api\/organizations\/device-pairings\/claim$/, async (route) => {
     claimed.push(route.request().postDataJSON())
     await route.fulfill({ status: 201, json: { terminalId: 'pos-demo', role: 'pos', orgId: 'demo-1', orgName: 'Demo van Bert', orgLocale: 'nl', name: 'Kassa 1' } })
   })
+}
 const exists = (page: Page) =>
   page.route(/\/api\/organizations\/org-1\/devices\/pos-1$/, (route) => route.fulfill({ json: { terminal_id: 'pos-1', org_id: 'org-1', role: 'pos' } }))
 
@@ -150,8 +159,36 @@ test("an expired demo's kassa left in the browser: pairs with the new code right
 })
 
 test("a link's code that doesn't work: the reason, with the code filled in to try again", async ({ page }) => {
-  await page.route(/\/api\/organizations\/device-pairings\/claim$/, (route) => route.fulfill({ status: 400, json: { error: 'x', code: 'pairing_code_invalid' } }))
+  await page.route(/\/api\/public\/pair$/, (route) => route.fulfill({ status: 400, json: { error: 'x', code: 'pairing_code_invalid' } }))
   await page.goto('/chooser.html?code=ABCD-EFGH')
   await expect(page.getByRole('alert')).toHaveText('Deze koppelcode klopt niet, is al gebruikt of is verlopen — vraag een beheerder om een nieuwe')
   await expect(page.getByLabel('Koppelcode')).toHaveValue('ABCD-EFGH')
+})
+
+// /pair (the same page, no sign-in needed — DOMAIN_MODEL.md "Devices",
+// 2026-10-12): a station screen or customer display pairs with its code
+// alone; a kassa's code asks someone to sign in first, then comes back.
+test('/pair: a station screen pairs with its code alone and opens its screen', async ({ page }) => {
+  const asked: unknown[] = []
+  await page.route(/\/api\/public\/pair$/, async (route) => {
+    asked.push(route.request().postDataJSON())
+    await route.fulfill({ status: 201, json: { terminalId: 'st-9', role: 'station', orgId: 'org-1', orgName: 'Scouts', orgLocale: 'nl', name: 'Scherm keuken', stationId: 's1' } })
+  })
+  await page.route(/\/api\/organizations\/device-pairings\/claim$/, (route) => route.fulfill({ status: 500, json: { error: 'never a session claim' } }))
+  await page.route(/\/station(\.html)?$/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>station</p>' }))
+  await page.goto('/pair.html?code=K7PM4XQ2')
+  await page.waitForURL(/\/station/)
+  expect(asked).toEqual([{ code: 'K7PM4XQ2' }])
+  expect(JSON.parse((await page.evaluate(() => localStorage.getItem('arcanum-terminal')))!)).toMatchObject({ terminalId: 'st-9', role: 'station', orgId: 'org-1' })
+})
+
+test("/pair: a kassa's code with nobody signed in — sign in first, back to /pair with the code", async ({ page }) => {
+  await kassaNeedsSession(page)
+  await page.route(/\/api\/organizations\/device-pairings\/claim$/, (route) => route.fulfill({ status: 401, json: { error: 'Unauthorized' } }))
+  await page.goto('/pair.html')
+  await page.getByLabel('Koppelcode').fill('k7pm-4xq2')
+  await page.getByRole('button', { name: 'Koppelen' }).click()
+  const view = page.getByTestId('pair-sign-in')
+  await expect(view).toContainText('Meld je aan om deze kassa te koppelen')
+  await expect(view.getByRole('link', { name: 'Aanmelden' })).toHaveAttribute('href', `/login?returnTo=${encodeURIComponent('/pair?code=k7pm4xq2')}`)
 })

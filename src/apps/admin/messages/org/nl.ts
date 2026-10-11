@@ -173,7 +173,7 @@ const nl = {
     stationOf: (name: string) => `Station: ${name}`,
     makeCode: 'Koppelcode maken',
     busy: 'Bezig...',
-    codeHint: (host: string) => `Open op het toestel ${host}, kies "Dit toestel koppelen" en geef deze code in — of scan de QR-code met het toestel.`,
+    codeHint: (host: string) => `Open op het toestel ${host}/pair en geef deze code in — of scan de QR-code met het toestel. Een stationscherm of klantscherm heeft geen aanmelding nodig; een kassa vraagt je eerst aan te melden.`,
     expiresIn: (time: string) => `Nog ${time} geldig`,
     pairedDevice: (name: string) => `${name} is gekoppeld.`,
     pairedDisplayFor: (name: string, kassa: string) => `${name} is gekoppeld en toont de betalingen van ${kassa}.`,

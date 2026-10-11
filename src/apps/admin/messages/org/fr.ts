@@ -159,7 +159,7 @@ export default {
     stationOf: (name: string) => `Poste : ${name}`,
     makeCode: 'Créer un code de couplage',
     busy: 'En cours...',
-    codeHint: (host: string) => `Sur l’appareil, ouvrez ${host}, choisissez « Coupler cet appareil » et saisissez ce code — ou scannez le QR code avec l’appareil.`,
+    codeHint: (host: string) => `Sur l’appareil, ouvrez ${host}/pair et saisissez ce code — ou scannez le QR code avec l’appareil. Un écran de poste ou un écran client n’a pas besoin de connexion ; une caisse vous demande d’abord de vous connecter.`,
     expiresIn: (time: string) => `Encore valable ${time}`,
     pairedDevice: (name: string) => `${name} est couplé.`,
     pairedDisplayFor: (name: string, kassa: string) => `${name} est couplé et affiche les paiements de ${kassa}.`,

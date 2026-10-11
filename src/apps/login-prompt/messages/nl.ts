@@ -8,6 +8,8 @@ const nl = {
   signIn: 'Aanmelden',
   phoneTitle: 'Met je telefoon',
   phoneHint: 'Scan de QR-code en meld je aan op je telefoon — dit toestel volgt vanzelf. Handig voor een kassa of klantscherm.',
+  pairQuestion: 'Een toestel koppelen met een koppelcode?',
+  pairLink: 'Toestel koppelen',
 }
 
 export type LoginPromptMessages = typeof nl

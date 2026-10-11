@@ -159,7 +159,7 @@ export default {
     stationOf: (name: string) => `Station: ${name}`,
     makeCode: 'Make pairing code',
     busy: 'Working...',
-    codeHint: (host: string) => `On the device, open ${host}, choose "Pair this device" and enter this code — or scan the QR code with the device.`,
+    codeHint: (host: string) => `On the device, open ${host}/pair and enter this code — or scan the QR code with the device. A station screen or customer display needs no sign-in; a till asks you to sign in first.`,
     expiresIn: (time: string) => `Valid for ${time}`,
     pairedDevice: (name: string) => `${name} is paired.`,
     pairedDisplayFor: (name: string, kassa: string) => `${name} is paired and shows the payments of ${kassa}.`,

@@ -68,6 +68,8 @@ async function pairOnStartPage(browser: import('@playwright/test').Browser, brow
   await page.route(/\/api\/organizations\/device-pairings\/claim$/, (route) =>
     route.fulfill({ status: 201, json: { terminalId: 'pos-new', role: 'pos', orgId: 'org-1', orgName: 'Scouts', orgLocale, name: 'Kassa 1' } })
   )
+  // A kassa's code: claimed with the session, after /api/public/pair says so.
+  await page.route(/\/api\/public\/pair$/, (route) => route.fulfill({ status: 401, json: { error: 'x', code: 'pairing_needs_login', role: 'pos' } }))
   // The kassa itself isn't under test here — stop at its URL.
   await page.route(/\/kassa(\.html)?$/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>kassa</p>' }))
   // Typed in (a QR link pairs right away, before a language can be picked).

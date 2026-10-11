@@ -72,7 +72,9 @@ test('Toestel toevoegen: a pairing code with its QR, until a device claims it', 
   await expect(code).toContainText('K7PM-4XQ1')
   await expect(code).toContainText(/Nog (9:5\d|10:00) geldig/)
   await expect(code.locator('svg')).toBeVisible() // the QR
-  await expect(dialog).toContainText('kies "Dit toestel koppelen" en geef deze code in')
+  // The device opens <installation>/pair (or scans the QR, which points there with the code).
+  await expect(dialog).toContainText('/pair en geef deze code in')
+  await expect(dialog).toContainText('een kassa vraagt je eerst aan te melden')
   expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'pos', name: 'Kassa toog' })
 
   // A device claims it: the dialog notices, and the list shows the new kassa by name.

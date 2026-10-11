@@ -373,6 +373,13 @@ export class FakeBackend {
       return { status: 200, body: [{ id: 'org-e2e', name: 'E2E', demo: this.demoExpiresAt ? { expiresAt: this.demoExpiresAt, installUrl: null } : null }] }
     if (p === '/api/organizations/memberships' && method === 'GET') return { status: 200, body: [{ orgId: 'org-e2e', orgName: 'E2E', role: this.memberRole }] }
     if (p === '/api/organizations/device-pairings/claim' && method === 'POST') return this.claim(String(body?.code ?? ''))
+    // Like the backend: a station screen's or customer display's code pairs here, a kassa's needs the session claim.
+    if (p === '/api/public/pair' && method === 'POST') {
+      const key = String(body?.code ?? '').toUpperCase().replace(/[\s-]/g, '')
+      const entry = [...this.pairingCodes].find(([c]) => c.replace('-', '') === key)
+      if (entry && entry[1].role === 'pos') return { status: 401, body: { error: 'Een kassa koppel je terwijl je aangemeld bent — meld je eerst aan', code: 'pairing_needs_login', role: 'pos' } }
+      return this.claim(key)
+    }
     const device = p.match(/^\/api\/organizations\/([^/]+)\/devices\/([^/]+)(?:\/(display|linked|linkable|link|unlink|reset))?$/)
     if (device) return this.handleDevice(method, decodeURIComponent(device[2]), device[3], body)
 

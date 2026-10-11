@@ -95,3 +95,10 @@ test('/device: the phone sign-in alone, then to the start page', async ({ page }
   fake.next = { status: 'complete' }
   await page.waitForURL((url) => url.pathname === '/')
 })
+
+test('a device that only needs pairing (a station screen, a customer display): a link to /pair, no sign-in', async ({ page }) => {
+  await fakeDeviceGrant(page)
+  await page.goto('/login-prompt.html')
+  await expect(page.getByTestId('pair-link')).toContainText('Een toestel koppelen met een koppelcode?')
+  await expect(page.getByTestId('pair-link').getByRole('link', { name: 'Toestel koppelen' })).toHaveAttribute('href', '/pair')
+})

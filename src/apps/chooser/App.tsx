@@ -4,11 +4,13 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { KioskShell } from '@/shared/kiosk-shell'
 import { isLocale, storedLocale, storeLocale, useLocale, useMessages } from '@/shared/i18n'
-import { claimPairingCode, getRegisteredTerminal, getStoredTerminalInfo, PAGE_FOR_ROLE, type Terminal } from '@/shared/terminal'
+import { getRegisteredTerminal, getStoredTerminalInfo, NeedsSignIn, pairDevice, PAGE_FOR_ROLE, type Terminal } from '@/shared/terminal'
 import { CHOOSER_MESSAGES } from './messages'
 
-// The start page (root `/`, DOMAIN_MODEL.md "Devices: control plane and
-// data plane"). A device is never registered by choosing a role here: only
+// The start page (root `/`) and the pairing page (`/pair`, the same app —
+// no sign-in needed there), DOMAIN_MODEL.md "Devices: control plane and
+// data plane". A station screen or customer display pairs with its code
+// alone; a kassa's code asks to sign in first (and comes back here). A device is never registered by choosing a role here: only
 // with a pairing code an admin made in the console (Toestellen → Toestel
 // toevoegen). So:
 //   - a paired device opens its screen right away (a kiosk);
@@ -24,6 +26,7 @@ type View =
   | { step: 'start'; removed: boolean }
   | { step: 'paired'; terminal: Terminal }
   | { step: 'replace'; terminal: Terminal; code: string }
+  | { step: 'sign-in'; code: string }
 
 export default function App() {
   const m = useMessages(CHOOSER_MESSAGES)
@@ -42,14 +45,15 @@ export default function App() {
     setBusy(true)
     setError(null)
     try {
-      const device = await claimPairingCode(value)
+      const device = await pairDevice(value)
       // A new device speaks the organisation's language — unless one was picked here.
       storeLocale(storedLocale() ?? (isLocale(device.orgLocale) ? device.orgLocale : locale))
       window.location.href = PAGE_FOR_ROLE[device.role]
     } catch (err) {
       claiming.current = false
-      setError(err instanceof Error ? err.message : String(err))
       setBusy(false)
+      if (err instanceof NeedsSignIn) return setView({ step: 'sign-in', code: value })
+      setError(err instanceof Error ? err.message : String(err))
       setView({ step: 'start', removed })
     }
   }
@@ -107,6 +111,22 @@ export default function App() {
           </Button>
           <Button variant="outline" onClick={() => window.location.replace(PAGE_FOR_ROLE[terminal.role])}>
             {m.replaceNo(name)}
+          </Button>
+        </section>
+      </KioskShell>
+    )
+  }
+
+  // A kassa's code: someone signs in on this device first — then back here, and it pairs.
+  if (view.step === 'sign-in') {
+    const back = `/pair?code=${encodeURIComponent(view.code.replace(/[\s-]/g, ''))}`
+    return (
+      <KioskShell devicePickers>
+        <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="pair-sign-in">
+          <h1 className="font-heading text-xl font-bold">{m.signInTitle}</h1>
+          <p className="text-sm text-muted-foreground">{m.signInHint}</p>
+          <Button asChild size="lg">
+            <a href={`/login?returnTo=${encodeURIComponent(back)}`}>{m.signIn}</a>
           </Button>
         </section>
       </KioskShell>

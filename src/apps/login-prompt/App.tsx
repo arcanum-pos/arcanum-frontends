@@ -40,6 +40,13 @@ export default function App() {
           </section>
         </CardContent>
       </Card>
+      {/* A new device that only needs pairing (a station screen, a customer display): no sign-in at all. */}
+      <p className="mt-4 text-center text-sm text-muted-foreground" data-testid="pair-link">
+        {m.pairQuestion}{' '}
+        <a href="/pair" className="font-medium text-foreground underline underline-offset-4">
+          {m.pairLink}
+        </a>
+      </p>
     </KioskShell>
   )
 }

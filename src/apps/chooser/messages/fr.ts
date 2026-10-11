@@ -3,7 +3,7 @@ import type { ChooserMessages } from './nl'
 const fr: ChooserMessages = {
   title: 'Que voulez-vous faire ?',
   pairTitle: 'Coupler cet appareil',
-  pairHint: 'Comme caisse ou écran client, avec un code de couplage. Un administrateur le crée dans la console sous Appareils → Ajouter un appareil.',
+  pairHint: 'Comme caisse, écran client ou écran de poste, avec un code de couplage. Un administrateur le crée dans la console sous Appareils → Ajouter un appareil.',
   code: 'Code de couplage',
   pair: 'Coupler',
   busy: 'En cours…',
@@ -14,6 +14,9 @@ const fr: ChooserMessages = {
   pairedTitle: (name: string) => `Cet appareil est ${name}`,
   org: (name: string) => `Organisation : ${name}`,
   open: 'Ouvrir',
+  signInTitle: 'Connectez-vous pour coupler cette caisse',
+  signInHint: 'Une caisse fonctionne avec la personne qui y est connectée. Connectez-vous ; l’appareil est couplé juste après.',
+  signIn: 'Se connecter',
   replaceHint: 'Vous avez ouvert un code de couplage. Si vous l’utilisez pour ce navigateur, il ne sera plus cet appareil et vous devrez le coupler à nouveau plus tard.',
   replaceYes: 'Coupler avec le nouveau code',
   replaceNo: (name: string) => `Non, ouvrir ${name}`,

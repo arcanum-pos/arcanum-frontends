@@ -5,7 +5,7 @@ import type { Role } from '@/shared/terminal'
 const nl = {
   title: 'Wat wil je doen?',
   pairTitle: 'Dit toestel koppelen',
-  pairHint: 'Als kassa of klantscherm, met een koppelcode. Een beheerder maakt die in de console bij Toestellen → Toestel toevoegen.',
+  pairHint: 'Als kassa, klantscherm of stationscherm, met een koppelcode. Een beheerder maakt die in de console bij Toestellen → Toestel toevoegen.',
   code: 'Koppelcode',
   pair: 'Koppelen',
   busy: 'Bezig…',
@@ -16,6 +16,9 @@ const nl = {
   pairedTitle: (name: string) => `Dit toestel is ${name}`,
   org: (name: string) => `Organisatie: ${name}`,
   open: 'Openen',
+  signInTitle: 'Meld je aan om deze kassa te koppelen',
+  signInHint: 'Een kassa werkt met de persoon die erop aangemeld is. Meld je aan; daarna wordt dit toestel meteen gekoppeld.',
+  signIn: 'Aanmelden',
   replaceHint: 'Je opende een koppelcode. Koppel je deze browser ermee, dan is hij dit toestel niet meer en moet je het later opnieuw koppelen.',
   replaceYes: 'Koppelen met de nieuwe code',
   replaceNo: (name: string) => `Nee, open ${name}`,

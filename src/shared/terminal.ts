@@ -77,6 +77,31 @@ export async function claimPairingCode(code: string): Promise<ClaimedDevice> {
   return device
 }
 
+// A kassa's code, with nobody signed in on this device: sign in first.
+export class NeedsSignIn extends Error {}
+
+// Pairs this browser with a code (/pair and the start page, DOMAIN_MODEL.md
+// "Devices", 2026-10-12): a station screen or customer display with the code
+// alone — arcanum-bff keeps its own key as a cookie, nobody needs to be
+// signed in; a kassa with the person signed in on it (NeedsSignIn when nobody is).
+export async function pairDevice(code: string): Promise<ClaimedDevice> {
+  const res = await fetch('/api/public/pair', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) })
+  const data = await res.json().catch(() => null)
+  if (res.ok) {
+    const device = data as ClaimedDevice
+    localStorage.setItem(TERMINAL_KEY, JSON.stringify({ terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name } satisfies Terminal))
+    setDeviceName(device.name)
+    return device
+  }
+  if (data?.code !== 'pairing_needs_login') throw Object.assign(new Error(apiErrorMessage(data, `status ${res.status}`)), { status: res.status, code: data?.code })
+  try {
+    return await claimPairingCode(code)
+  } catch (err) {
+    if ((err as { status?: number }).status === 401) throw new NeedsSignIn()
+    throw err
+  }
+}
+
 // Called by a device page (kassa, customer display, Instellingen) on load:
 // the stored identity, if it has this role and the organisation still
 // knows it. Removed in the console (or never paired) → null, and the
