@@ -1,0 +1,38 @@
+import type { SelfOrderMessages } from './nl'
+
+const fr: SelfOrderMessages = {
+  loading: 'Chargement…',
+  closed: 'Commander n’est pas possible ici pour le moment. Commandez au comptoir.',
+  notFound: 'Cette commande n’existe pas (ou plus).',
+  steps: { menu: 'Carte', cart: 'Panier', pay: 'Paiement', done: 'Commande' },
+  add: (name: string) => `Ajouter ${name}`,
+  remove: (name: string) => `Un ${name} en moins`,
+  cartBar: (count: number) => (count === 1 ? '1 article' : `${count} articles`),
+  toCart: 'Voir votre commande',
+  emptyCart: 'Votre panier est vide.',
+  backToMenu: 'Retour à la carte',
+  total: 'Total',
+  next: 'Continuer',
+  payTitle: 'Payez au comptoir',
+  payHint: 'Passez votre commande, allez au comptoir et donnez votre numéro. Vous y payez, puis tout est préparé.',
+  payWithin: (minutes: number) => `Payez dans les ${minutes} minutes, sinon votre commande expire.`,
+  place: 'Passer la commande',
+  placing: 'En cours…',
+  yourNumber: 'Votre numéro',
+  goPay: (number: number) => `Allez au comptoir et dites : numéro ${number}.`,
+  preparing: 'Votre commande est en préparation.',
+  ready: 'Prêt !',
+  readyHint: (places: string) => `Retirez votre commande à : ${places}.`,
+  delivered: 'Tout est retiré. Bon appétit !',
+  nothingToPrepare: 'Payé — rien à préparer.',
+  cancelled: 'Pas payée à temps : cette commande a expiré.',
+  newOrder: 'Nouvelle commande',
+  keepOpen: 'Gardez cette page ouverte : vous serez averti ici dès que votre commande est prête.',
+  stationStatus: { ordered: 'Commandé', in_progress: 'En préparation', ready: 'Prêt', delivered: 'Retiré' },
+  yourOrder: 'Votre commande',
+  live: 'En direct',
+  offline: 'Pas de connexion — reconnexion…',
+  soundOn: 'Son activé quand c’est prêt',
+}
+
+export default fr

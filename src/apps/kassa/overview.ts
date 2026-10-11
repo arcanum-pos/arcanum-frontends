@@ -1,7 +1,7 @@
 import { formatEuro } from '@/shared/format'
 import { normalizeSearch } from './lib'
 import type { KassaMessages } from './messages/nl'
-import { tabTitle, type TabSummary } from './tabs-api'
+import { shownNumber, tabTitle, type TabSummary } from './tabs-api'
 
 // The Rekeningen overview: every rekening of today, of every kassa of the
 // org. "Today" until shifts exist server-side (DOMAIN_MODEL.md) — then the
@@ -33,14 +33,14 @@ function matchesFilter(tab: TabSummary, filter: OverviewFilter): boolean {
 // amount by its start ("41,50", "41.5", "41" → € 41,50) or that number;
 // anything else finds every word in the title as shown ("Tafel 4", a Toog
 // sale by its translated name) or the kassa's name.
-function matchesQuery(m: Pick<KassaMessages, 'quickSale' | 'tabNumber'>, tab: TabSummary, query: string): boolean {
+function matchesQuery(m: Pick<KassaMessages, 'quickSale' | 'tabNumber' | 'selfOrderTab'>, tab: TabSummary, query: string): boolean {
   const q = query.trim().toLowerCase()
   if (!q) return true
   const number = q.match(/^#(\d+)$/)
-  if (number) return tab.number === Number(number[1])
+  if (number) return shownNumber(tab) === Number(number[1]) || tab.number === Number(number[1])
   if (/^[\d.,]+$/.test(q)) {
     const amount = formatEuro(tab.totalCents).replace('€', '').trim()
-    return amount.startsWith(q.replace('.', ',')) || String(tab.number) === q
+    return amount.startsWith(q.replace('.', ',')) || String(tab.number) === q || String(shownNumber(tab)) === q
   }
   const haystack = `${normalizeSearch(tabTitle(m, tab))} ${normalizeSearch(tab.openedDeviceName ?? '')}`
   return normalizeSearch(q)
@@ -49,7 +49,7 @@ function matchesQuery(m: Pick<KassaMessages, 'quickSale' | 'tabNumber'>, tab: Ta
     .every((word) => haystack.includes(word))
 }
 
-export function filterOverview(m: Pick<KassaMessages, 'quickSale' | 'tabNumber'>, tabs: TabSummary[], query: string, filter: OverviewFilter): TabSummary[] {
+export function filterOverview(m: Pick<KassaMessages, 'quickSale' | 'tabNumber' | 'selfOrderTab'>, tabs: TabSummary[], query: string, filter: OverviewFilter): TabSummary[] {
   return tabs.filter((t) => matchesFilter(t, filter) && matchesQuery(m, t, query))
 }
 

@@ -10,6 +10,10 @@ import type { KassaMessages } from './messages/nl'
 export interface TabSummary {
   id: string
   number: number
+  // The event's short number (1, 2, 3…) — what's called out; null without an event.
+  eventNumber?: number | null
+  // 'kassa' | 'self_order' (a guest's phone).
+  source?: string
   label: string
   eventId?: string | null
   eventName?: string | null
@@ -70,6 +74,8 @@ export interface TabLine {
 export interface TabDetail extends TabSummary {
   lines: TabLine[]
   payments?: TabPayment[]
+  // Something to prepare: where the customer follows it (the customer display's QR once paid).
+  followUrl?: string | null
 }
 
 // A line as the kassa builds it, before it's submitted as part of an order.
@@ -181,9 +187,15 @@ export function cancelTab(orgId: string, tabId: string, reason?: string) {
 // shown translated.
 export const QUICK_SALE_LABEL = 'Toog'
 
-export function tabTitle(m: Pick<KassaMessages, 'quickSale' | 'tabNumber'>, tab: Pick<TabSummary, 'number' | 'label'>): string {
-  if (!tab.label) return m.tabNumber(tab.number)
-  return `#${tab.number} ${tab.label === QUICK_SALE_LABEL ? m.quickSale : tab.label}`
+// The number shown and called out: the event's short one, else the tab's.
+export function shownNumber(tab: Pick<TabSummary, 'number' | 'eventNumber'>): number {
+  return tab.eventNumber ?? tab.number
+}
+
+export function tabTitle(m: Pick<KassaMessages, 'quickSale' | 'tabNumber' | 'selfOrderTab'>, tab: Pick<TabSummary, 'number' | 'label' | 'eventNumber' | 'source'>): string {
+  const n = shownNumber(tab)
+  if (!tab.label) return tab.source === 'self_order' ? m.selfOrderTab(n) : m.tabNumber(n)
+  return `#${n} ${tab.label === QUICK_SALE_LABEL ? m.quickSale : tab.label}`
 }
 
 // Net quantity still on the tab for an original (non-void) line.

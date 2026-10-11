@@ -18,6 +18,22 @@ export interface CustomerOrder {
   // Per item: the units this payment covers (null = the whole rekening or an equal part).
   paying?: CustomerOrderLine[] | null
   lines: CustomerOrderLine[]
+  // Something to prepare: the customer's "follow your order" page — shown
+  // as a QR once paid (self-ordering, DOMAIN_MODEL.md).
+  followUrl?: string | null
+}
+
+// A follow link, always on the address this screen is on (the same
+// installation, whichever of its addresses) — only its /volg/<token> path is
+// taken from the wire, so it can never point elsewhere.
+function readFollowUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  try {
+    const { pathname } = new URL(value, window.location.origin)
+    return /^\/volg\/[A-Za-z0-9_-]+$/.test(pathname) ? `${window.location.origin}${pathname}` : null
+  } catch {
+    return null
+  }
 }
 
 // The Toog quick sale is a tab too, but "Toog" means nothing to a customer.
@@ -64,7 +80,7 @@ export function customerBill(order: CustomerOrder | null | undefined, amountCent
 // Only what the CFD can safely show — anything else from the wire is dropped.
 export function readCustomerOrder(value: unknown): CustomerOrder | null {
   if (!value || typeof value !== 'object') return null
-  const v = value as { label?: unknown; number?: unknown; eventName?: unknown; paidCents?: unknown; paying?: unknown; lines?: unknown }
+  const v = value as { label?: unknown; number?: unknown; eventNumber?: unknown; eventName?: unknown; paidCents?: unknown; paying?: unknown; lines?: unknown; followUrl?: unknown }
   if (!Array.isArray(v.lines)) return null
   const readLines = (list: unknown[]) =>
     list
@@ -74,10 +90,12 @@ export function readCustomerOrder(value: unknown): CustomerOrder | null {
   const paying = Array.isArray(v.paying) && v.paying.length ? readLines(v.paying) : null
   return {
     label: typeof v.label === 'string' ? v.label : '',
-    number: Number.isInteger(v.number) ? (v.number as number) : null,
+    // The event's short number when there is one (what's called out).
+    number: Number.isInteger(v.eventNumber) ? (v.eventNumber as number) : Number.isInteger(v.number) ? (v.number as number) : null,
     eventName: typeof v.eventName === 'string' && v.eventName.trim() ? v.eventName.trim() : null,
     paidCents: Number.isInteger(v.paidCents) ? (v.paidCents as number) : null,
     paying,
     lines,
+    followUrl: readFollowUrl(v.followUrl),
   }
 }

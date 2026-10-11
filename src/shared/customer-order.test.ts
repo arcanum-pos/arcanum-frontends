@@ -63,8 +63,11 @@ describe('readCustomerOrder', () => {
       paidCents: null,
       paying: null,
       lines: [{ name: 'A', quantity: 1, unitPriceCents: 100 }],
+      followUrl: null,
     })
     expect(readCustomerOrder({ lines: [], eventName: 42 })?.eventName).toBeNull()
+    // The event's short number wins over the tab number.
+    expect(readCustomerOrder({ lines: [], number: 1287, eventNumber: 5 })?.number).toBe(5)
     expect(readCustomerOrder(null)).toBeNull()
     expect(readCustomerOrder({ lines: 'x' })).toBeNull()
   })

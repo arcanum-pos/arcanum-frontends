@@ -1,0 +1,38 @@
+import type { SelfOrderMessages } from './nl'
+
+const en: SelfOrderMessages = {
+  loading: 'Loading…',
+  closed: 'Ordering isn’t possible here right now. Please order at the counter.',
+  notFound: 'This order doesn’t exist (any more).',
+  steps: { menu: 'Menu', cart: 'Basket', pay: 'Payment', done: 'Order' },
+  add: (name: string) => `Add ${name}`,
+  remove: (name: string) => `One ${name} less`,
+  cartBar: (count: number) => (count === 1 ? '1 item' : `${count} items`),
+  toCart: 'View your order',
+  emptyCart: 'Your basket is empty.',
+  backToMenu: 'Back to the menu',
+  total: 'Total',
+  next: 'Continue',
+  payTitle: 'Pay at the counter',
+  payHint: 'Place your order, go to the counter and give your number. You pay there, and then everything is prepared.',
+  payWithin: (minutes: number) => `Pay within ${minutes} minutes, or your order expires.`,
+  place: 'Place order',
+  placing: 'Placing…',
+  yourNumber: 'Your number',
+  goPay: (number: number) => `Go to the counter and say: number ${number}.`,
+  preparing: 'Your order is being prepared.',
+  ready: 'Ready!',
+  readyHint: (places: string) => `Collect your order at: ${places}.`,
+  delivered: 'All collected. Enjoy!',
+  nothingToPrepare: 'Paid — nothing to prepare.',
+  cancelled: 'Not paid in time: this order has expired.',
+  newOrder: 'New order',
+  keepOpen: 'Keep this page open: you’ll get a signal here as soon as your order is ready.',
+  stationStatus: { ordered: 'Ordered', in_progress: 'In progress', ready: 'Ready', delivered: 'Collected' },
+  yourOrder: 'Your order',
+  live: 'Live',
+  offline: 'No connection — reconnecting…',
+  soundOn: 'Sound on when ready',
+}
+
+export default en

@@ -37,6 +37,9 @@ const nl = {
   } as Record<string, string>,
 
   thanks: 'Bedankt!',
+  yourNumber: (n: number) => `Je nummer: ${n}`,
+  followHint: 'Scan om te volgen wanneer je bestelling klaar is.',
+  followQrAlt: 'QR-code om je bestelling te volgen',
   paid: (amount: string, method: string) => `${amount} betaald · ${method}`,
   part: (index: number, of: number) => `Deel ${index} van ${of}`,
 }

@@ -97,6 +97,35 @@ test('another device: the order comes with the charge status (tab name, lines ne
   expect(cfd.errors).toEqual([])
 })
 
+test('paid, with something to prepare: the QR to follow the order, and its number', async ({ page, backend }) => {
+  const cfd = await openDisplay(page, backend)
+  const tab = backend.openTab('', [{ name: 'Frieten', unitPriceCents: 400, quantity: 1 }])
+  tab.eventNumber = 12
+  // Only the /volg/<token> path is taken; the QR points at this display's own address.
+  tab.followUrl = 'https://elders.test/volg/tok_abcdefghijklmnopqrstu'
+  const charge = backend.startCharge(tab.id, 'cash')
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'cash' })
+  await expect(page.getByTestId('cfd-waiting')).toBeVisible()
+  await expect(page.getByTestId('cfd-follow')).toHaveCount(0)
+  backend.resolveCharge(charge.id, true)
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'cash' })
+  const follow = page.getByTestId('cfd-follow')
+  await expect(follow).toContainText('Je nummer: 12')
+  await expect(follow).toContainText('Scan om te volgen wanneer je bestelling klaar is.')
+  await expect(follow.locator('svg title')).toHaveText('QR-code om je bestelling te volgen')
+  expect(cfd.errors).toEqual([])
+})
+
+test('paid, nothing to prepare: no QR', async ({ page, backend }) => {
+  const cfd = await openDisplay(page, backend)
+  const tab = backend.openTab('', [{ name: 'Bon', unitPriceCents: 100, quantity: 5 }])
+  const charge = backend.startCharge(tab.id, 'cash')
+  backend.resolveCharge(charge.id, true)
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'cash' })
+  await expect(page.getByTestId('cfd-paid')).toBeVisible()
+  await expect(page.getByTestId('cfd-follow')).toHaveCount(0)
+})
+
 test('a failed payment says so, without the QR', async ({ page, backend }) => {
   const cfd = await openDisplay(page, backend)
   const tab = backend.openTab('Tafel 1', [{ name: 'Duvel', unitPriceCents: 400, quantity: 2 }])

@@ -3,7 +3,7 @@ import type { CustomerOrder } from '@/shared/customer-order'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
 import type { KassaMessages } from './messages/nl'
 import type { DraftLine, TabDetail, TabLine } from './tabs-api'
-import { netQuantity } from './tabs-api'
+import { netQuantity, shownNumber } from './tabs-api'
 
 // A tappable item: a catalog entry. The server prices it from the catalog
 // and ignores the price here, which is display-only.
@@ -88,8 +88,9 @@ export function tabBreakdownLines(m: BreakdownMessages, tab: TabDetail, tipCents
 export function customerOrderFromTab(m: Pick<KassaMessages, 'tip'>, tab: TabDetail): CustomerOrder {
   return {
     label: tab.label,
-    number: tab.number,
+    number: shownNumber(tab),
     eventName: tab.eventName ?? null,
+    followUrl: tab.followUrl ?? null,
     paidCents: tab.paidCents,
     lines: tab.lines
       .filter((l) => !l.voidsLineId && netQuantity(l) > 0)

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from 'cn'
+import { QRCodeSVG } from 'qrcode.react'
 import { customerBill, readCustomerOrder, type CustomerOrder } from '@/shared/customer-order'
 import { formatEuro } from '@/shared/format'
 import { useLocale, useMessages } from '@/shared/i18n'
@@ -369,6 +370,15 @@ function PaidView({ payment, eventName, onTap }: { payment: Payment; eventName: 
         <p className="mt-2 text-sm text-muted-foreground" data-testid="cfd-event">
           {payment.order?.eventName || eventName}
         </p>
+      )}
+      {payment.order?.followUrl && (
+        <div className="mt-4 flex flex-col items-center gap-2" data-testid="cfd-follow">
+          <div className="rounded-xl bg-white p-3">
+            <QRCodeSVG value={payment.order.followUrl} size={180} marginSize={1} title={m.followQrAlt} />
+          </div>
+          {payment.order.number !== null && <p className="text-2xl font-bold">{m.yourNumber(payment.order.number)}</p>}
+          <p className="max-w-sm text-base text-muted-foreground">{m.followHint}</p>
+        </div>
       )}
     </div>
   )

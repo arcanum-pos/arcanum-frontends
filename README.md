@@ -61,6 +61,23 @@ src/
 worker/index.ts               # thin ASSETS passthrough — see wrangler.jsonc
 ```
 
+## Self-ordering and station screens
+
+- **`selforder`** — a guest's phone, public (no sign-in): `/bestel/<event
+  code>` (menu → cart → "Betaal aan de toog" → your number) and
+  `/volg/<token>` (follow an order). Phone first: one column, large tap
+  targets, a fixed bar at the bottom; its end-to-end tests run at 360×640
+  and check there's no sideways scrolling. Live over the order hub socket
+  (`/orders/connect`), never polling; "ready" vibrates and beeps.
+- **`station`** — a station screen (device role `station`): one station's
+  prep tickets in columns, moved on with a tap; only paid orders by default.
+- The kassa shows an event's short numbers ("#5", "Zelfbestelling #5") and
+  opens one with the "#" field; the customer display shows the follow QR
+  once a paid order has something to prepare; the console sets an event's
+  menu, self-ordering (link + QR) and numbers, and pairs station screens.
+
+See DOMAIN_MODEL.md "Self-ordering and station screens".
+
 ## Pages (admin app)
 
 - **Dashboard** — reserved space for a real sales-figures view; not implemented.

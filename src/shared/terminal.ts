@@ -7,11 +7,13 @@
 import { apiErrorMessage } from '@/shared/api-errors'
 import { setDeviceName } from '@/shared/device'
 
-export type Role = 'pos' | 'cfd'
+// 'station': a station screen — the prep tickets of one station (2026-10-11).
+export type Role = 'pos' | 'cfd' | 'station'
 
 export const PAGE_FOR_ROLE: Record<Role, string> = {
   pos: '/kassa.html',
   cfd: '/display.html',
+  station: '/station.html',
 }
 
 const DEVICES_URL = '/api/devices'

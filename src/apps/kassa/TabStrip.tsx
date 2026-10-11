@@ -1,9 +1,10 @@
+import { useState } from 'react'
 import { RotateCw } from 'lucide-react'
 import { cn } from 'cn'
 import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { KASSA_MESSAGES } from './messages'
-import { tabTitle, type TabSummary } from './tabs-api'
+import { shownNumber, tabTitle, type TabSummary } from './tabs-api'
 
 // 'quick' is the permanent Toog button: not a server tab yet, just a draft
 // — paying it creates a brand-new tab each time, so a paid tab is never
@@ -51,9 +52,43 @@ export function TabStrip({
   onRefresh: () => void
 }) {
   const m = useMessages(KASSA_MESSAGES)
+  // "Bestelling #": a guest says their number (a self-order, or a tab of the
+  // event) — typing it opens that open tab.
+  const [find, setFind] = useState('')
+  const [notFound, setNotFound] = useState<string | null>(null)
+  function openNumber(e: React.FormEvent) {
+    e.preventDefault()
+    const typed = find.replace('#', '').trim()
+    const n = Number(typed)
+    const tab = Number.isInteger(n) && n > 0 ? tabs.find((t) => shownNumber(t) === n) ?? tabs.find((t) => t.number === n) : undefined
+    if (tab) {
+      setFind('')
+      setNotFound(null)
+      onSelect(tab.id)
+    } else setNotFound(typed)
+  }
   const amount = (isActive: boolean) => cn('font-mono text-xs tabular-nums', isActive ? 'text-background/70' : 'text-muted-foreground')
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
+      <form onSubmit={openNumber} className="shrink-0" title={notFound ? m.findOrderNotFound(notFound) : undefined}>
+        <input
+          value={find}
+          onChange={(e) => {
+            setFind(e.target.value)
+            setNotFound(null)
+          }}
+          inputMode="numeric"
+          disabled={disabled}
+          placeholder="#"
+          aria-label={m.findOrder}
+          aria-invalid={notFound !== null}
+          className={cn(
+            'h-9 w-14 rounded-lg border bg-card px-2 text-center text-[13px] tabular-nums outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+            notFound !== null && 'border-destructive'
+          )}
+        />
+        {notFound !== null && <span className="sr-only" role="alert">{m.findOrderNotFound(notFound)}</span>}
+      </form>
       <TabPill active={active === 'quick'} disabled={disabled} onClick={() => onSelect('quick')}>
         <span className="font-medium">
           {m.quickSale}

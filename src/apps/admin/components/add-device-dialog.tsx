@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMessages } from '@/shared/i18n'
 import { createDevicePairing, listDevicePairings, type DevicePairing, type OrgDevice } from '../lib/api'
+import { listStations, type Station } from '../lib/catalog-api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 
 // Toestellen → "Toestel toevoegen": a pairing code for a new kassa or
@@ -21,7 +22,10 @@ const LATER = 'later'
 export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; kassas: OrgDevice[]; onPaired: () => void }) {
   const m = useMessages(ADMIN_ORG_MESSAGES).devices
   const [open, setOpen] = useState(false)
-  const [role, setRole] = useState<'pos' | 'cfd'>('pos')
+  const [role, setRole] = useState<'pos' | 'cfd' | 'station'>('pos')
+  // A station screen shows one prep station.
+  const [stations, setStations] = useState<Station[] | null>(null)
+  const [stationId, setStationId] = useState<string>('')
   const [name, setName] = useState('')
   const [linkTo, setLinkTo] = useState<string>(LATER)
   const [busy, setBusy] = useState(false)
@@ -30,8 +34,19 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
   const [status, setStatus] = useState<DevicePairing['status']>('open')
   const [now, setNow] = useState(() => Date.now())
 
+  useEffect(() => {
+    if (role !== 'station' || stations) return
+    listStations(orgId)
+      .then((list) => {
+        setStations(list)
+        if (list[0]) setStationId((current) => current || list[0].id)
+      })
+      .catch(() => setStations([]))
+  }, [role, stations, orgId])
+
   function reset() {
     setRole('pos')
+    setStationId('')
     setName('')
     setLinkTo(LATER)
     setError(null)
@@ -44,7 +59,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
     setBusy(true)
     setError(null)
     try {
-      setPairing(await createDevicePairing(orgId, role, name.trim(), linkTo === LATER ? null : linkTo))
+      setPairing(await createDevicePairing(orgId, role, name.trim(), linkTo === LATER ? null : linkTo, stationId || null))
       setStatus('open')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -102,19 +117,20 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label>{m.type}</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as 'pos' | 'cfd')}>
+              <Select value={role} onValueChange={(v) => setRole(v as 'pos' | 'cfd' | 'station')}>
                 <SelectTrigger aria-label={m.type}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="pos">{m.roles.pos}</SelectItem>
                   <SelectItem value="cfd">{m.roles.cfd}</SelectItem>
+                  <SelectItem value="station">{m.roles.station}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="device-name">{m.deviceName}</Label>
-              <Input id="device-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === 'pos' ? m.namePlaceholderPos : m.namePlaceholderCfd} autoComplete="off" />
+              <Input id="device-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === 'pos' ? m.namePlaceholderPos : role === 'station' ? m.namePlaceholderStation : m.namePlaceholderCfd} autoComplete="off" />
             </div>
             {role === 'cfd' && (
               <div className="grid gap-2">
@@ -132,6 +148,28 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            )}
+            {role === 'station' && (
+              <div className="grid gap-2">
+                <Label>{m.station}</Label>
+                {stations && stations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{m.noStations}</p>
+                ) : (
+                  <Select value={stationId} onValueChange={setStationId}>
+                    <SelectTrigger aria-label={m.station}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(stations ?? []).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <p className="text-xs text-muted-foreground">{m.stationHint}</p>
               </div>
             )}
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -157,7 +195,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
 
         <DialogFooter>
           {!pairing && (
-            <Button onClick={create} disabled={busy || !name.trim()}>
+            <Button onClick={create} disabled={busy || !name.trim() || (role === 'station' && !stationId)}>
               {busy ? m.busy : m.makeCode}
             </Button>
           )}

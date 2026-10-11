@@ -35,6 +35,9 @@ export default {
   },
 
   thanks: 'Thank you!',
+  yourNumber: (n: number) => `Your number: ${n}`,
+  followHint: 'Scan to see when your order is ready.',
+  followQrAlt: 'QR code to follow your order',
   paid: (amount: string, method: string) => `${amount} paid · ${method}`,
   part: (index: number, of: number) => `Part ${index} of ${of}`,
 } satisfies DisplayMessages

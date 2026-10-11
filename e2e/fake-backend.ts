@@ -97,6 +97,11 @@ interface Tab {
   cancelReason?: string | null
   receiptNumber: number | null
   eventId?: string | null
+  // Self-ordering (DOMAIN_MODEL.md): the event's short number, where it came
+  // from, and — with something to prepare — where the customer follows it.
+  eventNumber?: number | null
+  source?: string
+  followUrl?: string | null
   // "Gelijk verdelen" plan, like the backend's tabs.split_parts / split_paid.
   splitParts?: number | null
   splitPaid?: number
@@ -558,6 +563,8 @@ export class FakeBackend {
     return {
       label: detail.label,
       number: detail.number,
+      eventNumber: tab.eventNumber ?? null,
+      followUrl: tab.followUrl ?? null,
       eventName: detail.eventName,
       split: detail.split ? { parts: detail.split.parts, paid: detail.split.paid } : null,
       paidCents: detail.paidCents,

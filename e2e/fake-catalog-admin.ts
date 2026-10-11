@@ -88,6 +88,7 @@ export class FakeCatalogAdmin {
   reportQueries: { from: string; to: string }[] = []
   transactions: any[] = []
   events: any[] = []
+  eventCalls: { path: string; body: any }[] = []
   // Every import call (dry run or apply) as received — tests assert on the
   // raw rows the browser sent.
   importRequests: any[] = []
@@ -129,6 +130,30 @@ export class FakeCatalogAdmin {
     if (/^\/api\/organizations\/[^/]+\/device-pairings(\/.*)?$/.test(path)) return this.pairingRoute(method, path, body)
     if (path.startsWith('/api/bancontact/sumup/readers')) return this.sumupRoute(method, path, body)
     if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'GET') return ok(this.events)
+    // An event's menu, self-ordering and numbers (arcanum-backend events.ts).
+    const event = path.match(/^\/api\/organizations\/[^/]+\/events\/([^/]+)(?:\/(self-order-code|reset-numbers))?$/)
+    if (event) {
+      const e = this.events.find((x) => x.id === event[1])
+      if (!e) return { status: 404, body: { error: 'Evenement niet gevonden', code: 'event_not_found' } }
+      e.selfOrder ??= { enabled: false, code: null }
+      e.lastOrderNumber ??= 0
+      if (!event[2] && method === 'PATCH') {
+        if (body.catalogId !== undefined) e.catalogId = body.catalogId
+        if (body.selfOrderEnabled !== undefined) e.selfOrder.enabled = body.selfOrderEnabled
+        if (e.selfOrder.enabled && !e.catalogId) return { status: 400, body: { error: 'Kies eerst een menukaart voor dit evenement', code: 'self_order_needs_menu' } }
+        if (e.selfOrder.enabled && !e.selfOrder.code) e.selfOrder.code = `code-${this.id('c')}`
+        this.eventCalls.push({ path, body })
+        return ok(e)
+      }
+      if (event[2] === 'self-order-code' && method === 'POST') {
+        e.selfOrder.code = `code-${this.id('c')}`
+        return ok(e)
+      }
+      if (event[2] === 'reset-numbers' && method === 'POST') {
+        e.lastOrderNumber = 0
+        return ok(e)
+      }
+    }
 
     const m = path.match(/^\/api\/organizations\/[^/]+\/(catalog|catalogs)(?:\/(.*))?$/)
     if (!m) return { status: 404, body: { error: 'Not found' } }
@@ -138,7 +163,7 @@ export class FakeCatalogAdmin {
 
   // Toestellen → Toestel toevoegen: codes as the backend makes them. A test
   // "claims" one on a device with claimPairing (the start page's side).
-  pairings: { id: string; role: 'pos' | 'cfd'; name: string; status: string; code: string; createdAt: string; expiresAt: string; claimedAt: string | null; claimedBy: string | null; terminalId: string | null; createdBy: string; linkTo: string | null }[] = []
+  pairings: { id: string; role: 'pos' | 'cfd' | 'station'; stationId?: string | null; name: string; status: string; code: string; createdAt: string; expiresAt: string; claimedAt: string | null; claimedBy: string | null; terminalId: string | null; createdBy: string; linkTo: string | null }[] = []
 
   private pairingRoute(method: string, path: string, body: any): FakeResponse {
     const id = path.split('/device-pairings/')[1]
@@ -157,6 +182,7 @@ export class FakeCatalogAdmin {
         claimedBy: null,
         terminalId: null,
         linkTo: body.linkTo ?? null,
+        stationId: body.stationId ?? null,
       }
       this.pairings.push(pairing)
       return { status: 201, body: pairing }

@@ -292,7 +292,10 @@ export default function DevicesPage() {
                   {device.name && <div className="font-medium">{device.name}</div>}
                   <div className="font-mono text-xs text-muted-foreground">{device.terminal_id}</div>
                 </TableCell>
-                <TableCell>{m.devices.roles[device.role] ?? device.role}</TableCell>
+                <TableCell>
+                  {m.devices.roles[device.role] ?? device.role}
+                  {device.role === 'station' && device.station_name && <div className="text-xs text-muted-foreground">{m.devices.stationOf(device.station_name)}</div>}
+                </TableCell>
                 <TableCell className={device.linked_to && nameOf(device.linked_to) ? undefined : 'font-mono text-xs'}>
                   {device.linked_to ? (nameOf(device.linked_to) ?? device.linked_to) : '—'}
                 </TableCell>

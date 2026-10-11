@@ -35,6 +35,9 @@ export default {
   },
 
   thanks: 'Merci !',
+  yourNumber: (n: number) => `Votre numéro : ${n}`,
+  followHint: 'Scannez pour savoir quand votre commande est prête.',
+  followQrAlt: 'Code QR pour suivre votre commande',
   paid: (amount: string, method: string) => `${amount} payé · ${method}`,
   part: (index: number, of: number) => `Partie ${index} sur ${of}`,
 } satisfies DisplayMessages

@@ -14,7 +14,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { createEvent, listEvents } from '../lib/api'
+import { createEvent, listEvents, type Event } from '../lib/api'
+import { listCatalogs } from '../lib/catalog-api'
+import { EventSettingsDialog } from '../components/event-settings-dialog'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
@@ -24,10 +26,8 @@ function formatDate(iso: string, intlLocale: string): string {
   return new Date(iso).toLocaleDateString(intlLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-// First step only: name + date. Doesn't drive kassa menus/catalogues yet
-// (that needs the kassa itself to know which event is active — later work)
-// — this just lets an org define events at all, and tag transactions/
-// reports with one (see routes/reports.tsx).
+// Events: name + date (what tabs and reports are tagged with), and per
+// event its menu, self-ordering and order numbers (EventSettingsDialog).
 export default function EventsPage() {
   const m = useMessages(ADMIN_ORG_MESSAGES)
   const intlLocale = INTL_LOCALES[useLocale().locale]
@@ -38,6 +38,8 @@ export default function EventsPage() {
     [orgId]
   )
 
+  const { data: catalogs } = useAsync(() => (orgId ? listCatalogs(orgId) : Promise.resolve([])), [orgId])
+  const [settingsFor, setSettingsFor] = useState<Event | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [name, setName] = useState('')
   const [date, setDate] = useState('')
@@ -105,20 +107,23 @@ export default function EventsPage() {
           <TableRow>
             <TableHead>{m.name}</TableHead>
             <TableHead>{m.date}</TableHead>
+            <TableHead className="hidden sm:table-cell">{m.events.menu}</TableHead>
+            <TableHead>{m.events.selfOrder}</TableHead>
+            <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {loading &&
             Array.from({ length: 2 }).map((_, i) => (
               <TableRow key={i}>
-                <TableCell colSpan={2}>
+                <TableCell colSpan={5}>
                   <Skeleton className="h-5 w-full" />
                 </TableCell>
               </TableRow>
             ))}
           {!loading && events?.length === 0 && (
             <TableRow>
-              <TableCell colSpan={2} className="text-center text-muted-foreground">
+              <TableCell colSpan={5} className="text-center text-muted-foreground">
                 <div className="flex flex-col items-center gap-2 py-6">
                   <TicketCheck className="size-6" />
                   {m.events.empty}
@@ -131,10 +136,19 @@ export default function EventsPage() {
               <TableRow key={event.id}>
                 <TableCell className="font-medium">{event.name}</TableCell>
                 <TableCell>{formatDate(event.date, intlLocale)}</TableCell>
+                <TableCell className="hidden sm:table-cell">{catalogs?.find((c) => c.id === event.catalogId)?.name ?? '—'}</TableCell>
+                <TableCell>{event.selfOrder?.enabled ? m.events.on : m.events.off}</TableCell>
+                <TableCell>
+                  <Button variant="outline" size="sm" onClick={() => setSettingsFor(event)}>
+                    {m.events.settings}
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
         </TableBody>
       </Table>
+
+      {orgId && <EventSettingsDialog orgId={orgId} event={settingsFor} catalogs={catalogs ?? []} onClose={() => setSettingsFor(null)} onChanged={() => reload()} />}
     </div>
   )
 }

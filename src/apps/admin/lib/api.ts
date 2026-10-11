@@ -188,7 +188,8 @@ export async function whoami(): Promise<Whoami> {
 // devices.ts (it checks the role, then asks arcanum-devicehub).
 // 'sim': the SumUp simulator, removed 2026-10-06 — only still listed so an
 // old registration can be recognised and removed.
-export type DeviceRole = 'pos' | 'cfd' | 'sim'
+// 'station': a station screen (one prep station's tickets).
+export type DeviceRole = 'pos' | 'cfd' | 'station' | 'sim'
 
 export interface OrgDevice {
   terminal_id: string
@@ -201,6 +202,13 @@ export interface OrgDevice {
   // registered (and keeps any link it holds); removeDevice is the only
   // way a row actually goes away.
   online: boolean
+  // A station screen's station.
+  station_id?: string
+  station_name?: string | null
+}
+
+export async function setDeviceStation(orgId: string, terminalId: string, stationId: string): Promise<void> {
+  await request(`/${encodeURIComponent(orgId)}/devices/${encodeURIComponent(terminalId)}`, { method: 'PATCH', body: JSON.stringify({ stationId }) })
 }
 
 export function listOrgDevices(orgId: string): Promise<OrgDevice[]> {
@@ -217,7 +225,7 @@ export async function renameOrgDevice(orgId: string, terminalId: string, name: s
 
 export interface DevicePairing {
   id: string
-  role: 'pos' | 'cfd'
+  role: 'pos' | 'cfd' | 'station'
   name: string
   status: 'open' | 'claimed' | 'revoked' | 'expired'
   createdBy: string
@@ -232,8 +240,12 @@ export interface DevicePairing {
 }
 
 // `linkTo`: for a customer display, the kassa it's for — linked as soon as it's paired.
-export function createDevicePairing(orgId: string, role: 'pos' | 'cfd', name: string, linkTo?: string | null): Promise<DevicePairing & { code: string }> {
-  return request(`/${encodeURIComponent(orgId)}/device-pairings`, { method: 'POST', body: JSON.stringify({ role, name, linkTo: role === 'cfd' ? linkTo || null : null }) })
+// `stationId`: for a station screen, the prep station it shows.
+export function createDevicePairing(orgId: string, role: 'pos' | 'cfd' | 'station', name: string, linkTo?: string | null, stationId?: string | null): Promise<DevicePairing & { code: string }> {
+  return request(`/${encodeURIComponent(orgId)}/device-pairings`, {
+    method: 'POST',
+    body: JSON.stringify({ role, name, linkTo: role === 'cfd' ? linkTo || null : null, stationId: role === 'station' ? stationId || null : null }),
+  })
 }
 
 export function listDevicePairings(orgId: string): Promise<DevicePairing[]> {
@@ -273,14 +285,31 @@ export async function listTransactions(orgId: string, eventId?: string): Promise
   return res.json()
 }
 
-// worker's per-org events (organizations/events.ts) — first step only:
-// name + date, and something transactions can be tagged with. Doesn't
-// drive kassa menus/catalogues yet.
+// The org's events (arcanum-backend organizations/events.ts): name + date,
+// what tabs and sales are tagged with — plus an event's menu, its
+// self-ordering (on/off, the code in its public URL/QR) and its own short
+// order numbers (DOMAIN_MODEL.md "Self-ordering and station screens").
 export interface Event {
   id: string
   name: string
   date: string
   createdAt: string
+  catalogId?: string | null
+  selfOrder?: { enabled: boolean; code: string | null }
+  // The last order number given out (0: the next is #1).
+  lastOrderNumber?: number
+}
+
+export function updateEvent(orgId: string, eventId: string, fields: { name?: string; date?: string; catalogId?: string | null; selfOrderEnabled?: boolean }): Promise<Event> {
+  return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify(fields) })
+}
+
+export function newSelfOrderCode(orgId: string, eventId: string): Promise<Event> {
+  return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}/self-order-code`, { method: 'POST' })
+}
+
+export function resetEventNumbers(orgId: string, eventId: string): Promise<Event> {
+  return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}/reset-numbers`, { method: 'POST' })
 }
 
 export function listEvents(orgId: string): Promise<Event[]> {

@@ -19,7 +19,7 @@ const nl = {
   replaceHint: 'Je opende een koppelcode. Koppel je deze browser ermee, dan is hij dit toestel niet meer en moet je het later opnieuw koppelen.',
   replaceYes: 'Koppelen met de nieuwe code',
   replaceNo: (name: string) => `Nee, open ${name}`,
-  roles: { pos: 'een kassa', cfd: 'een klantscherm' } satisfies Record<Role, string>,
+  roles: { pos: 'een kassa', cfd: 'een klantscherm', station: 'een stationscherm' } satisfies Record<Role, string>,
 }
 
 export type ChooserMessages = typeof nl
