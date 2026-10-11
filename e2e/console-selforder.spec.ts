@@ -58,7 +58,7 @@ test('Toestel toevoegen: a station screen for one station', async ({ console: op
   await dialog.getByLabel('Naam').fill('Scherm bar')
   await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
   await expect(dialog.getByTestId('pairing-code')).toBeVisible()
-  expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'station', name: 'Scherm bar', stationId: catalogAdmin.stations.find((s: any) => s.name === 'Bar').id })
+  expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'station', name: 'Scherm bar', stationId: catalogAdmin.stations.find((s: any) => s.name === 'Bar')!.id })
 })
 
 test('a station screen without stations to choose: says where to make one', async ({ console: open, page }) => {
