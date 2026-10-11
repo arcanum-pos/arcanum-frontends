@@ -14,6 +14,8 @@ export interface TabSummary {
   eventNumber?: number | null
   // 'kassa' | 'self_order' (a guest's phone).
   source?: string
+  // Its ordering mode's name ("Take away") when the event has more than one.
+  orderMode?: string | null
   label: string
   eventId?: string | null
   eventName?: string | null
@@ -148,10 +150,28 @@ export function getTab(orgId: string, tabId: string) {
 // server prices them from it.
 // eventId: the kassa's chosen event (Instellingen → Evenement), if any —
 // tags the tab and every sale paid on it.
-export function createTab(orgId: string, label: string, slotId: string, lines: DraftLine[] = [], catalogId: string | null = null, eventId: string | null = null) {
+// orderModeId: the event's ordering mode chosen at the kassa (left out: the
+// event's only kassa mode, if it has just one).
+export function createTab(
+  orgId: string,
+  label: string,
+  slotId: string,
+  lines: DraftLine[] = [],
+  catalogId: string | null = null,
+  eventId: string | null = null,
+  orderModeId: string | null = null
+) {
   return request<TabDetail>(orgId, '', {
     method: 'POST',
-    body: { label, slotId, ...device(), lines: lines.length > 0 ? toLineInputs(lines) : undefined, catalogId: catalogId || undefined, eventId: eventId || undefined },
+    body: {
+      label,
+      slotId,
+      ...device(),
+      lines: lines.length > 0 ? toLineInputs(lines) : undefined,
+      catalogId: catalogId || undefined,
+      eventId: eventId || undefined,
+      orderModeId: (eventId && orderModeId) || undefined,
+    },
   })
 }
 
@@ -192,10 +212,14 @@ export function shownNumber(tab: Pick<TabSummary, 'number' | 'eventNumber'>): nu
   return tab.eventNumber ?? tab.number
 }
 
-export function tabTitle(m: Pick<KassaMessages, 'quickSale' | 'tabNumber' | 'selfOrderTab'>, tab: Pick<TabSummary, 'number' | 'label' | 'eventNumber' | 'source'>): string {
+export function tabTitle(
+  m: Pick<KassaMessages, 'quickSale' | 'tabNumber' | 'selfOrderTab'>,
+  tab: Pick<TabSummary, 'number' | 'label' | 'eventNumber' | 'source' | 'orderMode'>
+): string {
   const n = shownNumber(tab)
-  if (!tab.label) return tab.source === 'self_order' ? m.selfOrderTab(n) : m.tabNumber(n)
-  return `#${n} ${tab.label === QUICK_SALE_LABEL ? m.quickSale : tab.label}`
+  const title = !tab.label ? (tab.source === 'self_order' ? m.selfOrderTab(n) : m.tabNumber(n)) : `#${n} ${tab.label === QUICK_SALE_LABEL ? m.quickSale : tab.label}`
+  // Its ordering mode, when the event has more than one: "#4 Toog · Take away".
+  return tab.orderMode ? `${title} · ${tab.orderMode}` : title
 }
 
 // Net quantity still on the tab for an original (non-void) line.

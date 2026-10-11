@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { bancontactTarget, cartLines, cartTotals, changeQuantity, newlyReady, route, type FollowStatus, type Menu } from './lib'
+import { bancontactTarget, cartLines, cartTotals, changeQuantity, modeFromSearch, newlyReady, pickMode, route, type FollowStatus, type Menu, type MenuCatalog } from './lib'
 
-const menu: Menu = {
-  eventName: 'Fuif',
-  orgName: 'Scouts',
-  locale: 'nl',
-  open: true,
-  catalog: { id: 'c', sections: [{ id: 's', name: 'Drank', entries: [{ variantId: 'a', name: 'Pils', priceCents: 250 }, { variantId: 'b', name: 'Cola', priceCents: 200 }] }] },
-}
+const catalog: MenuCatalog = { id: 'c', sections: [{ id: 's', name: 'Drank', entries: [{ variantId: 'a', name: 'Pils', priceCents: 250 }, { variantId: 'b', name: 'Cola', priceCents: 200 }] }] }
+const mode = (id: string, name: string) => ({ id, name, payment: { counter: true, bancontact: false }, catalog })
+const menu = (modes: ReturnType<typeof mode>[]): Menu => ({ eventName: 'Fuif', orgName: 'Scouts', locale: 'nl', open: true, modes })
 
 const status = (stations: FollowStatus['stations']): FollowStatus => ({
   number: 5, eventName: 'Fuif', orgName: 'Scouts', locale: 'nl', selfOrder: true, state: 'preparing', stations, lines: [], totalCents: 0, selfOrderCode: 'x', hubTicket: 't',
@@ -21,16 +17,28 @@ describe('self-order pages', () => {
     expect(route('/elders')).toBeNull()
   })
 
+  it('pick the ordering mode: the one chosen, or the only one there is', () => {
+    const one = menu([mode('m1', 'Ter plaatse')])
+    const two = menu([mode('m1', 'Ter plaatse'), mode('m2', 'Take away')])
+    expect(pickMode(one, null)?.id).toBe('m1')
+    expect(pickMode(two, null)).toBeNull()
+    expect(pickMode(two, 'm2')?.name).toBe('Take away')
+    expect(pickMode(two, 'gone')).toBeNull()
+    expect(modeFromSearch('?m=abc123')).toBe('abc123')
+    expect(modeFromSearch('?m=<script>')).toBeNull()
+    expect(modeFromSearch('')).toBeNull()
+  })
+
   it('keep a cart within the limits, priced from the menu', () => {
     let cart = changeQuantity({}, 'a', 1)
     cart = changeQuantity(cart, 'a', 1)
     cart = changeQuantity(cart, 'b', 1)
     cart = changeQuantity(cart, 'gone', 1)
-    expect(cartLines(cart, menu)).toEqual([
+    expect(cartLines(cart, catalog)).toEqual([
       { variantId: 'a', name: 'Pils', priceCents: 250, quantity: 2 },
       { variantId: 'b', name: 'Cola', priceCents: 200, quantity: 1 },
     ])
-    expect(cartTotals(cartLines(cart, menu))).toEqual({ count: 3, cents: 700 })
+    expect(cartTotals(cartLines(cart, catalog))).toEqual({ count: 3, cents: 700 })
     expect(changeQuantity(cart, 'b', -1)).toEqual({ a: 2, gone: 1 })
     expect(changeQuantity({ a: 20 }, 'a', 1)).toEqual({ a: 20 })
   })

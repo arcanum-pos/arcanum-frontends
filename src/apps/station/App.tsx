@@ -180,8 +180,15 @@ function TicketCard({ ticket, busy, onMove }: { ticket: Ticket; busy: boolean; o
   return (
     <article className={`flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ${ticket.paid || ticket.payLater ? 'ring-foreground/10' : 'ring-amber-500/60'}`} data-testid="ticket" data-number={ticket.number}>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-3xl font-bold tabular-nums">#{ticket.number}</span>
-        <span className="text-xs text-muted-foreground">{m.ago(minutes)}</span>
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="text-3xl font-bold tabular-nums">#{ticket.number}</span>
+          {ticket.mode && (
+            <span className="truncate rounded-md bg-foreground px-2 py-0.5 text-sm font-bold text-background" data-testid="ticket-mode">
+              {ticket.mode}
+            </span>
+          )}
+        </span>
+        <span className="shrink-0 text-xs text-muted-foreground">{m.ago(minutes)}</span>
       </div>
       <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
         {!ticket.paid && ticket.payLater && <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-violet-700 dark:text-violet-300">{m.onTab}</span>}

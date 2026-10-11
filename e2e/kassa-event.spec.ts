@@ -126,3 +126,43 @@ test('a CFD on another device learns the event from the payment', async ({ page,
   push({ event: 'reset' })
   await expect(page.getByTestId('cfd-event')).toHaveText('Fietstocht 2026') // remembered when idle again
 })
+
+test('ordering modes at the kassa: the one chosen marks every new rekening; sticky until changed', async ({ kassa, backend }) => {
+  backend.events = [
+    {
+      ...FIETSTOCHT,
+      modes: [
+        { id: 'm-plaatse', name: 'Ter plaatse', kassa: true },
+        { id: 'm-mee', name: 'Take away', kassa: true },
+        { id: 'm-qr', name: 'Alleen met de QR', kassa: false },
+      ],
+    },
+  ]
+  await kassa.evaluate((e) => localStorage.setItem('arcanum-event', JSON.stringify(e)), FIETSTOCHT)
+  await kassa.reload()
+  const modes = kassa.getByTestId('kassa-modes')
+  // Only the modes used at the kassa; the first one chosen.
+  await expect(modes.getByRole('button')).toHaveText(['Ter plaatse', 'Take away'])
+  await expect(modes.getByRole('button', { name: 'Ter plaatse' })).toHaveAttribute('aria-pressed', 'true')
+  await payToog(kassa)
+  await modes.getByRole('button', { name: 'Take away' }).click()
+  await payToog(kassa)
+  await payToog(kassa)
+  expect(backend.tabs.map((t) => t.orderModeId)).toEqual(['m-plaatse', 'm-mee', 'm-mee'])
+
+  // An open rekening says how it came in.
+  await kassa.getByRole('button', { name: '+ Nieuwe rekening', exact: true }).click()
+  await kassa.getByLabel('Naam of tafel').fill('Tafel 2')
+  await kassa.getByRole('button', { name: 'Rekening openen', exact: true }).click()
+  await expect(panel(kassa).getByRole('heading', { name: /Tafel 2 · Take away/ })).toBeVisible()
+})
+
+test('one ordering mode at the kassa: no choice to make, the backend sets it', async ({ kassa, backend }) => {
+  backend.events = [{ ...FIETSTOCHT, modes: [{ id: 'm-plaatse', name: 'Ter plaatse', kassa: true }] }]
+  await kassa.evaluate((e) => localStorage.setItem('arcanum-event', JSON.stringify(e)), FIETSTOCHT)
+  await kassa.reload()
+  await expect(kassa.getByTestId('kassa-event')).toHaveText('Fietstocht 2026')
+  await expect(kassa.getByTestId('kassa-modes')).toHaveCount(0)
+  await payToog(kassa)
+  expect(backend.tabs[0].orderModeId).toBe('m-plaatse')
+})

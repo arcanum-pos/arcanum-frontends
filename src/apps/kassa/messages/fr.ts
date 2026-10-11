@@ -3,6 +3,7 @@ import type { KassaMessages } from './nl'
 export default {
   kassa: 'Caisse',
   eventHint: 'Les ventes sont liées à cet événement (Paramètres → Événement)',
+  orderMode: 'Mode de commande pour une nouvelle commande',
   catalogNamed: (name: string) => `Carte ${name}`,
   openDisplay: 'Ouvrir l’écran client',
   settings: 'Paramètres',

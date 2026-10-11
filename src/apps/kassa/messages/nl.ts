@@ -7,6 +7,7 @@ const nl = {
   // Header
   kassa: 'Kassa',
   eventHint: 'Verkopen worden aan dit evenement gekoppeld (Instellingen → Evenement)',
+  orderMode: 'Bestelwijze voor een nieuwe bestelling',
   catalogNamed: (name: string) => `Menukaart ${name}`,
   openDisplay: 'Klantscherm openen',
   settings: 'Instellingen',

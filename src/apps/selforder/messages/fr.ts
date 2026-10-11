@@ -52,6 +52,15 @@ const fr: SelfOrderMessages = {
   live: 'En direct',
   offline: 'Pas de connexion — reconnexion…',
   soundOn: 'Son activé quand c’est prêt',
+  chooseMode: 'Comment voulez-vous commander ?',
+  changeMode: 'Changer',
+  modeGone: 'Recommander de cette façon n’est plus possible. Commandez au comptoir.',
+  keepLink: 'Gardez ce lien',
+  keepLinkHint: 'Si vous fermez cette fenêtre, ce lien vous ramène à votre commande. Envoyez-le-vous ou copiez-le.',
+  share: 'Partager',
+  shareText: (number: number) => `Ma commande n°${number}`,
+  copyLink: 'Copier le lien',
+  linkCopied: 'Copié',
 }
 
 export default fr

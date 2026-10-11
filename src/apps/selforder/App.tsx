@@ -1,16 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Minus, Plus, ShoppingBag } from 'lucide-react'
+import { Check, Copy, Minus, Plus, Share2, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { apiErrorMessage } from '@/shared/api-errors'
 import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
 import { SELF_ORDER_MESSAGES } from './messages'
-import { bancontactTarget, cartLines, cartTotals, changeQuantity, isDone, loadSaved, newlyReady, readyPlaces, route, save, type BancontactLinks, type Cart, type FollowStatus, type Menu } from './lib'
+import {
+  bancontactTarget,
+  cartLines,
+  cartTotals,
+  changeQuantity,
+  isDone,
+  loadSaved,
+  modeFromSearch,
+  newlyReady,
+  pickMode,
+  readyPlaces,
+  route,
+  save,
+  type BancontactLinks,
+  type Cart,
+  type FollowStatus,
+  type Menu,
+} from './lib'
 
 // A guest's own phone — DOMAIN_MODEL.md "Self-ordering and station screens".
-//   /bestel/<event code>: 1 menu → 2 cart → 3 pay ("Betaal aan de toog") → 4 your order
+//   /bestel/<event code>: (how you order, with more than one ordering mode) → 1 menu
+//                         → 2 cart → 3 pay ("Betaal aan de toog") → 4 your order
+//   /bestel/<code>?m=<mode>: straight to that mode's menu (a poster at the take-away window)
 //   /volg/<order token>:  4 only (a kassa customer scanned the customer display's QR)
+// Step 4 offers to keep its link (share or copy): in a private window, or
+// once the tab is closed, nothing else brings the guest back to it.
 // Step 4 follows the order live: the order hub says "changed", the page then
 // fetches its status — and fetches it once more after a reconnect (a phone
 // waking up). Never polling. Ready: a big message, a vibration and a beep.
@@ -78,6 +99,8 @@ function SelfOrder({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null)
   const [cart, setCart] = useState<Cart>(() => loadSaved(code).cart)
   const [token, setToken] = useState<string | null>(() => loadSaved(code).token)
+  // The ordering mode: from a direct link, else what this phone chose before.
+  const [modeId, setModeId] = useState<string | null>(() => modeFromSearch(window.location.search) ?? loadSaved(code).modeId)
   const [step, setStep] = useState<0 | 1 | 2 | 3>(() => (loadSaved(code).token ? 3 : 0))
   const [placing, setPlacing] = useState(false)
   // Adding a round to the open tab (token) rather than a new order.
@@ -91,14 +114,15 @@ function SelfOrder({ code }: { code: string }) {
   }, [code])
 
   useEffect(() => {
-    save(code, { cart, token })
-  }, [code, cart, token])
+    save(code, { cart, token, modeId })
+  }, [code, cart, token, modeId])
   // Each step starts at the top of the page.
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [step])
 
-  const lines = cartLines(cart, menu)
+  const mode = pickMode(menu, modeId)
+  const lines = cartLines(cart, mode?.catalog)
   const totals = cartTotals(lines)
 
   // Places the order — then, for Bancontact, straight on to paying it (the
@@ -111,12 +135,12 @@ function SelfOrder({ code }: { code: string }) {
     try {
       const placed = await call<{ token: string; number: number }>(`/api/public/self-order/${encodeURIComponent(code)}/orders`, {
         method: 'POST',
-        body: JSON.stringify({ lines: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })) }),
+        body: JSON.stringify({ modeId: mode?.id, lines: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })) }),
       })
       placedToken = placed.token
       setCart({})
       setToken(placed.token)
-      save(code, { cart: {}, token: placed.token })
+      save(code, { cart: {}, token: placed.token, modeId })
       if (pay === 'bancontact') await payWithBancontact(placed.token)
       setStep(3)
     } catch (err) {
@@ -155,7 +179,9 @@ function SelfOrder({ code }: { code: string }) {
     setStep(0)
   }, [])
 
-  const orderMore = useCallback(() => {
+  // Another round: from the tab's own ordering mode's menu.
+  const orderMore = useCallback((tabModeId: string | null) => {
+    if (tabModeId) setModeId(tabModeId)
     setRound(true)
     setStep(0)
   }, [])
@@ -174,10 +200,38 @@ function SelfOrder({ code }: { code: string }) {
       </Shell>
     )
   }
-  if (!menu.open || !menu.catalog) {
+  if (!menu.open || menu.modes.length === 0) {
     return (
       <Shell title={menu.eventName}>
         <p className="py-10 text-center text-muted-foreground" data-testid="closed">{m.closed}</p>
+      </Shell>
+    )
+  }
+
+  // Another round, but the tab's mode can't be ordered with any more.
+  if (!mode && round && token) {
+    return (
+      <Shell title={menu.eventName}>
+        <p className="py-10 text-center text-muted-foreground" data-testid="closed">{m.modeGone}</p>
+        <Button variant="outline" size="lg" className="h-12" onClick={() => setStep(3)}>
+          ← {m.steps.done}
+        </Button>
+      </Shell>
+    )
+  }
+
+  // More than one ordering mode: first how ("Ter plaatse", "Take away").
+  if (!mode) {
+    return (
+      <Shell title={menu.eventName} step={0}>
+        <section className="flex flex-col gap-3 pt-2" data-testid="choose-mode">
+          <h2 className="text-xl font-bold">{m.chooseMode}</h2>
+          {menu.modes.map((choice) => (
+            <Button key={choice.id} size="lg" variant="outline" className="h-16 justify-start text-lg font-semibold" onClick={() => setModeId(choice.id)}>
+              {choice.name}
+            </Button>
+          ))}
+        </section>
       </Shell>
     )
   }
@@ -190,8 +244,18 @@ function SelfOrder({ code }: { code: string }) {
             ← {m.steps.done}
           </Button>
         )}
+        {menu.modes.length > 1 && (
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-muted/60 px-3 py-2" data-testid="chosen-mode">
+            <span className="min-w-0 truncate font-semibold">{mode.name}</span>
+            {!round && (
+              <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setModeId(null)}>
+                {m.changeMode}
+              </Button>
+            )}
+          </div>
+        )}
         <div className="flex flex-col gap-6 pb-24">
-          {menu.catalog.sections.map((section) => (
+          {mode.catalog.sections.map((section) => (
             <section key={section.id} className="flex flex-col gap-2">
               <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">{section.name}</h2>
               <ul className="flex flex-col divide-y rounded-xl bg-card ring-1 ring-foreground/10">
@@ -283,8 +347,8 @@ function SelfOrder({ code }: { code: string }) {
     )
   }
 
-  // step 2, an event with tabs: the order goes on the tab, paid when leaving.
-  if (menu.payment?.tab) {
+  // step 2, a mode with tabs: the order goes on the tab, paid when leaving.
+  if (mode.payment.tab) {
     return (
       <Shell title={menu.eventName} step={2}>
         <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="tab-order">
@@ -306,8 +370,8 @@ function SelfOrder({ code }: { code: string }) {
     )
   }
 
-  // step 2: pay — the ways this event allows: Bancontact on the phone, and/or at the toog.
-  const payment = menu.payment ?? { counter: true, bancontact: false }
+  // step 2: pay — the ways this mode allows: Bancontact on the phone, and/or at the toog.
+  const payment = mode.payment
   return (
     <Shell title={menu.eventName} step={2}>
       <div className="flex flex-col gap-3 pb-6">
@@ -373,7 +437,7 @@ function Stepper({ name, quantity, onChange }: { name: string; quantity: number;
 
 // --- Step 4: your order, live ---
 
-function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOver?: () => void; onOrderMore?: () => void }) {
+function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOver?: () => void; onOrderMore?: (modeId: string | null) => void }) {
   const m = useMessages(SELF_ORDER_MESSAGES)
   const { status, error, live } = useFollow(token)
 
@@ -387,9 +451,9 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
   // Order more from a follow page opened on its own (back from Bancontact in
   // another browser): this browser remembers the tab, then the menu.
   function orderMore() {
-    if (onOrderMore) return onOrderMore()
+    if (onOrderMore) return onOrderMore(status?.modeId ?? null)
     if (!status?.selfOrderCode) return
-    save(status.selfOrderCode, { cart: {}, token })
+    save(status.selfOrderCode, { cart: {}, token, modeId: status.modeId ?? null })
     window.location.assign(`/bestel/${status.selfOrderCode}`)
   }
 
@@ -402,6 +466,7 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
       <section className={`flex flex-col items-center gap-1 rounded-2xl p-6 text-center ring-1 ${ready ? 'bg-emerald-500/15 ring-emerald-500/50' : 'bg-card ring-foreground/10'}`}>
         <p className="text-sm text-muted-foreground">{status.tabOpen ? m.yourTab(status.number) : m.yourNumber}</p>
         <p className="text-7xl font-black tabular-nums" data-testid="order-number">{status.number}</p>
+        {status.mode && <p className="rounded-full bg-muted px-3 py-0.5 text-sm font-semibold" data-testid="order-mode">{status.mode}</p>}
         {ready && <p className="mt-2 text-3xl font-bold text-emerald-700 dark:text-emerald-300" role="status">{m.ready}</p>}
         <p className="mt-2 text-base font-medium" data-testid="follow-message">{message(m, status, places)}</p>
       </section>
@@ -435,6 +500,8 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
           ))}
         </ul>
       )}
+
+      {!isDone(status) && <KeepLink token={token} number={status.number} />}
 
       {!isDone(status) && (
         <p className="text-center text-sm text-muted-foreground">
@@ -471,6 +538,50 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
         )
       )}
     </div>
+  )
+}
+
+// The follow page's own link, to keep: a private window forgets it, and so
+// does a closed tab. The phone's share sheet (a message to themselves, …)
+// where there is one, and copying it everywhere.
+function KeepLink({ token, number }: { token: string; number: number }) {
+  const m = useMessages(SELF_ORDER_MESSAGES)
+  const [copied, setCopied] = useState(false)
+  const url = `${window.location.origin}/volg/${token}`
+  const canShare = typeof navigator.share === 'function'
+  async function share() {
+    try {
+      await navigator.share({ title: m.shareText(number), text: m.shareText(number), url })
+    } catch {
+      // cancelled
+    }
+  }
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      window.prompt(m.copyLink, url)
+    }
+  }
+  return (
+    <section className="flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="keep-link">
+      <h2 className="font-semibold">{m.keepLink}</h2>
+      <p className="text-sm text-muted-foreground">{m.keepLinkHint}</p>
+      <div className={`grid gap-2 ${canShare ? 'grid-cols-2' : ''}`}>
+        {canShare && (
+          <Button variant="outline" size="lg" className="h-12" onClick={share}>
+            <Share2 aria-hidden="true" />
+            {m.share}
+          </Button>
+        )}
+        <Button variant="outline" size="lg" className="h-12" onClick={copy} data-testid="copy-link">
+          {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+          {copied ? m.linkCopied : m.copyLink}
+        </Button>
+      </div>
+    </section>
   )
 }
 

@@ -6,15 +6,34 @@ export interface MenuEntry {
   priceCents: number
 }
 
+export interface MenuCatalog {
+  id: string
+  sections: { id: string; name: string; entries: MenuEntry[] }[]
+}
+
+// An ordering mode guests choose from ("Ter plaatse", "Take away"): its own
+// menu, and how guests pay (tab: they keep ordering on their tab and pay
+// when they leave).
+export interface MenuMode {
+  id: string
+  name: string
+  payment: { counter: boolean; bancontact: boolean; tab?: boolean }
+  catalog: MenuCatalog
+}
+
 export interface Menu {
   eventName: string
   orgName: string
   locale: string
   open: boolean
-  // How guests of this event may pay (absent: the counter only, as before).
-  // tab: guests keep ordering on their tab and pay when they leave.
-  payment?: { counter: boolean; bancontact: boolean; tab?: boolean }
-  catalog: { id: string; sections: { id: string; name: string; entries: MenuEntry[] }[] } | null
+  modes: MenuMode[]
+}
+
+// The mode ordered in: the one chosen — or, with only one, that one.
+export function pickMode(menu: Menu | null, modeId: string | null): MenuMode | null {
+  const modes = menu?.modes ?? []
+  if (modeId) return modes.find((mode) => mode.id === modeId) ?? null
+  return modes.length === 1 ? modes[0] : null
 }
 
 export interface BancontactLinks {
@@ -37,6 +56,10 @@ export interface FollowStatus {
   orgName: string
   locale: string
   selfOrder: boolean
+  // Its ordering mode (another round orders from its menu), and the mode's
+  // name when the event has more than one.
+  modeId?: string | null
+  mode?: string | null
   // A tab paid when leaving, still open: more rounds, and settling it.
   payLater?: boolean
   tabOpen?: boolean
@@ -54,6 +77,12 @@ export interface FollowStatus {
 export type Cart = Record<string, number>
 
 // Where this page is: /bestel/<event code> (ordering) or /volg/<token> (following).
+// A link straight to one ordering mode (a poster at the take-away window): ?m=<mode id>.
+export function modeFromSearch(search: string): string | null {
+  const id = new URLSearchParams(search).get('m')
+  return id && /^[A-Za-z0-9_-]{1,64}$/.test(id) ? id : null
+}
+
 export function route(pathname: string): { kind: 'order'; code: string } | { kind: 'follow'; token: string } | null {
   const order = pathname.match(/^\/bestel\/([A-Za-z0-9_-]+)\/?$/)
   if (order) return { kind: 'order', code: order[1] }
@@ -77,8 +106,8 @@ export function changeQuantity(cart: Cart, variantId: string, delta: number): Ca
 
 // The cart's lines in the menu's order, priced from the menu — anything no
 // longer on it (the menu changed) left out.
-export function cartLines(cart: Cart, menu: Menu | null): (MenuEntry & { quantity: number })[] {
-  const entries = menu?.catalog?.sections.flatMap((s) => s.entries) ?? []
+export function cartLines(cart: Cart, catalog: MenuCatalog | null | undefined): (MenuEntry & { quantity: number })[] {
+  const entries = catalog?.sections.flatMap((s) => s.entries) ?? []
   return entries.filter((e) => cart[e.variantId]).map((e) => ({ ...e, quantity: cart[e.variantId] }))
 }
 
@@ -86,20 +115,31 @@ export function cartTotals(lines: { quantity: number; priceCents: number }[]) {
   return { count: lines.reduce((n, l) => n + l.quantity, 0), cents: lines.reduce((n, l) => n + l.quantity * l.priceCents, 0) }
 }
 
-// What this phone remembers per event: the cart, and the order it placed
-// (so a reload comes back to step 4). A private window: nothing.
+// What this phone remembers per event: the cart, the ordering mode chosen,
+// and the order it placed (so a reload comes back to step 4). A private
+// window: nothing — hence step 4's "keep this link".
 const key = (code: string) => `arcanum-selforder:${code}`
 
-export function loadSaved(code: string): { cart: Cart; token: string | null } {
+export interface Saved {
+  cart: Cart
+  token: string | null
+  modeId: string | null
+}
+
+export function loadSaved(code: string): Saved {
   try {
     const value = JSON.parse(localStorage.getItem(key(code)) || 'null')
-    return { cart: value?.cart && typeof value.cart === 'object' ? value.cart : {}, token: typeof value?.token === 'string' ? value.token : null }
+    return {
+      cart: value?.cart && typeof value.cart === 'object' ? value.cart : {},
+      token: typeof value?.token === 'string' ? value.token : null,
+      modeId: typeof value?.modeId === 'string' ? value.modeId : null,
+    }
   } catch {
-    return { cart: {}, token: null }
+    return { cart: {}, token: null, modeId: null }
   }
 }
 
-export function save(code: string, value: { cart: Cart; token: string | null }) {
+export function save(code: string, value: Saved) {
   try {
     localStorage.setItem(key(code), JSON.stringify(value))
   } catch {

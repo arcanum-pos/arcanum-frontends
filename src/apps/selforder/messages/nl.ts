@@ -52,6 +52,15 @@ const nl = {
   live: 'Live',
   offline: 'Even geen verbinding — opnieuw verbinden…',
   soundOn: 'Geluid aan bij klaar',
+  chooseMode: 'Hoe wil je bestellen?',
+  changeMode: 'Wijzig',
+  modeGone: 'Bijbestellen kan zo niet meer. Bestel aan de toog.',
+  keepLink: 'Bewaar deze link',
+  keepLinkHint: 'Sluit je dit venster, dan vind je je bestelling terug met deze link. Stuur hem naar jezelf of kopieer hem.',
+  share: 'Delen',
+  shareText: (number: number) => `Mijn bestelling #${number}`,
+  copyLink: 'Link kopiëren',
+  linkCopied: 'Gekopieerd',
 }
 
 export type SelfOrderMessages = typeof nl

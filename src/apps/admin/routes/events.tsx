@@ -107,7 +107,7 @@ export default function EventsPage() {
           <TableRow>
             <TableHead>{m.name}</TableHead>
             <TableHead>{m.date}</TableHead>
-            <TableHead className="hidden sm:table-cell">{m.events.menu}</TableHead>
+            <TableHead className="hidden sm:table-cell">{m.events.modes}</TableHead>
             <TableHead>{m.events.selfOrder}</TableHead>
             <TableHead className="w-10" />
           </TableRow>
@@ -136,7 +136,7 @@ export default function EventsPage() {
               <TableRow key={event.id}>
                 <TableCell className="font-medium">{event.name}</TableCell>
                 <TableCell>{formatDate(event.date, intlLocale)}</TableCell>
-                <TableCell className="hidden sm:table-cell">{catalogs?.find((c) => c.id === event.catalogId)?.name ?? '—'}</TableCell>
+                <TableCell className="hidden sm:table-cell">{event.modes?.length ? event.modes.map((mode) => mode.name).join(', ') : '—'}</TableCell>
                 <TableCell>{event.selfOrder?.enabled ? m.events.on : m.events.off}</TableCell>
                 <TableCell>
                   <Button variant="outline" size="sm" onClick={() => setSettingsFor(event)}>

@@ -61,6 +61,13 @@ export default function App() {
   const [event, setEvent] = useState<EventSelection | null>(() => getEventSelection())
   const eventRef = useRef<EventSelection | null>(event)
   eventRef.current = event
+  // The event's ordering modes used at the kassa; with more than one, the
+  // one a new order gets (sticky until changed) — information for the
+  // stations, never routing.
+  const [kassaModes, setKassaModes] = useState<{ id: string; name: string }[]>([])
+  const [orderModeId, setOrderModeId] = useState<string | null>(null)
+  const orderModeRef = useRef<string | null>(null)
+  orderModeRef.current = kassaModes.length > 1 ? orderModeId : null
   const [notice, setNotice] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bancontact')
   // Fooi for the next payment, as typed (comma input). Added on top of the
@@ -164,7 +171,7 @@ export default function App() {
     // (the draft stays, so the cashier can see and fix what's refused).
     else if (err instanceof TabApiError && err.code && CATALOG_ERRORS.has(err.code)) loadCatalog()
     // The chosen event is gone: check it again (drops it, with a notice).
-    else if (err instanceof TabApiError && err.code === 'unknown_event') loadEvent()
+    else if (err instanceof TabApiError && (err.code === 'unknown_event' || err.code === 'unknown_order_mode')) loadEvent()
   }
 
   // --- Catalog ---
@@ -211,6 +218,7 @@ export default function App() {
     const org = posOrgIdRef.current
     if (!chosen || !org) {
       setEvent(chosen)
+      setKassaModes([])
       return
     }
     try {
@@ -221,6 +229,9 @@ export default function App() {
         setNotice(m.eventGone(chosen.name))
         return
       }
+      const modes = (current.modes || []).filter((mode) => mode.kassa).map((mode) => ({ id: mode.id, name: mode.name }))
+      setKassaModes(modes)
+      setOrderModeId((chosenMode) => (modes.some((mode) => mode.id === chosenMode) ? chosenMode : (modes[0]?.id ?? null)))
       const fresh = { id: current.id, name: current.name, date: current.date }
       if (fresh.name !== chosen.name || fresh.date !== chosen.date) setEventSelection(fresh)
       setEvent(fresh)
@@ -359,7 +370,7 @@ export default function App() {
       }
       // 'park' moves the Toog draft onto a new named tab as its first order.
       const lines = mode === 'park' ? drafts.quick || [] : []
-      const tab = await tabsApi.createTab(org, name, getCurrentSlotId(), lines, catalogRef.current?.id ?? null, eventRef.current?.id ?? null)
+      const tab = await tabsApi.createTab(org, name, getCurrentSlotId(), lines, catalogRef.current?.id ?? null, eventRef.current?.id ?? null, orderModeRef.current)
       if (mode === 'park') setDraftFor('quick', [])
       await refreshTabs()
       setActive(tab.id)
@@ -397,7 +408,7 @@ export default function App() {
   async function submitDraftFirst(org: string, key: ActiveKey): Promise<TabDetail> {
     let tab: TabDetail
     if (key === 'quick') {
-      tab = await tabsApi.createTab(org, QUICK_SALE_LABEL, getCurrentSlotId(), draft, catalogRef.current?.id ?? null, eventRef.current?.id ?? null)
+      tab = await tabsApi.createTab(org, QUICK_SALE_LABEL, getCurrentSlotId(), draft, catalogRef.current?.id ?? null, eventRef.current?.id ?? null, orderModeRef.current)
       setDraftFor('quick', [])
       // From here on it's a real tab: if the payment fails or is
       // cancelled, it stays open in the strip to retry, void or close.
@@ -928,7 +939,26 @@ export default function App() {
             <div className="w-full min-w-0 lg:flex-1">
               <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
             </div>
-            <div className="w-full lg:sticky lg:top-4 lg:w-[392px] lg:shrink-0">
+            <div className="flex w-full flex-col gap-3 lg:sticky lg:top-4 lg:w-[392px] lg:shrink-0">
+              {kassaModes.length > 1 && (
+                <div className="flex flex-col gap-1.5" role="group" aria-label={m.orderMode} data-testid="kassa-modes">
+                  <span className="text-[11.5px] font-medium text-muted-foreground">{m.orderMode}</span>
+                  <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(kassaModes.length, 3)}, minmax(0, 1fr))` }}>
+                    {kassaModes.map((mode) => (
+                      <Button
+                        key={mode.id}
+                        variant={mode.id === orderModeId ? 'default' : 'outline'}
+                        className="h-10 truncate"
+                        aria-pressed={mode.id === orderModeId}
+                        disabled={busy || current !== null}
+                        onClick={() => setOrderModeId(mode.id)}
+                      >
+                        {mode.name}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <TabPanel
                 title={panelTitle}
                 subtitle={panelSubtitle}

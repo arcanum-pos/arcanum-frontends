@@ -26,22 +26,39 @@ class FakeSelfOrder {
   statusCalls = 0
   state = 'awaiting_payment'
   stations: Station[] = [{ name: 'Bar', status: 'ordered' }, { name: 'Keuken', status: 'ordered' }]
+  // A second ordering mode (take away, its own menu) — guests choose first.
+  takeAway = false
+  // The follow page: the tab's mode, and its name when there's more than one.
+  modeId = 'm-plaatse'
+  modeName: string | null = null
   menu() {
+    const modes = [
+      {
+        id: 'm-plaatse',
+        name: 'Ter plaatse',
+        payment: this.payment,
+        catalog: {
+          id: 'c',
+          sections: [
+            { id: 's1', name: 'Drank', entries: [{ variantId: 'v-pils', name: 'Pils', priceCents: 250 }, { variantId: 'v-cola', name: 'Cola zonder suiker en met een heel lange naam', priceCents: 220 }] },
+            { id: 's2', name: 'Eten', entries: [{ variantId: 'v-frieten', name: 'Frieten', priceCents: 400 }] },
+          ],
+        },
+      },
+    ]
+    if (this.takeAway)
+      modes.push({
+        id: 'm-mee',
+        name: 'Take away',
+        payment: { counter: false, bancontact: true },
+        catalog: { id: 'c2', sections: [{ id: 's3', name: 'Mee', entries: [{ variantId: 'v-frieten-mee', name: 'Frieten in een doosje', priceCents: 450 }] }] },
+      })
     return {
       eventName: 'Fuif in de Kabouterbossen',
       orgName: 'Scouts Kabouterland',
       locale: 'nl',
       open: this.open,
-      payment: this.payment,
-      catalog: this.open
-        ? {
-            id: 'c',
-            sections: [
-              { id: 's1', name: 'Drank', entries: [{ variantId: 'v-pils', name: 'Pils', priceCents: 250 }, { variantId: 'v-cola', name: 'Cola zonder suiker en met een heel lange naam', priceCents: 220 }] },
-              { id: 's2', name: 'Eten', entries: [{ variantId: 'v-frieten', name: 'Frieten', priceCents: 400 }] },
-            ],
-          }
-        : null,
+      modes: this.open ? modes : [],
     }
   }
   status() {
@@ -52,6 +69,8 @@ class FakeSelfOrder {
       orgName: 'Scouts Kabouterland',
       locale: 'nl',
       selfOrder: true,
+      modeId: this.modeId,
+      mode: this.modeName,
       payLater: this.tabOpen,
       tabOpen: this.tabOpen,
       state: this.state,
@@ -64,6 +83,12 @@ class FakeSelfOrder {
       hubTicket: !this.tabOpen && ['delivered', 'cancelled', 'nothing_to_prepare'].includes(this.state) ? null : 'ticket-7',
     }
   }
+}
+
+// The "ready" beep stays in the test browser, not the developer's speakers:
+// the page's sound unlock finds no AudioContext and plays nothing.
+const silence = () => {
+  Object.defineProperty(window, 'AudioContext', { value: undefined, configurable: true })
 }
 
 const test = base.extend<{ fake: FakeSelfOrder; hub: { sockets: WebSocketRoute[]; push: () => void }; phone: Page }>({
@@ -93,6 +118,7 @@ const test = base.extend<{ fake: FakeSelfOrder; hub: { sockets: WebSocketRoute[]
   },
   phone: async ({ page, fake, hub }, provide) => {
     void hub
+    await page.addInitScript(silence)
     await page.setViewportSize({ width: 360, height: 640 })
     await page.route(/\/(bestel|volg)\//, async (route) => {
       if (route.request().resourceType() !== 'document') return route.fallback()
@@ -151,7 +177,7 @@ test('order on a phone: menu → cart → pay at the toog → your number, follo
   await expect(page.getByText('Betaal binnen 10 minuten')).toBeVisible()
   await noSidewaysScroll(page)
   await page.getByRole('button', { name: 'Bestelling plaatsen' }).click()
-  expect(fake.placed).toEqual([{ lines: [{ variantId: 'v-pils', quantity: 2 }, { variantId: 'v-frieten', quantity: 1 }] }])
+  expect(fake.placed).toEqual([{ modeId: 'm-plaatse', lines: [{ variantId: 'v-pils', quantity: 2 }, { variantId: 'v-frieten', quantity: 1 }] }])
 
   // 4. Your number, and what to do.
   await expect(page.getByTestId('order-number')).toHaveText('7')
@@ -206,6 +232,80 @@ test("a customer from the toog follows their order from the customer display's Q
   await expect(page.getByTestId('order-number')).toHaveText('7')
   await expect(page.getByTestId('follow-message')).toHaveText('Je bestelling wordt klaargemaakt.')
   await expect(page.getByText('Laat deze pagina open')).toBeVisible()
+  await noSidewaysScroll(page)
+})
+
+test('step 4 offers to keep its link: copied to the clipboard (a private window forgets it)', async ({ phone: page, fake }) => {
+  // The clipboard, stubbed (the same in every browser engine).
+  await page.addInitScript(() => {
+    ;(window as any).__copied = []
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (text: string) => (window as any).__copied.push(text) }, configurable: true })
+  })
+  fake.state = 'preparing'
+  await page.goto(`/volg/${TOKEN}`)
+  const keep = page.getByTestId('keep-link')
+  await expect(keep).toContainText('Bewaar deze link')
+  await noSidewaysScroll(page)
+  await keep.getByTestId('copy-link').click()
+  await expect(keep.getByTestId('copy-link')).toHaveText('Gekopieerd')
+  expect(await page.evaluate(() => (window as any).__copied)).toEqual([`${new URL(page.url()).origin}/volg/${TOKEN}`])
+  // Done: nothing to keep any more.
+  fake.state = 'delivered'
+  await page.reload()
+  await expect(page.getByTestId('follow-message')).toHaveText('Alles afgehaald. Smakelijk!')
+  await expect(keep).toHaveCount(0)
+})
+
+test('step 4 on a phone with a share sheet: shares the link', async ({ phone: page, fake }) => {
+  await page.addInitScript(() => {
+    ;(window as any).__shared = []
+    Object.defineProperty(navigator, 'share', { value: async (data: unknown) => (window as any).__shared.push(data), configurable: true })
+  })
+  fake.state = 'preparing'
+  await page.goto(`/volg/${TOKEN}`)
+  await page.getByTestId('keep-link').getByRole('button', { name: 'Delen' }).click()
+  const shared = await page.evaluate(() => (window as any).__shared)
+  expect(shared).toEqual([{ title: 'Mijn bestelling #7', text: 'Mijn bestelling #7', url: `${new URL(page.url()).origin}/volg/${TOKEN}` }])
+})
+
+test('two ordering modes: first choose how, then that mode\'s menu and payment', async ({ phone: page, fake }) => {
+  fake.takeAway = true
+  await page.route(/bancontact\.test/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>Bancontact</p>' }))
+  await page.goto(`/bestel/${CODE}`)
+  const choose = page.getByTestId('choose-mode')
+  await expect(choose).toContainText('Hoe wil je bestellen?')
+  await noSidewaysScroll(page)
+  await choose.getByRole('button', { name: 'Take away' }).click()
+  await expect(page.getByTestId('chosen-mode')).toContainText('Take away')
+  await expect(page.getByRole('button', { name: 'Pils toevoegen' })).toHaveCount(0)
+  // Changed my mind: back to the choice, then the other menu.
+  await page.getByTestId('chosen-mode').getByRole('button', { name: 'Wijzig' }).click()
+  await choose.getByRole('button', { name: 'Ter plaatse' }).click()
+  await expect(page.getByRole('button', { name: 'Pils toevoegen' })).toBeVisible()
+  await page.getByTestId('chosen-mode').getByRole('button', { name: 'Wijzig' }).click()
+  await choose.getByRole('button', { name: 'Take away' }).click()
+  await page.getByRole('button', { name: 'Frieten in een doosje toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  // Take away takes only Bancontact.
+  await expect(page.getByTestId('pay-counter')).toHaveCount(0)
+  await page.getByTestId('pay-bancontact').getByRole('button', { name: 'Betaal met Bancontact' }).click()
+  await page.waitForURL('https://bancontact.test/checkout/1')
+  expect(fake.placed).toEqual([{ modeId: 'm-mee', lines: [{ variantId: 'v-frieten-mee', quantity: 1 }] }])
+
+  // The follow page shows the mode.
+  fake.state = 'preparing'
+  fake.modeId = 'm-mee'
+  fake.modeName = 'Take away'
+  await page.goto(`/volg/${TOKEN}`)
+  await expect(page.getByTestId('order-mode')).toHaveText('Take away')
+})
+
+test('a direct link to one ordering mode (a poster at the take-away window) skips the choice', async ({ phone: page, fake }) => {
+  fake.takeAway = true
+  await page.goto(`/bestel/${CODE}?m=m-mee`)
+  await expect(page.getByRole('button', { name: 'Frieten in een doosje toevoegen' })).toBeVisible()
+  await expect(page.getByTestId('choose-mode')).toHaveCount(0)
   await noSidewaysScroll(page)
 })
 
@@ -318,6 +418,7 @@ test('on a tab: order, order more on the same tab, settle at the end — on a ph
   await page.getByRole('button', { name: 'Verder' }).click()
   await page.getByTestId('add-round').getByRole('button', { name: 'Toevoegen aan mijn rekening' }).click()
   expect(fake.rounds).toEqual([{ lines: [{ variantId: 'v-frieten', quantity: 1 }] }])
+  expect(fake.placed[0].modeId).toBe('m-plaatse')
   expect(fake.placed).toHaveLength(1)
   await expect(page.getByText('Je rekening #7')).toBeVisible()
 

@@ -130,20 +130,44 @@ export class FakeCatalogAdmin {
     if (/^\/api\/organizations\/[^/]+\/device-pairings(\/.*)?$/.test(path)) return this.pairingRoute(method, path, body)
     if (path.startsWith('/api/bancontact/sumup/readers')) return this.sumupRoute(method, path, body)
     if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'GET') return ok(this.events)
-    // An event's menu, self-ordering and numbers (arcanum-backend events.ts).
+    // An event's ordering modes, self-ordering and numbers (arcanum-backend events.ts).
+    const modeRoute = path.match(/^\/api\/organizations\/[^/]+\/events\/([^/]+)\/modes(?:\/([^/]+))?$/)
+    if (modeRoute) {
+      const e = this.events.find((x) => x.id === modeRoute[1])
+      if (!e) return { status: 404, body: { error: 'Evenement niet gevonden', code: 'event_not_found' } }
+      e.modes ??= []
+      this.eventCalls.push({ path, body: method === 'DELETE' ? 'DELETE' : body })
+      const usable = () => e.modes.some((mode: any) => mode.selfOrder && mode.catalogId)
+      if (!modeRoute[2] && method === 'POST') {
+        if (!body.name?.trim()) return { status: 400, body: { error: 'Geef de bestelwijze een naam', code: 'order_mode_needs_name' } }
+        const catalogId = body.catalogId ?? null
+        e.modes.push({ id: this.id('mode'), name: body.name.trim(), catalogId, selfOrder: !!catalogId, kassa: true, payAtCounter: true, payBancontact: false, tabs: false })
+        return { status: 201, body: e }
+      }
+      const index = e.modes.findIndex((mode: any) => mode.id === modeRoute[2])
+      if (index < 0) return { status: 404, body: { error: 'Bestelwijze niet gevonden', code: 'order_mode_not_found' } }
+      if (method === 'DELETE') e.modes.splice(index, 1)
+      if (method === 'PATCH') {
+        const mode = e.modes[index]
+        for (const key of ['name', 'catalogId', 'selfOrder', 'kassa', 'payAtCounter', 'payBancontact', 'tabs']) if (body[key] !== undefined) mode[key] = body[key]
+        if (!mode.catalogId) mode.selfOrder = false
+        const to = body.move === 'up' ? index - 1 : body.move === 'down' ? index + 1 : index
+        if (to !== index && e.modes[to]) [e.modes[index], e.modes[to]] = [e.modes[to], e.modes[index]]
+      }
+      if (e.selfOrder?.enabled && !usable()) e.selfOrder.enabled = false
+      return ok(e)
+    }
     const event = path.match(/^\/api\/organizations\/[^/]+\/events\/([^/]+)(?:\/(self-order-code|reset-numbers))?$/)
     if (event) {
       const e = this.events.find((x) => x.id === event[1])
       if (!e) return { status: 404, body: { error: 'Evenement niet gevonden', code: 'event_not_found' } }
       e.selfOrder ??= { enabled: false, code: null }
+      e.modes ??= []
       e.lastOrderNumber ??= 0
       if (!event[2] && method === 'PATCH') {
-        if (body.catalogId !== undefined) e.catalogId = body.catalogId
+        if (body.selfOrderEnabled === true && !e.modes.some((mode: any) => mode.selfOrder && mode.catalogId))
+          return { status: 400, body: { error: 'Kies eerst een menukaart voor dit evenement', code: 'self_order_needs_menu' } }
         if (body.selfOrderEnabled !== undefined) e.selfOrder.enabled = body.selfOrderEnabled
-        if (body.payAtCounter !== undefined) e.selfOrder.payAtCounter = body.payAtCounter
-        if (body.payBancontact !== undefined) e.selfOrder.payBancontact = body.payBancontact
-        if (body.tabs !== undefined) e.selfOrder.tabs = body.tabs
-        if (e.selfOrder.enabled && !e.catalogId) return { status: 400, body: { error: 'Kies eerst een menukaart voor dit evenement', code: 'self_order_needs_menu' } }
         if (e.selfOrder.enabled && !e.selfOrder.code) e.selfOrder.code = `code-${this.id('c')}`
         this.eventCalls.push({ path, body })
         return ok(e)

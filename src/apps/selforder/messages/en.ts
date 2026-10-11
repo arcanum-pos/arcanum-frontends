@@ -52,6 +52,15 @@ const en: SelfOrderMessages = {
   live: 'Live',
   offline: 'No connection — reconnecting…',
   soundOn: 'Sound on when ready',
+  chooseMode: 'How would you like to order?',
+  changeMode: 'Change',
+  modeGone: 'Ordering more this way isn’t possible any more. Order at the counter.',
+  keepLink: 'Keep this link',
+  keepLinkHint: 'If you close this window, this link brings you back to your order. Send it to yourself or copy it.',
+  share: 'Share',
+  shareText: (number: number) => `My order #${number}`,
+  copyLink: 'Copy link',
+  linkCopied: 'Copied',
 }
 
 export default en

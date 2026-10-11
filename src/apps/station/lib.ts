@@ -14,6 +14,9 @@ export interface Ticket {
   // On a tab paid when the guest leaves: prepared unpaid.
   payLater?: boolean
   selfOrder: boolean
+  // Its ordering mode ("Take away") when the event has more than one —
+  // information only: the station got it from the products' prep station.
+  mode?: string | null
   lines: { name: string; quantity: number; voided: number; note: string | null }[]
 }
 

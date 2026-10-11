@@ -1,34 +1,43 @@
-// Console: an event's menu, self-ordering (its link and QR code) and order
-// numbers; a station screen as a device — DOMAIN_MODEL.md "Self-ordering and
-// station screens". Answered by fake-catalog-admin.ts.
+// Console: an event's ordering modes (each its menu), self-ordering (its
+// link and QR code) and order numbers; a station screen as a device —
+// DOMAIN_MODEL.md "Self-ordering and station screens". Answered by fake-catalog-admin.ts.
 import { expect, test } from './console-fixtures'
 
 function call(admin: any, method: string, path: string, body?: unknown) {
   return admin.handle(method, `/api/organizations/org-e2e${path}`, body)
 }
 
-test('an event: pick a menu, switch self-ordering on, and get its link and QR code', async ({ console: open, page, catalogAdmin }) => {
+test('an event: add an ordering mode with a menu, switch self-ordering on, and get its link and QR code', async ({ console: open, page, catalogAdmin }) => {
   call(catalogAdmin, 'POST', '/catalogs', { name: 'Fuifkaart' })
-  catalogAdmin.events = [{ id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', catalogId: null, selfOrder: { enabled: false, code: null }, lastOrderNumber: 41 }]
+  catalogAdmin.events = [{ id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 41 }]
   await open('/events')
   const row = page.getByRole('row').filter({ hasText: 'Fuif' })
   await expect(row).toContainText('Uit')
   await row.getByRole('button', { name: 'Instellen' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('heading', { name: 'Fuif — instellen' })).toBeVisible()
-  // No menu yet: self-ordering can't be switched on.
+  // No ordering mode yet: self-ordering can't be switched on.
+  await expect(dialog.getByText('Nog geen bestelwijzen.')).toBeVisible()
   await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeDisabled()
 
-  await dialog.getByRole('combobox', { name: 'Menukaart' }).click()
+  // A mode, free text; then its menu — guests order with it.
+  await dialog.getByRole('combobox', { name: 'Nieuwe bestelwijze' }).fill('Ter plaatse')
+  await dialog.getByRole('button', { name: 'Toevoegen' }).click()
+  const mode = dialog.locator('[data-testid="order-mode"][data-name="Ter plaatse"]')
+  await expect(mode).toBeVisible()
+  await expect(mode.getByRole('switch', { name: /^Met de QR-code/ })).toBeDisabled()
+  await mode.getByRole('combobox', { name: 'Menukaart — Ter plaatse' }).click()
   await page.getByRole('option', { name: 'Fuifkaart' }).click()
+  await expect(mode.getByRole('switch', { name: /^Met de QR-code/ })).toBeChecked()
+  await expect(mode.getByRole('switch', { name: /^Aan de kassa/ })).toBeChecked()
   await dialog.getByRole('switch', { name: 'Zelfbestellen' }).click()
   const link = dialog.getByTestId('self-order-link')
   await expect(link.getByLabel('Link voor gasten')).toHaveValue(/\/bestel\/code-/)
   await expect(link.locator('svg title')).toHaveText('QR-code om te bestellen')
-  expect(catalogAdmin.eventCalls.map((c: any) => c.body)).toEqual([{ catalogId: expect.any(String) }, { selfOrderEnabled: true }])
+  expect(catalogAdmin.eventCalls.map((c: any) => c.body)).toEqual([{ name: 'Ter plaatse' }, { catalogId: expect.any(String), selfOrder: true }, { selfOrderEnabled: true }])
 
-  // How guests pay: the counter by default, Bancontact as well.
-  const pay = dialog.getByTestId('pay-methods')
+  // How guests pay in this mode: the counter by default, Bancontact as well.
+  const pay = mode.getByTestId('pay-methods')
   await expect(pay.getByRole('switch', { name: 'Aan de toog, met hun nummer' })).toBeChecked()
   await pay.getByRole('switch', { name: 'Met Bancontact, op hun telefoon' }).click()
   await expect(pay.getByRole('switch', { name: 'Met Bancontact, op hun telefoon' })).toBeChecked()
@@ -52,7 +61,55 @@ test('an event: pick a menu, switch self-ordering on, and get its link and QR co
 
   await page.keyboard.press('Escape')
   await expect(row).toContainText('Aan')
-  await expect(row).toContainText('Fuifkaart')
+  await expect(row).toContainText('Ter plaatse')
+})
+
+test('several ordering modes: renamed, moved, a direct link each, removed — the last QR mode gone switches self-ordering off', async ({ console: open, page, catalogAdmin }) => {
+  const menu = call(catalogAdmin, 'POST', '/catalogs', { name: 'Fuifkaart' }).body
+  const takeAwayMenu = call(catalogAdmin, 'POST', '/catalogs', { name: 'Take away' }).body
+  const qrMode = (id: string, name: string, catalogId: string) => ({ id, name, catalogId, selfOrder: true, kassa: true, payAtCounter: true, payBancontact: false, tabs: false })
+  catalogAdmin.events = [
+    {
+      id: 'ev1',
+      name: 'Fuif',
+      date: '2026-10-11',
+      createdAt: '2026-10-01T10:00:00Z',
+      selfOrder: { enabled: true, code: 'code-1' },
+      modes: [qrMode('m1', 'Ter plaatse', menu.id), qrMode('m2', 'Meenemen', takeAwayMenu.id)],
+      lastOrderNumber: 0,
+    },
+  ]
+  await open('/events')
+  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
+  const dialog = page.getByRole('dialog')
+  const modes = dialog.getByTestId('order-mode')
+  await expect(modes).toHaveCount(2)
+  // Each QR mode a direct link (a poster at the take-away window).
+  await expect(modes.nth(1).getByRole('textbox').last()).toHaveValue(/\/bestel\/code-1\?m=m2$/)
+
+  // Renamed (saved when leaving the field), then moved up.
+  const name = modes.nth(1).getByRole('textbox', { name: 'Naam van de bestelwijze' })
+  await name.fill('Take away')
+  await name.press('Enter')
+  await expect(page.locator('[data-testid="order-mode"][data-name="Take away"]')).toBeVisible()
+  await modes.nth(1).getByRole('button', { name: 'Hoger' }).click()
+  await expect(modes.first()).toHaveAttribute('data-name', 'Take away')
+  expect(catalogAdmin.eventCalls.map((c: any) => c.body)).toEqual([{ name: 'Take away' }, { move: 'up' }])
+
+  // A kassa-only mode, from the suggestions' wording.
+  await dialog.getByRole('combobox', { name: 'Nieuwe bestelwijze' }).fill('Alleen aan de kassa')
+  await dialog.getByRole('button', { name: 'Toevoegen' }).click()
+  await expect(modes).toHaveCount(3)
+  await expect(modes.nth(2).getByRole('switch', { name: /^Met de QR-code/ })).not.toBeChecked()
+  await expect(modes.nth(2).getByTestId('pay-methods')).toHaveCount(0)
+
+  // Both QR modes off the QR (one removed, one switched off): self-ordering goes off.
+  page.once('dialog', (d) => d.accept())
+  await modes.first().getByRole('button', { name: 'Verwijderen' }).click()
+  await expect(modes).toHaveCount(2)
+  await modes.first().getByRole('switch', { name: /^Met de QR-code/ }).click()
+  await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).not.toBeChecked()
+  await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeDisabled()
 })
 
 test('Toestel toevoegen: a station screen for one station', async ({ console: open, page, catalogAdmin }) => {

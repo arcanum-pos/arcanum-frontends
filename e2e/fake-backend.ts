@@ -102,6 +102,10 @@ interface Tab {
   eventNumber?: number | null
   source?: string
   followUrl?: string | null
+  // Its ordering mode (like tabs.order_mode_id), and the name the backend
+  // shows when the event has more than one.
+  orderModeId?: string | null
+  orderMode?: string | null
   // "Gelijk verdelen" plan, like the backend's tabs.split_parts / split_paid.
   splitParts?: number | null
   splitPaid?: number
@@ -111,6 +115,7 @@ export interface FakeEvent {
   id: string
   name: string
   date: string
+  modes?: { id: string; name: string; kassa: boolean }[]
 }
 
 export interface FakeCharge {
@@ -474,8 +479,15 @@ export class FakeBackend {
         }
         const priced = body.lines?.length ? this.priceLines(body.lines, body.catalogId) : []
         if (typeof priced === 'string') return { status: 400, body: { error: priced, code: REFUSAL_CODES[priced] } }
+        // Like the backend: a kassa mode of that event; left out, its only one.
+        const kassaModes = (this.events.find((e) => e.id === body.eventId)?.modes ?? []).filter((mode) => mode.kassa)
+        const mode = body.orderModeId ? kassaModes.find((x) => x.id === body.orderModeId) : kassaModes.length === 1 ? kassaModes[0] : undefined
+        if (body.orderModeId && !mode) return { status: 400, body: { error: 'Onbekende bestelwijze — kies ze opnieuw', code: 'unknown_order_mode' } }
         const tab = this.openTab(body.label || '')
         tab.eventId = body.eventId ?? null
+        tab.orderModeId = mode?.id ?? null
+        const allModes = this.events.find((e) => e.id === body.eventId)?.modes ?? []
+        tab.orderMode = mode && allModes.length > 1 ? mode.name : null
         tab.openedDeviceName = body.deviceName || null
         if (priced.length) this.addOrder(tab.id, priced)
         return { status: 201, body: this.detail(tab) }

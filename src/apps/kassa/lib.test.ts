@@ -244,6 +244,7 @@ describe('tabTitle', () => {
   it('falls back to "Rekening #n" without a label', () => {
     expect(tabTitle(m, { number: 12, label: '' })).toBe('Rekening #12')
     expect(tabTitle(en, { number: 12, label: '' })).toBe('Bill #12')
+    expect(tabTitle(m, { number: 12, label: '', eventNumber: 4, source: 'self_order', orderMode: 'Take away' })).toBe('Zelfbestelling #4 · Take away')
   })
 
   it('shows a Toog tab in the kassa\'s language (stored as "Toog" in every language)', () => {

@@ -23,7 +23,8 @@ export default defineConfig({
   },
   // WebKit too: the kassa is used in Safari (run `npx playwright install webkit` once).
   projects: [
-    { name: 'chromium', use: { browserName: 'chromium' } },
+    // --mute-audio: no sound from a test page reaches the speakers.
+    { name: 'chromium', use: { browserName: 'chromium', launchOptions: { args: ['--mute-audio'] } } },
     { name: 'webkit', use: { browserName: 'webkit' } },
   ],
   webServer: {

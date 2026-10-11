@@ -3,6 +3,7 @@ import type { KassaMessages } from './nl'
 export default {
   kassa: 'Till',
   eventHint: 'Sales are linked to this event (Settings → Event)',
+  orderMode: 'Ordering mode for a new order',
   catalogNamed: (name: string) => `Menu ${name}`,
   openDisplay: 'Open customer display',
   settings: 'Settings',

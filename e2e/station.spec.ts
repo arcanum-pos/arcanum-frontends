@@ -16,6 +16,7 @@ interface FakeTicket {
   label: string
   paid: boolean
   payLater?: boolean
+  mode?: string | null
   selfOrder: boolean
   lines: { name: string; quantity: number; voided: number; note: string | null }[]
 }
@@ -23,7 +24,7 @@ interface FakeTicket {
 class FakeStation {
   stationId: string | null = 'st-keuken'
   tickets: FakeTicket[] = [
-    ticket('t1', 5, true, [{ name: 'Frieten', quantity: 2, voided: 0, note: 'zonder zout' }]),
+    { ...ticket('t1', 5, true, [{ name: 'Frieten', quantity: 2, voided: 0, note: 'zonder zout' }]), mode: 'Take away' },
     ticket('t2', 6, false, [{ name: 'Croque', quantity: 1, voided: 0, note: null }], true),
     ticket('t3', 4, true, [{ name: 'Soep', quantity: 3, voided: 1, note: null }]),
     // On a tab paid when the guest leaves: made unpaid.
@@ -93,6 +94,9 @@ test('shows its station; only paid orders by default — saying how many unpaid 
   await expect(ordered).toContainText('#5')
   await expect(ordered).toContainText('2× Frieten')
   await expect(ordered).toContainText('zonder zout')
+  // Its ordering mode, as information (the event has more than one).
+  await expect(ordered.locator('[data-number="5"]').getByTestId('ticket-mode')).toHaveText('Take away')
+  await expect(ordered.locator('[data-number="4"]').getByTestId('ticket-mode')).toHaveCount(0)
   // A line partly voided at the kassa: what's left, and how many were voided.
   await expect(ordered).toContainText('2× Soep')
   await expect(ordered).toContainText('1 geannuleerd')

@@ -286,27 +286,49 @@ export async function listTransactions(orgId: string, eventId?: string): Promise
 }
 
 // The org's events (arcanum-backend organizations/events.ts): name + date,
-// what tabs and sales are tagged with — plus an event's menu, its
-// self-ordering (on/off, the code in its public URL/QR) and its own short
-// order numbers (DOMAIN_MODEL.md "Self-ordering and station screens").
+// what tabs and sales are tagged with — plus an event's self-ordering (on/off,
+// the code in its public URL/QR), its ordering modes (bestelwijzen) and its
+// own short order numbers (DOMAIN_MODEL.md "Self-ordering and station screens").
+export interface OrderMode {
+  id: string
+  name: string
+  catalogId: string | null
+  // Where it's used: with the event's QR code, at the kassa.
+  selfOrder: boolean
+  kassa: boolean
+  // With the QR: how guests pay, and ordering on their tab.
+  payAtCounter: boolean
+  payBancontact: boolean
+  tabs: boolean
+}
+
 export interface Event {
   id: string
   name: string
   date: string
   createdAt: string
-  catalogId?: string | null
-  // How guests may pay: at the counter and/or with Bancontact on their phone.
-  selfOrder?: { enabled: boolean; code: string | null; payAtCounter?: boolean; payBancontact?: boolean; tabs?: boolean }
+  selfOrder?: { enabled: boolean; code: string | null }
+  modes?: OrderMode[]
   // The last order number given out (0: the next is #1).
   lastOrderNumber?: number
 }
 
-export function updateEvent(
-  orgId: string,
-  eventId: string,
-  fields: { name?: string; date?: string; catalogId?: string | null; selfOrderEnabled?: boolean; payAtCounter?: boolean; payBancontact?: boolean; tabs?: boolean }
-): Promise<Event> {
+export function updateEvent(orgId: string, eventId: string, fields: { name?: string; date?: string; selfOrderEnabled?: boolean }): Promise<Event> {
   return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify(fields) })
+}
+
+export type OrderModeFields = Partial<Omit<OrderMode, 'id'>> & { move?: 'up' | 'down' }
+
+export function createOrderMode(orgId: string, eventId: string, fields: OrderModeFields & { name: string }): Promise<Event> {
+  return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}/modes`, { method: 'POST', body: JSON.stringify(fields) })
+}
+
+export function updateOrderMode(orgId: string, eventId: string, modeId: string, fields: OrderModeFields): Promise<Event> {
+  return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}/modes/${encodeURIComponent(modeId)}`, { method: 'PATCH', body: JSON.stringify(fields) })
+}
+
+export function deleteOrderMode(orgId: string, eventId: string, modeId: string): Promise<Event> {
+  return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}/modes/${encodeURIComponent(modeId)}`, { method: 'DELETE' })
 }
 
 export function newSelfOrderCode(orgId: string, eventId: string): Promise<Event> {
