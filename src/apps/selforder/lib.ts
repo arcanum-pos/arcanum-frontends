@@ -18,6 +18,8 @@ export interface MenuMode {
   id: string
   name: string
   payment: { counter: boolean; bancontact: boolean; tab?: boolean }
+  // On a tab: a name and a mobile number or e-mail asked when it opens.
+  contact?: boolean
   catalog: MenuCatalog
 }
 

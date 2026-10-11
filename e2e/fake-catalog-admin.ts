@@ -150,7 +150,7 @@ export class FakeCatalogAdmin {
       if (method === 'PATCH') {
         const mode = e.modes[index]
         if (body.notifySms === true && !e.sms) return { status: 400, body: { error: 'Sms is niet ingesteld voor deze installatie (installer → Geavanceerd → Sms)', code: 'sms_not_configured' } }
-        for (const key of ['name', 'catalogId', 'selfOrder', 'kassa', 'payAtCounter', 'payBancontact', 'tabs', 'notifySms']) if (body[key] !== undefined) mode[key] = body[key]
+        for (const key of ['name', 'catalogId', 'selfOrder', 'kassa', 'payAtCounter', 'payBancontact', 'tabs', 'tabContact', 'notifySms']) if (body[key] !== undefined) mode[key] = body[key]
         if (!mode.catalogId) mode.selfOrder = false
         const to = body.move === 'up' ? index - 1 : body.move === 'down' ? index + 1 : index
         if (to !== index && e.modes[to]) [e.modes[index], e.modes[to]] = [e.modes[to], e.modes[index]]

@@ -101,6 +101,11 @@ export function TabPanel({
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-[15px] font-semibold tracking-tight">{title}</h2>
             <p className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">{subtitle}</p>
+            {tab?.contact && (
+              <p className="mt-0.5 truncate text-[12px] text-muted-foreground" data-testid="tab-contact">
+                {[tab.contact.phone, tab.contact.email].filter(Boolean).join(' · ')}
+              </p>
+            )}
           </div>
           {tab && (
             <Button variant="outline" size="sm" disabled={locked} onClick={onRename}>

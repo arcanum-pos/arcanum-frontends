@@ -25,3 +25,13 @@ test('a self-order shows as "Zelfbestelling #5"; typing its number opens it', as
   await expect(kassa.getByRole('alert').filter({ hasText: 'Geen open bestelling #9' })).toBeAttached()
   await expect(find).toHaveAttribute('aria-invalid', 'true')
 })
+
+test("a guest's tab with contact details: its name, and how to reach them", async ({ kassa, backend }) => {
+  const tab = backend.openTab('Jan Peeters', [{ name: 'Pils', unitPriceCents: 250, quantity: 2 }])
+  tab.eventNumber = 8
+  tab.source = 'self_order'
+  tab.contact = { phone: '+32470123456', email: 'jan@example.be' }
+  await kassa.reload()
+  await kassa.getByRole('button', { name: /^#8 Jan Peeters/ }).click()
+  await expect(panel(kassa).getByTestId('tab-contact')).toHaveText('+32470123456 · jan@example.be')
+})

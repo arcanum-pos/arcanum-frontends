@@ -113,6 +113,8 @@ const nl = {
     payBancontactHint: 'Kan alleen als Bancontact ingesteld is (Instellingen → Betalingen). Minstens één van beide moet aan staan.',
     tabs: 'Bijbestellen op hun rekening, betalen bij vertrek',
     tabsHint: 'Alles komt op één rekening; stations maken het onbetaald klaar. Betalen gebeurt bij vertrek, aan de toog of met Bancontact. Er is geen controle dat iedereen betaalt.',
+    tabContact: 'Naam en gsm-nummer of e-mail vragen',
+    tabContactHint: 'Bij het openen van de rekening: zo vind je wie vergat te betalen. Niet gecontroleerd; gewist zodra de rekening betaald is.',
     link: 'Link voor gasten',
     copy: 'Link kopiëren',
     copied: 'Gekopieerd',

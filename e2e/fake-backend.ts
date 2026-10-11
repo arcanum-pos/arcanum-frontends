@@ -106,6 +106,8 @@ interface Tab {
   // shows when the event has more than one.
   orderModeId?: string | null
   orderMode?: string | null
+  // A guest's tab: how to reach them (the backend sends it with the detail).
+  contact?: { phone: string | null; email: string | null } | null
   // "Gelijk verdelen" plan, like the backend's tabs.split_parts / split_paid.
   splitParts?: number | null
   splitPaid?: number

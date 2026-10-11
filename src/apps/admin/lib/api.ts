@@ -302,6 +302,8 @@ export interface OrderMode {
   tabs: boolean
   // An SMS to the guest when a station's part is ready (MESSAGING.md).
   notifySms?: boolean
+  // On a tab: opening it asks a name and a mobile number or e-mail.
+  tabContact?: boolean
 }
 
 export interface Event {

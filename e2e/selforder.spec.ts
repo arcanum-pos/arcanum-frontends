@@ -17,6 +17,8 @@ type Station = { name: string; status: 'ordered' | 'in_progress' | 'ready' | 'de
 class FakeSelfOrder {
   open = true
   payment: { counter: boolean; bancontact: boolean; tab?: boolean } = { counter: true, bancontact: false }
+  // On a tab: a name and a mobile number or e-mail asked when it opens.
+  contact = false
   tabOpen = false
   rounds: any[] = []
   // The follow page's payment block (a self-order waiting for payment).
@@ -40,6 +42,7 @@ class FakeSelfOrder {
         id: 'm-plaatse',
         name: 'Ter plaatse',
         payment: this.payment,
+        contact: this.contact,
         catalog: {
           id: 'c',
           sections: [
@@ -564,4 +567,27 @@ test('a new order from the order page itself: the choice again too', async ({ ph
   await page.getByRole('button', { name: 'Nieuwe bestelling' }).click()
   await expect(page.getByTestId('choose-mode')).toBeVisible()
   await expect(page).toHaveURL(new RegExp(`/bestel/${CODE}$`))
+})
+
+test('on a tab whose mode asks it: a name and a mobile number or e-mail first — on a small phone', async ({ phone: page, fake }) => {
+  fake.payment = { counter: true, bancontact: false, tab: true }
+  fake.contact = true
+  fake.state = 'preparing'
+  fake.tabOpen = true
+  await page.goto(`/bestel/${CODE}`)
+  await page.getByRole('button', { name: 'Pils toevoegen' }).click()
+  await page.getByTestId('to-cart').click()
+  await page.getByRole('button', { name: 'Verder' }).click()
+  const form = page.getByTestId('tab-order')
+  await expect(form.getByTestId('tab-contact')).toContainText('Wie ben je?')
+  await noSidewaysScroll(page)
+  const order = form.getByRole('button', { name: 'Bestellen' })
+  await expect(order).toBeDisabled()
+  await form.getByLabel('Naam').fill('Jan')
+  // A name alone isn't enough: a number or an e-mail too.
+  await expect(order).toBeDisabled()
+  await form.getByLabel('E-mail').fill('jan@example.be')
+  await order.click()
+  expect(fake.placed).toEqual([{ modeId: 'm-plaatse', lines: [{ variantId: 'v-pils', quantity: 1 }], contact: { name: 'Jan', phone: '', email: 'jan@example.be' } }])
+  await expect(page.getByText('Je rekening #7')).toBeVisible()
 })

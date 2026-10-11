@@ -129,6 +129,8 @@ function SelfOrder({ code }: { code: string }) {
   const [placing, setPlacing] = useState(false)
   // Adding a round to the open tab (token) rather than a new order.
   const [round, setRound] = useState(false)
+  // Who opens a tab (a mode that asks it): name, and a mobile number or e-mail.
+  const [contact, setContact] = useState({ name: '', phone: '', email: '' })
 
   useEffect(() => {
     call<Menu>(`/api/public/self-order/${encodeURIComponent(code)}`)
@@ -155,7 +157,7 @@ function SelfOrder({ code }: { code: string }) {
 
   // Places the order — then, for Bancontact, straight on to paying it (the
   // order is remembered first, so coming back lands on step 4).
-  async function place(pay: 'counter' | 'bancontact' | 'tab') {
+  async function place(pay: 'counter' | 'bancontact' | 'tab', who?: typeof contact) {
     setPlacing(true)
     setError(null)
     unlockSound()
@@ -163,7 +165,7 @@ function SelfOrder({ code }: { code: string }) {
     try {
       const placed = await call<{ token: string; number: number }>(`/api/public/self-order/${encodeURIComponent(code)}/orders`, {
         method: 'POST',
-        body: JSON.stringify({ modeId: mode?.id, lines: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })) }),
+        body: JSON.stringify({ modeId: mode?.id, lines: lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })), ...(who ? { contact: who } : {}) }),
       })
       placedToken = placed.token
       setCart({})
@@ -381,19 +383,42 @@ function SelfOrder({ code }: { code: string }) {
 
   // step 2, a mode with tabs: the order goes on the tab, paid when leaving.
   if (mode.payment.tab) {
+    const asks = !!mode.contact
+    const complete = !asks || (contact.name.trim() !== '' && (contact.phone.trim() !== '' || contact.email.trim() !== ''))
+    const field = 'h-12 w-full min-w-0 rounded-lg border bg-background px-3 text-base'
     return (
       <Shell title={menu.eventName} step={2}>
-        <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="tab-order">
+        <form
+          className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+          data-testid="tab-order"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (complete) void place('tab', asks ? contact : undefined)
+          }}
+        >
           <h2 className="text-xl font-bold">{m.tabOrder}</h2>
           <p className="text-sm">{m.tabOrderHint}</p>
+          {asks && (
+            <fieldset className="flex flex-col gap-2 border-t pt-3" data-testid="tab-contact">
+              <legend className="pt-3 font-semibold">{m.contactTitle}</legend>
+              <p className="text-sm text-muted-foreground">{m.contactHint}</p>
+              <label className="text-sm font-medium" htmlFor="contact-name">{m.contactName}</label>
+              <input id="contact-name" className={field} required maxLength={40} autoComplete="name" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} />
+              <label className="text-sm font-medium" htmlFor="contact-phone">{m.contactPhone}</label>
+              <input id="contact-phone" className={field} type="tel" inputMode="tel" autoComplete="tel" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} placeholder={m.smsPlaceholder} />
+              <label className="text-sm font-medium" htmlFor="contact-email">{m.contactEmail}</label>
+              <input id="contact-email" className={field} type="email" autoComplete="email" value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} />
+              <p className="text-xs text-muted-foreground">{m.contactPrivacy}</p>
+            </fieldset>
+          )}
           <div className="flex items-baseline justify-between border-t pt-3 text-lg font-semibold">
             <span>{m.total}</span>
             <span className="tabular-nums">{formatEuro(totals.cents)}</span>
           </div>
-          <Button size="lg" className="h-14 text-base" onClick={() => place('tab')} disabled={placing || lines.length === 0}>
+          <Button type="submit" size="lg" className="h-14 text-base" disabled={placing || lines.length === 0 || !complete}>
             {placing ? m.placing : m.tabOrder}
           </Button>
-        </section>
+        </form>
         {error && <p className="mt-3 text-sm text-destructive" role="alert">{error}</p>}
         <Button variant="ghost" size="lg" className="mt-3 h-12" onClick={() => setStep(1)} disabled={placing}>
           {m.steps.cart}

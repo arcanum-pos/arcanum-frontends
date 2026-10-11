@@ -100,6 +100,8 @@ export default {
     payBancontactHint: 'Uniquement si Bancontact est configuré (Paramètres → Paiements). Au moins l’un des deux doit être activé.',
     tabs: 'Commander sur leur note, payer en partant',
     tabsHint: 'Tout va sur une seule note ; les postes préparent sans paiement. Le paiement se fait en partant, au comptoir ou avec Bancontact. Rien ne garantit que chacun paie.',
+    tabContact: 'Demander un nom et un numéro de GSM ou un e-mail',
+    tabContactHint: 'À l’ouverture de la note : pour retrouver qui a oublié de payer. Non vérifié ; effacé dès que la note est payée.',
     link: 'Lien pour les invités',
     copy: 'Copier le lien',
     copied: 'Copié',

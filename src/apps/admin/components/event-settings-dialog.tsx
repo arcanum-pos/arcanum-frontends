@@ -289,6 +289,15 @@ function ModeCard({
             <Switch checked={mode.tabs} disabled={busy} onCheckedChange={(on) => onChange({ tabs: on })} aria-label={m.tabs} />
           </label>
           <p className="text-xs text-muted-foreground">{m.tabsHint}</p>
+          {mode.tabs && (
+            <>
+              <label className="mt-1 flex items-center justify-between gap-3 text-sm">
+                {m.tabContact}
+                <Switch checked={!!mode.tabContact} disabled={busy} onCheckedChange={(on) => onChange({ tabContact: on })} aria-label={m.tabContact} />
+              </label>
+              <p className="text-xs text-muted-foreground">{m.tabContactHint}</p>
+            </>
+          )}
         </div>
       )}
       <div className="grid gap-1">

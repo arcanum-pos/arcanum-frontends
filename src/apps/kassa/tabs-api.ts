@@ -78,6 +78,8 @@ export interface TabDetail extends TabSummary {
   payments?: TabPayment[]
   // Something to prepare: where the customer follows it (the customer display's QR once paid).
   followUrl?: string | null
+  // A guest's tab whose ordering mode asks it: how to reach them (its name is the label), while it's open.
+  contact?: { phone: string | null; email: string | null } | null
 }
 
 // A line as the kassa builds it, before it's submitted as part of an order.

@@ -46,6 +46,10 @@ test('an event: add an ordering mode with a menu, switch self-ordering on, and g
   await pay.getByRole('switch', { name: 'Bijbestellen op hun rekening, betalen bij vertrek' }).click()
   await expect(pay.getByRole('switch', { name: 'Bijbestellen op hun rekening, betalen bij vertrek' })).toBeChecked()
   expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ tabs: true })
+  // On a tab: who's behind it, asked when it opens.
+  await pay.getByRole('switch', { name: 'Naam en gsm-nummer of e-mail vragen' }).click()
+  await expect(pay.getByRole('switch', { name: 'Naam en gsm-nummer of e-mail vragen' })).toBeChecked()
+  expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ tabContact: true })
 
   // Another name in the readable link.
   await link.getByLabel('Naam in de link').fill('Spaghetti Fouriers')

@@ -100,6 +100,8 @@ export default {
     payBancontactHint: 'Only when Bancontact is set up (Settings → Payments). At least one of the two must be on.',
     tabs: 'Order on their tab, pay when leaving',
     tabsHint: 'Everything goes on one tab; stations prepare it unpaid. Paying happens when leaving, at the counter or with Bancontact. Nothing checks that everyone pays.',
+    tabContact: 'Ask a name and mobile number or e-mail',
+    tabContactHint: 'When the tab opens: so you can find who forgot to pay. Not verified; erased once the tab is paid.',
     link: 'Link for guests',
     copy: 'Copy link',
     copied: 'Copied',
