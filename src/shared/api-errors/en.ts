@@ -53,6 +53,7 @@ export default {
   import_station_conflict: '{product}: a different station ("{value}") than on row {otherRow} ("{otherValue}") — rows {otherRow} and {row}',
   import_vat_conflict: '{product}: a different VAT rate ({value}) than on row {otherRow} ({otherValue}) — rows {otherRow} and {row}',
   import_duplicate_variant: '{name} is already on row {otherRow}',
+  import_product_ambiguous: '"{product}" is in more than one category — fill in the category on this row',
   import_duplicate_code: 'Code "{code}" is already on row {otherRow}',
   import_code_other_product: 'Code "{code}" belongs to product "{owner}", not to "{product}" (which already exists separately)',
   import_same_existing_product: '"{product}" and "{other}" refer to the same existing product "{existing}"',

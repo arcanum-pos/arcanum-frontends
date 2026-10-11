@@ -57,6 +57,7 @@ class FakeSelfOrder {
         id: 'm-mee',
         name: 'Take away',
         payment: { counter: false, bancontact: true },
+        contact: false,
         catalog: { id: 'c2', sections: [{ id: 's3', name: 'Mee', entries: [{ variantId: 'v-frieten-mee', name: 'Frieten in een doosje', priceCents: 450 }] }] },
       })
     return {

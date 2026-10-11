@@ -53,6 +53,7 @@ export default {
   import_station_conflict: '{product} : autre poste (« {value} ») qu’à la ligne {otherRow} (« {otherValue} ») — lignes {otherRow} et {row}',
   import_vat_conflict: '{product} : autre taux de TVA ({value}) qu’à la ligne {otherRow} ({otherValue}) — lignes {otherRow} et {row}',
   import_duplicate_variant: '{name} figure déjà à la ligne {otherRow}',
+  import_product_ambiguous: '« {product} » figure dans plus d’une catégorie — indiquez la catégorie sur cette ligne',
   import_duplicate_code: 'Le code « {code} » figure déjà à la ligne {otherRow}',
   import_code_other_product: 'Le code « {code} » appartient au produit « {owner} », pas à « {product} » (qui existe déjà séparément)',
   import_same_existing_product: '« {product} » et « {other} » renvoient au même produit existant « {existing} »',
