@@ -120,3 +120,27 @@ test("SumUp: the merchant code's account shown to confirm, then kept and shown o
   expect(saved).toEqual([{ merchantId: 'MABC123', apiKey: 'sup_sk' }, { merchantId: 'MABC123', apiKey: 'sup_sk', confirmMerchantId: 'MABC123' }])
   await expect(page.getByTestId('sumup-account')).toHaveText('Account: Scouts Kabouterland (merchant code MABC123)')
 })
+
+test('a SumUp sandbox merchant: flagged when confirming and on the card', async ({ console: open, page }) => {
+  let stored: any[] = []
+  await page.route(/\/api\/organizations\/[^/]+\/payment-credentials(\/sumup)?$/, async (route) => {
+    const req = route.request()
+    if (req.method() === 'GET') return route.fulfill({ json: stored })
+    const account = { merchantId: 'MSB1', name: 'Kabouterland Sandbox', sandbox: true }
+    if (req.postDataJSON().confirmMerchantId !== 'MSB1') return route.fulfill({ status: 409, json: { error: 'x', code: 'sumup_confirm_account', account } })
+    stored = [{ provider: 'sumup', configured: true, updatedAt: '2026-10-12T10:00:00Z', account }]
+    return route.fulfill({ json: { provider: 'sumup', configured: true } })
+  })
+  await open('/settings/payment-providers')
+  await expect(page.getByTestId('sumup-test')).toHaveCount(0)
+  const card = page.locator('[data-slot="card"]').filter({ hasText: 'SumUp' }).first()
+  await card.getByRole('button', { name: 'Sleutels instellen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Merchant code').fill('MSB1')
+  await dialog.getByLabel('API-key').fill('sup_sk')
+  await dialog.getByRole('button', { name: 'Controleren' }).click()
+  await expect(dialog.getByTestId('account-confirm')).toContainText('Volgens SumUp is dit een sandbox-account')
+  await dialog.getByRole('button', { name: 'Ja, bewaren' }).click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByTestId('sumup-test')).toHaveText('Test (sandbox)')
+})

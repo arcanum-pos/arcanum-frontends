@@ -117,6 +117,11 @@ export default function PaymentProvidersPage() {
                         {m.preprod}
                       </Badge>
                     )}
+                    {provider === 'sumup' && cred?.configured && cred.account?.sandbox === true && (
+                      <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300" data-testid="sumup-test">
+                        {m.sumupSandbox}
+                      </Badge>
+                    )}
                     <Badge variant={cred?.configured ? 'default' : 'secondary'}>{cred?.configured ? m.configured : m.notConfigured}</Badge>
                   </div>
                 </CardHeader>
@@ -212,6 +217,7 @@ export default function PaymentProvidersPage() {
                 </p>
                 <p className="text-xs text-muted-foreground">{editing === 'bancontact' ? m.bancontactConfirmHint(confirming.merchantId) : m.sumupConfirmHint(confirming.merchantId)}</p>
                 {editing === 'bancontact' && environment === 'preprod' && <p className="text-xs font-medium">{m.bancontactTestNote}</p>}
+                {editing === 'sumup' && confirming.sandbox === true && <p className="text-xs font-medium">{m.sumupSandboxNote}</p>}
               </div>
             )}
             {saveError && <p className="text-sm text-destructive">{saveError}</p>}

@@ -118,6 +118,8 @@ export interface BancontactAccount {
   name: string | null
   // Masked: country and last four digits.
   iban?: string | null
+  // SumUp: a sandbox (test) merchant, per its profile; null when it doesn't say.
+  sandbox?: boolean | null
 }
 
 export interface PaymentCredential {

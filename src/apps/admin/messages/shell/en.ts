@@ -116,6 +116,8 @@ export default {
   setKeys: 'Set keys',
   sumupAccount: (name: string, code: string) => `Account: ${name} (merchant code ${code})`,
   sumupNoName: 'name not readable with this key',
+  sumupSandbox: 'Test (sandbox)',
+  sumupSandboxNote: 'According to SumUp this is a sandbox account: payments on it are test payments, nothing is really paid.',
   sumupUnchecked: 'Not checked which SumUp account this key belongs to. Set the keys again to see and confirm it.',
   sumupCheckHint: 'Arcanum checks with SumUp that the key belongs to this merchant code, and shows the account to confirm.',
   sumupConfirmTitle: 'This merchant code and key belong to:',

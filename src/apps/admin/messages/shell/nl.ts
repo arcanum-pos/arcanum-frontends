@@ -120,6 +120,8 @@ const nl = {
   setKeys: 'Sleutels instellen',
   sumupAccount: (name: string, code: string) => `Account: ${name} (merchant code ${code})`,
   sumupNoName: 'naam niet op te halen met deze sleutel',
+  sumupSandbox: 'Test (sandbox)',
+  sumupSandboxNote: 'Volgens SumUp is dit een sandbox-account: betalingen erop zijn testbetalingen, er wordt niets echt betaald.',
   sumupUnchecked: 'Niet gecontroleerd bij welk SumUp-account deze sleutel hoort. Stel de sleutels opnieuw in om het te zien en te bevestigen.',
   sumupCheckHint: 'Arcanum kijkt bij SumUp na of de sleutel bij deze merchant code hoort, en toont het account om te bevestigen.',
   sumupConfirmTitle: 'Deze merchant code en sleutel horen bij:',
