@@ -2,7 +2,7 @@
 // the kassa, the customer display and the console with a scouts group's
 // spaghetti evening as sample data (sample.ts), in Dutch, French and English. Each is written as
 // <name>-<lang>.png to SHOTS_DIR (default: the website's public/screenshots).
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Page, WebSocketRoute } from '@playwright/test'
@@ -167,6 +167,144 @@ for (const lang of LANGS) {
       page = await open('/devices')
       await expect(page.getByText('rdr_3KQ8Z2V7XWJ4')).toBeVisible()
       await shot(page, 'console-devices', lang)
+    })
+  })
+}
+
+// Self-ordering, the station screens and the event's ordering modes.
+const DIST = path.resolve(HERE, '../dist')
+const PRICE = { bolo: 1200, veggie: 1200, kids: 700, pils: 220, cola: 220, pancake: 300 }
+
+// A guest's phone: the menu with a few things picked, and the order page
+// once the kitchen has it ready — side by side, as one picture.
+async function selfOrderShot(browser: import('@playwright/test').Browser, lang: Lang) {
+  const n = NAMES[lang]
+  const phone = await browser.newContext({ viewport: { width: 390, height: 760 }, deviceScaleFactor: 2, locale: BROWSER_LOCALE[lang], colorScheme: 'light' })
+  const page = await phone.newPage()
+  await page.addInitScript((l) => localStorage.setItem('arcanum-locale', l), lang)
+  await page.route(/\/(bestel|volg)\//, (route) =>
+    route.request().resourceType() === 'document' ? route.fulfill({ contentType: 'text/html', body: readFileSync(path.join(DIST, 'selforder.html'), 'utf8') }) : route.fallback()
+  )
+  await page.routeWebSocket(/\/orders\/connect/, () => {})
+  const entry = (key: keyof typeof PRICE) => ({ variantId: `v-${key}`, name: n.items[key], priceCents: PRICE[key] })
+  await page.route(/\/api\/public\//, (route) => {
+    const p = new URL(route.request().url()).pathname
+    if (p.startsWith('/api/public/self-order/'))
+      return route.fulfill({
+        json: {
+          eventName: n.event,
+          orgName: n.org,
+          locale: lang,
+          open: true,
+          modes: [
+            {
+              id: 'm-1',
+              name: n.modes[0],
+              payment: { counter: true, bancontact: true },
+              catalog: {
+                id: 'c',
+                sections: [
+                  { id: 's1', name: n.food, entries: [entry('bolo'), entry('veggie'), entry('kids')] },
+                  { id: 's2', name: n.drinks, entries: [entry('pils'), entry('cola')] },
+                  { id: 's3', name: n.desserts, entries: [entry('pancake')] },
+                ],
+              },
+            },
+          ],
+        },
+      })
+    return route.fulfill({
+      json: {
+        number: 12, eventName: n.event, orgName: n.org, locale: lang, selfOrder: true, modeId: 'm-1', mode: null, payLater: false, tabOpen: false,
+        state: 'ready', stations: [{ name: n.kitchen, status: 'ready' }, { name: n.bar, status: 'delivered' }],
+        lines: [{ name: n.items.bolo, quantity: 2, unitPriceCents: 1200 }, { name: n.items.pils, quantity: 2, unitPriceCents: 220 }],
+        totalCents: 2840, selfOrderCode: 'spaghetti-7kq2', hubTicket: null, payment: null, sms: null,
+      },
+    })
+  })
+  await page.goto('/bestel/spaghetti-7kq2')
+  for (const [key, times] of [['bolo', 2], ['pils', 2]] as const) {
+    for (let i = 0; i < times; i++) await page.getByTestId('menu-entry').filter({ hasText: n.items[key] }).getByRole('button').last().click()
+  }
+  await expect(page.getByTestId('to-cart')).toBeVisible()
+  // No button caught hovered.
+  await page.mouse.move(0, 0)
+  const menu = await page.screenshot({ animations: 'disabled' })
+  await page.goto('/volg/tok_abcdefghijklmnopqrstu')
+  await expect(page.getByTestId('follow')).toHaveAttribute('data-state', 'ready')
+  const ready = await page.screenshot({ animations: 'disabled' })
+  await phone.close()
+
+  // The two phones, on one 1024 × 640 picture like the other screenshots.
+  const canvas = await browser.newPage({ viewport: { width: 1024, height: 640 }, deviceScaleFactor: 2 })
+  const img = (png: Buffer) => `<img src="data:image/png;base64,${png.toString('base64')}">`
+  await canvas.setContent(`<html><body style="margin:0;height:640px;display:flex;gap:56px;align-items:center;justify-content:center;background:#f4f4f5">
+    <style>img{height:580px;border-radius:28px;border:6px solid #18181b;box-shadow:0 12px 32px rgba(0,0,0,.18)}</style>${img(menu)}${img(ready)}</body></html>`)
+  await canvas.screenshot({ path: path.join(OUT, `selforder-${lang}.png`) })
+  await canvas.close()
+}
+
+async function stationShot(page: Page, lang: Lang) {
+  const n = NAMES[lang]
+  const at = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString()
+  const t = (id: string, number: number, status: string, minutes: number, lines: [keyof typeof PRICE, number, string?][], extra = {}) => ({
+    id, tabId: `tab-${id}`, status, createdAt: at(minutes), updatedAt: at(minutes), number, label: '', paid: true, selfOrder: false,
+    lines: lines.map(([key, quantity, note]) => ({ name: n.items[key], quantity, voided: 0, note: note ?? null })), ...extra,
+  })
+  const tickets = [
+    t('a', 9, 'in_progress', 9, [['bolo', 3], ['kids', 2]]),
+    t('b', 10, 'in_progress', 7, [['veggie', 1, n.note], ['bolo', 1]], { selfOrder: true, mode: n.modes[1] }),
+    t('c', 11, 'ordered', 4, [['bolo', 2]], { selfOrder: true }),
+    t('d', 12, 'ordered', 2, [['kids', 1], ['veggie', 2]]),
+    t('e', 8, 'ready', 12, [['bolo', 4]], { label: n.tables[0] }),
+  ]
+  await page.addInitScript((l) => {
+    localStorage.setItem('arcanum-terminal', JSON.stringify({ terminalId: 'st-1', role: 'station', orgId: 'org-1', orgName: 'Scouts Kabouterland' }))
+    localStorage.setItem('arcanum-locale', l)
+  }, lang)
+  await page.routeWebSocket(/\/devices\/connect/, () => {})
+  await page.route(/\/api\//, (route) => {
+    const p = new URL(route.request().url()).pathname
+    if (p === '/api/devices/ws-token') return route.fulfill({ json: { token: 'tok' } })
+    if (p.endsWith('/devices/st-1')) return route.fulfill({ json: { terminal_id: 'st-1', org_id: 'org-1', role: 'station', station_id: 'st-k', station_name: n.kitchen } })
+    if (p.endsWith('/stations/st-k/tickets')) return route.fulfill({ json: tickets })
+    return route.fulfill({ status: 404, json: {} })
+  })
+  await page.goto('/station.html')
+  await expect(page.getByTestId('ticket')).toHaveCount(5)
+  await shot(page, 'station', lang)
+}
+
+async function eventShot(open: (path: string) => Promise<Page>, catalogAdmin: FakeCatalogAdmin, lang: Lang) {
+  const n = NAMES[lang]
+  seedMenu(catalogAdmin, lang)
+  const menu = catalogAdmin.catalogs[0]
+  const mode = (id: string, name: string, extra = {}) => ({ id, name, catalogId: menu.id, selfOrder: true, payAtCounter: true, payBancontact: true, tabs: false, notifySms: false, ...extra })
+  catalogAdmin.events = [
+    {
+      id: 'ev1', name: n.event, date: '2026-10-17', createdAt: '2026-10-01T10:00:00Z', sms: true, kassaModes: false, lastOrderNumber: 12,
+      selfOrder: { enabled: true, code: 'spaghetti-7kq2', linkName: 'spaghetti' },
+      modes: [mode('a1b2c3d4e5f6a7b8c9d0', n.modes[0], { tabs: true }), mode('f6e5d4c3b2a1f6e5d4c3', n.modes[1], { notifySms: true, payAtCounter: false })],
+    },
+  ]
+  const page = await open('/events')
+  await page.getByRole('row').filter({ hasText: n.event }).getByRole('button').last().click()
+  await expect(page.getByRole('dialog').getByTestId('order-mode')).toBeVisible()
+  // The installation's own address, not the test server's.
+  await page.locator('#self-order-url').evaluate((el: HTMLTextAreaElement) => (el.value = 'https://kassa.scoutskabouterland.be/bestel/spaghetti-7kq2'))
+  await page.mouse.move(0, 0)
+  await shot(page, 'console-event', lang)
+}
+
+for (const lang of LANGS) {
+  test.describe(`${lang}: self-ordering and stations`, () => {
+    test.use({ locale: BROWSER_LOCALE[lang] })
+    test('a guest orders and follows it on the phone', async ({ browser }) => selfOrderShot(browser, lang))
+    test("the kitchen's station screen", async ({ page }) => stationShot(page, lang))
+    test("an event's ordering modes in the console", async ({ console: open, catalogAdmin, page }) => {
+      await page.route(/\/api\/organizations$/, (route) => route.fulfill({ json: [{ id: ORG_ID, name: 'Scouts Kabouterland', logoUrl: null, theme: null, createdAt: '2026-01-01' }] }))
+      await page.route(/\/whoami$/, (route) => route.fulfill({ json: { sub: 'admin', email: 'an@scoutskabouterland.be', name: 'An Janssens', firstName: 'An', lastName: 'Janssens', username: 'an' } }))
+      await eventShot(open, catalogAdmin, lang)
     })
   })
 }

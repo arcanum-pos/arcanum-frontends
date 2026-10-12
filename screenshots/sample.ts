@@ -21,6 +21,12 @@ interface Names {
   display: string
   // Kassa buttons (src/apps/kassa/messages) used to get to a screen.
   ui: { overview: string; split: string; quick: string; pay: string }
+  // Self-ordering and stations: the event, its ordering modes, the stations.
+  event: string
+  modes: [string, string]
+  kitchen: string
+  bar: string
+  note: string
 }
 
 type Item = 'pils' | 'cola' | 'wine' | 'coffee' | 'bolo' | 'veggie' | 'kids' | 'pancake' | 'mousse'
@@ -38,6 +44,11 @@ export const NAMES: Record<Lang, Names> = {
     readers: ['Toog', 'Ingang'],
     display: 'Klantscherm toog',
     ui: { overview: 'Rekeningen', split: 'Splitsen', quick: 'Toog — direct afrekenen', pay: 'Afrekenen' },
+    event: 'Spaghettiavond 2026',
+    modes: ['Ter plaatse', 'Take-away'],
+    kitchen: 'Keuken',
+    bar: 'Bar',
+    note: 'zonder kaas',
   },
   fr: {
     org: 'Scouts Kabouterland',
@@ -50,6 +61,11 @@ export const NAMES: Record<Lang, Names> = {
     readers: ['Comptoir', 'Entrée'],
     display: 'Écran client comptoir',
     ui: { overview: 'Additions', split: 'Partager', quick: 'Comptoir — payer directement', pay: 'Encaisser' },
+    event: 'Souper spaghetti 2026',
+    modes: ['Sur place', 'À emporter'],
+    kitchen: 'Cuisine',
+    bar: 'Bar',
+    note: 'sans fromage',
   },
   en: {
     org: 'Scouts Kabouterland',
@@ -62,6 +78,11 @@ export const NAMES: Record<Lang, Names> = {
     readers: ['Bar', 'Entrance'],
     display: 'Bar customer display',
     ui: { overview: 'Bills', split: 'Split', quick: 'Counter — pay directly', pay: 'Charge' },
+    event: 'Spaghetti dinner 2026',
+    modes: ['Eat in', 'Take away'],
+    kitchen: 'Kitchen',
+    bar: 'Bar',
+    note: 'no cheese',
   },
 }
 
