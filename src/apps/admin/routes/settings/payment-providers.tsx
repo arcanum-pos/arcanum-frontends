@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { listPaymentCredentials, setPaymentCredential, type PaymentCredential } from '../../lib/api'
+import { listPaymentCredentials, saveBancontactKey, setPaymentCredential, type BancontactAccount, type PaymentCredential } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
 import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
@@ -42,6 +42,8 @@ export default function PaymentProvidersPage() {
   const [environment, setEnvironment] = useState('prod')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  // Bancontact: the account the key pays out to, to confirm before it's kept.
+  const [confirming, setConfirming] = useState<BancontactAccount | null>(null)
 
   function openEditor(provider: PaymentCredential['provider']) {
     setEditing(provider)
@@ -49,6 +51,7 @@ export default function PaymentProvidersPage() {
     setSumupMerchantId('')
     setEnvironment('prod')
     setSaveError(null)
+    setConfirming(null)
   }
 
   async function handleSave() {
@@ -56,10 +59,18 @@ export default function PaymentProvidersPage() {
     setSaving(true)
     setSaveError(null)
     try {
-      const config: Record<string, unknown> =
-        editing === 'bancontact' ? { apiKey, environment } : { merchantId: sumupMerchantId, apiKey }
-      await setPaymentCredential(orgId, editing, config)
+      if (editing === 'bancontact') {
+        // First: which account does it pay out to? Then, confirmed: kept.
+        const result = await saveBancontactKey(orgId, { apiKey, environment, ...(confirming ? { confirmMerchantId: confirming.merchantId } : {}) })
+        if ('confirm' in result) {
+          setConfirming(result.confirm)
+          return
+        }
+      } else {
+        await setPaymentCredential(orgId, editing, { merchantId: sumupMerchantId, apiKey })
+      }
       setEditing(null)
+      setConfirming(null)
       reload()
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : String(err))
@@ -106,6 +117,11 @@ export default function PaymentProvidersPage() {
                   </Badge>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
+                  {provider === 'bancontact' && cred?.configured && (
+                    <p className={`text-sm ${cred.account ? '' : 'text-destructive'}`} data-testid="bancontact-account">
+                      {cred.account ? m.bancontactPaysTo(cred.account.name ?? cred.account.merchantId, cred.account.iban ?? '') : m.bancontactUnchecked}
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     {m.providerHelp[provider]}{' '}
                     <a href={docsUrl(provider)} target="_blank" rel="noopener" className="underline underline-offset-4 hover:text-foreground">
@@ -138,12 +154,27 @@ export default function PaymentProvidersPage() {
             )}
             <div className="grid gap-2">
               <Label htmlFor="provider-api-key">{m.apiKey}</Label>
-              <Input id="provider-api-key" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} autoComplete="new-password" />
+              <Input
+                id="provider-api-key"
+                type="password"
+                value={apiKey}
+                onChange={(e) => {
+                  setApiKey(e.target.value)
+                  setConfirming(null)
+                }}
+                autoComplete="new-password"
+              />
             </div>
             {editing === 'bancontact' && (
               <div className="grid gap-2">
                 <Label>{m.environment}</Label>
-                <Select value={environment} onValueChange={setEnvironment}>
+                <Select
+                  value={environment}
+                  onValueChange={(v) => {
+                    setEnvironment(v)
+                    setConfirming(null)
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -154,11 +185,27 @@ export default function PaymentProvidersPage() {
                 </Select>
               </div>
             )}
+            {editing === 'bancontact' && !confirming && <p className="text-xs text-muted-foreground">{m.bancontactCheckHint}</p>}
+            {confirming && (
+              <div className="grid gap-1 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="bancontact-confirm">
+                <p className="font-medium">{m.bancontactConfirmTitle}</p>
+                <p>
+                  <strong>{confirming.name ?? '—'}</strong>
+                  {confirming.iban ? ` · ${confirming.iban}` : ''}
+                </p>
+                <p className="text-xs text-muted-foreground">{m.bancontactConfirmHint(confirming.merchantId)}</p>
+              </div>
+            )}
             {saveError && <p className="text-sm text-destructive">{saveError}</p>}
           </div>
           <DialogFooter>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? m.busy : m.save}
+            {confirming && (
+              <Button variant="outline" onClick={() => setConfirming(null)} disabled={saving}>
+                {m.bancontactNotMine}
+              </Button>
+            )}
+            <Button onClick={handleSave} disabled={saving || !apiKey.trim()}>
+              {saving ? m.busy : confirming ? m.bancontactYesSave : editing === 'bancontact' ? m.bancontactCheck : m.save}
             </Button>
           </DialogFooter>
         </DialogContent>

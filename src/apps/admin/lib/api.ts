@@ -111,10 +111,21 @@ export function removeMember(orgId: string, membershipId: string): Promise<void>
   return request(`/${encodeURIComponent(orgId)}/members/${encodeURIComponent(membershipId)}`, { method: 'DELETE' })
 }
 
+// The account a Bancontact key pays out to (arcanum-backend bancontact-account.ts).
+export interface BancontactAccount {
+  merchantId: string
+  name: string | null
+  // Masked: country and last four digits.
+  iban: string | null
+}
+
 export interface PaymentCredential {
   provider: 'bancontact' | 'sumup'
   configured: boolean
   updatedAt: string
+  // Bancontact: the confirmed account (null: saved before that was checked).
+  environment?: 'prod' | 'preprod' | null
+  account?: BancontactAccount | null
 }
 
 export function listPaymentCredentials(orgId: string): Promise<PaymentCredential[]> {
@@ -130,6 +141,24 @@ export function setPaymentCredential(
     method: 'PUT',
     body: JSON.stringify(config),
   })
+}
+
+// Saving a Bancontact key: first its account comes back to confirm
+// (`confirm`), then — with confirmMerchantId — it's kept (`saved`).
+export async function saveBancontactKey(
+  orgId: string,
+  config: { apiKey: string; environment: string; confirmMerchantId?: string }
+): Promise<{ saved: true } | { confirm: BancontactAccount }> {
+  const res = await fetch(`${ORGANIZATIONS_URL}/${encodeURIComponent(orgId)}/payment-credentials/bancontact`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  })
+  const data = await res.json().catch(() => null)
+  if (res.ok) return { saved: true }
+  if (res.status === 409 && data?.code === 'bancontact_confirm_account' && data.account) return { confirm: data.account as BancontactAccount }
+  const message = [apiErrorMessage(data, ''), data?.detail].filter(Boolean).join(': ') || `status ${res.status}`
+  throw new Error(message)
 }
 
 // worker's /sumup/readers (payments/sumup.ts) — not under /organizations,

@@ -63,11 +63,17 @@ export default function App() {
     }
   }, [device, filters.showDelivered, m])
 
-  // A burst of changes (several tickets at once): one reload.
+  // A burst of changes (several tickets at once): one reload — always with
+  // the current filters (a reload scheduled just before "Toon afgeleverd"
+  // was switched must not bring the old list back).
+  const loadRef = useRef(load)
+  useEffect(() => {
+    loadRef.current = load
+  }, [load])
   const scheduleLoad = useCallback(() => {
     if (loadTimer.current) clearTimeout(loadTimer.current)
-    loadTimer.current = setTimeout(load, 200)
-  }, [load])
+    loadTimer.current = setTimeout(() => loadRef.current(), 200)
+  }, [])
 
   useEffect(() => {
     getRegisteredTerminal('station').then(async (terminal) => {
@@ -98,6 +104,8 @@ export default function App() {
   }, [device, load, scheduleLoad])
 
   function setFilter(key: 'onlyPaid' | 'showDelivered', value: boolean) {
+    // A list already on its way was asked with the old filters: not used.
+    generation.current++
     const next = { ...filters, [key]: value }
     setFilters(next)
     try {
