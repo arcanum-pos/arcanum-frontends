@@ -296,11 +296,24 @@ async function eventShot(open: (path: string) => Promise<Page>, catalogAdmin: Fa
   await shot(page, 'console-event', lang)
 }
 
+// The sign-in screen: on this device, with a phone (the QR code), or pairing a device.
+async function signInShot(page: Page, lang: Lang) {
+  await page.addInitScript((l) => localStorage.setItem('arcanum-locale', l), lang)
+  await page.route(/\/device\/start$/, (route) =>
+    route.fulfill({ json: { userCode: 'KBTR-7Q2M', verificationUriComplete: 'https://login.example/device?user_code=KBTR7Q2M', pollId: 'p1', interval: 30, expiresIn: 600 } })
+  )
+  await page.route(/\/device\/poll/, (route) => route.fulfill({ json: { status: 'pending' } }))
+  await page.goto('/login-prompt.html')
+  await expect(page.getByText('KBTR-7Q2M')).toBeVisible()
+  await shot(page, 'sign-in', lang)
+}
+
 for (const lang of LANGS) {
   test.describe(`${lang}: self-ordering and stations`, () => {
     test.use({ locale: BROWSER_LOCALE[lang] })
     test('a guest orders and follows it on the phone', async ({ browser }) => selfOrderShot(browser, lang))
     test("the kitchen's station screen", async ({ page }) => stationShot(page, lang))
+    test('the sign-in screen', async ({ page }) => signInShot(page, lang))
     test("an event's ordering modes in the console", async ({ console: open, catalogAdmin, page }) => {
       await page.route(/\/api\/organizations$/, (route) => route.fulfill({ json: [{ id: ORG_ID, name: 'Scouts Kabouterland', logoUrl: null, theme: null, createdAt: '2026-01-01' }] }))
       await page.route(/\/whoami$/, (route) => route.fulfill({ json: { sub: 'admin', email: 'an@scoutskabouterland.be', name: 'An Janssens', firstName: 'An', lastName: 'Janssens', username: 'an' } }))
