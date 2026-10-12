@@ -125,6 +125,7 @@ const nl = {
   sumupConfirmTitle: 'Deze merchant code en sleutel horen bij:',
   sumupConfirmHint: (code: string) => `Klopt dat? Is dit niet jouw SumUp-account, bewaar ze dan niet. (Merchant code ${code})`,
   bancontactPaysTo: (name: string, iban: string) => `Betaalt uit aan: ${name}${iban ? ` · ${iban}` : ''}`,
+  bancontactTestNote: 'Testomgeving: Bancontact gebruikt hier zijn eigen testhandelaar, niet jouw organisatie. Met een productiesleutel zie je hier je eigen naam en rekening.',
   bancontactUnchecked: 'Niet gecontroleerd op welk account deze sleutel uitbetaalt. Stel de sleutel opnieuw in om het te zien en te bevestigen.',
   bancontactCheckHint: 'Arcanum maakt een testbetaling van €0,01 en annuleert ze meteen, om te tonen op welk account deze sleutel uitbetaalt.',
   bancontactCheck: 'Controleren',

@@ -121,6 +121,7 @@ export default {
   sumupConfirmTitle: 'This merchant code and key belong to:',
   sumupConfirmHint: (code: string) => `Is that right? If this isn’t your SumUp account, don’t save them. (Merchant code ${code})`,
   bancontactPaysTo: (name: string, iban: string) => `Pays out to: ${name}${iban ? ` · ${iban}` : ''}`,
+  bancontactTestNote: 'Test environment: Bancontact uses its own test merchant here, not your organisation. With a production key you see your own name and account here.',
   bancontactUnchecked: 'Not checked which account this key pays out to. Set the key again to see and confirm it.',
   bancontactCheckHint: 'Arcanum makes a test payment of €0.01 and cancels it straight away, to show which account this key pays out to.',
   bancontactCheck: 'Check',

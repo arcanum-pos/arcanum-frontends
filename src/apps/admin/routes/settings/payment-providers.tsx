@@ -49,7 +49,8 @@ export default function PaymentProvidersPage() {
     setEditing(provider)
     setApiKey('')
     setSumupMerchantId('')
-    setEnvironment('prod')
+    // The environment the key was saved for, so a test key is set again as one.
+    setEnvironment(credentials?.find((c) => c.provider === provider)?.environment ?? 'prod')
     setSaveError(null)
     setConfirming(null)
   }
@@ -109,9 +110,15 @@ export default function PaymentProvidersPage() {
                     <CardTitle>{PROVIDER_LABELS[provider]}</CardTitle>
                     <CardDescription>{provider}</CardDescription>
                   </div>
-                  <Badge variant={cred?.configured ? 'default' : 'secondary'}>
-                    {cred?.configured ? m.configured : m.notConfigured}
-                  </Badge>
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {/* A test key takes no real payments: flagged so it isn't mistaken for the real one. */}
+                    {provider === 'bancontact' && cred?.configured && cred.environment === 'preprod' && (
+                      <Badge variant="outline" className="border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300" data-testid="bancontact-test">
+                        {m.preprod}
+                      </Badge>
+                    )}
+                    <Badge variant={cred?.configured ? 'default' : 'secondary'}>{cred?.configured ? m.configured : m.notConfigured}</Badge>
+                  </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   {provider === 'bancontact' && cred?.configured && (
@@ -204,6 +211,7 @@ export default function PaymentProvidersPage() {
                   {confirming.iban ? ` · ${confirming.iban}` : ''}
                 </p>
                 <p className="text-xs text-muted-foreground">{editing === 'bancontact' ? m.bancontactConfirmHint(confirming.merchantId) : m.sumupConfirmHint(confirming.merchantId)}</p>
+                {editing === 'bancontact' && environment === 'preprod' && <p className="text-xs font-medium">{m.bancontactTestNote}</p>}
               </div>
             )}
             {saveError && <p className="text-sm text-destructive">{saveError}</p>}

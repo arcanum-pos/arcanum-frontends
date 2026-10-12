@@ -121,6 +121,7 @@ export default {
   sumupConfirmTitle: 'Ce merchant code et cette clé appartiennent à :',
   sumupConfirmHint: (code: string) => `Est-ce correct ? Si ce n’est pas votre compte SumUp, ne les enregistrez pas. (Merchant code ${code})`,
   bancontactPaysTo: (name: string, iban: string) => `Verse sur : ${name}${iban ? ` · ${iban}` : ''}`,
+  bancontactTestNote: 'Environnement de test : Bancontact utilise ici son propre marchand de test, pas votre organisation. Avec une clé de production, vous voyez ici votre propre nom et compte.',
   bancontactUnchecked: 'Le compte sur lequel cette clé verse n’a pas été vérifié. Configurez à nouveau la clé pour le voir et le confirmer.',
   bancontactCheckHint: 'Arcanum crée un paiement de test de 0,01 € et l’annule aussitôt, pour montrer sur quel compte cette clé verse.',
   bancontactCheck: 'Vérifier',
