@@ -97,6 +97,8 @@ export default {
   invalid_email: 'That isn’t a valid email address',
   too_many_test_mails: 'Too many test emails — try again in an hour',
   bancontact_not_configured: 'Bancontact is not configured for this organisation',
+  sumup_key_refused: 'SumUp doesn’t accept this key for this merchant code — check both',
+  sumup_confirm_account: 'Confirm the SumUp account of this merchant code and key',
   bancontact_key_refused: 'Bancontact doesn’t accept this key — check it’s right and belongs to the chosen environment',
   bancontact_no_account: 'Bancontact didn’t say which account this key belongs to — try again',
   bancontact_confirm_account: 'Confirm the account this key pays out to',

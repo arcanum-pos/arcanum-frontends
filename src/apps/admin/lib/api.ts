@@ -111,12 +111,13 @@ export function removeMember(orgId: string, membershipId: string): Promise<void>
   return request(`/${encodeURIComponent(orgId)}/members/${encodeURIComponent(membershipId)}`, { method: 'DELETE' })
 }
 
-// The account a Bancontact key pays out to (arcanum-backend bancontact-account.ts).
+// The account a Bancontact key pays out to (arcanum-backend
+// bancontact-account.ts), or a SumUp merchant code's account (no IBAN).
 export interface BancontactAccount {
   merchantId: string
   name: string | null
   // Masked: country and last four digits.
-  iban: string | null
+  iban?: string | null
 }
 
 export interface PaymentCredential {
@@ -143,20 +144,21 @@ export function setPaymentCredential(
   })
 }
 
-// Saving a Bancontact key: first its account comes back to confirm
+// Saving a Bancontact or SumUp key: first its account comes back to confirm
 // (`confirm`), then — with confirmMerchantId — it's kept (`saved`).
-export async function saveBancontactKey(
+export async function savePaymentKey(
   orgId: string,
-  config: { apiKey: string; environment: string; confirmMerchantId?: string }
+  provider: PaymentCredential['provider'],
+  config: { apiKey: string; environment?: string; merchantId?: string; confirmMerchantId?: string }
 ): Promise<{ saved: true } | { confirm: BancontactAccount }> {
-  const res = await fetch(`${ORGANIZATIONS_URL}/${encodeURIComponent(orgId)}/payment-credentials/bancontact`, {
+  const res = await fetch(`${ORGANIZATIONS_URL}/${encodeURIComponent(orgId)}/payment-credentials/${provider}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),
   })
   const data = await res.json().catch(() => null)
   if (res.ok) return { saved: true }
-  if (res.status === 409 && data?.code === 'bancontact_confirm_account' && data.account) return { confirm: data.account as BancontactAccount }
+  if (res.status === 409 && (data?.code === 'bancontact_confirm_account' || data?.code === 'sumup_confirm_account') && data.account) return { confirm: data.account as BancontactAccount }
   const message = [apiErrorMessage(data, ''), data?.detail].filter(Boolean).join(': ') || `status ${res.status}`
   throw new Error(message)
 }

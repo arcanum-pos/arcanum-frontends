@@ -38,7 +38,7 @@ test("Bancontact: the key's account shown to confirm, then kept and shown on the
   await dialog.getByLabel('API-key').fill('the-key')
   await dialog.getByRole('button', { name: 'Controleren' }).click()
   // Not kept yet: its account first.
-  const confirm = dialog.getByTestId('bancontact-confirm')
+  const confirm = dialog.getByTestId('account-confirm')
   await expect(confirm).toContainText('Scouts Kabouterland · BE•• •••• •••• 7034')
   await expect(confirm).toContainText('Merchant ID m-123')
   expect(saved).toEqual([{ apiKey: 'the-key', environment: 'prod' }])
@@ -54,4 +54,31 @@ test('a Bancontact key saved before the check: the card says so', async ({ conso
   )
   await open('/settings/payment-providers')
   await expect(page.getByTestId('bancontact-account')).toContainText('Niet gecontroleerd')
+})
+
+test("SumUp: the merchant code's account shown to confirm, then kept and shown on the card", async ({ console: open, page }) => {
+  const saved: any[] = []
+  let stored: any[] = []
+  await page.route(/\/api\/organizations\/[^/]+\/payment-credentials(\/sumup)?$/, async (route) => {
+    const req = route.request()
+    if (req.method() === 'GET') return route.fulfill({ json: stored })
+    const body = req.postDataJSON()
+    saved.push(body)
+    const account = { merchantId: 'MABC123', name: 'Scouts Kabouterland' }
+    if (body.confirmMerchantId !== 'MABC123') return route.fulfill({ status: 409, json: { error: 'x', code: 'sumup_confirm_account', account } })
+    stored = [{ provider: 'sumup', configured: true, updatedAt: '2026-10-12T10:00:00Z', account }]
+    return route.fulfill({ json: { provider: 'sumup', configured: true } })
+  })
+  await open('/settings/payment-providers')
+  const card = page.locator('[data-slot="card"]').filter({ hasText: 'SumUp' }).first()
+  await card.getByRole('button', { name: 'Sleutels instellen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Merchant code').fill('MABC123')
+  await dialog.getByLabel('API-key').fill('sup_sk')
+  await dialog.getByRole('button', { name: 'Controleren' }).click()
+  await expect(dialog.getByTestId('account-confirm')).toContainText('Deze merchant code en sleutel horen bij:Scouts Kabouterland')
+  await dialog.getByRole('button', { name: 'Ja, bewaren' }).click()
+  await expect(dialog).toBeHidden()
+  expect(saved).toEqual([{ merchantId: 'MABC123', apiKey: 'sup_sk' }, { merchantId: 'MABC123', apiKey: 'sup_sk', confirmMerchantId: 'MABC123' }])
+  await expect(page.getByTestId('sumup-account')).toHaveText('Account: Scouts Kabouterland (merchant code MABC123)')
 })

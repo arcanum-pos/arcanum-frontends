@@ -98,6 +98,8 @@ const nl = {
   invalid_email: 'Dat is geen geldig e-mailadres',
   too_many_test_mails: 'Te veel testmails — probeer het over een uur opnieuw',
   bancontact_not_configured: 'Bancontact niet geconfigureerd voor deze organisatie',
+  sumup_key_refused: 'SumUp aanvaardt deze sleutel niet voor deze merchant code — kijk ze allebei na',
+  sumup_confirm_account: 'Bevestig het SumUp-account van deze merchant code en sleutel',
   bancontact_key_refused: 'Bancontact aanvaardt deze sleutel niet — kijk of hij juist is en bij de gekozen omgeving hoort',
   bancontact_no_account: 'Bancontact zei niet bij welk account deze sleutel hoort — probeer opnieuw',
   bancontact_confirm_account: 'Bevestig het account waarop deze sleutel uitbetaalt',

@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { listPaymentCredentials, saveBancontactKey, setPaymentCredential, type BancontactAccount, type PaymentCredential } from '../../lib/api'
+import { listPaymentCredentials, savePaymentKey, type BancontactAccount, type PaymentCredential } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
 import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
@@ -59,15 +59,12 @@ export default function PaymentProvidersPage() {
     setSaving(true)
     setSaveError(null)
     try {
-      if (editing === 'bancontact') {
-        // First: which account does it pay out to? Then, confirmed: kept.
-        const result = await saveBancontactKey(orgId, { apiKey, environment, ...(confirming ? { confirmMerchantId: confirming.merchantId } : {}) })
-        if ('confirm' in result) {
-          setConfirming(result.confirm)
-          return
-        }
-      } else {
-        await setPaymentCredential(orgId, editing, { merchantId: sumupMerchantId, apiKey })
+      // First: which account is it? Then, confirmed: kept.
+      const config = editing === 'bancontact' ? { apiKey, environment } : { merchantId: sumupMerchantId, apiKey }
+      const result = await savePaymentKey(orgId, editing, { ...config, ...(confirming ? { confirmMerchantId: confirming.merchantId } : {}) })
+      if ('confirm' in result) {
+        setConfirming(result.confirm)
+        return
       }
       setEditing(null)
       setConfirming(null)
@@ -122,6 +119,11 @@ export default function PaymentProvidersPage() {
                       {cred.account ? m.bancontactPaysTo(cred.account.name ?? cred.account.merchantId, cred.account.iban ?? '') : m.bancontactUnchecked}
                     </p>
                   )}
+                  {provider === 'sumup' && cred?.configured && (
+                    <p className={`text-sm ${cred.account ? '' : 'text-destructive'}`} data-testid="sumup-account">
+                      {cred.account ? m.sumupAccount(cred.account.name ?? m.sumupNoName, cred.account.merchantId) : m.sumupUnchecked}
+                    </p>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     {m.providerHelp[provider]}{' '}
                     <a href={docsUrl(provider)} target="_blank" rel="noopener" className="underline underline-offset-4 hover:text-foreground">
@@ -149,7 +151,15 @@ export default function PaymentProvidersPage() {
             {editing === 'sumup' && (
               <div className="grid gap-2">
                 <Label htmlFor="sumup-merchant">{m.merchantCode}</Label>
-                <Input id="sumup-merchant" value={sumupMerchantId} onChange={(e) => setSumupMerchantId(e.target.value)} autoComplete="off" />
+                <Input
+                  id="sumup-merchant"
+                  value={sumupMerchantId}
+                  onChange={(e) => {
+                    setSumupMerchantId(e.target.value)
+                    setConfirming(null)
+                  }}
+                  autoComplete="off"
+                />
               </div>
             )}
             <div className="grid gap-2">
@@ -185,15 +195,15 @@ export default function PaymentProvidersPage() {
                 </Select>
               </div>
             )}
-            {editing === 'bancontact' && !confirming && <p className="text-xs text-muted-foreground">{m.bancontactCheckHint}</p>}
+            {!confirming && <p className="text-xs text-muted-foreground">{editing === 'bancontact' ? m.bancontactCheckHint : m.sumupCheckHint}</p>}
             {confirming && (
-              <div className="grid gap-1 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="bancontact-confirm">
-                <p className="font-medium">{m.bancontactConfirmTitle}</p>
+              <div className="grid gap-1 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="account-confirm">
+                <p className="font-medium">{editing === 'bancontact' ? m.bancontactConfirmTitle : m.sumupConfirmTitle}</p>
                 <p>
-                  <strong>{confirming.name ?? '—'}</strong>
+                  <strong>{confirming.name ?? (editing === 'sumup' ? m.sumupNoName : '—')}</strong>
                   {confirming.iban ? ` · ${confirming.iban}` : ''}
                 </p>
-                <p className="text-xs text-muted-foreground">{m.bancontactConfirmHint(confirming.merchantId)}</p>
+                <p className="text-xs text-muted-foreground">{editing === 'bancontact' ? m.bancontactConfirmHint(confirming.merchantId) : m.sumupConfirmHint(confirming.merchantId)}</p>
               </div>
             )}
             {saveError && <p className="text-sm text-destructive">{saveError}</p>}
@@ -205,7 +215,7 @@ export default function PaymentProvidersPage() {
               </Button>
             )}
             <Button onClick={handleSave} disabled={saving || !apiKey.trim()}>
-              {saving ? m.busy : confirming ? m.bancontactYesSave : editing === 'bancontact' ? m.bancontactCheck : m.save}
+              {saving ? m.busy : confirming ? m.bancontactYesSave : m.bancontactCheck}
             </Button>
           </DialogFooter>
         </DialogContent>
