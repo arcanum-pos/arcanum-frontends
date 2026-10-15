@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, CreditCard, Minus, Plus, QrCode, Wallet } from 'lucide-react'
+import { ArrowLeft, CreditCard, Minus, Plus, QrCode, Smartphone, Wallet } from 'lucide-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { formatEuro } from '@/shared/format'
@@ -7,8 +7,9 @@ import { useMessages } from '@/shared/i18n'
 import { listMyMemberships, type Membership } from '@/shared/memberships'
 import { fetchKassaCatalog, type KassaCatalog, type KassaEntry } from '../kassa/catalog-api'
 import * as tabsApi from '../kassa/tabs-api'
-import { clearTable, connectLive, listEvents, listReaders, listTables, mergeTable, moveTable, promiseTable, seatTable, startPayment, tableByQr, type EventInfo, type TableInfo } from './api'
+import { clearTable, connectLive, listEvents, listReaders, listTables, mergeTable, moveTable, promiseTable, seatTable, startPayment, sumupAppReturned, tableByQr, type EventInfo, type TableInfo } from './api'
 import { EntranceScreen } from '@/shared/entrance-screen'
+import { sumupAppLink, sumupAppReturn } from '@/shared/sumup-app'
 import { WAITER_MESSAGES } from './messages'
 
 // The waiter screen (DOMAIN_MODEL.md "Tables and waiters", release C): on a
@@ -48,6 +49,8 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [signal, setSignal] = useState(0)
+  // Back from the SumUp app (Tap to Pay): what the backend found at SumUp.
+  const [tapNotice, setTapNotice] = useState<{ status: 'pending' | 'succeeded' | 'failed'; text: string | null } | null>(null)
   // This window as the entrance screen (opened from here: ?view=ingang).
   const [entrance] = useState(() => new URLSearchParams(window.location.search).get('view') === 'ingang')
   const subscribe = useCallback((onChange: () => void) => (orgId ? connectLive(orgId, onChange) : () => {}), [orgId])
@@ -99,6 +102,18 @@ export default function App() {
         .catch((err) => setError(err.message))
         .finally(() => window.history.replaceState(null, '', '/bediening'))
     }
+    // Back from the SumUp app: that table, and whether it's paid.
+    const back = sumupAppReturn(window.location.search)
+    if (back) {
+      if (back.tableId) setOpenId(back.tableId)
+      window.history.replaceState(null, '', '/bediening')
+      sumupAppReturned(back.chargeId, back.status)
+        .then((r) => {
+          setTapNotice({ status: r.status, text: r.errorMessage })
+          load()
+        })
+        .catch((err) => setTapNotice({ status: 'failed', text: err.message }))
+    }
     const stop = connectLive(orgId, () => load())
     const onVisible = () => document.visibilityState === 'visible' && load()
     document.addEventListener('visibilitychange', onVisible)
@@ -148,9 +163,13 @@ export default function App() {
         table={open}
         tables={tables ?? []}
         signal={signal}
-        onBack={() => setOpenId(null)}
+        onBack={() => {
+          setOpenId(null)
+          setTapNotice(null)
+        }}
         onChanged={load}
         onOpen={(id) => setOpenId(id)}
+        notice={tapNotice}
       />
     )
 
@@ -253,7 +272,7 @@ function groupByZone(tables: TableInfo[]): [string, TableInfo[]][] {
 }
 
 // One table: seat guests, its tab, order a round, take payment, Opgeruimd.
-function TableScreen({ orgId, event, table, tables, signal, onBack, onChanged, onOpen }: { orgId: string; event: EventInfo; table: TableInfo; tables: TableInfo[]; signal: number; onBack: () => void; onChanged: () => void; onOpen: (id: string) => void }) {
+function TableScreen({ orgId, event, table, tables, signal, onBack, onChanged, onOpen, notice }: { orgId: string; event: EventInfo; table: TableInfo; tables: TableInfo[]; signal: number; onBack: () => void; onChanged: () => void; onOpen: (id: string) => void; notice?: { status: 'pending' | 'succeeded' | 'failed'; text: string | null } | null }) {
   const m = useMessages(WAITER_MESSAGES)
   const [tab, setTab] = useState<tabsApi.TabDetail | null>(null)
   const [view, setView] = useState<'tab' | 'order' | 'pay' | 'move' | 'merge'>('tab')
@@ -296,6 +315,16 @@ function TableScreen({ orgId, event, table, tables, signal, onBack, onChanged, o
       {error && (
         <p className="bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
           {error}
+        </p>
+      )}
+      {notice && (
+        // Back from the SumUp app (Tap to Pay).
+        <p
+          className={cn('px-4 py-2 text-sm font-medium', notice.status === 'succeeded' ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200' : notice.status === 'failed' ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/15 text-amber-800 dark:text-amber-200')}
+          data-testid="tap-result"
+          data-status={notice.status}
+        >
+          {notice.status === 'succeeded' ? m.tapPaid : notice.status === 'failed' ? m.tapFailed(notice.text) : m.tapChecking}
         </p>
       )}
       <main className="flex flex-1 flex-col gap-4 p-4">
@@ -373,7 +402,7 @@ function TableScreen({ orgId, event, table, tables, signal, onBack, onChanged, o
             busy={busy}
           />
         )}
-        {table.state === 'occupied' && tab && view === 'pay' && <PayAtTable orgId={orgId} tab={tab} />}
+        {table.state === 'occupied' && tab && view === 'pay' && <PayAtTable orgId={orgId} tab={tab} table={table} />}
       </main>
     </div>
   )
@@ -455,22 +484,35 @@ function OrderRound({ orgId, catalogId, onSend, busy }: { orgId: string; catalog
   )
 }
 
-// Paying at the table (T4): Bancontact's QR on this phone, a SumUp Solo, or the till for cash.
-function PayAtTable({ orgId, tab }: { orgId: string; tab: tabsApi.TabDetail }) {
+// Paying at the table (T4): Bancontact's QR on this phone, a SumUp Solo,
+// Tap to Pay on this phone through the SumUp app (release E), or the till for cash.
+function PayAtTable({ orgId, tab, table }: { orgId: string; tab: tabsApi.TabDetail; table: TableInfo }) {
   const m = useMessages(WAITER_MESSAGES)
   const [qr, setQr] = useState<string | null>(null)
   const [sent, setSent] = useState<string | null>(null)
   const [readers, setReaders] = useState<{ id: string; name: string }[]>([])
+  const [tapToPay, setTapToPay] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
-    listReaders(orgId).then(setReaders)
+    listReaders(orgId).then((r) => {
+      setReaders(r.readers)
+      setTapToPay(r.tapToPay)
+    })
   }, [orgId])
-  async function pay(method: 'bancontact' | 'sumup', readerId?: string) {
+  async function pay(method: 'bancontact' | 'sumup', readerId?: string, app = false) {
     setBusy(true)
     setError(null)
     try {
-      const res = await startPayment(orgId, tab.id, tab.outstandingCents, method, readerId)
+      const res = await startPayment(orgId, tab.id, tab.outstandingCents, method, readerId, app)
+      if (app && res.sumupApp) {
+        // To the SumUp app; it comes back to this table (see sumupAppReturn).
+        const returnUrl = new URL('/bediening', window.location.href)
+        returnUrl.searchParams.set('sumup-charge', res.chargeId)
+        returnUrl.searchParams.set('table', table.id)
+        window.location.href = sumupAppLink({ ...res.sumupApp, amountCents: tab.outstandingCents, title: m.table(table.name), chargeId: res.chargeId, returnUrl: returnUrl.toString() })
+        return
+      }
       if (method === 'bancontact') setQr(res.qrCodeUrl ?? null)
       else setSent(readers.find((r) => r.id === readerId)?.name ?? '')
     } catch (err) {
@@ -495,6 +537,11 @@ function PayAtTable({ orgId, tab }: { orgId: string; tab: tabsApi.TabDetail }) {
           <Button size="lg" className="h-14" disabled={busy} onClick={() => pay('bancontact')}>
             <QrCode /> {m.bancontact}
           </Button>
+          {tapToPay && (
+            <Button size="lg" variant="outline" className="h-14" disabled={busy} onClick={() => pay('sumup', undefined, true)} data-testid="tap-to-pay">
+              <Smartphone /> {m.tapToPay}
+            </Button>
+          )}
           {readers.map((r) => (
             <Button key={r.id} size="lg" variant="outline" className="h-14" disabled={busy} onClick={() => pay('sumup', r.id)}>
               <CreditCard /> {m.sumup(r.name)}

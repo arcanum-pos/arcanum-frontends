@@ -130,6 +130,8 @@ export default {
   bancontact_wrong_account: 'Ce paiement Bancontact allait vers un autre compte que celui confirmé — il a été annulé. Vérifiez la clé dans Paramètres → Paiements.',
   sumup_readers_failed: 'Impossible de récupérer les lecteurs SumUp',
   sumup_not_configured: 'SumUp n’est pas configuré pour cette organisation',
+  sumup_app_not_configured: 'Tap to Pay n’est pas configuré : indiquez l’affiliate key SumUp dans la console',
+  sumup_affiliate_key_invalid: 'Ceci ne ressemble pas à une affiliate key ou un app-id SumUp — vérifiez-les',
   sumup_pairing_code_invalid: 'Un code de couplage compte 8 ou 9 lettres et chiffres',
   sumup_pair_failed: 'Le couplage du lecteur a échoué',
   sumup_remove_failed: 'Le découplage du lecteur a échoué',

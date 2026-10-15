@@ -48,22 +48,32 @@ export const liveToken = (orgId: string) => call<{ token: string }>(orgId, '/liv
 
 // Paying at the table (T4): a Bancontact QR on this phone, or a SumUp Solo
 // the waiter carries. The tab's push says when it's paid.
-export async function startPayment(orgId: string, tabId: string, amountCents: number, method: 'bancontact' | 'sumup', readerId?: string) {
+// Tap to Pay (release E): `app` — the SumUp app on this phone, through sumupAppLink.
+export async function startPayment(orgId: string, tabId: string, amountCents: number, method: 'bancontact' | 'sumup', readerId?: string, app = false) {
   const path = method === 'bancontact' ? '/api/bancontact/payments' : '/api/bancontact/sumup/charge'
   const res = await fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orgId, tabId, amount: amountCents, deviceId: getDeviceId(), deviceName: getDeviceName(), ...(method === 'sumup' ? { method: 'sumup', readerId } : {}) }),
+    body: JSON.stringify({ orgId, tabId, amount: amountCents, deviceId: getDeviceId(), deviceName: getDeviceName(), ...(method === 'sumup' ? { method: 'sumup', ...(app ? { app: true } : { readerId }) } : {}) }),
   })
   const data = await res.json().catch(() => null)
   if (!res.ok) throw new Error(apiErrorMessage(data, `status ${res.status}`))
-  return data as { chargeId: string; qrCodeUrl?: string; status?: string }
+  return data as { chargeId: string; qrCodeUrl?: string; status?: string; sumupApp?: { affiliateKey: string; appId: string } }
 }
 
-export async function listReaders(orgId: string): Promise<{ id: string; name: string }[]> {
+// Back from the SumUp app: the backend checks the payment at SumUp now.
+export async function sumupAppReturned(chargeId: string, status: string): Promise<{ status: 'pending' | 'succeeded' | 'failed'; errorMessage: string | null }> {
+  const res = await fetch('/api/bancontact/sumup/app-return', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chargeId, status }) })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(apiErrorMessage(data, `status ${res.status}`))
+  return data
+}
+
+// The org's SumUp Solo readers, and whether Tap to Pay (the SumUp app) is set up.
+export async function listReaders(orgId: string): Promise<{ readers: { id: string; name: string }[]; tapToPay: boolean }> {
   const res = await fetch(`/api/bancontact/sumup/readers?org_id=${encodeURIComponent(orgId)}`)
   const data = await res.json().catch(() => null)
-  return res.ok ? ((data?.readers ?? []) as { id: string; name: string }[]) : []
+  return res.ok ? { readers: (data?.readers ?? []) as { id: string; name: string }[], tapToPay: data?.tapToPay === true } : { readers: [], tapToPay: false }
 }
 
 // The organisation's kassa channel (a waiter's phone is no device): tabs

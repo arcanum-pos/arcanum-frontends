@@ -129,6 +129,13 @@ export interface PaymentCredential {
   // Bancontact: the confirmed account (null: saved before that was checked).
   environment?: 'prod' | 'preprod' | null
   account?: BancontactAccount | null
+  // SumUp: Tap to Pay through the SumUp app — the app id its affiliate key is for (null: not set up).
+  tapToPay?: { appId: string } | null
+}
+
+// Tap to Pay through the SumUp app (payments/sumup.ts): an empty key turns it off.
+export function setSumupTapToPay(orgId: string, affiliateKey: string, appId: string): Promise<unknown> {
+  return request(`/${encodeURIComponent(orgId)}/payment-credentials/sumup/tap-to-pay`, { method: 'PUT', body: JSON.stringify({ affiliateKey, appId }) })
 }
 
 export function listPaymentCredentials(orgId: string): Promise<PaymentCredential[]> {

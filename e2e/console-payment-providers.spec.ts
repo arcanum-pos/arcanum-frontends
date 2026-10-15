@@ -144,3 +144,35 @@ test('a SumUp sandbox merchant: flagged when confirming and on the card', async 
   await expect(dialog).toBeHidden()
   await expect(page.getByTestId('sumup-test')).toHaveText('Test (sandbox)')
 })
+
+// Tap to Pay through the SumUp app (release E): the affiliate key added to
+// the saved SumUp account; the card says which app id, never the key.
+test('SumUp Tap to Pay: the affiliate key set, shown on the card, turned off again', async ({ console: open, page }) => {
+  const puts: any[] = []
+  let tapToPay: { appId: string } | null = null
+  await page.route(/\/api\/organizations\/[^/]+\/payment-credentials(\/sumup\/tap-to-pay)?$/, async (route) => {
+    const req = route.request()
+    if (req.method() === 'GET')
+      return route.fulfill({ json: [{ provider: 'sumup', configured: true, updatedAt: '2026-10-15T10:00:00Z', account: { merchantId: 'MABC', name: 'Scouts', sandbox: false }, tapToPay }] })
+    const body = req.postDataJSON()
+    puts.push(body)
+    tapToPay = body.affiliateKey ? { appId: body.appId } : null
+    return route.fulfill({ json: { provider: 'sumup', configured: true } })
+  })
+  await open('/settings/payment-providers')
+  const row = page.getByTestId('sumup-tap-to-pay')
+  await expect(row).toContainText('niet ingesteld')
+  await row.getByRole('button', { name: 'Tap to Pay instellen' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Affiliate Keys')
+  await dialog.getByLabel('Affiliate key').fill(' sup_afk_abc123 ')
+  await dialog.getByLabel('App-id').fill('be.club.kassa')
+  await dialog.getByRole('button', { name: 'Opslaan' }).click()
+  await expect(dialog).toBeHidden()
+  expect(puts[0]).toEqual({ affiliateKey: 'sup_afk_abc123', appId: 'be.club.kassa' })
+  await expect(row).toContainText('ingesteld (app-id be.club.kassa)')
+  await row.getByRole('button', { name: 'Tap to Pay instellen' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Uitzetten' }).click()
+  expect(puts[1]).toEqual({ affiliateKey: '', appId: '' })
+  await expect(row).toContainText('niet ingesteld')
+})

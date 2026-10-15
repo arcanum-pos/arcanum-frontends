@@ -24,6 +24,11 @@ class FakeRestaurant {
   calls: string[] = []
   managed: { table: string; action: string; body: any }[] = []
   promised: { name: string; zone: string | null; ready: boolean; promisedAt: string }[] = []
+  // Tap to Pay (release E)
+  tapToPay = false
+  charges: any[] = []
+  appReturns: any[] = []
+  appResult: 'pending' | 'succeeded' | 'failed' = 'succeeded'
 }
 
 const test = base.extend<{ fake: FakeRestaurant; waiter: Page; push: () => void }>({
@@ -99,7 +104,15 @@ const test = base.extend<{ fake: FakeRestaurant; waiter: Page; push: () => void 
         fake.payments.push(req.postDataJSON())
         return route.fulfill({ status: 201, json: { chargeId: 'c1', qrCodeUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', status: 'pending' } })
       }
-      if (p === '/api/bancontact/sumup/readers') return route.fulfill({ json: { readers: [] } })
+      if (p === '/api/bancontact/sumup/readers') return route.fulfill({ json: { readers: [], tapToPay: fake.tapToPay } })
+      if (p === '/api/bancontact/sumup/charge') {
+        fake.charges.push(req.postDataJSON())
+        return route.fulfill({ status: 201, json: { chargeId: 'c9', sumupApp: { affiliateKey: 'sup_afk_k', appId: 'be.club.pos' } } })
+      }
+      if (p === '/api/bancontact/sumup/app-return') {
+        fake.appReturns.push(req.postDataJSON())
+        return route.fulfill({ json: { status: fake.appResult, errorMessage: fake.appResult === 'failed' ? 'Niet betaald in de SumUp-app' : null } })
+      }
       return route.fulfill({ status: 404, json: { error: 'not stubbed' } })
     })
     await page.goto('/waiter.html')
@@ -217,5 +230,49 @@ test.describe('table management (release D)', () => {
     push()
     await expect(row).toHaveAttribute('data-ready', 'true')
     await expect(row).toContainText('klaar — welkom!')
+  })
+})
+
+test.describe('Tap to Pay through the SumUp app (release E)', () => {
+  const seated = (fake: FakeRestaurant) => {
+    fake.tab = { id: 'tab1', number: 7, label: 'Tafel 1', status: 'open', lines: [], totalCents: 1250, paidCents: 0, outstandingCents: 1250, paymentPending: false }
+    Object.assign(fake.tables[0], { state: 'occupied', tab: { id: 'tab1', number: 7, label: 'Tafel 1', openedAt: new Date().toISOString(), totalCents: 1250 } })
+  }
+
+  test('not set up: no Tap to Pay button', async ({ waiter: page, fake }) => {
+    seated(fake)
+    await page.reload()
+    await page.getByTestId('table').filter({ hasText: /^1/ }).click()
+    await page.getByTestId('pay').click()
+    await expect(page.getByTestId('cash-at-till')).toBeVisible()
+    await expect(page.getByTestId('tap-to-pay')).toHaveCount(0)
+  })
+
+  test('set up: a charge for the SumUp app, then off to the app', async ({ waiter: page, fake }) => {
+    seated(fake)
+    fake.tapToPay = true
+    await page.reload()
+    await page.getByTestId('table').filter({ hasText: /^1/ }).click()
+    await page.getByTestId('pay').click()
+    await page.getByTestId('tap-to-pay').click()
+    await expect.poll(() => fake.charges.length).toBe(1)
+    expect(fake.charges[0]).toMatchObject({ orgId: 'org-1', tabId: 'tab1', amount: 1250, method: 'sumup', app: true })
+    expect(fake.charges[0].readerId).toBeUndefined()
+  })
+
+  test('back from the app: checked, the table shows it', async ({ waiter: page, fake }) => {
+    seated(fake)
+    await page.goto('/waiter.html?sumup-charge=c9&table=t1&smp-status=success&smp-tx-code=TX')
+    await expect(page.getByRole('heading', { name: 'Tafel 1' })).toBeVisible()
+    await expect(page.getByTestId('tap-result')).toHaveAttribute('data-status', 'succeeded')
+    expect(fake.appReturns[0]).toEqual({ chargeId: 'c9', status: 'success' })
+    expect(new URL(page.url()).search).toBe('')
+  })
+
+  test('back from the app, not paid: says so', async ({ waiter: page, fake }) => {
+    seated(fake)
+    fake.appResult = 'failed'
+    await page.goto('/waiter.html?sumup-charge=c9&table=t1&smp-status=failed')
+    await expect(page.getByTestId('tap-result')).toContainText('Niet betaald in de SumUp-app')
   })
 })

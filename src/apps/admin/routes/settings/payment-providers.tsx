@@ -16,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { listPaymentCredentials, savePaymentKey, type BancontactAccount, type PaymentCredential } from '../../lib/api'
+import { listPaymentCredentials, savePaymentKey, setSumupTapToPay, type BancontactAccount, type PaymentCredential } from '../../lib/api'
 import { useAsync } from '../../lib/use-async'
 import { useOrg } from '../../lib/org-context'
 import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
@@ -44,6 +44,8 @@ export default function PaymentProvidersPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   // Bancontact: the account the key pays out to, to confirm before it's kept.
   const [confirming, setConfirming] = useState<BancontactAccount | null>(null)
+  // SumUp's Tap to Pay (the affiliate key) — its own small dialog.
+  const [tapOpen, setTapOpen] = useState(false)
 
   function openEditor(provider: PaymentCredential['provider']) {
     setEditing(provider)
@@ -136,6 +138,14 @@ export default function PaymentProvidersPage() {
                       {cred.account ? m.sumupAccount(cred.account.name ?? m.sumupNoName, cred.account.merchantId) : m.sumupUnchecked}
                     </p>
                   )}
+                  {provider === 'sumup' && cred?.configured && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-2 text-sm" data-testid="sumup-tap-to-pay">
+                      <span>{cred.tapToPay ? m.tapToPayOn(cred.tapToPay.appId) : m.tapToPayOff}</span>
+                      <Button variant="outline" size="sm" onClick={() => setTapOpen(true)}>
+                        {m.tapToPaySet}
+                      </Button>
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">
                     {m.providerHelp[provider]}{' '}
                     <a href={docsUrl(provider)} target="_blank" rel="noopener" className="underline underline-offset-4 hover:text-foreground">
@@ -152,6 +162,17 @@ export default function PaymentProvidersPage() {
             )
           })}
       </div>
+
+      {orgId && tapOpen && (
+        <TapToPayDialog
+          orgId={orgId}
+          current={byProvider.get('sumup')?.tapToPay ?? null}
+          onClose={(changed) => {
+            setTapOpen(false)
+            if (changed) reload()
+          }}
+        />
+      )}
 
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
@@ -235,5 +256,58 @@ export default function PaymentProvidersPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+// Tap to Pay through the SumUp app: the affiliate key and the app id it was made for.
+function TapToPayDialog({ orgId, current, onClose }: { orgId: string; current: { appId: string } | null; onClose: (changed: boolean) => void }) {
+  const m = useMessages(ADMIN_SHELL_MESSAGES)
+  const [affiliateKey, setAffiliateKey] = useState('')
+  const [appId, setAppId] = useState(current?.appId ?? '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function save(key: string, id: string) {
+    setBusy(true)
+    setError(null)
+    try {
+      await setSumupTapToPay(orgId, key, id)
+      onClose(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose(false)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{m.tapToPayTitle}</DialogTitle>
+          <DialogDescription>{m.tapToPayIntro}</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4">
+          <p className="text-sm text-muted-foreground">{m.tapToPayHowTo}</p>
+          <div className="grid gap-2">
+            <Label htmlFor="sumup-affiliate-key">{m.affiliateKey}</Label>
+            <Input id="sumup-affiliate-key" value={affiliateKey} onChange={(e) => setAffiliateKey(e.target.value)} autoComplete="off" placeholder="sup_afk_…" />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="sumup-app-id">{m.appId}</Label>
+            <Input id="sumup-app-id" value={appId} onChange={(e) => setAppId(e.target.value)} autoComplete="off" />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
+        <DialogFooter>
+          {current && (
+            <Button variant="outline" onClick={() => save('', '')} disabled={busy}>
+              {m.tapToPayRemove}
+            </Button>
+          )}
+          <Button onClick={() => save(affiliateKey.trim(), appId.trim())} disabled={busy || !affiliateKey.trim() || !appId.trim()}>
+            {busy ? m.busy : m.save}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

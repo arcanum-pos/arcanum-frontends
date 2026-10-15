@@ -131,6 +131,8 @@ const nl = {
   bancontact_wrong_account: 'Deze Bancontact-betaling ging naar een ander account dan het bevestigde — ze werd geannuleerd. Kijk de sleutel na bij Instellingen → Betalingen.',
   sumup_readers_failed: 'Kon SumUp readers niet ophalen',
   sumup_not_configured: 'SumUp is niet ingesteld voor deze organisatie',
+  sumup_app_not_configured: 'Tap to Pay is niet ingesteld: vul in de console de affiliate key van SumUp in',
+  sumup_affiliate_key_invalid: 'Dat lijkt geen affiliate key of app-id van SumUp — kijk ze na',
   sumup_pairing_code_invalid: 'Een koppelcode bestaat uit 8 of 9 letters en cijfers',
   sumup_pair_failed: 'Koppelen van de reader mislukt',
   sumup_remove_failed: 'Loskoppelen van de reader mislukt',
