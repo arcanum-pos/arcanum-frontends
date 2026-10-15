@@ -52,7 +52,7 @@ export default function UsersPage() {
 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<'admin' | 'cashier'>('cashier')
+  const [inviteRole, setInviteRole] = useState<'admin' | 'cashier' | 'waiter'>('cashier')
   const [inviting, setInviting] = useState(false)
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [removingId, setRemovingId] = useState<string | null>(null)
@@ -134,12 +134,13 @@ export default function UsersPage() {
               </div>
               <div className="grid gap-2">
                 <Label>{m.users.role}</Label>
-                <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'cashier')}>
+                <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'cashier' | 'waiter')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="cashier">{m.users.cashierOption}</SelectItem>
+                    <SelectItem value="waiter">{m.users.waiterOption}</SelectItem>
                     <SelectItem value="admin">{m.users.adminOption}</SelectItem>
                   </SelectContent>
                 </Select>
@@ -179,7 +180,7 @@ export default function UsersPage() {
             members?.map((member) => (
               <TableRow key={member.id}>
                 <TableCell className="font-medium">{member.invitedEmail}</TableCell>
-                <TableCell>{member.role === 'admin' ? m.users.admin : m.users.cashier}</TableCell>
+                <TableCell>{member.role === 'admin' ? m.users.admin : member.role === 'waiter' ? m.users.waiter : m.users.cashier}</TableCell>
                 <TableCell>
                   <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
                     {member.status === 'active' ? m.users.active : m.users.pending}

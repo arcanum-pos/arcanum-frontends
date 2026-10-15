@@ -4,7 +4,7 @@ import { apiErrorMessage } from '@/shared/api-errors'
 export interface Membership {
   orgId: string
   orgName: string
-  role: 'admin' | 'cashier'
+  role: 'admin' | 'cashier' | 'waiter'
   // The org's default language (organizations.locale).
   orgLocale?: string
 }

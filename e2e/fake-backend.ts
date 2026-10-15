@@ -308,7 +308,7 @@ export class FakeBackend {
   // Pairing codes a test made "in the console": code (as shown) → role + name.
   pairingCodes = new Map<string, { role: 'pos' | 'cfd'; name: string }>()
   // The signed-in person's role in org-e2e (Instellingen's Beheer is for admins).
-  memberRole: 'admin' | 'cashier' = 'cashier'
+  memberRole: 'admin' | 'cashier' | 'waiter' = 'cashier'
   // Staff (release B1): the organisation's people, whether one must be
   // chosen, the X-Staff the current request came with (set by the fixture),
   // and the person each new tab and payment was recorded with.

@@ -1,3 +1,4 @@
+import { useWaiterOnly, WaiterOnly } from '@/shared/waiter-only'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getRegister, registerState, setRegister, type RegisterState } from '@/shared/register'
 import { CashUp, MovementDialog, OpenRegister, useShiftTexts } from './Shift'
@@ -101,6 +102,7 @@ export default function App() {
   const [movementOpen, setMovementOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const st = useShiftTexts()
+  const waiterOnly = useWaiterOnly(orgId)
   const [tabs, setTabs] = useState<TabSummary[]>([])
   const [active, setActive] = useState<ActiveKey>('quick')
   const [activeTab, setActiveTab] = useState<TabDetail | null>(null)
@@ -883,6 +885,9 @@ export default function App() {
   const panelSubtitle = `${active === 'quick' ? m.quickSubtitle : m.openTab} · ${m.items(itemCount)}`
   const draftQuantities = Object.fromEntries(draft.map((l) => [l.variantId, l.quantity]))
   const catalogName = catalogState.status === 'ok' ? catalogState.catalog.name : null
+
+  // The role Bediening works on the waiter screen only (T6).
+  if (waiterOnly) return <WaiterOnly />
 
   // Logging out with the drawer still open: "Kasopmaak doen" or "Openlaten"
   // (DOMAIN_MODEL.md decision 3 — the shift doesn't end with a session).

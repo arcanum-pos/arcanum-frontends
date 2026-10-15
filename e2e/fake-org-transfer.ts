@@ -86,7 +86,7 @@ export class FakeOrgTransfer {
       return ok(this.orgs.map((o) => this.orgJson(o)))
     }
     const detail = path.match(/^\/api\/organizations\/([^/]+)$/)
-    if (detail && method === 'GET') {
+    if (detail && method === 'GET' && detail[1] !== 'memberships') {
       const org = this.orgs.find((o) => o.id === detail[1])
       return org ? ok(this.orgJson(org)) : { status: 404, body: { error: 'Not found' } }
     }

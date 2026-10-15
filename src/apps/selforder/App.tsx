@@ -85,7 +85,47 @@ export default function App() {
   const m = useMessages(SELF_ORDER_MESSAGES)
   if (!where) return <Shell><p className="py-10 text-center text-muted-foreground">{m.notFound}</p></Shell>
   if (where.kind === 'follow') return <Shell><Follow token={where.token} /></Shell>
+  if (where.kind === 'table') return <Shell><TableQr token={where.token} /></Shell>
   return <SelfOrder code={where.code} />
+}
+
+// A table's QR code (DOMAIN_MODEL.md "Tables and waiters", T3): a signed-in
+// waiter goes on to the waiter screen at that table; a guest, while the
+// table is Bezet and its mode allows the QR, to the table's tab — to order
+// another round on it (the follow page's "Bijbestellen"); otherwise a word
+// that someone will come.
+function TableQr({ token }: { token: string }) {
+  const m = useMessages(SELF_ORDER_MESSAGES)
+  const [table, setTable] = useState<{ table: string; orgName: string; occupied: boolean } | null>(null)
+  const [missing, setMissing] = useState(false)
+  useEffect(() => {
+    let done = false
+    fetch('/whoami')
+      .then((res) => {
+        if (res.ok && !done) window.location.replace(`/bediening?tafel=${encodeURIComponent(token)}`)
+        return res.ok
+      })
+      .catch(() => false)
+      .then(async (waiter) => {
+        if (waiter) return
+        const res = await fetch(`/api/public/tables/${encodeURIComponent(token)}`)
+        const data = await res.json().catch(() => null)
+        if (!res.ok) return setMissing(true)
+        if (data.orderToken) window.location.replace(`/volg/${data.orderToken}`)
+        else setTable(data)
+      })
+    return () => {
+      done = true
+    }
+  }, [token])
+  if (missing) return <p className="py-10 text-center text-muted-foreground">{m.notFound}</p>
+  if (!table) return <p className="py-10 text-center text-muted-foreground">{m.loading}</p>
+  return (
+    <div className="flex flex-col items-center gap-2 py-10 text-center" data-testid="table-qr">
+      <h2 className="text-2xl font-bold">{m.tableTitle(table.table)}</h2>
+      <p className="text-muted-foreground">{table.occupied ? m.tableNoQrOrdering : m.tableWelcome}</p>
+    </div>
+  )
 }
 
 function Shell({ title, children, step }: { title?: string; children: React.ReactNode; step?: number }) {

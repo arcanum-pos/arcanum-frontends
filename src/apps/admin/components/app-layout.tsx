@@ -11,7 +11,8 @@ import { NoMembership } from './no-membership'
 import { ImportBanner } from './import-banner'
 import { AppBrand } from '@/shared/app-brand'
 import { useNeedsFirstOrganization, useNoMembership } from '../lib/first-organization'
-import { OrgProvider } from '../lib/org-context'
+import { OrgProvider, useOrg } from '../lib/org-context'
+import { useWaiterOnly, WaiterOnly } from '@/shared/waiter-only'
 import { ThemeProvider } from '../lib/theme'
 
 // A fresh installation without an organization asks for its first one;
@@ -20,8 +21,11 @@ import { ThemeProvider } from '../lib/theme'
 function MainContent() {
   const needsFirst = useNeedsFirstOrganization()
   const noMembership = useNoMembership()
+  const { currentOrg } = useOrg()
+  const waiterOnly = useWaiterOnly(currentOrg?.id)
   if (needsFirst) return <FirstOrganization />
   if (noMembership) return <NoMembership />
+  if (waiterOnly) return <WaiterOnly />
   return (
     <>
       <DemoBanner />

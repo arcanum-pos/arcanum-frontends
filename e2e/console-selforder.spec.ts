@@ -219,3 +219,16 @@ test('a station screen without stations to choose: says where to make one', asyn
   await dialog.getByLabel('Naam').fill('Scherm')
   await expect(dialog.getByRole('button', { name: 'Koppelcode maken' })).toBeDisabled()
 })
+
+test('"Aan tafel" per ordering mode (release C): waiters order with its menu', async ({ console: open, page, catalogAdmin }) => {
+  const menu = call(catalogAdmin, 'POST', '/catalogs', { name: 'Restaurant' }).body
+  const mode = { id: 'm1', name: 'Ter plaatse', catalogId: menu.id, selfOrder: false, payAtCounter: true, payBancontact: false, tabs: false, notifySms: false, atTable: false }
+  catalogAdmin.events = [{ id: 'ev1', name: 'Restaurantdag', date: '2026-10-20', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: 'c1' }, modes: [mode], sms: false, lastOrderNumber: 0 }]
+  await open('/events')
+  await page.getByRole('row').filter({ hasText: 'Restaurantdag' }).getByRole('button', { name: 'Instellen' }).click()
+  const card = page.getByRole('dialog').getByTestId('order-mode')
+  await expect(card).toContainText('Obers bestellen met deze menukaart aan tafel')
+  await card.getByRole('switch', { name: 'Aan tafel: de bediening neemt op — Ter plaatse' }).click()
+  await expect(card.getByRole('switch', { name: 'Aan tafel: de bediening neemt op — Ter plaatse' })).toBeChecked()
+  expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ atTable: true })
+})

@@ -81,7 +81,7 @@ export interface Member {
   id: string
   userSub: string | null
   invitedEmail: string
-  role: 'admin' | 'cashier'
+  role: 'admin' | 'cashier' | 'waiter'
   status: 'pending' | 'active'
   invitedAt: string
   acceptedAt: string | null
@@ -93,14 +93,14 @@ export function listMembers(orgId: string): Promise<Member[]> {
 
 // mailSent false: the installation sent no invite mail (none set up, or it
 // failed) — the console then offers the invitation to pass on yourself.
-export function inviteMember(orgId: string, email: string, role: 'admin' | 'cashier'): Promise<Member & { mailSent?: boolean; loginUrl?: string }> {
+export function inviteMember(orgId: string, email: string, role: 'admin' | 'cashier' | 'waiter'): Promise<Member & { mailSent?: boolean; loginUrl?: string }> {
   return request(`/${encodeURIComponent(orgId)}/members`, {
     method: 'POST',
     body: JSON.stringify({ email, role }),
   })
 }
 
-export function updateMemberRole(orgId: string, membershipId: string, role: 'admin' | 'cashier'): Promise<Member> {
+export function updateMemberRole(orgId: string, membershipId: string, role: 'admin' | 'cashier' | 'waiter'): Promise<Member> {
   return request(`/${encodeURIComponent(orgId)}/members/${encodeURIComponent(membershipId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ role }),
@@ -339,6 +339,8 @@ export interface OrderMode {
   notifySms?: boolean
   // On a tab: opening it asks a name and a mobile number or e-mail.
   tabContact?: boolean
+  // Waiters take orders at the table with it (release C): its menu is theirs.
+  atTable?: boolean
 }
 
 export interface Event {
@@ -462,4 +464,32 @@ export function setBlindCount(orgId: string, blindCount: boolean): Promise<{ bli
 
 export function listShifts(orgId: string): Promise<ShiftRecord[]> {
   return request(`/${encodeURIComponent(orgId)}/shifts`)
+}
+
+// --- Tafels (release C) ---
+
+export interface TableRecord {
+  id: string
+  name: string
+  zone: string | null
+  position: number
+  archived: boolean
+  state: 'free' | 'occupied' | 'clearing'
+  qrToken: string | null
+}
+
+export function listTablesAdmin(orgId: string): Promise<TableRecord[]> {
+  return request(`/${encodeURIComponent(orgId)}/tables`)
+}
+
+export function createTable(orgId: string, name: string, zone: string | null): Promise<TableRecord> {
+  return request(`/${encodeURIComponent(orgId)}/tables`, { method: 'POST', body: JSON.stringify({ name, zone }) })
+}
+
+export function updateTable(orgId: string, tableId: string, changes: { name?: string; zone?: string | null; archived?: boolean }): Promise<TableRecord> {
+  return request(`/${encodeURIComponent(orgId)}/tables/${encodeURIComponent(tableId)}`, { method: 'PATCH', body: JSON.stringify(changes) })
+}
+
+export function newTableQr(orgId: string, tableId: string): Promise<TableRecord> {
+  return request(`/${encodeURIComponent(orgId)}/tables/${encodeURIComponent(tableId)}/new-qr`, { method: 'POST' })
 }

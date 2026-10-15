@@ -77,6 +77,9 @@ export class FakeCatalogAdmin {
   staff: { id: string; name: string; hasPin: boolean; memberId: string | null; archived: boolean; createdAt: string }[] = []
   staffRequired = false
   staffCalls: { method: string; body: any }[] = []
+  myRole: 'admin' | 'cashier' | 'waiter' = 'admin'
+  members: any[] = []
+  tables: any[] = []
   // Kassalades.
   registers: { id: string; name: string; archived: boolean; open: boolean }[] = []
   blindCount = false
@@ -119,6 +122,21 @@ export class FakeCatalogAdmin {
     if (path === '/whoami') return ok({ sub: 'admin', email: 'admin@e2e.test', name: 'Admin', firstName: 'Admin', lastName: '', username: 'admin' })
     if (path === '/api/organizations' && method === 'GET') {
       return ok([{ id: ORG_ID, name: 'E2E', logoUrl: null, theme: null, createdAt: '2026-01-01' }])
+    }
+    // The signed-in person's role here (release C: Bediening sees only the waiter screen).
+    if (path === '/api/organizations/memberships' && method === 'GET') return ok([{ orgId: ORG_ID, orgName: 'E2E', role: this.myRole }])
+    if (/^\/api\/organizations\/[^/]+\/members$/.test(path) && method === 'GET') return ok(this.members)
+    if (/^\/api\/organizations\/[^/]+\/members$/.test(path) && method === 'POST') {
+      const member = { id: this.id('m'), invitedEmail: body.email, role: body.role, status: 'pending', invitedAt: new Date().toISOString(), userSub: null }
+      this.members.push(member)
+      return { status: 201, body: { ...member, mailSent: true } }
+    }
+    // Tafels (arcanum-backend tables.ts).
+    if (/^\/api\/organizations\/[^/]+\/tables$/.test(path) && method === 'GET') return ok(this.tables)
+    if (/^\/api\/organizations\/[^/]+\/tables$/.test(path) && method === 'POST') {
+      const t = { id: this.id('table'), name: body.name, zone: body.zone ?? null, position: this.tables.length, archived: false, state: 'free', qrToken: `qr${this.tables.length}abcdefghijklmnop` }
+      this.tables.push(t)
+      return { status: 201, body: t }
     }
 
     if (/^\/api\/organizations\/[^/]+\/reports\/sales$/.test(path) && method === 'GET') {
@@ -199,7 +217,7 @@ export class FakeCatalogAdmin {
       if (method === 'PATCH') {
         const mode = e.modes[index]
         if (body.notifySms === true && !e.sms) return { status: 400, body: { error: 'Sms is niet ingesteld voor deze installatie (installer → Geavanceerd → Sms)', code: 'sms_not_configured' } }
-        for (const key of ['name', 'catalogId', 'selfOrder', 'payAtCounter', 'payBancontact', 'tabs', 'tabContact', 'notifySms']) if (body[key] !== undefined) mode[key] = body[key]
+        for (const key of ['name', 'catalogId', 'selfOrder', 'payAtCounter', 'payBancontact', 'tabs', 'tabContact', 'notifySms', 'atTable']) if (body[key] !== undefined) mode[key] = body[key]
         if (!mode.catalogId) mode.selfOrder = false
         const to = body.move === 'up' ? index - 1 : body.move === 'down' ? index + 1 : index
         if (to !== index && e.modes[to]) [e.modes[index], e.modes[to]] = [e.modes[to], e.modes[index]]

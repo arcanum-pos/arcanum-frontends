@@ -94,7 +94,10 @@ export function modeFromSearch(search: string): string | null {
   return id && /^[A-Za-z0-9_-]{1,64}$/.test(id) ? id : null
 }
 
-export function route(pathname: string): { kind: 'order'; code: string } | { kind: 'follow'; token: string } | null {
+export function route(pathname: string): { kind: 'order'; code: string } | { kind: 'follow'; token: string } | { kind: 'table'; token: string } | null {
+  // A table's QR code (release C): its guests order on the table's tab.
+  const table = pathname.match(/^\/tafel\/([A-Za-z0-9_-]+)\/?$/)
+  if (table) return { kind: 'table', token: table[1] }
   const order = pathname.match(/^\/bestel\/([A-Za-z0-9_-]+)\/?$/)
   if (order) return { kind: 'order', code: order[1] }
   const follow = pathname.match(/^\/volg\/([A-Za-z0-9_-]+)\/?$/)

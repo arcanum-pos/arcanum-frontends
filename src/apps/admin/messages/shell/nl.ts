@@ -29,6 +29,7 @@ const nl = {
     catalogs: 'Menukaarten',
     devices: 'Toestellen',
     registers: 'Kassalades',
+    tables: 'Tafels',
     users: 'Gebruikers',
     staff: 'Medewerkers',
     settings: 'Instellingen',

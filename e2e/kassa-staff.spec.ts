@@ -44,3 +44,9 @@ test('required by the organisation: the picker opens right away, without "Nieman
   await kassa.getByRole('button', button(/^Afrekenen/)).click()
   await expect(kassa.getByRole('button', button('Bevestig ontvangst contant geld'))).toBeVisible()
 })
+
+test('the role Bediening: the kassa points to the waiter screen (T6)', async ({ kassa, backend }) => {
+  ;(backend as any).memberRole = 'waiter'
+  await kassa.reload()
+  await expect(kassa.getByTestId('waiter-only').getByRole('link', { name: 'Open de bediening' })).toHaveAttribute('href', '/bediening')
+})

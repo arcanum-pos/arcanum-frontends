@@ -400,6 +400,12 @@ function ModeCard({
         control={<Switch checked={mode.selfOrder} disabled={busy || !mode.catalogId} onCheckedChange={(on) => onChange({ selfOrder: on })} aria-label={`${m.modeQr} — ${mode.name}`} />}
       />
 
+      <Section
+        title={m.modeAtTable}
+        hint={m.modeAtTableHint}
+        control={<Switch checked={!!mode.atTable} disabled={busy || !mode.catalogId} onCheckedChange={(on) => onChange({ atTable: on })} aria-label={`${m.modeAtTable} — ${mode.name}`} />}
+      />
+
       {mode.selfOrder && (
         <Section title={m.payMethods} hint={m.payBancontactHint} testId="pay-methods">
           <Option label={m.payCounter} checked={mode.payAtCounter} disabled={busy} onChange={(on) => onChange({ payAtCounter: on })} />
