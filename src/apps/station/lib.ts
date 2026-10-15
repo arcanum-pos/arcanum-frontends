@@ -39,3 +39,24 @@ export function visibleTickets(tickets: Ticket[], filters: { onlyPaid: boolean; 
   const hiddenUnpaid = filters.onlyPaid ? tickets.filter((t) => !payable(t) && t.status !== 'delivered').length : 0
   return { shown, hiddenUnpaid }
 }
+
+// --- The pickup screen (ROADMAP.md §5): what guests see, read-only.
+
+export interface PickupOrder {
+  number: number
+  status: 'ordered' | 'in_progress' | 'ready'
+  mode?: string | null
+  updatedAt: string
+}
+
+// How long a number stays under "Klaar" when nobody marks it delivered —
+// the backend leaves it out after this too (PICKUP_READY_MINUTES).
+export const PICKUP_READY_MINUTES = 15
+
+// The three columns, each by number; a ready one only while it's fresh
+// (the screen re-renders now and then — no fetching needed for that).
+export function pickupColumns(orders: PickupOrder[], now: number) {
+  const fresh = (o: PickupOrder) => now - Date.parse(o.updatedAt) < PICKUP_READY_MINUTES * 60_000
+  const by = (status: PickupOrder['status']) => orders.filter((o) => o.status === status && (status !== 'ready' || fresh(o))).sort((a, b) => a.number - b.number)
+  return { received: by('ordered'), preparing: by('in_progress'), ready: by('ready') }
+}

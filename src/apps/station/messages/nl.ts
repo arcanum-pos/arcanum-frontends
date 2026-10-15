@@ -17,6 +17,11 @@ const nl = {
   ago: (minutes: number) => (minutes < 1 ? 'net besteld' : `${minutes} min geleden`),
   voided: (count: number) => `${count} geannuleerd`,
   hiddenUnpaid: (count: number) => (count === 1 ? '1 onbetaalde bestelling verborgen' : `${count} onbetaalde bestellingen verborgen`),
+  openPickup: 'Afhaalscherm',
+  openPickupHint: 'Opent het scherm voor de gasten in een nieuw venster — sleep het naar een tweede scherm.',
+  pickupColumns: { received: 'Ontvangen', preparing: 'In bereiding', ready: 'Klaar' },
+  pickupNothing: 'Nog niets',
+  pickupReady: 'Haal je bestelling hier af',
 }
 
 export type StationMessages = typeof nl

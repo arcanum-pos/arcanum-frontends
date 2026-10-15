@@ -19,3 +19,24 @@ describe('station screen', () => {
     expect(visibleTickets([...list, onTab], { onlyPaid: true, showDelivered: false })).toEqual({ shown: [list[0], onTab], hiddenUnpaid: 1 })
   })
 })
+
+describe('pickup screen', () => {
+  it('three columns by number; a ready order only while fresh', async () => {
+    const { pickupColumns } = await import('./lib')
+    const now = Date.parse('2026-10-15T12:00:00Z')
+    const at = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOString()
+    const columns = pickupColumns(
+      [
+        { number: 12, status: 'ordered', updatedAt: at(1) },
+        { number: 9, status: 'ordered', updatedAt: at(2) },
+        { number: 7, status: 'in_progress', updatedAt: at(3) },
+        { number: 5, status: 'ready', updatedAt: at(2), mode: 'Take away' },
+        { number: 3, status: 'ready', updatedAt: at(16) },
+      ],
+      now
+    )
+    expect(columns.received.map((o) => o.number)).toEqual([9, 12])
+    expect(columns.preparing.map((o) => o.number)).toEqual([7])
+    expect(columns.ready.map((o) => o.number)).toEqual([5])
+  })
+})

@@ -212,7 +212,7 @@ export default function DevicesPage() {
             return (
               <div key={p.id} className="flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm">
                 <span>
-                  {m.devices.roles[p.role]} · {m.devices.codeFor(p.name, `${minutes} min`)}
+                  {p.view === 'pickup' ? m.devices.pickupScreen : m.devices.roles[p.role]} · {m.devices.codeFor(p.name, `${minutes} min`)}
                 </span>
                 <Button size="sm" variant="ghost" onClick={() => handleRevoke(p.id)}>
                   {m.devices.revoke}
@@ -293,7 +293,7 @@ export default function DevicesPage() {
                   <div className="font-mono text-xs text-muted-foreground">{device.terminal_id}</div>
                 </TableCell>
                 <TableCell>
-                  {m.devices.roles[device.role] ?? device.role}
+                  {device.role === 'station' && device.view === 'pickup' ? m.devices.pickupScreen : (m.devices.roles[device.role] ?? device.role)}
                   {device.role === 'station' && device.station_name && <div className="text-xs text-muted-foreground">{m.devices.stationOf(device.station_name)}</div>}
                 </TableCell>
                 <TableCell className={device.linked_to && nameOf(device.linked_to) ? undefined : 'font-mono text-xs'}>

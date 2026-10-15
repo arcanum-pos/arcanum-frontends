@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@/shared/api-errors'
 import { useMessages } from '@/shared/i18n'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { STATION_MESSAGES } from './messages'
+import { Pickup } from './Pickup'
 import { nextStatus, previousStatus, visibleTickets, type Ticket, type TicketStatus } from './lib'
 
 // A station screen (device role 'station'): the prep tickets (bonnen) of the
@@ -35,9 +36,29 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const COLUMNS: TicketStatus[] = ['ordered', 'in_progress', 'ready', 'delivered']
 
+// This page as the pickup screen: asked in the address (the station
+// screen's own second window), or the device is one (paired as such).
+const askedPickup = () => new URLSearchParams(window.location.search).get('view') === 'pickup'
+
+// The pickup screen in its own window, on the second screen when the browser can say where.
+async function openPickupWindow() {
+  let features = 'popup,width=1280,height=800'
+  const getScreenDetails = (window as any).getScreenDetails
+  if (typeof getScreenDetails === 'function') {
+    try {
+      const details = await getScreenDetails()
+      const other = details.screens.find((s: any) => s !== details.currentScreen)
+      if (other) features = `popup,left=${other.availLeft},top=${other.availTop},width=${other.availWidth},height=${other.availHeight}`
+    } catch {
+      // opened where the browser likes
+    }
+  }
+  window.open('/station.html?view=pickup', 'arcanum-pickup', features)?.focus()
+}
+
 export default function App() {
   const m = useMessages(STATION_MESSAGES)
-  const [device, setDevice] = useState<{ orgId: string; terminalId: string; stationId: string | null; stationName: string; orgName: string } | null>(null)
+  const [device, setDevice] = useState<{ orgId: string; terminalId: string; stationId: string | null; stationName: string; orgName: string; pickup: boolean } | null>(null)
   const [tickets, setTickets] = useState<Ticket[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState(storedFilters)
@@ -50,7 +71,7 @@ export default function App() {
   const generation = useRef(0)
 
   const load = useCallback(async () => {
-    if (!device?.stationId) return
+    if (!device?.stationId || device.pickup) return
     const started = generation.current
     try {
       const path = `/api/organizations/${encodeURIComponent(device.orgId)}/stations/${encodeURIComponent(device.stationId)}/tickets${filters.showDelivered ? '?delivered=1' : ''}`
@@ -81,17 +102,24 @@ export default function App() {
         window.location.replace('/')
         return
       }
-      const info = await call<{ station_id?: string; station_name?: string | null }>(
+      const info = await call<{ station_id?: string; station_name?: string | null; view?: string | null }>(
         `/api/organizations/${encodeURIComponent(terminal.orgId)}/devices/${encodeURIComponent(terminal.terminalId)}`
-      ).catch(() => ({}) as { station_id?: string; station_name?: string | null })
-      setDevice({ orgId: terminal.orgId, terminalId: terminal.terminalId, stationId: info.station_id ?? null, stationName: info.station_name ?? terminal.name ?? '', orgName: terminal.orgName ?? '' })
+      ).catch(() => ({}) as { station_id?: string; station_name?: string | null; view?: string | null })
+      setDevice({
+        orgId: terminal.orgId,
+        terminalId: terminal.terminalId,
+        stationId: info.station_id ?? null,
+        stationName: info.station_name ?? terminal.name ?? '',
+        orgName: terminal.orgName ?? '',
+        pickup: info.view === 'pickup' || askedPickup(),
+      })
     })
     const clock = setInterval(() => setNow(Date.now()), 60_000)
     return () => clearInterval(clock)
   }, [])
 
   useEffect(() => {
-    if (!device) return
+    if (!device || device.pickup) return
     load()
     const socket = connectNotifications(device.terminalId, { tabs_changed: () => scheduleLoad() })
     // A push missed while the socket was down: reload when looked at again.
@@ -132,6 +160,7 @@ export default function App() {
 
   if (!device) return <p className="p-6 text-muted-foreground">{m.loading}</p>
   if (!device.stationId) return <p className="p-6" data-testid="no-station">{m.noStation}</p>
+  if (device.pickup) return <Pickup device={{ ...device, stationId: device.stationId }} />
 
   const { shown, hiddenUnpaid } = visibleTickets(tickets ?? [], filters)
   const columns = COLUMNS.filter((c) => c !== 'delivered' || filters.showDelivered)
@@ -144,6 +173,9 @@ export default function App() {
           <p className="truncate text-xs text-muted-foreground">{device.orgName}</p>
         </div>
         <div className="flex-1" />
+        <Button variant="outline" size="sm" onClick={openPickupWindow} title={m.openPickupHint} data-testid="open-pickup">
+          {m.openPickup}
+        </Button>
         <label className="flex items-center gap-2 text-sm font-medium">
           <Switch checked={filters.onlyPaid} onCheckedChange={(v) => setFilter('onlyPaid', v)} aria-label={m.onlyPaid} />
           {m.onlyPaid}

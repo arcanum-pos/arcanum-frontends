@@ -17,6 +17,11 @@ const fr: StationMessages = {
   ago: (minutes: number) => (minutes < 1 ? 'à l’instant' : `il y a ${minutes} min`),
   voided: (count: number) => `${count} annulé(s)`,
   hiddenUnpaid: (count: number) => (count === 1 ? '1 commande non payée masquée' : `${count} commandes non payées masquées`),
+  openPickup: 'Écran de retrait',
+  openPickupHint: 'Ouvre l’écran pour les invités dans une nouvelle fenêtre — glissez-la vers un deuxième écran.',
+  pickupColumns: { received: 'Reçues', preparing: 'En préparation', ready: 'Prêtes' },
+  pickupNothing: 'Rien pour l’instant',
+  pickupReady: 'Venez chercher votre commande ici',
 }
 
 export default fr
