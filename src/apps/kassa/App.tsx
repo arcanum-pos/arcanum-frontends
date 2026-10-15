@@ -1,3 +1,6 @@
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { getRegister, registerState, setRegister, type RegisterState } from '@/shared/register'
+import { CashUp, MovementDialog, OpenRegister, useShiftTexts } from './Shift'
 import { chosenStaff, listStaff, staffHeaders } from '@/shared/staff'
 import { StaffButton } from '@/shared/staff-picker'
 import { useEffect, useRef, useState } from 'react'
@@ -90,6 +93,14 @@ export default function App() {
   // the organisation requires someone to be chosen (S2).
   const [staffOpen, setStaffOpen] = useState(false)
   const [staffRequired, setStaffRequired] = useState(false)
+  // The register (cash drawer) this kassa sells on, and its shift (release
+  // B2): none chosen = sells as before. Its kasopmaak, a cash movement, and
+  // the question at logout while the drawer is still open.
+  const [regState, setRegState] = useState<RegisterState | null>(null)
+  const [cashUpOpen, setCashUpOpen] = useState(false)
+  const [movementOpen, setMovementOpen] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const st = useShiftTexts()
   const [tabs, setTabs] = useState<TabSummary[]>([])
   const [active, setActive] = useState<ActiveKey>('quick')
   const [activeTab, setActiveTab] = useState<TabDetail | null>(null)
@@ -281,9 +292,27 @@ export default function App() {
   }
 
   // Everything this kassa shows from the server, e.g. on focus or Vernieuwen.
+  async function loadRegister() {
+    const org = posOrgIdRef.current
+    const choice = getRegister(org)
+    if (!org || !choice) return setRegState(null)
+    try {
+      setRegState(await registerState(org, choice.id))
+    } catch (err) {
+      // Removed in the console since: this kassa has no register anymore.
+      if ((err as { code?: string }).code === 'register_not_found') {
+        setRegister(null)
+        setRegState(null)
+      }
+    }
+  }
+  const loadRegisterRef = useRef(loadRegister)
+  loadRegisterRef.current = loadRegister
+
   async function refreshAll() {
     loadCatalog()
     loadEvent()
+    loadRegister()
     setTabsSignal((n) => n + 1)
     await syncTabs()
   }
@@ -517,6 +546,7 @@ export default function App() {
       slotId: getCurrentSlotId(),
       deviceId: getDeviceId(),
       deviceName: getDeviceName(),
+      registerId: getRegister(org)?.id,
     }
 
     if (paymentMethod === 'bancontact') {
@@ -780,6 +810,8 @@ export default function App() {
           else if (msg.method === 'bancontact') checkBancontactStatus(msg.payment_id)
         },
         tabs_changed: () => scheduleSync(),
+        // Another kassa of this register opened or closed the drawer.
+        shift_changed: () => loadRegisterRef.current(),
       })
     })
 
@@ -797,6 +829,7 @@ export default function App() {
     refreshTabs()
     loadCatalog()
     loadEvent()
+    loadRegister()
     function onVisible() {
       if (document.visibilityState === 'visible') refreshAll()
     }
@@ -851,6 +884,17 @@ export default function App() {
   const draftQuantities = Object.fromEntries(draft.map((l) => [l.variantId, l.quantity]))
   const catalogName = catalogState.status === 'ok' ? catalogState.catalog.name : null
 
+  // Logging out with the drawer still open: "Kasopmaak doen" or "Openlaten"
+  // (DOMAIN_MODEL.md decision 3 — the shift doesn't end with a session).
+  function leaveWithOpenDrawer(e: React.MouseEvent) {
+    if (!regState?.shift) return
+    e.preventDefault()
+    setLeaving(true)
+  }
+
+  // On a register whose drawer isn't open: "Kassa openen" before anything else.
+  const registerClosed = !!orgId && !!getRegister(orgId) && !!regState && !regState.shift
+
   return (
     <div className="flex min-h-svh flex-col bg-muted/40">
       {orgId && <DemoBar orgId={orgId} />}
@@ -880,8 +924,23 @@ export default function App() {
             </div>
           </div>
           {orgId && <StaffButton orgId={orgId} required={staffRequired} open={staffOpen} onOpenChange={setStaffOpen} className="h-[34px]" />}
+          {regState?.shift && (
+            <span className="text-[12px] text-muted-foreground" data-testid="shift-label">
+              {st.header(regState.register.name, regState.shift.number, new Date(regState.shift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}
+            </span>
+          )}
           <div className="min-w-5 flex-1" />
           <div className="flex flex-wrap items-center gap-2">
+            {regState?.shift && (
+              <>
+                <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={current !== null} onClick={() => setMovementOpen(true)}>
+                  {st.movement}
+                </Button>
+                <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={current !== null} onClick={() => setCashUpOpen(true)} data-testid="open-cash-up">
+                  {st.cashUp}
+                </Button>
+              </>
+            )}
             <Button
               variant="outline"
               className="h-[34px] px-3 text-[13px]"
@@ -904,14 +963,14 @@ export default function App() {
                 </div>
                 <div className="flex flex-col leading-tight">
                   <span className="text-xs font-medium">{user.name}</span>
-                  <a href="/logout" className="text-[10.5px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                  <a href="/logout" onClick={leaveWithOpenDrawer} className="text-[10.5px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
                     {m.logout}
                   </a>
                 </div>
               </div>
             )}
             {!user && (
-              <a href="/logout" className="text-[13px] text-muted-foreground underline-offset-4 hover:underline">
+              <a href="/logout" onClick={leaveWithOpenDrawer} className="text-[13px] text-muted-foreground underline-offset-4 hover:underline">
                 {m.logout}
               </a>
             )}
@@ -945,7 +1004,44 @@ export default function App() {
           </div>
         )}
 
-        {!current && view === 'overview' && orgId && (
+        {registerClosed && orgId && regState && <OpenRegister orgId={orgId} state={regState} onOpened={() => loadRegister()} />}
+        {!registerClosed && cashUpOpen && orgId && regState?.shift && (
+          <CashUp
+            orgId={orgId}
+            state={{ ...regState, shift: regState.shift }}
+            onBack={() => setCashUpOpen(false)}
+            onClosed={() => {
+              setCashUpOpen(false)
+              loadRegister()
+            }}
+          />
+        )}
+        {orgId && regState?.shift && movementOpen && (
+          <MovementDialog orgId={orgId} shift={regState.shift} deviceName={getDeviceName()} onClose={() => setMovementOpen(false)} onSaved={() => loadRegister()} />
+        )}
+        <Dialog open={leaving} onOpenChange={setLeaving}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{m.leaveTitle}</DialogTitle>
+              <DialogDescription>{m.leaveText}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" asChild>
+                <a href="/logout">{m.leaveOpen}</a>
+              </Button>
+              <Button
+                onClick={() => {
+                  setLeaving(false)
+                  setCashUpOpen(true)
+                }}
+              >
+                {st.cashUp}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {!registerClosed && !cashUpOpen && !current && view === 'overview' && orgId && (
           <TabsOverview
             orgId={orgId}
             refreshSignal={tabsSignal}
@@ -956,7 +1052,7 @@ export default function App() {
           />
         )}
 
-        {!current && view === 'kassa' && (
+        {!registerClosed && !cashUpOpen && !current && view === 'kassa' && (
           // Flex like the design, not a grid with an fr track: Safari
           // mis-sized the nested product grid's rows inside that.
           <div className="flex flex-col items-start gap-4 lg:flex-row">

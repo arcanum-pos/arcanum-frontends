@@ -12,6 +12,8 @@ import { listMyMemberships } from '@/shared/memberships'
 import { LinkPanel } from './LinkPanel'
 import { ReaderPanel } from './ReaderPanel'
 import { CatalogPanel } from './CatalogPanel'
+import { RegisterPanel } from './RegisterPanel'
+import { getRegister } from '@/shared/register'
 import { EventPanel } from './EventPanel'
 import { SlotPanel } from './SlotPanel'
 import { useSourceUrl } from '@/shared/source-url'
@@ -20,6 +22,8 @@ import { SETTINGS_MESSAGES } from './messages'
 export default function App() {
   const m = useMessages(SETTINGS_MESSAGES)
   const sourceUrl = useSourceUrl()
+  // Re-renders when the register is chosen (the tijdvak panel goes away).
+  const [, setRegisterChanged] = useState(0)
   const [deviceNameInput, setDeviceNameInput] = useState(() => getDevice().name || '')
   const [deviceSaved, setDeviceSaved] = useState(false)
   const [posTerminalId, setPosTerminalId] = useState<string | null>(null)
@@ -143,6 +147,16 @@ export default function App() {
         <>
           <Card>
             <CardHeader>
+              <CardTitle className="text-base">{m.register}</CardTitle>
+              <p className="text-sm text-muted-foreground">{m.registerHint}</p>
+            </CardHeader>
+            <CardContent>
+              <RegisterPanel posOrgId={posOrgId} onChange={() => setRegisterChanged((n) => n + 1)} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle className="text-base">{m.catalog}</CardTitle>
               <p className="text-sm text-muted-foreground">{m.catalogHint}</p>
             </CardHeader>
@@ -182,11 +196,15 @@ export default function App() {
         </>
       )}
 
-      <Card>
-        <CardContent className="pt-6">
-          <SlotPanel />
-        </CardContent>
-      </Card>
+      {/* The local tijdvak: only for a kassa without a register — one with a
+          register has real shifts (Kassa openen / Kasopmaak). */}
+      {!(posOrgId && getRegister(posOrgId)) && (
+        <Card>
+          <CardContent className="pt-6">
+            <SlotPanel />
+          </CardContent>
+        </Card>
+      )}
 
       <p className="text-center text-xs text-muted-foreground">
         {m.freeSoftware} ·{' '}

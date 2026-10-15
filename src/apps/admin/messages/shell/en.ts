@@ -25,6 +25,7 @@ export default {
     products: 'Products',
     catalogs: 'Menus',
     devices: 'Devices',
+    registers: 'Cash drawers',
     users: 'Users',
     staff: 'Staff',
     settings: 'Settings',

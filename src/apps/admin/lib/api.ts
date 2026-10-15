@@ -417,3 +417,49 @@ export function updateStaff(orgId: string, staffId: string, changes: { name?: st
 export function setStaffRequired(orgId: string, required: boolean): Promise<{ required: boolean }> {
   return request(`/${encodeURIComponent(orgId)}/staff-settings`, { method: 'PUT', body: JSON.stringify({ required }) })
 }
+
+// --- Kassalades and shifts (release B2) ---
+
+export interface RegisterRecord {
+  id: string
+  name: string
+  archived: boolean
+  open: boolean
+}
+
+export interface ShiftRecord {
+  id: string
+  number: number
+  registerId: string
+  registerName: string
+  status: 'open' | 'closed'
+  openedAt: string
+  openedBy: string | null
+  closedAt: string | null
+  closedBy: string | null
+  openingFloatCents: number
+  expectedCents: number | null
+  countedCents: number | null
+  differenceCents: number | null
+  note: string | null
+}
+
+export function listRegistersAdmin(orgId: string): Promise<{ blindCount: boolean; registers: RegisterRecord[] }> {
+  return request(`/${encodeURIComponent(orgId)}/registers`)
+}
+
+export function createRegister(orgId: string, name: string): Promise<RegisterRecord> {
+  return request(`/${encodeURIComponent(orgId)}/registers`, { method: 'POST', body: JSON.stringify({ name }) })
+}
+
+export function updateRegister(orgId: string, registerId: string, changes: { name?: string; archived?: boolean }): Promise<RegisterRecord> {
+  return request(`/${encodeURIComponent(orgId)}/registers/${encodeURIComponent(registerId)}`, { method: 'PATCH', body: JSON.stringify(changes) })
+}
+
+export function setBlindCount(orgId: string, blindCount: boolean): Promise<{ blindCount: boolean }> {
+  return request(`/${encodeURIComponent(orgId)}/shift-settings`, { method: 'PUT', body: JSON.stringify({ blindCount }) })
+}
+
+export function listShifts(orgId: string): Promise<ShiftRecord[]> {
+  return request(`/${encodeURIComponent(orgId)}/shifts`)
+}

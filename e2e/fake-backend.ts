@@ -316,6 +316,55 @@ export class FakeBackend {
   staffRequired = false
   currentStaff: string | null = null
   recordedStaff: { what: 'tab' | 'charge'; staff: string | null }[] = []
+  // Registers and shifts (release B2): one drawer, its shift, what was sold on it.
+  registers = [{ id: 'toog', name: 'Toog', archived: false, open: false }]
+  blindCount = false
+  shift: any = null
+  shiftNumber = 0
+  lastLeftInDrawer: number | null = null
+  registerIdsSent: (string | null)[] = []
+  shiftCash = 0
+  private shiftJson() {
+    const s = this.shift
+    if (!s) return null
+    const expected = s.openingFloatCents + this.shiftCash + s.movements.reduce((n: number, m: any) => n + (m.direction === 'in' ? m.amountCents : -m.amountCents), 0)
+    return { ...s, totals: { methods: this.shiftCash ? { cash: { count: 1, cents: this.shiftCash, tipCents: 0 } } : {}, cashIn: 0, cashOut: 0 }, expectedCents: this.blindCount ? null : expected, pendingPayments: 0, openTabs: this.tabs.filter((t) => t.status === 'open').length, _expected: expected }
+  }
+  private registerRoute(method: string, p: string, body: any): FakeResponse | null {
+    if (/^\/api\/organizations\/[^/]+\/registers$/.test(p) && method === 'GET') return { status: 200, body: { blindCount: this.blindCount, registers: this.registers } }
+    const reg = p.match(/^\/api\/organizations\/[^/]+\/registers\/([^/]+)\/shift$/)
+    if (reg && method === 'GET') {
+      const r = this.registers.find((x) => x.id === reg[1])
+      if (!r) return { status: 404, body: { error: 'x', code: 'register_not_found' } }
+      const { _expected, ...shift } = this.shiftJson() ?? ({} as any)
+      return { status: 200, body: { register: r, shift: this.shift ? shift : null, suggestedFloatCents: this.lastLeftInDrawer, blindCount: this.blindCount } }
+    }
+    if (reg && method === 'POST') {
+      if (this.shift) return { status: 409, body: { error: 'x', code: 'shift_already_open' } }
+      const float = body.count ? Object.entries(body.count).reduce((n: number, [d, c]: any) => n + Number(d) * c, 0) : body.floatCents
+      this.shift = { id: `shift-${++this.shiftNumber}`, registerId: reg[1], number: this.shiftNumber, status: 'open', openedAt: new Date().toISOString(), openedBy: null, openingFloatCents: float, movements: [] }
+      this.shiftCash = 0
+      return { status: 201, body: this.shiftJson() }
+    }
+    const mv = p.match(/^\/api\/organizations\/[^/]+\/shifts\/([^/]+)\/movements$/)
+    if (mv && method === 'POST') {
+      this.shift.movements.push({ direction: body.direction, amountCents: body.amountCents, reason: body.reason, by: null, at: new Date().toISOString() })
+      return { status: 201, body: this.shiftJson() }
+    }
+    const close = p.match(/^\/api\/organizations\/[^/]+\/shifts\/([^/]+)\/close$/)
+    if (close && method === 'POST') {
+      const expected = this.shiftJson()!._expected
+      const counted = Object.entries(body.count ?? {}).reduce((n: number, [d, c]: any) => n + Number(d) * c, 0)
+      if (!this.blindCount && Math.abs(counted - expected) >= 100 && !body.note) return { status: 400, body: { error: 'x', code: 'shift_note_required' } }
+      const done = { ...this.shift, status: 'closed', countedCents: counted, expectedCents: expected, differenceCents: counted - expected, leftInDrawerCents: body.leftInDrawerCents, note: body.note ?? null }
+      this.closedShifts.push(done)
+      this.lastLeftInDrawer = body.leftInDrawerCents
+      this.shift = null
+      return { status: 200, body: done }
+    }
+    return null
+  }
+  closedShifts: any[] = []
   // Set: org-e2e is a demo that disappears then (the kassa's demo bar).
   demoExpiresAt: string | null = null
   deviceCalls: { method: string; id: string; action?: string; body?: any }[] = []
@@ -391,6 +440,8 @@ export class FakeBackend {
     if (device) return this.handleDevice(method, decodeURIComponent(device[2]), device[3], body)
 
     if (/^\/api\/organizations\/[^/]+\/events$/.test(p) && method === 'GET') return { status: 200, body: this.events }
+    const registerResponse = this.registerRoute(method, p, body)
+    if (registerResponse) return registerResponse
     if (/^\/api\/organizations\/[^/]+\/staff$/.test(p) && method === 'GET') return { status: 200, body: { required: this.staffRequired, staff: this.staff } }
     const staffToken = p.match(/^\/api\/organizations\/[^/]+\/staff\/([^/]+)\/token$/)
     if (staffToken) {
@@ -498,6 +549,8 @@ export class FakeBackend {
       }
       if (method === 'POST') {
         if (this.staffRequired && !this.currentStaff) return { status: 409, body: { error: 'Kies eerst wie er werkt (bovenaan het scherm)', code: 'staff_required' } }
+        if (body.registerId && !this.shift) return { status: 409, body: { error: 'Deze kassa is niet open — doe eerst "Kassa openen"', code: 'register_closed' } }
+        this.registerIdsSent.push(body.registerId ?? null)
         this.recordedStaff.push({ what: 'tab', staff: this.currentStaff })
         if (body.eventId != null && !this.events.some((e) => e.id === body.eventId)) {
           return { status: 400, body: { error: 'Onbekend evenement — kies het opnieuw in de instellingen van de kassa', code: 'unknown_event' } }
@@ -614,6 +667,9 @@ export class FakeBackend {
 
   private createCharge(method: string, body: any): FakeResponse {
     if (this.staffRequired && !this.currentStaff) return { status: 409, body: { error: 'Kies eerst wie er werkt (bovenaan het scherm)', code: 'staff_required' } }
+    if (body.registerId && !this.shift) return { status: 409, body: { error: 'Deze kassa is niet open — doe eerst "Kassa openen"', code: 'register_closed' } }
+    this.registerIdsSent.push(body.registerId ?? null)
+    if (body.registerId && method === 'cash') this.shiftCash += body.amount
     this.recordedStaff.push({ what: 'charge', staff: this.currentStaff })
     if (this.beforeNextCharge) {
       const hook = this.beforeNextCharge

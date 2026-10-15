@@ -25,6 +25,7 @@ export default {
     products: 'Produits',
     catalogs: 'Cartes',
     devices: 'Appareils',
+    registers: 'Tiroirs-caisse',
     users: 'Utilisateurs',
     staff: 'Personnel',
     settings: 'Paramètres',

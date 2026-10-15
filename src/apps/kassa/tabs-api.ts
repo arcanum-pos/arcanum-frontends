@@ -4,6 +4,7 @@
 // just fetches; the server enforces every rule (open, no payment pending,
 // amount at most what's outstanding).
 import { staffHeaders } from '@/shared/staff'
+import { getRegister } from '@/shared/register'
 import { getDeviceId, getDeviceName } from '@/shared/device'
 import { apiErrorMessage, isApiErrorCode, type ApiErrorCode } from '@/shared/api-errors'
 import type { KassaMessages } from './messages/nl'
@@ -118,12 +119,18 @@ export class TabApiError extends Error {
   }
 }
 
+function withRegister(orgId: string, body: unknown): unknown {
+  const register = getRegister(orgId)
+  return register && body && typeof body === 'object' && !Array.isArray(body) ? { ...(body as Record<string, unknown>), registerId: register.id } : body
+}
+
 async function request<T>(orgId: string, path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/tabs${path}`, {
     method: init?.method || 'GET',
     // The person chosen on this kassa (staff): recorded with what it does.
     headers: { ...(init?.body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...staffHeaders(orgId) },
-    body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
+    // On a register (cash drawer), its id: the backend sells only while its shift is open.
+    body: init?.body !== undefined ? JSON.stringify(withRegister(orgId, init.body)) : undefined,
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw TabApiError.fromResponse(res.status, data, `Fout ${res.status}`)

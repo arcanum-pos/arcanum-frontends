@@ -77,6 +77,10 @@ export class FakeCatalogAdmin {
   staff: { id: string; name: string; hasPin: boolean; memberId: string | null; archived: boolean; createdAt: string }[] = []
   staffRequired = false
   staffCalls: { method: string; body: any }[] = []
+  // Kassalades.
+  registers: { id: string; name: string; archived: boolean; open: boolean }[] = []
+  blindCount = false
+  shifts: any[] = []
   products: Product[] = []
   variants: Variant[] = []
   catalogs: Catalog[] = []
@@ -132,6 +136,25 @@ export class FakeCatalogAdmin {
       return ok({ ok: true })
     }
     if (/^\/api\/organizations\/[^/]+\/device-pairings(\/.*)?$/.test(path)) return this.pairingRoute(method, path, body)
+    // Kassalades and shifts (arcanum-backend shifts.ts).
+    if (/^\/api\/organizations\/[^/]+\/registers$/.test(path) && method === 'GET') return ok({ blindCount: this.blindCount, registers: this.registers })
+    if (/^\/api\/organizations\/[^/]+\/registers$/.test(path) && method === 'POST') {
+      const r = { id: this.id('reg'), name: body.name, archived: false, open: false }
+      this.registers.push(r)
+      return { status: 201, body: r }
+    }
+    const reg = path.match(/^\/api\/organizations\/[^/]+\/registers\/([^/]+)$/)
+    if (reg && method === 'PATCH') {
+      const r = this.registers.find((x) => x.id === reg[1])!
+      if (body.archived && r.open) return { status: 409, body: { error: 'x', code: 'register_open' } }
+      Object.assign(r, body)
+      return ok(r)
+    }
+    if (/^\/api\/organizations\/[^/]+\/shift-settings$/.test(path) && method === 'PUT') {
+      this.blindCount = !!body.blindCount
+      return ok({ blindCount: this.blindCount })
+    }
+    if (/^\/api\/organizations\/[^/]+\/shifts$/.test(path) && method === 'GET') return ok(this.shifts)
     // Medewerkers (arcanum-backend staff.ts).
     if (/^\/api\/organizations\/[^/]+\/staff-settings$/.test(path) && method === 'PUT') {
       this.staffRequired = !!body.required

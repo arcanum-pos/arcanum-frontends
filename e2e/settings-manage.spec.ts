@@ -61,3 +61,16 @@ test('"Klantscherm openen": a window with the kassa\'s own display — the same 
   expect([...backend.devices.values()].filter((d) => d.role === 'cfd')).toHaveLength(1)
   expect(backend.devices.get('display-of-pos-e2e')).toMatchObject({ linked_to: 'pos-e2e', name: 'Kassa 1 · klantscherm' })
 })
+
+test('Kassalade: chosen here (or none); with one, the local tijdvak goes — the kassa then opens and closes the drawer', async ({ kassa }) => {
+  await openSettings(kassa)
+  const panel = kassa.getByTestId('register-panel')
+  await expect(panel).toContainText('Geen kassalade: deze kassa verkoopt zonder kasopmaak.')
+  await expect(kassa.getByRole('button', { name: 'Nieuw tijdvak starten' })).toBeVisible()
+  await panel.getByRole('button', { name: 'Kies Toog' }).click()
+  await expect(panel).toContainText('Actief: Toog')
+  await expect(kassa.getByRole('button', { name: 'Nieuw tijdvak starten' })).toHaveCount(0)
+  expect(await kassa.evaluate(() => JSON.parse(localStorage.getItem('arcanum-register') || 'null'))).toEqual({ orgId: 'org-e2e', id: 'toog', name: 'Toog' })
+  await kassa.goto('/kassa.html')
+  await expect(kassa.getByTestId('open-register')).toContainText('Kassa openen — Toog')
+})
