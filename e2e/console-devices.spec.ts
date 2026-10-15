@@ -162,3 +162,17 @@ test('a pickup screen (Afhaalscherm): a station screen for guests, for one stati
   await expect(row).toContainText('Afhaalscherm')
   await expect(row).toContainText('Station: Keuken')
 })
+
+test('a table screen at the entrance: no station to choose', async ({ console: open, page, catalogAdmin }) => {
+  await open('/devices')
+  await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Type' }).click()
+  await page.getByRole('option', { name: 'Tafelscherm (ingang)' }).click()
+  await expect(dialog).toContainText('welke beloofde tafel klaar is')
+  await expect(dialog.getByRole('combobox', { name: 'Station' })).toHaveCount(0)
+  await dialog.getByLabel('Naam').fill('Ingang')
+  await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
+  await expect(dialog.getByTestId('pairing-code')).toBeVisible()
+  expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'station', stationId: null, view: 'tables', name: 'Ingang' })
+})

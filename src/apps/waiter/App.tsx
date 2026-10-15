@@ -7,7 +7,8 @@ import { useMessages } from '@/shared/i18n'
 import { listMyMemberships, type Membership } from '@/shared/memberships'
 import { fetchKassaCatalog, type KassaCatalog, type KassaEntry } from '../kassa/catalog-api'
 import * as tabsApi from '../kassa/tabs-api'
-import { clearTable, connectLive, listEvents, listReaders, listTables, seatTable, startPayment, tableByQr, type EventInfo, type TableInfo } from './api'
+import { clearTable, connectLive, listEvents, listReaders, listTables, mergeTable, moveTable, promiseTable, seatTable, startPayment, tableByQr, type EventInfo, type TableInfo } from './api'
+import { EntranceScreen } from '@/shared/entrance-screen'
 import { WAITER_MESSAGES } from './messages'
 
 // The waiter screen (DOMAIN_MODEL.md "Tables and waiters", release C): on a
@@ -47,6 +48,15 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [signal, setSignal] = useState(0)
+  // This window as the entrance screen (opened from here: ?view=ingang).
+  const [entrance] = useState(() => new URLSearchParams(window.location.search).get('view') === 'ingang')
+  const subscribe = useCallback((onChange: () => void) => (orgId ? connectLive(orgId, onChange) : () => {}), [orgId])
+  // A clock for "seated for x min", without fetching.
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const clock = setInterval(() => setNow(Date.now()), 60_000)
+    return () => clearInterval(clock)
+  }, [])
 
   useEffect(() => {
     listMyMemberships()
@@ -71,7 +81,7 @@ export default function App() {
   }, [orgId])
 
   useEffect(() => {
-    if (!orgId) return
+    if (!orgId || entrance) return
     write(ORG_KEY, orgId)
     listEvents(orgId)
       .then((list) => {
@@ -96,7 +106,7 @@ export default function App() {
       stop()
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [orgId, load])
+  }, [orgId, load, entrance])
 
   useEffect(() => {
     if (eventId) write(EVENT_KEY, eventId)
@@ -114,6 +124,7 @@ export default function App() {
         ))}
       </Chooser>
     )
+  if (entrance) return <EntranceScreen orgId={orgId} subscribe={subscribe} />
   if (events && events.length === 0) return <p className="p-6" data-testid="no-event">{m.noEvent}</p>
   if (events && !eventId)
     return (
@@ -130,7 +141,18 @@ export default function App() {
   const open = tables?.find((t) => t.id === openId) ?? null
 
   if (open && event)
-    return <TableScreen orgId={orgId} event={event} table={open} signal={signal} onBack={() => setOpenId(null)} onChanged={load} />
+    return (
+      <TableScreen
+        orgId={orgId}
+        event={event}
+        table={open}
+        tables={tables ?? []}
+        signal={signal}
+        onBack={() => setOpenId(null)}
+        onChanged={load}
+        onOpen={(id) => setOpenId(id)}
+      />
+    )
 
   const zones = groupByZone(tables ?? [])
   return (
@@ -142,7 +164,16 @@ export default function App() {
             {event?.name ?? ''}
           </button>
         </div>
-        <Legend />
+        <div className="flex flex-col items-end gap-1">
+          <Legend />
+          <button
+            className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+            onClick={() => window.open('/bediening?view=ingang', 'arcanum-entrance', 'popup,width=1280,height=800')?.focus()}
+            data-testid="open-entrance"
+          >
+            {m.openEntrance}
+          </button>
+        </div>
       </header>
       {error && (
         <p className="bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
@@ -165,6 +196,17 @@ export default function App() {
                 >
                   <span className="text-2xl font-bold">{t.name}</span>
                   <span className="text-[11px] font-medium">{t.state === 'occupied' && t.tab ? formatEuro(t.tab.totalCents) : m.states[t.state]}</span>
+                  {t.state === 'occupied' && t.tab && (
+                    <span className="flex items-center gap-1 text-[10px] opacity-90">
+                      {t.tab.preparing && <span className="size-2 rounded-full bg-amber-300" title={m.preparing} data-testid="preparing" />}
+                      {m.minutes(Math.max(0, Math.floor((now - Date.parse(t.tab.openedAt)) / 60_000)))}
+                    </span>
+                  )}
+                  {t.promised && (
+                    <span className="mt-0.5 rounded bg-violet-600 px-1.5 text-[10px] font-semibold text-white" data-testid="promised-badge">
+                      {m.promised}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -211,10 +253,10 @@ function groupByZone(tables: TableInfo[]): [string, TableInfo[]][] {
 }
 
 // One table: seat guests, its tab, order a round, take payment, Opgeruimd.
-function TableScreen({ orgId, event, table, signal, onBack, onChanged }: { orgId: string; event: EventInfo; table: TableInfo; signal: number; onBack: () => void; onChanged: () => void }) {
+function TableScreen({ orgId, event, table, tables, signal, onBack, onChanged, onOpen }: { orgId: string; event: EventInfo; table: TableInfo; tables: TableInfo[]; signal: number; onBack: () => void; onChanged: () => void; onOpen: (id: string) => void }) {
   const m = useMessages(WAITER_MESSAGES)
   const [tab, setTab] = useState<tabsApi.TabDetail | null>(null)
-  const [view, setView] = useState<'tab' | 'order' | 'pay'>('tab')
+  const [view, setView] = useState<'tab' | 'order' | 'pay' | 'move' | 'merge'>('tab')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mode = event.modes.find((x) => x.atTable && x.catalogId) ?? null
@@ -267,6 +309,12 @@ function TableScreen({ orgId, event, table, signal, onBack, onChanged }: { orgId
             {m.cleared}
           </Button>
         )}
+        {table.state !== 'free' && view === 'tab' && (
+          // Promised to guests waiting at the entrance (release D).
+          <Button variant={table.promised ? 'secondary' : 'outline'} disabled={busy} onClick={() => act(() => promiseTable(orgId, table.id, !table.promised))} data-testid="promise">
+            {table.promised ? m.unpromise : m.promise}
+          </Button>
+        )}
         {table.state === 'occupied' && tab && view === 'tab' && (
           <>
             <TabLines tab={tab} />
@@ -277,8 +325,40 @@ function TableScreen({ orgId, event, table, signal, onBack, onChanged }: { orgId
               <Button size="lg" variant="outline" className="h-14" onClick={() => setView('pay')} disabled={tab.outstandingCents <= 0} data-testid="pay">
                 <Wallet /> {m.pay}
               </Button>
+              <Button variant="outline" onClick={() => setView('move')} data-testid="move">
+                {m.move}
+              </Button>
+              <Button variant="outline" onClick={() => setView('merge')} data-testid="merge">
+                {m.merge}
+              </Button>
             </div>
           </>
+        )}
+        {table.state === 'occupied' && (view === 'move' || view === 'merge') && (
+          <section className="flex flex-col gap-2" data-testid={`${view}-choice`}>
+            <p className="text-sm text-muted-foreground">{view === 'move' ? m.moveTo : m.mergeInto}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {tables
+                .filter((x) => x.id !== table.id && !x.archived && (view === 'move' ? x.state === 'free' : x.state === 'occupied'))
+                .map((x) => (
+                  <Button
+                    key={x.id}
+                    variant="outline"
+                    className="h-14 text-lg font-bold"
+                    disabled={busy}
+                    onClick={() =>
+                      act(async () => {
+                        const target = view === 'move' ? await moveTable(orgId, table.id, x.id) : await mergeTable(orgId, table.id, x.id)
+                        onOpen(target.id)
+                        setView('tab')
+                      })
+                    }
+                  >
+                    {x.name}
+                  </Button>
+                ))}
+            </div>
+          </section>
         )}
         {table.state === 'occupied' && tab && view === 'order' && mode && (
           <OrderRound

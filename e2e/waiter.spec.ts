@@ -22,6 +22,8 @@ class FakeRestaurant {
   rounds: any[] = []
   payments: any[] = []
   calls: string[] = []
+  managed: { table: string; action: string; body: any }[] = []
+  promised: { name: string; zone: string | null; ready: boolean; promisedAt: string }[] = []
 }
 
 const test = base.extend<{ fake: FakeRestaurant; waiter: Page; push: () => void }>({
@@ -60,6 +62,21 @@ const test = base.extend<{ fake: FakeRestaurant; waiter: Page; push: () => void 
         Object.assign(t, { state: 'occupied', tab: { id: 'tab1', number: 7, label: fake.tab.label, openedAt: new Date().toISOString(), totalCents: 0 } })
         return route.fulfill({ status: 201, json: t })
       }
+      const manage = p.match(/^\/api\/organizations\/org-1\/tables\/([^/]+)\/(move|merge|promise)$/)
+      if (manage) {
+        const t = fake.tables.find((x) => x.id === manage[1])!
+        const body = req.postDataJSON()
+        fake.managed.push({ table: t.id, action: manage[2], body })
+        if (manage[2] === 'promise') {
+          ;(t as any).promised = body.promised
+          return route.fulfill({ json: t })
+        }
+        const target = fake.tables.find((x) => x.id === (body.toTableId ?? body.intoTableId))!
+        if (manage[2] === 'move') Object.assign(target, { state: 'occupied', tab: t.tab })
+        Object.assign(t, { state: 'clearing', tab: null })
+        return route.fulfill({ json: target })
+      }
+      if (p === '/api/organizations/org-1/promised-tables') return route.fulfill({ json: fake.promised })
       const clear = p.match(/^\/api\/organizations\/org-1\/tables\/([^/]+)\/clear$/)
       if (clear) {
         const t = fake.tables.find((x) => x.id === clear[1])!
@@ -148,5 +165,57 @@ test.describe('a guest scanning the table QR', () => {
   test("a Bezet table whose mode allows it: on to the table's tab, to order", async ({ page }) => {
     await guest(page, { table: '1', orgName: 'Scouts', occupied: true, orderToken: 'tok-abcdefghijklmnopqrst' })
     await page.waitForURL(/\/volg\/tok-abcdefghijklmnopqrst$/)
+  })
+})
+
+test.describe('table management (release D)', () => {
+  test('Verplaatsen to a free table; the one left behind is to be cleared', async ({ waiter: page, fake }) => {
+    Object.assign(fake.tables[0], { state: 'occupied', tab: { id: 'tab1', number: 7, label: 'Tafel 1', openedAt: new Date(Date.now() - 25 * 60_000).toISOString(), totalCents: 2400, preparing: true } })
+    fake.tab = { id: 'tab1', number: 7, label: 'Tafel 1', status: 'open', lines: [], totalCents: 2400, paidCents: 0, outstandingCents: 2400, paymentPending: false }
+    await page.reload()
+    const one = page.locator('[data-testid="table"][data-state="occupied"]')
+    await expect(one).toContainText('25 min')
+    await expect(one.getByTestId('preparing')).toBeVisible()
+    await one.click()
+    await page.getByTestId('move').click()
+    // Only free tables to move to.
+    await expect(page.getByTestId('move-choice').getByRole('button')).toHaveText(['T1'])
+    await page.getByTestId('move-choice').getByRole('button', { name: 'T1' }).click()
+    expect(fake.managed).toEqual([{ table: 't1', action: 'move', body: { toTableId: 't3' } }])
+    await expect(page.getByRole('heading', { name: 'Tafel T1' })).toBeVisible()
+  })
+
+  test('Samenvoegen with another occupied table', async ({ waiter: page, fake }) => {
+    Object.assign(fake.tables[0], { state: 'occupied', tab: { id: 'tab1', number: 7, label: 'Tafel 1', openedAt: new Date().toISOString(), totalCents: 800 } })
+    Object.assign(fake.tables[2], { state: 'occupied', tab: { id: 'tab2', number: 8, label: 'Tafel T1', openedAt: new Date().toISOString(), totalCents: 1200 } })
+    fake.tab = { id: 'tab1', number: 7, label: 'Tafel 1', status: 'open', lines: [], totalCents: 800, paidCents: 0, outstandingCents: 800, paymentPending: false }
+    await page.reload()
+    await page.getByTestId('table').filter({ hasText: /^1/ }).click()
+    await page.getByTestId('merge').click()
+    await page.getByTestId('merge-choice').getByRole('button', { name: 'T1' }).click()
+    expect(fake.managed).toEqual([{ table: 't1', action: 'merge', body: { intoTableId: 't3' } }])
+  })
+
+  test('Beloven: a table to clear promised to waiting guests, shown on its tile', async ({ waiter: page, fake }) => {
+    await page.locator('[data-testid="table"][data-state="clearing"]').click()
+    await page.getByTestId('promise').click()
+    expect(fake.managed).toEqual([{ table: 't2', action: 'promise', body: { promised: true } }])
+    await page.getByRole('button', { name: 'Terug' }).click()
+    await expect(page.locator('[data-testid="table"][data-state="clearing"]').getByTestId('promised-badge')).toHaveText('Beloofd')
+  })
+
+  test('the entrance screen, opened from the waiter screen: waiting, then ready — live', async ({ waiter: page, fake, push }) => {
+    fake.promised = [{ name: '2', zone: 'Zaal', ready: false, promisedAt: '' }]
+    const [entrance] = await Promise.all([page.waitForEvent('popup'), page.getByTestId('open-entrance').click()])
+    await expect(entrance).toHaveURL(/\/bediening\?view=ingang$/)
+    void entrance
+    // (The popup is another page; its address is checked — the screen itself below, in this page.)
+    await page.goto('/waiter.html?view=ingang')
+    const row = page.getByTestId('promised')
+    await expect(row).toHaveText(/Tafel 2.*even geduld/)
+    fake.promised = [{ name: '2', zone: 'Zaal', ready: true, promisedAt: '' }]
+    push()
+    await expect(row).toHaveAttribute('data-ready', 'true')
+    await expect(row).toContainText('klaar — welkom!')
   })
 })

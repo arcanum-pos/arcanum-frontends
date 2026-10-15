@@ -26,6 +26,16 @@ const nl = {
   sumup: (reader: string) => `SumUp · ${reader}`,
   onReader: (reader: string) => `Het bedrag staat op ${reader}. Laat de gast betalen.`,
   cashAtTill: (label: string) => `Contant? De gasten betalen aan de kassa: rekening "${label}".`,
+  openEntrance: 'Ingangsscherm',
+  preparing: 'Nog in bereiding',
+  minutes: (n: number) => `${n} min`,
+  promised: 'Beloofd',
+  promise: 'Beloven aan wachtende gasten',
+  unpromise: 'Belofte intrekken',
+  move: 'Verplaatsen',
+  merge: 'Samenvoegen',
+  moveTo: 'Naar welke vrije tafel?',
+  mergeInto: 'Bij welke tafel voegen? De bestellingen van deze tafel gaan op die rekening.',
 }
 
 export type WaiterMessages = typeof nl

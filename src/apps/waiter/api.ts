@@ -10,8 +10,10 @@ export interface TableInfo {
   position: number
   archived: boolean
   state: 'free' | 'occupied' | 'clearing'
-  tab: { id: string; number: number; label: string; openedAt: string; totalCents: number } | null
+  tab: { id: string; number: number; label: string; openedAt: string; totalCents: number; preparing?: boolean } | null
   qrToken: string | null
+  // Promised to guests waiting at the entrance (release D).
+  promised?: boolean
 }
 
 export interface EventInfo {
@@ -37,6 +39,10 @@ export const tableByQr = (orgId: string, token: string) => call<TableInfo>(orgId
 export const seatTable = (orgId: string, tableId: string, eventId: string) =>
   call<TableInfo>(orgId, `/tables/${encodeURIComponent(tableId)}/seat`, { method: 'POST', body: { eventId, deviceName: getDeviceName() } })
 export const clearTable = (orgId: string, tableId: string) => call<TableInfo>(orgId, `/tables/${encodeURIComponent(tableId)}/clear`, { method: 'POST' })
+// Table management (release D): move the guests, merge two tables' tabs, promise a table.
+export const moveTable = (orgId: string, tableId: string, toTableId: string) => call<TableInfo>(orgId, `/tables/${encodeURIComponent(tableId)}/move`, { method: 'POST', body: { toTableId } })
+export const mergeTable = (orgId: string, tableId: string, intoTableId: string) => call<TableInfo>(orgId, `/tables/${encodeURIComponent(tableId)}/merge`, { method: 'POST', body: { intoTableId } })
+export const promiseTable = (orgId: string, tableId: string, promised: boolean) => call<TableInfo>(orgId, `/tables/${encodeURIComponent(tableId)}/promise`, { method: 'POST', body: { promised } })
 export const listEvents = (orgId: string) => call<EventInfo[]>(orgId, '/events')
 export const liveToken = (orgId: string) => call<{ token: string }>(orgId, '/live-token')
 

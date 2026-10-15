@@ -238,7 +238,7 @@ export interface OrgDevice {
   // A station screen's station, and its kind: 'pickup' = the pickup screen for guests.
   station_id?: string
   station_name?: string | null
-  view?: 'pickup' | null
+  view?: 'pickup' | 'tables' | null
 }
 
 export async function setDeviceStation(orgId: string, terminalId: string, stationId: string): Promise<void> {
@@ -269,7 +269,7 @@ export interface DevicePairing {
   claimedBy: string | null
   terminalId: string | null
   linkTo: string | null
-  view?: 'pickup' | null
+  view?: 'pickup' | 'tables' | null
   // Only in the answer to createDevicePairing — never stored readable.
   code?: string
 }
@@ -277,7 +277,7 @@ export interface DevicePairing {
 // `linkTo`: for a customer display, the kassa it's for — linked as soon as it's paired.
 // `stationId`: for a station screen, the prep station it shows; `view`
 // 'pickup': it's the pickup screen for guests (only order numbers).
-export function createDevicePairing(orgId: string, role: 'pos' | 'cfd' | 'station', name: string, linkTo?: string | null, stationId?: string | null, view?: 'pickup' | null): Promise<DevicePairing & { code: string }> {
+export function createDevicePairing(orgId: string, role: 'pos' | 'cfd' | 'station', name: string, linkTo?: string | null, stationId?: string | null, view?: 'pickup' | 'tables' | null): Promise<DevicePairing & { code: string }> {
   return request(`/${encodeURIComponent(orgId)}/device-pairings`, {
     method: 'POST',
     body: JSON.stringify({ role, name, linkTo: role === 'cfd' ? linkTo || null : null, stationId: role === 'station' ? stationId || null : null, ...(role === 'station' && view ? { view } : {}) }),

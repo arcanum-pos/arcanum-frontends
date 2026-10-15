@@ -26,6 +26,16 @@ const en: WaiterMessages = {
   sumup: (reader) => `SumUp · ${reader}`,
   onReader: (reader) => `The amount is on ${reader}. Let the guest pay.`,
   cashAtTill: (label) => `Cash? The guests pay at the till: tab "${label}".`,
+  openEntrance: 'Entrance screen',
+  preparing: 'Still being prepared',
+  minutes: (n) => `${n} min`,
+  promised: 'Promised',
+  promise: 'Promise to waiting guests',
+  unpromise: 'Take the promise back',
+  move: 'Move',
+  merge: 'Merge',
+  moveTo: 'To which free table?',
+  mergeInto: 'Merge with which table? This table’s orders go onto its tab.',
 }
 
 export default en

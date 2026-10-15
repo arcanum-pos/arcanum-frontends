@@ -26,6 +26,16 @@ const fr: WaiterMessages = {
   sumup: (reader) => `SumUp · ${reader}`,
   onReader: (reader) => `Le montant est sur ${reader}. Faites payer le client.`,
   cashAtTill: (label) => `En espèces ? Les clients paient à la caisse : addition « ${label} ».`,
+  openEntrance: 'Écran d’accueil',
+  preparing: 'Encore en préparation',
+  minutes: (n) => `${n} min`,
+  promised: 'Promise',
+  promise: 'Promettre à des clients en attente',
+  unpromise: 'Annuler la promesse',
+  move: 'Déplacer',
+  merge: 'Regrouper',
+  moveTo: 'Vers quelle table libre ?',
+  mergeInto: 'Regrouper avec quelle table ? Les commandes de cette table vont sur son addition.',
 }
 
 export default fr

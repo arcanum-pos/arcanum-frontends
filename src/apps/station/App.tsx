@@ -1,3 +1,4 @@
+import { EntranceScreen } from '@/shared/entrance-screen'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
@@ -39,6 +40,17 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const COLUMNS: TicketStatus[] = ['ordered', 'in_progress', 'ready', 'delivered']
 
+// The entrance screen hears tables (and tabs) change over this device's socket.
+const subscriptions = new Map<string, (onChange: () => void) => () => void>()
+function entranceSubscribe(terminalId: string) {
+  if (!subscriptions.has(terminalId))
+    subscriptions.set(terminalId, (onChange) => {
+      const socket = connectNotifications(terminalId, { tables_changed: onChange, tabs_changed: onChange })
+      return () => socket.close()
+    })
+  return subscriptions.get(terminalId)!
+}
+
 // This page as the pickup screen: asked in the address (the station
 // screen's own second window), or the device is one (paired as such).
 const askedPickup = () => new URLSearchParams(window.location.search).get('view') === 'pickup'
@@ -61,7 +73,7 @@ async function openPickupWindow() {
 
 export default function App() {
   const m = useMessages(STATION_MESSAGES)
-  const [device, setDevice] = useState<{ orgId: string; terminalId: string; stationId: string | null; stationName: string; orgName: string; pickup: boolean } | null>(null)
+  const [device, setDevice] = useState<{ orgId: string; terminalId: string; stationId: string | null; stationName: string; orgName: string; pickup: boolean; entrance: boolean } | null>(null)
   const [tickets, setTickets] = useState<Ticket[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState(storedFilters)
@@ -118,6 +130,8 @@ export default function App() {
         stationName: info.station_name ?? terminal.name ?? '',
         orgName: terminal.orgName ?? '',
         pickup: info.view === 'pickup' || askedPickup(),
+        // The entrance screen (release D): the promised tables, no station.
+        entrance: info.view === 'tables',
       })
     })
     const clock = setInterval(() => setNow(Date.now()), 60_000)
@@ -125,7 +139,7 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!device || device.pickup) return
+    if (!device || device.pickup || device.entrance) return
     load()
     const socket = connectNotifications(device.terminalId, { tabs_changed: () => scheduleLoad() })
     // A push missed while the socket was down: reload when looked at again.
@@ -182,6 +196,7 @@ export default function App() {
   }
 
   if (!device) return <p className="p-6 text-muted-foreground">{m.loading}</p>
+  if (device.entrance) return <EntranceScreen orgId={device.orgId} subscribe={entranceSubscribe(device.terminalId)} />
   if (!device.stationId) return <p className="p-6" data-testid="no-station">{m.noStation}</p>
   if (device.pickup) return <Pickup device={{ ...device, stationId: device.stationId }} />
 

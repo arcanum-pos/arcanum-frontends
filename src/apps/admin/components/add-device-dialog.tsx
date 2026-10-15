@@ -23,7 +23,8 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
   const m = useMessages(ADMIN_ORG_MESSAGES).devices
   const [open, setOpen] = useState(false)
   // 'pickup': a station screen for guests (role 'station', view 'pickup').
-  const [role, setRole] = useState<'pos' | 'cfd' | 'station' | 'pickup'>('pos')
+  // 'entrance': the entrance screen (role 'station', view 'tables', no station — release D).
+  const [role, setRole] = useState<'pos' | 'cfd' | 'station' | 'pickup' | 'entrance'>('pos')
   const forStation = role === 'station' || role === 'pickup'
   // A station screen shows one prep station.
   const [stations, setStations] = useState<Station[] | null>(null)
@@ -61,8 +62,8 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
     setBusy(true)
     setError(null)
     try {
-      const pickup = role === 'pickup'
-      setPairing(await createDevicePairing(orgId, pickup ? 'station' : role, name.trim(), linkTo === LATER ? null : linkTo, stationId || null, pickup ? 'pickup' : null))
+      const view = role === 'pickup' ? 'pickup' : role === 'entrance' ? 'tables' : null
+      setPairing(await createDevicePairing(orgId, view ? 'station' : (role as 'pos' | 'cfd' | 'station'), name.trim(), linkTo === LATER ? null : linkTo, role === 'entrance' ? null : stationId || null, view))
       setStatus('open')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -120,7 +121,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label>{m.type}</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as 'pos' | 'cfd' | 'station' | 'pickup')}>
+              <Select value={role} onValueChange={(v) => setRole(v as 'pos' | 'cfd' | 'station' | 'pickup' | 'entrance')}>
                 <SelectTrigger aria-label={m.type}>
                   <SelectValue />
                 </SelectTrigger>
@@ -129,12 +130,13 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
                   <SelectItem value="cfd">{m.roles.cfd}</SelectItem>
                   <SelectItem value="station">{m.roles.station}</SelectItem>
                   <SelectItem value="pickup">{m.pickupScreen}</SelectItem>
+                  <SelectItem value="entrance">{m.entranceScreen}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="device-name">{m.deviceName}</Label>
-              <Input id="device-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === 'pos' ? m.namePlaceholderPos : role === 'station' ? m.namePlaceholderStation : role === 'pickup' ? m.namePlaceholderPickup : m.namePlaceholderCfd} autoComplete="off" />
+              <Input id="device-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === 'pos' ? m.namePlaceholderPos : role === 'station' ? m.namePlaceholderStation : role === 'pickup' ? m.namePlaceholderPickup : role === 'entrance' ? m.namePlaceholderEntrance : m.namePlaceholderCfd} autoComplete="off" />
             </div>
             {role === 'cfd' && (
               <div className="grid gap-2">
@@ -154,6 +156,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
                 </Select>
               </div>
             )}
+            {role === 'entrance' && <p className="text-xs text-muted-foreground">{m.entranceHint}</p>}
             {forStation && (
               <div className="grid gap-2">
                 <Label>{m.station}</Label>
