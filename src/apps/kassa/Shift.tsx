@@ -191,22 +191,25 @@ const denominationLabel = (cents: number) => (cents >= 100 ? `€ ${cents / 100}
 // A count per note and coin, with its total.
 function CountGrid({ count, onChange }: { count: Count; onChange: (count: Count) => void }) {
   const t = useMessages(TEXTS)
+  const row = (d: number) => (
+    <label key={d} className="flex items-center gap-2 text-sm">
+      <span className="w-14 shrink-0 text-right font-mono tabular-nums">{denominationLabel(d)}</span>
+      <span className="text-muted-foreground">×</span>
+      <Input
+        className="h-9 w-20 text-right font-mono"
+        inputMode="numeric"
+        aria-label={denominationLabel(d)}
+        value={count[d] ? String(count[d]) : ''}
+        onChange={(e) => onChange({ ...count, [d]: Number(e.target.value.replace(/\D/g, '').slice(0, 5)) || 0 })}
+      />
+      <span className="ml-auto font-mono text-muted-foreground tabular-nums">{count[d] ? formatEuro(d * count[d]) : ''}</span>
+    </label>
+  )
+  // Notes on the left, coins on the right — as they lie in the drawer.
   return (
-    <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2" data-testid="count-grid">
-      {DENOMINATIONS.map((d) => (
-        <label key={d} className="flex items-center gap-2 text-sm">
-          <span className="w-14 shrink-0 text-right font-mono tabular-nums">{denominationLabel(d)}</span>
-          <span className="text-muted-foreground">×</span>
-          <Input
-            className="h-9 w-20 text-right font-mono"
-            inputMode="numeric"
-            aria-label={denominationLabel(d)}
-            value={count[d] ? String(count[d]) : ''}
-            onChange={(e) => onChange({ ...count, [d]: Number(e.target.value.replace(/\D/g, '').slice(0, 5)) || 0 })}
-          />
-          <span className="ml-auto font-mono text-muted-foreground tabular-nums">{count[d] ? formatEuro(d * count[d]) : ''}</span>
-        </label>
-      ))}
+    <div className="grid gap-x-8 gap-y-1.5 sm:grid-cols-2" data-testid="count-grid">
+      <div className="grid content-start gap-1.5">{DENOMINATIONS.filter((d) => d >= 500).map(row)}</div>
+      <div className="grid content-start gap-1.5">{DENOMINATIONS.filter((d) => d < 500).map(row)}</div>
       <div className="col-span-full flex justify-between border-t pt-2 font-semibold">
         <span>{t.total}</span>
         <span className="font-mono tabular-nums" data-testid="count-total">
