@@ -80,6 +80,15 @@ const nl = {
   smsPrivacy: 'We gebruiken je nummer alleen hiervoor, en wissen het zodra je bestelling klaar is.',
   smsSent: (station: string) => `Sms verstuurd: ${station}`,
   smsFailed: (station: string) => `Sms voor ${station} kon niet verstuurd worden.`,
+  pushTitle: 'Melding als het klaar is',
+  pushHint: 'Krijg een melding op deze gsm zodra een station je bestelling klaarzet — ook als je scherm vergrendeld is.',
+  pushOn: 'Melding aanzetten',
+  pushSet: 'Je krijgt een melding op deze gsm zodra iets klaar is.',
+  pushOff: 'Uitzetten',
+  pushDenied: 'Meldingen zijn geweigerd voor deze site. Zet ze aan in de instellingen van je browser, of kies een sms.',
+  pushFailed: 'Meldingen lukken niet in deze browser.',
+  pushIosTitle: 'Melding op je iPhone',
+  pushIosSteps: ['Tik onderaan op Deel (het vierkantje met het pijltje).', 'Kies "Zet op beginscherm" en tik op Voeg toe.', 'Open "Bestelling" vanaf je beginscherm en tik daar op "Melding aanzetten".'],
 }
 
 export type SelfOrderMessages = typeof nl

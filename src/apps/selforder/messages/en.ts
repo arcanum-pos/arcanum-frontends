@@ -80,6 +80,15 @@ const en: SelfOrderMessages = {
   smsPrivacy: 'We only use your number for this, and erase it once your order is ready.',
   smsSent: (station: string) => `SMS sent: ${station}`,
   smsFailed: (station: string) => `The SMS for ${station} couldn’t be sent.`,
+  pushTitle: 'A notification when it’s ready',
+  pushHint: 'Get a notification on this phone as soon as a station has your order ready — even with the screen locked.',
+  pushOn: 'Turn on notification',
+  pushSet: 'You’ll get a notification on this phone as soon as something is ready.',
+  pushOff: 'Turn off',
+  pushDenied: 'Notifications are blocked for this site. Allow them in your browser’s settings, or choose a text message.',
+  pushFailed: 'Notifications don’t work in this browser.',
+  pushIosTitle: 'A notification on your iPhone',
+  pushIosSteps: ['Tap Share at the bottom (the square with the arrow).', 'Choose “Add to Home Screen”, then Add.', 'Open “Bestelling” from your home screen and tap “Turn on notification” there.'],
 }
 
 export default en

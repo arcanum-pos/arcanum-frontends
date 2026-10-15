@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@/shared/api-errors'
 import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
+import { linkOrderManifest, pushSupport, subscribePush, unsubscribePush } from './push'
 import { SELF_ORDER_MESSAGES } from './messages'
 import {
   bancontactTarget,
@@ -598,7 +599,12 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
         </ul>
       )}
 
-      {status.sms && (status.sms.available || status.sms.stations.length > 0) && <SmsCard token={token} sms={status.sms} onChanged={refresh} />}
+      {status.push && (status.push.available || status.push.subscribed) && <PushCard token={token} push={status.push} orgName={status.orgName} onChanged={refresh} />}
+
+      {/* With a notification on, no SMS (one message is enough): only what went. */}
+      {status.sms && ((status.sms.available && !status.push?.subscribed) || status.sms.stations.length > 0) && (
+        <SmsCard token={token} sms={status.push?.subscribed ? { ...status.sms, available: false } : status.sms} onChanged={refresh} />
+      )}
 
       {!isDone(status) && !storageWorks() && <KeepLink token={token} number={status.number} />}
 
@@ -645,6 +651,70 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
         )
       )}
     </div>
+  )
+}
+
+// "A notification when it's ready" (Web Push, release G'): turned on with a
+// tap (the browser asks permission), or — on an iPhone outside the home
+// screen — the steps to get there first.
+function PushCard({ token, push, orgName, onChanged }: { token: string; push: NonNullable<FollowStatus['push']>; orgName: string; onChanged: () => void }) {
+  const m = useMessages(SELF_ORDER_MESSAGES)
+  const [support] = useState(pushSupport)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const path = `/api/public/orders/${encodeURIComponent(token)}/push`
+  useEffect(() => (support === 'no' ? undefined : linkOrderManifest(token, orgName)), [support, token, orgName])
+  async function turnOn() {
+    setBusy(true)
+    setError(null)
+    try {
+      const subscription = await subscribePush(push.publicKey)
+      if (subscription === 'denied') return setError(m.pushDenied)
+      await call(path, { method: 'POST', body: JSON.stringify({ subscription }) })
+      onChanged()
+    } catch {
+      setError(m.pushFailed)
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function turnOff() {
+    setBusy(true)
+    try {
+      await call(path, { method: 'DELETE' })
+      await unsubscribePush().catch(() => {})
+      onChanged()
+    } finally {
+      setBusy(false)
+    }
+  }
+  if (support === 'no' && !push.subscribed) return null
+  return (
+    <section className="flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10" data-testid="push" data-support={support}>
+      <h2 className="font-semibold">{support === 'ios-home-screen' && !push.subscribed ? m.pushIosTitle : m.pushTitle}</h2>
+      {push.subscribed ? (
+        <div className="flex items-center justify-between gap-3">
+          <p className="min-w-0 text-sm" data-testid="push-on">🔔 {m.pushSet}</p>
+          <Button variant="ghost" size="sm" className="shrink-0" disabled={busy} onClick={turnOff}>
+            {m.pushOff}
+          </Button>
+        </div>
+      ) : support === 'ios-home-screen' ? (
+        <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm" data-testid="push-ios-steps">
+          {m.pushIosSteps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground">{m.pushHint}</p>
+          <Button size="lg" className="h-12" disabled={busy} onClick={turnOn} data-testid="push-turn-on">
+            🔔 {m.pushOn}
+          </Button>
+        </>
+      )}
+      {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+    </section>
   )
 }
 

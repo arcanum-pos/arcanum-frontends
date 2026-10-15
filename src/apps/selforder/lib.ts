@@ -83,6 +83,9 @@ export interface FollowStatus {
   // An SMS when a station's part is ready (MESSAGING.md): whether a number
   // can be given now, the one given (masked: "••• 56"), how each station's went.
   sms?: { available: boolean; phone: string | null; stations: { name: string; status: 'sending' | 'sent' | 'failed' }[] } | null
+  // A notification on this phone when a station's part is ready (Web Push,
+  // release G'): the key to subscribe with; this order has a browser already.
+  push?: { publicKey: string; available: boolean; subscribed: boolean } | null
 }
 
 export type Cart = Record<string, number>

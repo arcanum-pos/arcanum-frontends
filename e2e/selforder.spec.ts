@@ -36,6 +36,9 @@ class FakeSelfOrder {
   // The "ready" SMS: offered or not, the number given (masked), per station how it went.
   sms: { available: boolean; phone: string | null; stations: { name: string; status: string }[] } | null = null
   notifyCalls: any[] = []
+  // Web Push (release G'): offered or not, this order has a browser; what the page sent.
+  push: { publicKey: string; available: boolean; subscribed: boolean } | null = null
+  pushCalls: { method: string; body: any }[] = []
   menu() {
     const modes = [
       {
@@ -79,6 +82,7 @@ class FakeSelfOrder {
       modeId: this.modeId,
       mode: this.modeName,
       sms: this.sms,
+      push: this.push,
       payLater: this.tabOpen,
       tabOpen: this.tabOpen,
       state: this.state,
@@ -150,6 +154,12 @@ const test = base.extend<{ fake: FakeSelfOrder; hub: { sockets: WebSocketRoute[]
         if (!/^0\d{9}$/.test(String(body.phone).replace(/\s/g, ''))) return route.fulfill({ status: 400, json: { error: 'x', code: 'invalid_phone', params: { countries: '+32' } } })
         fake.sms = { ...fake.sms!, phone: `••• ${String(body.phone).slice(-2)}` }
         return route.fulfill({ json: { ok: true, phone: fake.sms.phone } })
+      }
+      if (url.pathname === `/api/public/orders/${TOKEN}/push`) {
+        const method = route.request().method()
+        fake.pushCalls.push({ method, body: method === 'POST' ? route.request().postDataJSON() : null })
+        fake.push = { ...fake.push!, subscribed: method === 'POST' }
+        return route.fulfill({ json: { ok: true } })
       }
       if (url.pathname === `/api/public/orders/${TOKEN}/bancontact`) {
         fake.bancontactCalls++
@@ -591,4 +601,91 @@ test('on a tab whose mode asks it: a name and a mobile number or e-mail first �
   await order.click()
   expect(fake.placed).toEqual([{ modeId: 'm-plaatse', lines: [{ variantId: 'v-pils', quantity: 1 }], contact: { name: 'Jan', phone: '', email: 'jan@example.be' } }])
   await expect(page.getByText('Je rekening #7')).toBeVisible()
+})
+
+// A browser that can do Web Push, faked: the test browser has no push
+// service of its own. `permission`: what the guest answers.
+const pushBrowser = (permission: string) => {
+  const subscription = { toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/xyz', keys: { p256dh: 'P256', auth: 'AUTH' } }), unsubscribe: async () => true }
+  const registration = {
+    pushManager: {
+      getSubscription: async () => ((window as any).__subscribed ? subscription : null),
+      subscribe: async (options: { applicationServerKey: Uint8Array }) => {
+        ;(window as any).__subscribed = true
+        ;(window as any).__serverKeyLength = options.applicationServerKey.length
+        return subscription
+      },
+    },
+  }
+  Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true })
+  Object.defineProperty(window, 'Notification', { value: { requestPermission: async () => permission }, configurable: true })
+  Object.defineProperty(navigator, 'serviceWorker', {
+    value: {
+      register: async (url: string, options: { scope: string }) => {
+        ;(window as any).__sw = [url, options.scope]
+        return registration
+      },
+      getRegistration: async () => registration,
+    },
+    configurable: true,
+  })
+}
+// A real-looking applicationServerKey: 65 bytes, base64url.
+const SERVER_KEY = 'BP' + 'A'.repeat(85)
+
+test.describe("a notification when it's ready (Web Push, release G')", () => {
+  test('turned on with a tap: the subscription goes to the backend; then no SMS asked; turned off again', async ({ phone: page, fake }) => {
+    await page.addInitScript(pushBrowser, 'granted')
+    fake.state = 'preparing'
+    fake.sms = { available: true, phone: null, stations: [] }
+    fake.push = { publicKey: SERVER_KEY, available: true, subscribed: false }
+    await page.goto(`/volg/${TOKEN}`)
+    const push = page.getByTestId('push')
+    await expect(push).toHaveAttribute('data-support', 'yes')
+    await expect(page.getByTestId('sms')).toBeVisible()
+    await push.getByTestId('push-turn-on').click()
+    await expect(push.getByTestId('push-on')).toContainText('Je krijgt een melding')
+    expect(fake.pushCalls[0]).toEqual({ method: 'POST', body: { subscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/xyz', keys: { p256dh: 'P256', auth: 'AUTH' } } } })
+    expect(await page.evaluate(() => (window as any).__sw)).toEqual(['/push-sw.js', '/volg/'])
+    expect(await page.evaluate(() => (window as any).__serverKeyLength)).toBe(65)
+    // A notification is enough: no SMS asked any more.
+    await expect(page.getByTestId('sms')).toHaveCount(0)
+    await noSidewaysScroll(page)
+    await push.getByRole('button', { name: 'Uitzetten' }).click()
+    await expect(push.getByTestId('push-turn-on')).toBeVisible()
+    expect(fake.pushCalls[1].method).toBe('DELETE')
+  })
+
+  test('the guest says no: says how to allow it, nothing sent', async ({ phone: page, fake }) => {
+    await page.addInitScript(pushBrowser, 'denied')
+    fake.state = 'preparing'
+    fake.push = { publicKey: SERVER_KEY, available: true, subscribed: false }
+    await page.goto(`/volg/${TOKEN}`)
+    await page.getByTestId('push-turn-on').click()
+    await expect(page.getByTestId('push').getByRole('alert')).toContainText('Meldingen zijn geweigerd')
+    expect(fake.pushCalls).toEqual([])
+  })
+
+  test('not offered without the installation key', async ({ phone: page, fake }) => {
+    fake.state = 'preparing'
+    await page.goto(`/volg/${TOKEN}`)
+    await expect(page.getByTestId('order-number')).toHaveText('7')
+    await expect(page.getByTestId('push')).toHaveCount(0)
+  })
+
+  test.describe('on an iPhone, in Safari', () => {
+    test.use({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Mobile/15E148 Safari/604.1' })
+    test('the steps to the home screen, and a manifest that opens this order from there', async ({ phone: page, fake }) => {
+      fake.state = 'preparing'
+      fake.push = { publicKey: SERVER_KEY, available: true, subscribed: false }
+      await page.goto(`/volg/${TOKEN}`)
+      const push = page.getByTestId('push')
+      await expect(push).toHaveAttribute('data-support', 'ios-home-screen')
+      await expect(push).toContainText('Melding op je iPhone')
+      await expect(push.getByTestId('push-ios-steps').locator('li')).toHaveCount(3)
+      await expect(push.getByTestId('push-turn-on')).toHaveCount(0)
+      await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', `/volg/${TOKEN}/manifest.webmanifest`)
+      await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Scouts Kabouterland')
+    })
+  })
 })

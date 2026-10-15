@@ -80,6 +80,15 @@ const fr: SelfOrderMessages = {
   smsPrivacy: 'Nous n’utilisons votre numéro que pour cela, et l’effaçons dès que votre commande est prête.',
   smsSent: (station: string) => `SMS envoyé : ${station}`,
   smsFailed: (station: string) => `Le SMS pour ${station} n’a pas pu être envoyé.`,
+  pushTitle: 'Notification quand c’est prêt',
+  pushHint: 'Recevez une notification sur ce téléphone dès qu’un poste a préparé votre commande — même écran verrouillé.',
+  pushOn: 'Activer la notification',
+  pushSet: 'Vous recevrez une notification sur ce téléphone dès que quelque chose est prêt.',
+  pushOff: 'Désactiver',
+  pushDenied: 'Les notifications sont refusées pour ce site. Activez-les dans les réglages du navigateur, ou choisissez un SMS.',
+  pushFailed: 'Les notifications ne fonctionnent pas dans ce navigateur.',
+  pushIosTitle: 'Notification sur votre iPhone',
+  pushIosSteps: ['Touchez Partager en bas (le carré avec la flèche).', 'Choisissez « Sur l’écran d’accueil » puis Ajouter.', 'Ouvrez « Bestelling » depuis l’écran d’accueil et touchez « Activer la notification ».'],
 }
 
 export default fr
