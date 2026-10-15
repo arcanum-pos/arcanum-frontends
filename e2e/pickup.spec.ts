@@ -70,8 +70,9 @@ test('a device paired as pickup screen: the numbers in three columns, nothing el
   await expect(page.getByTestId('pickup-ready').getByTestId('pickup-number')).toHaveText(['5'])
   // Present at opening: not "new".
   await expect(page.locator('[data-new="true"]')).toHaveCount(0)
-  // Read-only: no buttons, no switches — and never the tickets themselves.
-  await expect(page.getByRole('button')).toHaveCount(0)
+  // Read-only: no buttons but the sound's, no switches — and never the tickets themselves.
+  await expect(page.getByRole('button')).toHaveCount(1)
+  await expect(page.getByTestId('pickup-sound')).toHaveAttribute('data-state', 'off')
   await expect(page.getByRole('switch')).toHaveCount(0)
   expect(fake.ticketCalls).toBe(0)
 })
@@ -105,4 +106,34 @@ test("from the station screen: its button opens the pickup screen of the same st
   await expect(popup.getByTestId('pickup-ready').getByTestId('pickup-number')).toHaveText(['5'])
   // The station screen itself goes on as it was.
   await expect(page.getByTestId('column-ordered')).toBeVisible()
+})
+
+test('sound: off until tapped; on, a number turning ready chimes; remembered, asking one tap again after a reload', async ({ stubbed, page, fake, push }) => {
+  void stubbed
+  await page.addInitScript(() => {
+    // Counts the chimes (each is two tones).
+    const Real = window.AudioContext
+    ;(window as any).__tones = 0
+    window.AudioContext = class extends Real {
+      createOscillator() {
+        ;(window as any).__tones++
+        return super.createOscillator()
+      }
+    } as typeof AudioContext
+  })
+  await page.goto('/station.html')
+  const sound = page.getByTestId('pickup-sound')
+  await expect(sound).toHaveAttribute('data-state', 'off')
+  await sound.click()
+  await expect(sound).toHaveAttribute('data-state', 'on')
+  // The tap itself chimes once, so you hear it works.
+  await expect.poll(() => page.evaluate(() => (window as any).__tones)).toBe(2)
+  fake.orders = [...fake.orders, { number: 14, status: 'ready', updatedAt: new Date().toISOString() }]
+  push({ event: 'tabs_changed', tabIds: ['x'] })
+  await expect(page.getByTestId('pickup-ready').locator('[data-number="14"]')).toBeVisible()
+  await expect.poll(() => page.evaluate(() => (window as any).__tones)).toBe(4)
+  // Remembered — but a page may only make sound after a tap: it asks for one.
+  await page.reload()
+  await expect(sound).toHaveAttribute('data-state', 'tap')
+  await expect(sound).toContainText('Tik om het geluid aan te zetten')
 })

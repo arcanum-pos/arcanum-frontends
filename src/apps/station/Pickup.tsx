@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Volume2, VolumeX } from 'lucide-react'
 import { apiErrorMessage } from '@/shared/api-errors'
 import { useMessages } from '@/shared/i18n'
 import { connectNotifications } from '@/shared/terminal'
@@ -16,6 +17,36 @@ import { pickupColumns, type PickupOrder } from './lib'
 
 const HIGHLIGHT_MS = 8_000
 
+// A chime when a number turns ready — off until someone turns it on here
+// (remembered on this device). Browsers only let a page make sound after a
+// tap on it, so after a reload the button asks for one tap again.
+const SOUND_KEY = 'arcanum-pickup-sound'
+const soundWanted = () => {
+  try {
+    return localStorage.getItem(SOUND_KEY) === 'on'
+  } catch {
+    return false
+  }
+}
+
+// Two soft tones, made on the spot — no sound file to load.
+function chime(ctx: AudioContext) {
+  const start = ctx.currentTime
+  for (const [i, freq] of [880, 1318.5].entries()) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = freq
+    const t = start + i * 0.18
+    gain.gain.setValueAtTime(0, t)
+    gain.gain.linearRampToValueAtTime(0.25, t + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start(t)
+    osc.stop(t + 0.65)
+  }
+}
+
 export function Pickup({ device }: { device: { orgId: string; terminalId: string; stationId: string; stationName: string } }) {
   const m = useMessages(STATION_MESSAGES)
   const [orders, setOrders] = useState<PickupOrder[]>([])
@@ -26,6 +57,26 @@ export function Pickup({ device }: { device: { orgId: string; terminalId: string
   const readySince = useRef(new Map<number, number>())
   const first = useRef(true)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [wanted, setWanted] = useState(soundWanted)
+  const [audible, setAudible] = useState(false)
+  const audio = useRef<AudioContext | null>(null)
+
+  // A tap: sound on (and allowed from now on), or off.
+  function toggleSound() {
+    const on = !(wanted && audible)
+    try {
+      localStorage.setItem(SOUND_KEY, on ? 'on' : 'off')
+    } catch {
+      // not remembered
+    }
+    setWanted(on)
+    if (!on) return setAudible(false)
+    audio.current ??= new AudioContext()
+    audio.current.resume().then(() => {
+      setAudible(audio.current!.state === 'running')
+      chime(audio.current!)
+    })
+  }
 
   const load = useCallback(async () => {
     try {
@@ -36,7 +87,13 @@ export function Pickup({ device }: { device: { orgId: string; terminalId: string
       const seen = readySince.current
       const ready = new Set(list.filter((o) => o.status === 'ready').map((o) => o.number))
       // On the first load nothing is "new": the screen just opened.
-      for (const n of ready) if (!seen.has(n)) seen.set(n, first.current ? 0 : Date.now())
+      let fresh = false
+      for (const n of ready) {
+        if (seen.has(n)) continue
+        seen.set(n, first.current ? 0 : Date.now())
+        if (!first.current) fresh = true
+      }
+      if (fresh && audio.current?.state === 'running' && soundWanted()) chime(audio.current)
       for (const n of [...seen.keys()]) if (!ready.has(n)) seen.delete(n)
       first.current = false
       setOrders(list)
@@ -75,7 +132,20 @@ export function Pickup({ device }: { device: { orgId: string; terminalId: string
         <h1 className="text-4xl font-bold tracking-tight" data-testid="pickup-station">
           {station}
         </h1>
-        {offline && <span className="size-3 rounded-full bg-amber-500" title="offline" aria-label="offline" />}
+        <div className="flex items-center gap-3">
+          {offline && <span className="size-3 rounded-full bg-amber-500" title="offline" aria-label="offline" />}
+          <button
+            type="button"
+            onClick={toggleSound}
+            className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium ${wanted && !audible ? 'bg-amber-500/15 text-amber-800 dark:text-amber-200' : 'text-muted-foreground hover:bg-muted'}`}
+            data-testid="pickup-sound"
+            data-state={wanted ? (audible ? 'on' : 'tap') : 'off'}
+            aria-label={wanted && audible ? m.soundOff : m.soundOn}
+          >
+            {wanted && audible ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
+            {wanted && !audible && m.soundTap}
+          </button>
+        </div>
       </header>
       <main className="grid flex-1 gap-6 px-8 pb-8 md:grid-cols-[1fr_1fr_1.6fr]">
         <Column title={m.pickupColumns.received} testId="pickup-received" muted>

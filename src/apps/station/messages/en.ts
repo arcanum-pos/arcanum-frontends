@@ -22,6 +22,9 @@ const en: StationMessages = {
   pickupColumns: { received: 'Received', preparing: 'Being prepared', ready: 'Ready' },
   pickupNothing: 'Nothing yet',
   pickupReady: 'Collect your order here',
+  soundOn: 'Turn sound on',
+  soundOff: 'Turn sound off',
+  soundTap: 'Tap to turn the sound on',
 }
 
 export default en

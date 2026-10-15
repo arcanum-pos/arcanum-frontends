@@ -22,6 +22,9 @@ const nl = {
   pickupColumns: { received: 'Ontvangen', preparing: 'In bereiding', ready: 'Klaar' },
   pickupNothing: 'Nog niets',
   pickupReady: 'Haal je bestelling hier af',
+  soundOn: 'Geluid aanzetten',
+  soundOff: 'Geluid uitzetten',
+  soundTap: 'Tik om het geluid aan te zetten',
 }
 
 export type StationMessages = typeof nl

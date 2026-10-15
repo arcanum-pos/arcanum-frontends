@@ -22,6 +22,9 @@ const fr: StationMessages = {
   pickupColumns: { received: 'Reçues', preparing: 'En préparation', ready: 'Prêtes' },
   pickupNothing: 'Rien pour l’instant',
   pickupReady: 'Venez chercher votre commande ici',
+  soundOn: 'Activer le son',
+  soundOff: 'Couper le son',
+  soundTap: 'Touchez pour activer le son',
 }
 
 export default fr
