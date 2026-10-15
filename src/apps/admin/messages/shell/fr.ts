@@ -48,7 +48,7 @@ export default {
   firstOrgImport: 'ou importez une organisation depuis un fichier d’export (p. ex. votre démo)',
   noMembershipTitle: 'Vous n’êtes membre d’aucune organisation',
   noMembershipText: (email: string) => `Vous êtes connecté en tant que ${email}, mais cette adresse n’appartient à aucune organisation sur cet Arcanum.`,
-  noMembershipInvite: 'Demandez à un administrateur de votre organisation de vous inviter à cette adresse. Déjà invité ? Connectez-vous alors avec exactement l’adresse qui a reçu l’invitation — et de la même façon (mot de passe, Google ou passkey).',
+  noMembershipInvite: 'Demandez à un administrateur de votre organisation de vous inviter à cette adresse. Déjà invité ? Connectez-vous alors avec exactement l’adresse qui a reçu l’invitation — et de la même façon (code par e-mail, Google ou passkey).',
   noMembershipSignOut: 'Se déconnecter et utiliser un autre compte',
   demoTitle: (when: string) => `Ceci est une démo — elle disparaît d’elle-même à ${when}.`,
   demoHint: 'Essayez tout librement. Vous voulez continuer ? Emportez votre démo en fichier d’export, ou créez votre propre installation.',

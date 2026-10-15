@@ -52,7 +52,7 @@ const nl = {
   firstOrgImport: 'of importeer een organisatie uit een exportbestand (bv. je demo)',
   noMembershipTitle: 'Je bent geen lid van een organisatie',
   noMembershipText: (email: string) => `Je bent aangemeld als ${email}, maar dat adres hoort bij geen enkele organisatie op deze Arcanum.`,
-  noMembershipInvite: 'Vraag een beheerder van je organisatie om je uit te nodigen op dit adres. Werd je al uitgenodigd? Meld je dan aan met precies het adres waarop de uitnodiging kwam — en op dezelfde manier (wachtwoord, Google of passkey).',
+  noMembershipInvite: 'Vraag een beheerder van je organisatie om je uit te nodigen op dit adres. Werd je al uitgenodigd? Meld je dan aan met precies het adres waarop de uitnodiging kwam — en op dezelfde manier (code per e-mail, Google of passkey).',
   noMembershipSignOut: 'Afmelden en een ander account gebruiken',
   demoTitle: (when: string) => `Dit is een demo — ze verdwijnt vanzelf om ${when}.`,
   demoHint: 'Probeer gerust alles uit. Wil je verder? Neem je demo mee als exportbestand, of maak je eigen installatie.',
