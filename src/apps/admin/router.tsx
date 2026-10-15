@@ -14,6 +14,7 @@ const CatalogsPage = lazy(() => import('./routes/catalogs'))
 const CatalogEditorPage = lazy(() => import('./routes/catalog-editor'))
 const DevicesPage = lazy(() => import('./routes/devices'))
 const UsersPage = lazy(() => import('./routes/users'))
+const StaffPage = lazy(() => import('./routes/staff'))
 const SettingsLayout = lazy(() => import('./routes/settings/layout'))
 const AppearancePage = lazy(() => import('./routes/settings/appearance'))
 const PreferencesPage = lazy(() => import('./routes/settings/preferences'))
@@ -37,6 +38,7 @@ const catalogsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/cat
 const catalogEditorRoute = createRoute({ getParentRoute: () => rootRoute, path: '/catalogs/$catalogId', component: CatalogEditorPage })
 const devicesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/devices', component: DevicesPage })
 const usersRoute = createRoute({ getParentRoute: () => rootRoute, path: '/users', component: UsersPage })
+const staffRoute = createRoute({ getParentRoute: () => rootRoute, path: '/staff', component: StaffPage })
 
 const settingsRoute = createRoute({ getParentRoute: () => rootRoute, path: '/settings', component: SettingsLayout })
 const settingsIndexRoute = createRoute({
@@ -65,6 +67,7 @@ const routeTree = rootRoute.addChildren([
   catalogEditorRoute,
   devicesRoute,
   usersRoute,
+  staffRoute,
   settingsRoute.addChildren([
     settingsIndexRoute,
     appearanceRoute,

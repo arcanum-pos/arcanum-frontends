@@ -48,6 +48,7 @@ export const test = base.extend<Fixtures>({
     await page.route(/\/(api\/|whoami)/, async (route) => {
       const req = route.request()
       const url = new URL(req.url())
+      backend.currentStaff = (await req.headerValue('X-Staff')) ?? null
       const { status, body } = backend.handle(req.method(), url.pathname + url.search, req.postDataJSON?.() ?? null)
       await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
     })

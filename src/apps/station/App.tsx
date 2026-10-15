@@ -4,6 +4,9 @@ import { Switch } from '@/components/ui/switch'
 import { apiErrorMessage } from '@/shared/api-errors'
 import { useMessages } from '@/shared/i18n'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
+import { listStaff, staffHeaders, type StaffMember } from '@/shared/staff'
+import { StaffButton, useChosenStaff } from '@/shared/staff-picker'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { STATION_MESSAGES } from './messages'
 import { Pickup } from './Pickup'
 import { nextStatus, previousStatus, visibleTickets, type Ticket, type TicketStatus } from './lib'
@@ -18,12 +21,12 @@ import { nextStatus, previousStatus, visibleTickets, type Ticket, type TicketSta
 
 const FILTERS_KEY = 'arcanum-station-filters'
 
-function storedFilters(): { onlyPaid: boolean; showDelivered: boolean } {
+function storedFilters(): { onlyPaid: boolean; showDelivered: boolean; onlyMine: boolean } {
   try {
     const value = JSON.parse(localStorage.getItem(FILTERS_KEY) || 'null')
-    return { onlyPaid: value?.onlyPaid !== false, showDelivered: value?.showDelivered === true }
+    return { onlyPaid: value?.onlyPaid !== false, showDelivered: value?.showDelivered === true, onlyMine: value?.onlyMine === true }
   } catch {
-    return { onlyPaid: true, showDelivered: false }
+    return { onlyPaid: true, showDelivered: false, onlyMine: false }
   }
 }
 
@@ -63,6 +66,9 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [filters, setFilters] = useState(storedFilters)
   const [busy, setBusy] = useState<string | null>(null)
+  // The person chosen on this screen (staff), and a ticket being passed on.
+  const staff = useChosenStaff(device?.orgId)
+  const [passing, setPassing] = useState<Ticket | null>(null)
   // Re-renders the "x min ago" once a minute — a local clock, no server calls.
   const [, setNow] = useState(Date.now())
   const loadTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -131,7 +137,7 @@ export default function App() {
     }
   }, [device, load, scheduleLoad])
 
-  function setFilter(key: 'onlyPaid' | 'showDelivered', value: boolean) {
+  function setFilter(key: 'onlyPaid' | 'showDelivered' | 'onlyMine', value: boolean) {
     // A list already on its way was asked with the old filters: not used.
     generation.current++
     const next = { ...filters, [key]: value }
@@ -148,7 +154,11 @@ export default function App() {
     setBusy(ticket.id)
     generation.current++
     try {
-      await call(`/api/organizations/${encodeURIComponent(device.orgId)}/tickets/${encodeURIComponent(ticket.id)}`, { method: 'POST', body: JSON.stringify({ status }) })
+      await call(`/api/organizations/${encodeURIComponent(device.orgId)}/tickets/${encodeURIComponent(ticket.id)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...staffHeaders(device.orgId) },
+        body: JSON.stringify({ status }),
+      })
       setTickets((list) => list?.map((t) => (t.id === ticket.id ? { ...t, status } : t)) ?? list)
       scheduleLoad()
     } catch (err) {
@@ -158,11 +168,24 @@ export default function App() {
     }
   }
 
+  // Passing a ticket on to someone else.
+  async function passOn(ticket: Ticket, member: StaffMember) {
+    if (!device) return
+    setPassing(null)
+    generation.current++
+    try {
+      await call(`/api/organizations/${encodeURIComponent(device.orgId)}/tickets/${encodeURIComponent(ticket.id)}/claim`, { method: 'POST', body: JSON.stringify({ staffId: member.id }) })
+      scheduleLoad()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   if (!device) return <p className="p-6 text-muted-foreground">{m.loading}</p>
   if (!device.stationId) return <p className="p-6" data-testid="no-station">{m.noStation}</p>
   if (device.pickup) return <Pickup device={{ ...device, stationId: device.stationId }} />
 
-  const { shown, hiddenUnpaid } = visibleTickets(tickets ?? [], filters)
+  const { shown, hiddenUnpaid } = visibleTickets(tickets ?? [], { ...filters, mine: filters.onlyMine ? (staff?.id ?? null) : null })
   const columns = COLUMNS.filter((c) => c !== 'delivered' || filters.showDelivered)
 
   return (
@@ -172,6 +195,7 @@ export default function App() {
           <h1 className="truncate text-xl font-bold tracking-tight" data-testid="station-name">{device.stationName}</h1>
           <p className="truncate text-xs text-muted-foreground">{device.orgName}</p>
         </div>
+        <StaffButton orgId={device.orgId} />
         <div className="flex-1" />
         <Button variant="outline" size="sm" onClick={openPickupWindow} title={m.openPickupHint} data-testid="open-pickup">
           {m.openPickup}
@@ -180,6 +204,12 @@ export default function App() {
           <Switch checked={filters.onlyPaid} onCheckedChange={(v) => setFilter('onlyPaid', v)} aria-label={m.onlyPaid} />
           {m.onlyPaid}
         </label>
+        {staff && (
+          <label className="flex items-center gap-2 text-sm font-medium" title={m.onlyMineHint}>
+            <Switch checked={filters.onlyMine} onCheckedChange={(v) => setFilter('onlyMine', v)} aria-label={m.onlyMine} />
+            {m.onlyMine}
+          </label>
+        )}
         <label className="flex items-center gap-2 text-sm font-medium">
           <Switch checked={filters.showDelivered} onCheckedChange={(v) => setFilter('showDelivered', v)} aria-label={m.showDelivered} />
           {m.showDelivered}
@@ -202,17 +232,45 @@ export default function App() {
               </h2>
               {list.length === 0 && <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">{m.empty}</p>}
               {list.map((t) => (
-                <TicketCard key={t.id} ticket={t} busy={busy === t.id} onMove={(s) => move(t, s)} />
+                <TicketCard key={t.id} ticket={t} busy={busy === t.id} onMove={(s) => move(t, s)} onPassOn={() => setPassing(t)} />
               ))}
             </section>
           )
         })}
       </main>
+      <PassOnDialog orgId={device.orgId} ticket={passing} onClose={() => setPassing(null)} onPick={passOn} />
     </div>
   )
 }
 
-function TicketCard({ ticket, busy, onMove }: { ticket: Ticket; busy: boolean; onMove: (status: TicketStatus) => void }) {
+// "Doorgeven…": who makes this ticket now.
+function PassOnDialog({ orgId, ticket, onClose, onPick }: { orgId: string; ticket: Ticket | null; onClose: () => void; onPick: (ticket: Ticket, member: StaffMember) => void }) {
+  const m = useMessages(STATION_MESSAGES)
+  const [staff, setStaff] = useState<StaffMember[]>([])
+  useEffect(() => {
+    if (ticket) listStaff(orgId).then((r) => setStaff(r.staff)).catch(() => setStaff([]))
+  }, [ticket, orgId])
+  return (
+    <Dialog open={!!ticket} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent data-testid="pass-on">
+        <DialogHeader>
+          <DialogTitle>{ticket ? m.passOnTitle(ticket.number) : ''}</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {staff
+            .filter((s) => s.id !== ticket?.claimedBy?.id)
+            .map((s) => (
+              <Button key={s.id} variant="outline" className="h-12" onClick={() => ticket && onPick(ticket, s)}>
+                {s.name}
+              </Button>
+            ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function TicketCard({ ticket, busy, onMove, onPassOn }: { ticket: Ticket; busy: boolean; onMove: (status: TicketStatus) => void; onPassOn: () => void }) {
   const m = useMessages(STATION_MESSAGES)
   const next = nextStatus(ticket.status)
   const previous = previousStatus(ticket.status)
@@ -235,6 +293,11 @@ function TicketCard({ ticket, busy, onMove }: { ticket: Ticket; busy: boolean; o
         {!ticket.paid && !ticket.payLater && <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-700 dark:text-amber-300">{m.unpaid}</span>}
         {ticket.selfOrder && <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-sky-700 dark:text-sky-300">{m.selfOrder}</span>}
         {ticket.label && <span className="rounded bg-muted px-1.5 py-0.5">{ticket.label}</span>}
+        {ticket.claimedBy && (
+          <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-800 dark:text-emerald-300" data-testid="ticket-claimed">
+            {m.makes(ticket.claimedBy.name)}
+          </span>
+        )}
       </div>
       <ul className="flex flex-col gap-1 text-base">
         {ticket.lines.map((l, i) => {
@@ -257,6 +320,11 @@ function TicketCard({ ticket, busy, onMove }: { ticket: Ticket; busy: boolean; o
         {next && (
           <Button className="flex-1" size="lg" disabled={busy} onClick={() => onMove(next)}>
             {m.next[ticket.status]}
+          </Button>
+        )}
+        {ticket.status === 'in_progress' && (
+          <Button variant="outline" size="sm" disabled={busy} onClick={onPassOn} data-testid="pass-on-button">
+            {m.passOn}
           </Button>
         )}
       </div>

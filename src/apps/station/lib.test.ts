@@ -40,3 +40,17 @@ describe('pickup screen', () => {
     expect(columns.ready.map((o) => o.number)).toEqual([5])
   })
 })
+
+describe('only my tickets', () => {
+  it("hides what colleagues are making; new ones nobody took stay", async () => {
+    const { visibleTickets } = await import('./lib')
+    const base = { tabId: 't', createdAt: '', updatedAt: '', number: 1, label: '', paid: true, selfOrder: false, lines: [] }
+    const list = [
+      { ...base, id: 'new', status: 'ordered' as const, claimedBy: null },
+      { ...base, id: 'mine', status: 'in_progress' as const, claimedBy: { id: 'an', name: 'An', at: null } },
+      { ...base, id: 'jans', status: 'in_progress' as const, claimedBy: { id: 'jan', name: 'Jan', at: null } },
+    ]
+    expect(visibleTickets(list, { onlyPaid: true, showDelivered: false, mine: 'an' }).shown.map((t) => t.id)).toEqual(['new', 'mine'])
+    expect(visibleTickets(list, { onlyPaid: true, showDelivered: false, mine: null }).shown.map((t) => t.id)).toEqual(['new', 'mine', 'jans'])
+  })
+})

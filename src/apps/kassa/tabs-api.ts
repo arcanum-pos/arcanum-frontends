@@ -3,6 +3,7 @@
 // the org, so every kassa of the org sees the same open tabs — this module
 // just fetches; the server enforces every rule (open, no payment pending,
 // amount at most what's outstanding).
+import { staffHeaders } from '@/shared/staff'
 import { getDeviceId, getDeviceName } from '@/shared/device'
 import { apiErrorMessage, isApiErrorCode, type ApiErrorCode } from '@/shared/api-errors'
 import type { KassaMessages } from './messages/nl'
@@ -22,6 +23,8 @@ export interface TabSummary {
   status: 'open' | 'closed' | 'cancelled'
   openedDeviceName: string | null
   openedByName?: string | null
+  // The person chosen on the kassa that opened it (staff).
+  openedByStaff?: string | null
   openedAt: string
   closedAt?: string | null
   cancelReason?: string | null
@@ -118,7 +121,8 @@ export class TabApiError extends Error {
 async function request<T>(orgId: string, path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/tabs${path}`, {
     method: init?.method || 'GET',
-    headers: init?.body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    // The person chosen on this kassa (staff): recorded with what it does.
+    headers: { ...(init?.body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...staffHeaders(orgId) },
     body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
   })
   const data = await res.json().catch(() => ({}))

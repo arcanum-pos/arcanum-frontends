@@ -73,6 +73,10 @@ export function emptySalesReport(): any {
 export class FakeCatalogAdmin {
   categories: Category[] = []
   stations: Station[] = []
+  // Medewerkers.
+  staff: { id: string; name: string; hasPin: boolean; memberId: string | null; archived: boolean; createdAt: string }[] = []
+  staffRequired = false
+  staffCalls: { method: string; body: any }[] = []
   products: Product[] = []
   variants: Variant[] = []
   catalogs: Catalog[] = []
@@ -128,6 +132,28 @@ export class FakeCatalogAdmin {
       return ok({ ok: true })
     }
     if (/^\/api\/organizations\/[^/]+\/device-pairings(\/.*)?$/.test(path)) return this.pairingRoute(method, path, body)
+    // Medewerkers (arcanum-backend staff.ts).
+    if (/^\/api\/organizations\/[^/]+\/staff-settings$/.test(path) && method === 'PUT') {
+      this.staffRequired = !!body.required
+      return ok({ required: this.staffRequired })
+    }
+    if (/^\/api\/organizations\/[^/]+\/staff(\?all=1)?$/.test(path) && method === 'GET') return ok({ required: this.staffRequired, staff: this.staff })
+    if (/^\/api\/organizations\/[^/]+\/staff$/.test(path) && method === 'POST') {
+      if (this.staff.some((s) => !s.archived && s.name.toLowerCase() === String(body.name).toLowerCase())) return { status: 409, body: { error: 'x', code: 'staff_name_taken' } }
+      const member = { id: this.id('staff'), name: body.name, hasPin: !!body.pin, memberId: null, archived: false, createdAt: new Date().toISOString() }
+      this.staff.push(member)
+      this.staffCalls.push({ method, body })
+      return { status: 201, body: member }
+    }
+    const staffMember = path.match(/^\/api\/organizations\/[^/]+\/staff\/([^/]+)$/)
+    if (staffMember && method === 'PATCH') {
+      const member = this.staff.find((s) => s.id === staffMember[1])!
+      this.staffCalls.push({ method, body })
+      if (body.name !== undefined) member.name = body.name
+      if (body.pin !== undefined) member.hasPin = body.pin !== null
+      if (body.archived !== undefined) member.archived = body.archived
+      return ok(member)
+    }
     if (path.startsWith('/api/bancontact/sumup/readers')) return this.sumupRoute(method, path, body)
     if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'GET') return ok(this.events)
     // An event's ordering modes, self-ordering and numbers (arcanum-backend events.ts).

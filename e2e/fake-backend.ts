@@ -309,6 +309,13 @@ export class FakeBackend {
   pairingCodes = new Map<string, { role: 'pos' | 'cfd'; name: string }>()
   // The signed-in person's role in org-e2e (Instellingen's Beheer is for admins).
   memberRole: 'admin' | 'cashier' = 'cashier'
+  // Staff (release B1): the organisation's people, whether one must be
+  // chosen, the X-Staff the current request came with (set by the fixture),
+  // and the person each new tab and payment was recorded with.
+  staff = [{ id: 'an', name: 'An', hasPin: false }]
+  staffRequired = false
+  currentStaff: string | null = null
+  recordedStaff: { what: 'tab' | 'charge'; staff: string | null }[] = []
   // Set: org-e2e is a demo that disappears then (the kassa's demo bar).
   demoExpiresAt: string | null = null
   deviceCalls: { method: string; id: string; action?: string; body?: any }[] = []
@@ -384,6 +391,12 @@ export class FakeBackend {
     if (device) return this.handleDevice(method, decodeURIComponent(device[2]), device[3], body)
 
     if (/^\/api\/organizations\/[^/]+\/events$/.test(p) && method === 'GET') return { status: 200, body: this.events }
+    if (/^\/api\/organizations\/[^/]+\/staff$/.test(p) && method === 'GET') return { status: 200, body: { required: this.staffRequired, staff: this.staff } }
+    const staffToken = p.match(/^\/api\/organizations\/[^/]+\/staff\/([^/]+)\/token$/)
+    if (staffToken) {
+      const member = this.staff.find((s) => s.id === staffToken[1])!
+      return { status: 200, body: { token: `tok-${member.id}`, staff: { id: member.id, name: member.name } } }
+    }
 
     const catalogs = p.match(/^\/api\/organizations\/[^/]+\/catalogs(?:\/([^/]+)\/(kassa))?$/)
     if (catalogs && method === 'GET') return this.handleCatalogs(catalogs[1], catalogs[2])
@@ -484,6 +497,8 @@ export class FakeBackend {
         return { status: 200, body: list.map((t) => this.summary(t)) }
       }
       if (method === 'POST') {
+        if (this.staffRequired && !this.currentStaff) return { status: 409, body: { error: 'Kies eerst wie er werkt (bovenaan het scherm)', code: 'staff_required' } }
+        this.recordedStaff.push({ what: 'tab', staff: this.currentStaff })
         if (body.eventId != null && !this.events.some((e) => e.id === body.eventId)) {
           return { status: 400, body: { error: 'Onbekend evenement — kies het opnieuw in de instellingen van de kassa', code: 'unknown_event' } }
         }
@@ -598,6 +613,8 @@ export class FakeBackend {
   }
 
   private createCharge(method: string, body: any): FakeResponse {
+    if (this.staffRequired && !this.currentStaff) return { status: 409, body: { error: 'Kies eerst wie er werkt (bovenaan het scherm)', code: 'staff_required' } }
+    this.recordedStaff.push({ what: 'charge', staff: this.currentStaff })
     if (this.beforeNextCharge) {
       const hook = this.beforeNextCharge
       this.beforeNextCharge = null

@@ -1,3 +1,5 @@
+import { chosenStaff, listStaff, staffHeaders } from '@/shared/staff'
+import { StaffButton } from '@/shared/staff-picker'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import kabouterLogo from '@/shared/assets/kabouter.png'
@@ -84,6 +86,10 @@ export default function App() {
   const [openingDisplay, setOpeningDisplay] = useState(false)
 
   const [orgId, setOrgId] = useState<string | null>(null)
+  // Who's working on this kassa (staff, release B1): the picker, and whether
+  // the organisation requires someone to be chosen (S2).
+  const [staffOpen, setStaffOpen] = useState(false)
+  const [staffRequired, setStaffRequired] = useState(false)
   const [tabs, setTabs] = useState<TabSummary[]>([])
   const [active, setActive] = useState<ActiveKey>('quick')
   const [activeTab, setActiveTab] = useState<TabDetail | null>(null)
@@ -165,6 +171,11 @@ export default function App() {
 
   function showError(err: unknown) {
     setError(err instanceof Error ? err.message : String(err))
+    // The organisation requires a person, and none is chosen: ask now.
+    if (err instanceof TabApiError && err.code === 'staff_required') {
+      setStaffRequired(true)
+      setStaffOpen(true)
+    }
     // A 409 means this kassa's view was stale — pull the current state.
     if (err instanceof TabApiError && err.status === 409) refreshAll()
     // An entry vanished from the catalog since it was loaded — reload it
@@ -511,7 +522,7 @@ export default function App() {
     if (paymentMethod === 'bancontact') {
       const res = await fetch(`${WORKER_URL}/payments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...staffHeaders(org) },
         body: JSON.stringify(common),
       })
       const data = await res.json()
@@ -547,7 +558,7 @@ export default function App() {
     const readerId = method === 'sumup' ? getSumupReader()?.id : undefined
     const res = await fetch(`${WORKER_URL}/sumup/charge`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...staffHeaders(org) },
       body: JSON.stringify({ ...common, method, readerId }),
     })
     const data = await res.json()
@@ -798,6 +809,18 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId])
 
+  // Whether this organisation requires a person — then the picker opens
+  // right away when nobody is chosen yet.
+  useEffect(() => {
+    if (!orgId) return
+    listStaff(orgId)
+      .then((r) => {
+        setStaffRequired(r.required)
+        if (r.required && !chosenStaff(orgId)) setStaffOpen(true)
+      })
+      .catch(() => {})
+  }, [orgId])
+
   useEffect(() => {
     const channel = new BroadcastChannel('arcanum-payment')
     channelRef.current = channel
@@ -856,6 +879,7 @@ export default function App() {
               </span>
             </div>
           </div>
+          {orgId && <StaffButton orgId={orgId} required={staffRequired} open={staffOpen} onOpenChange={setStaffOpen} className="h-[34px]" />}
           <div className="min-w-5 flex-1" />
           <div className="flex flex-wrap items-center gap-2">
             <Button

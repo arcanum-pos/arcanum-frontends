@@ -26,6 +26,7 @@ export default {
     catalogs: 'Cartes',
     devices: 'Appareils',
     users: 'Utilisateurs',
+    staff: 'Personnel',
     settings: 'Paramètres',
   },
   installer: 'Installation',

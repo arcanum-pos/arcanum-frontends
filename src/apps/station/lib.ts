@@ -17,6 +17,8 @@ export interface Ticket {
   // Its ordering mode ("Take away") when the event has more than one —
   // information only: the station got it from the products' prep station.
   mode?: string | null
+  // Who's making it (a staff member), when someone is.
+  claimedBy?: { id: string | null; name: string; at: string | null } | null
   lines: { name: string; quantity: number; voided: number; note: string | null }[]
 }
 
@@ -33,9 +35,12 @@ export function previousStatus(status: TicketStatus): TicketStatus | null {
 // What the filters let through, and how many unpaid ones they hide (said on
 // screen, so nobody wonders where an order went). "Only paid" never hides an
 // order on a tab paid when leaving — those are made unpaid on purpose.
-export function visibleTickets(tickets: Ticket[], filters: { onlyPaid: boolean; showDelivered: boolean }) {
+// "Alleen mijn bonnen" (`mine`: the device's person) hides what colleagues
+// are making — new ones nobody took yet stay, to be picked up.
+export function visibleTickets(tickets: Ticket[], filters: { onlyPaid: boolean; showDelivered: boolean; mine?: string | null }) {
   const payable = (t: Ticket) => t.paid || !!t.payLater
-  const shown = tickets.filter((t) => (!filters.onlyPaid || payable(t)) && (filters.showDelivered || t.status !== 'delivered'))
+  const others = (t: Ticket) => !!filters.mine && !!t.claimedBy?.id && t.claimedBy.id !== filters.mine
+  const shown = tickets.filter((t) => (!filters.onlyPaid || payable(t)) && (filters.showDelivered || t.status !== 'delivered') && !others(t))
   const hiddenUnpaid = filters.onlyPaid ? tickets.filter((t) => !payable(t) && t.status !== 'delivered').length : 0
   return { shown, hiddenUnpaid }
 }

@@ -390,3 +390,30 @@ export function listEvents(orgId: string): Promise<Event[]> {
 export function createEvent(orgId: string, fields: { name: string; date: string }): Promise<Event> {
   return request(`/${encodeURIComponent(orgId)}/events`, { method: 'POST', body: JSON.stringify(fields) })
 }
+
+// --- Staff (Medewerkers, release B1) ---
+
+export interface StaffRecord {
+  id: string
+  name: string
+  hasPin: boolean
+  memberId: string | null
+  archived: boolean
+  createdAt: string
+}
+
+export function listAllStaff(orgId: string): Promise<{ required: boolean; staff: StaffRecord[] }> {
+  return request(`/${encodeURIComponent(orgId)}/staff?all=1`)
+}
+
+export function createStaff(orgId: string, name: string, pin?: string): Promise<StaffRecord> {
+  return request(`/${encodeURIComponent(orgId)}/staff`, { method: 'POST', body: JSON.stringify({ name, ...(pin ? { pin } : {}) }) })
+}
+
+export function updateStaff(orgId: string, staffId: string, changes: { name?: string; pin?: string | null; archived?: boolean }): Promise<StaffRecord> {
+  return request(`/${encodeURIComponent(orgId)}/staff/${encodeURIComponent(staffId)}`, { method: 'PATCH', body: JSON.stringify(changes) })
+}
+
+export function setStaffRequired(orgId: string, required: boolean): Promise<{ required: boolean }> {
+  return request(`/${encodeURIComponent(orgId)}/staff-settings`, { method: 'PUT', body: JSON.stringify({ required }) })
+}

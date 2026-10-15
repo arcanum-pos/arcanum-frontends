@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { BookOpen, LayoutDashboard, MonitorSmartphone, Package, Receipt, Server, Settings, TicketCheck, Users } from 'lucide-react'
+import { BookOpen, IdCard, LayoutDashboard, MonitorSmartphone, Package, Receipt, Server, Settings, TicketCheck, Users } from 'lucide-react'
 import {
   SidebarGroup,
   SidebarMenu,
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { key: 'catalogs', to: '/catalogs', icon: BookOpen },
   { key: 'devices', to: '/devices', icon: MonitorSmartphone },
   { key: 'users', to: '/users', icon: Users },
+  { key: 'staff', to: '/staff', icon: IdCard },
   { key: 'settings', to: '/settings', icon: Settings },
 ] as const
 

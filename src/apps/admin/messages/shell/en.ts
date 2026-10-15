@@ -26,6 +26,7 @@ export default {
     catalogs: 'Menus',
     devices: 'Devices',
     users: 'Users',
+    staff: 'Staff',
     settings: 'Settings',
   },
   installer: 'Installation',

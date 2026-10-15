@@ -17,6 +17,7 @@ interface FakeTicket {
   paid: boolean
   payLater?: boolean
   mode?: string | null
+  claimedBy?: { id: string; name: string; at: string | null } | null
   selfOrder: boolean
   lines: { name: string; quantity: number; voided: number; note: string | null }[]
 }
@@ -32,6 +33,13 @@ class FakeStation {
   ]
   listCalls: string[] = []
   moves: { id: string; status: string }[] = []
+  // Staff (release B1): names, who has a PIN, and the X-Staff a move came with.
+  staff = [
+    { id: 'an', name: 'An', hasPin: false },
+    { id: 'jan', name: 'Jan', hasPin: true },
+  ]
+  staffOnMoves: (string | null)[] = []
+  claims: { id: string; staffId: string }[] = []
 }
 
 function ticket(id: string, number: number, paid: boolean, lines: FakeTicket['lines'], selfOrder = false): FakeTicket {
@@ -68,11 +76,31 @@ const test = base.extend<{ fake: FakeStation; push: (msg: Record<string, unknown
         const withDelivered = url.searchParams.get('delivered') === '1'
         return route.fulfill({ json: fake.tickets.filter((t) => withDelivered || t.status !== 'delivered') })
       }
+      if (url.pathname === '/api/organizations/org-1/staff') return route.fulfill({ json: { required: false, staff: fake.staff } })
+      const token = url.pathname.match(/^\/api\/organizations\/org-1\/staff\/(.+)\/token$/)
+      if (token) {
+        const member = fake.staff.find((x) => x.id === token[1])!
+        if (member.hasPin && req.postDataJSON()?.pin !== '2468') return route.fulfill({ status: 403, json: { error: 'x', code: 'staff_pin_wrong' } })
+        return route.fulfill({ json: { token: `tok-${member.id}`, staff: { id: member.id, name: member.name } } })
+      }
+      const claim = url.pathname.match(/^\/api\/organizations\/org-1\/tickets\/(.+)\/claim$/)
+      if (claim) {
+        const { staffId } = req.postDataJSON()
+        fake.claims.push({ id: claim[1], staffId })
+        const member = fake.staff.find((x) => x.id === staffId)!
+        fake.tickets.find((x) => x.id === claim[1])!.claimedBy = { id: member.id, name: member.name, at: null }
+        return route.fulfill({ json: { ok: true } })
+      }
       const move = url.pathname.match(/^\/api\/organizations\/org-1\/tickets\/(.+)$/)
       if (move && req.method() === 'POST') {
         const { status } = req.postDataJSON()
         fake.moves.push({ id: move[1], status })
+        const staffToken = (await req.headerValue('X-Staff')) ?? null
+        fake.staffOnMoves.push(staffToken)
         const t = fake.tickets.find((x) => x.id === move[1])!
+        const person = fake.staff.find((x) => `tok-${x.id}` === staffToken)
+        if (status === 'in_progress' && !t.claimedBy && person) t.claimedBy = { id: person.id, name: person.name, at: null }
+        if (status === 'ordered') t.claimedBy = null
         t.status = status
         return route.fulfill({ json: { id: t.id, status, updatedAt: new Date().toISOString() } })
       }
@@ -150,4 +178,44 @@ test('a screen without a station says where to choose one', async ({ page, fake 
   await page.routeWebSocket(/\/devices\/connect/, () => {})
   await page.goto('/station.html')
   await expect(page.getByTestId('no-station')).toContainText('Kies er een in de console')
+})
+
+test("who's working: chosen in the header (with a PIN), recorded on Start, passed on; only my tickets", async ({ station: page, fake }) => {
+  await expect(page.getByTestId('staff-button')).toHaveText('Niemand gekozen')
+  await page.getByTestId('staff-button').click()
+  const picker = page.getByTestId('staff-picker')
+  await picker.getByRole('button', { name: 'Jan' }).click()
+  await picker.getByTestId('staff-pin').fill('1111')
+  await picker.getByTestId('staff-pin-ok').click()
+  await expect(picker).toContainText('Verkeerde pincode')
+  await picker.getByTestId('staff-pin').fill('2468')
+  await picker.getByTestId('staff-pin-ok').click()
+  await expect(picker).toBeHidden()
+  await expect(page.getByTestId('staff-button')).toHaveText('Jan')
+
+  const five = () => page.locator('[data-testid="ticket"][data-number="5"]')
+  await five().getByRole('button', { name: 'Start' }).click()
+  await expect(five().getByTestId('ticket-claimed')).toHaveText('Jan maakt dit')
+  expect(fake.staffOnMoves).toEqual(['tok-jan'])
+
+  // Passed on to An.
+  await five().getByTestId('pass-on-button').click()
+  await page.getByTestId('pass-on').getByRole('button', { name: 'An' }).click()
+  await expect(five().getByTestId('ticket-claimed')).toHaveText('An maakt dit')
+  expect(fake.claims).toEqual([{ id: 't1', staffId: 'an' }])
+
+  // Only my tickets: An's is hidden for Jan; new ones stay.
+  await page.getByRole('switch', { name: 'Alleen mijn bonnen' }).click()
+  await expect(five()).toHaveCount(0)
+  await expect(column(page, 'ordered').getByTestId('ticket')).toHaveCount(2)
+  await page.getByRole('switch', { name: 'Alleen mijn bonnen' }).click()
+
+  // Given back: in the queue again, nobody's.
+  await five().getByRole('button', { name: 'Terug' }).click()
+  await expect(column(page, 'ordered').locator('[data-number="5"]')).toBeVisible()
+  await expect(five().getByTestId('ticket-claimed')).toHaveCount(0)
+
+  // The person stays chosen after a reload (S1).
+  await page.reload()
+  await expect(page.getByTestId('staff-button')).toHaveText('Jan')
 })
