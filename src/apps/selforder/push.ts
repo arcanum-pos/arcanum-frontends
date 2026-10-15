@@ -30,10 +30,13 @@ function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
 // Permission asked (needs the guest's tap), then this browser's
 // subscription, to hand to the backend. 'denied': the guest (or the
 // browser) said no.
+// The permission is asked first, before anything is awaited: Safari only
+// shows its question straight from the tap — after an await it refuses
+// without asking (and the site lands on its "Deny" list).
 export async function subscribePush(publicKey: string): Promise<PushSubscriptionJSON | 'denied'> {
-  const registration = await navigator.serviceWorker.register('/push-sw.js', { scope: '/volg/' })
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return 'denied'
+  const registration = await navigator.serviceWorker.register('/push-sw.js', { scope: '/volg/' })
   const existing = await registration.pushManager.getSubscription()
   const subscription = existing ?? (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) }))
   return subscription.toJSON()

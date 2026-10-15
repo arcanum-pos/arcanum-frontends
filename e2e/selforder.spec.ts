@@ -618,7 +618,9 @@ const pushBrowser = (permission: string) => {
     },
   }
   Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true })
-  Object.defineProperty(window, 'Notification', { value: { requestPermission: async () => permission }, configurable: true })
+  // Like Safari: asked after something was awaited (the service worker
+  // registered first), it refuses without asking.
+  Object.defineProperty(window, 'Notification', { value: { requestPermission: async () => ((window as any).__sw ? 'denied' : permission) }, configurable: true })
   Object.defineProperty(navigator, 'serviceWorker', {
     value: {
       register: async (url: string, options: { scope: string }) => {
