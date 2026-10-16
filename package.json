@@ -11,16 +11,20 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "screenshots": "playwright test -c playwright.screenshots.config.ts"
+    "screenshots": "playwright test -c playwright.screenshots.config.ts",
+    "build:node": "esbuild worker/node.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-node/server.js",
+    "start:node": "node dist-node/server.js"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource/montserrat": "^5.3.0",
+    "@hono/node-server": "^2.1.5",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.36",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.3.0",
+    "hono": "^4.13.13",
     "lucide-react": "^1.46.0",
     "qrcode.react": "^4.2.0",
     "radix-ui": "^1.6.7",

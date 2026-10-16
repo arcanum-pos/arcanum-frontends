@@ -268,3 +268,12 @@ Dutch, French and English to `../arcanum-bootstrapper/public/screenshots`
 (or `SHOTS_DIR`). Run it after a visible change to one of those screens,
 then commit the new images in arcanum-bootstrapper. Not part of the test
 suite.
+
+## Self-hosted (SELF_HOSTING.md)
+
+`worker/app.ts` is the screens' server on both runtimes: the built files,
+every HTML page with the Content-Security-Policy. On Cloudflare the files
+come from the assets binding (`worker/index.ts`); self-hosted from the disk
+(`worker/node.ts`): `npm run build && npm run build:node`, then
+`DIST=dist PORT=8080 node dist-node/server.js`. `worker/index.test.ts` runs
+the same checks against both.
