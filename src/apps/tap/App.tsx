@@ -6,7 +6,7 @@ import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { isIos, isStandalone, pushSupport, subscribePush, unsubscribePush } from '@/shared/push'
 import { sumupAppLink } from '@/shared/sumup-app'
-import { connectNotifications, getRegisteredTerminal, pairDevice, type Terminal } from '@/shared/terminal'
+import { connectNotifications, forgetTerminal, getRegisteredTerminal, pairDevice, type Terminal } from '@/shared/terminal'
 import { readTapAddress, tapReturnUrl, type TapAddress } from './lib'
 import { TAP_MESSAGES } from './messages'
 
@@ -148,14 +148,21 @@ function PairForm({ onPaired }: { onPaired: (t: Terminal) => void }) {
 function PairedPhone({ terminal }: { terminal: Terminal }) {
   const m = useMessages(TAP_MESSAGES)
   const [state, setState] = useState<TapState | null>(null)
+  // Why it can't load: this phone isn't known (any more), or a passing error.
+  const [problem, setProblem] = useState<{ unpaired: boolean; message: string } | null>(null)
   const path = `/api/organizations/${encodeURIComponent(terminal.orgId)}/devices/${encodeURIComponent(terminal.terminalId)}`
 
   const refresh = useCallback(() => {
     call<TapState>(`${path}/tap`)
-      .then(setState)
+      .then((next) => {
+        setState(next)
+        setProblem(null)
+      })
       .catch((err) => {
-        // Removed in the console: start over with a new code.
-        if ((err as { status?: number }).status === 401 || (err as { status?: number }).status === 403) window.location.reload()
+        // Never a reload loop: say what's wrong (removed in the console, or
+        // signed in here as someone who may not use it) and offer a new code.
+        const status = (err as { status?: number }).status
+        setProblem({ unpaired: status === 401 || status === 403 || status === 404, message: err instanceof Error ? err.message : String(err) })
       })
   }, [path])
 
@@ -177,6 +184,28 @@ function PairedPhone({ terminal }: { terminal: Terminal }) {
     }
   }, [terminal.terminalId, refresh])
 
+  if (problem && (problem.unpaired || !state))
+    return (
+      <section className="flex flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10" role="alert" data-testid="tap-problem">
+        <p className="font-medium">{problem.unpaired ? m.notThisPhone : m.cantLoad}</p>
+        <p className="text-sm text-muted-foreground">{problem.message}</p>
+        {problem.unpaired ? (
+          <Button
+            variant="outline"
+            onClick={() => {
+              forgetTerminal()
+              window.location.replace('/tap')
+            }}
+          >
+            {m.pairAgain}
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={refresh}>
+            {m.tryAgain}
+          </Button>
+        )}
+      </section>
+    )
   if (!state) return <p className="text-muted-foreground">{m.loading}</p>
   return (
     <>

@@ -3,6 +3,9 @@
 const nl = {
   title: 'Tap to Pay',
   loading: 'Laden…',
+  notThisPhone: 'Deze telefoon kan de betalingen van zijn kassa niet zien.',
+  cantLoad: 'Laden lukte niet.',
+  pairAgain: 'Opnieuw koppelen',
   // Not paired yet
   pairTitle: 'Deze telefoon koppelen',
   pairHint: 'Maak in de console bij Toestellen een koppelcode voor een Tap to Pay-telefoon (kies de kassa), en typ ze hier.',

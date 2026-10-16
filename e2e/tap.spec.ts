@@ -33,6 +33,8 @@ class FakeTap {
   returns: any[] = []
   // What the backend says after asking SumUp, back from the app.
   afterReturn: Charge['status'] = 'succeeded'
+  // What the phone's own call answers (403: signed in here as someone who may not use it).
+  tapStatus = 200
   state() {
     return { name: 'Telefoon toog', kassa: { terminalId: 'pos-1', name: 'Kassa toog' }, charge: this.charge, push: this.push }
   }
@@ -72,7 +74,8 @@ const test = base.extend<{ fake: FakeTap; sockets: { send: (event: string) => vo
         return route.fulfill({ status: 201, json: { ...PAIRED, role: fake.pairRole, orgLocale: 'nl', linkedTo: 'pos-1' } })
       }
       if (p === '/api/organizations/org-1/devices/tap-1') return route.fulfill({ json: { terminal_id: 'tap-1', role: 'tap', org_id: 'org-1', linked_to: 'pos-1' } })
-      if (p === '/api/organizations/org-1/devices/tap-1/tap') return route.fulfill({ json: fake.state() })
+      if (p === '/api/organizations/org-1/devices/tap-1/tap')
+        return fake.tapStatus === 200 ? route.fulfill({ json: fake.state() }) : route.fulfill({ status: fake.tapStatus, json: { error: 'Forbidden' } })
       if (p === '/api/organizations/org-1/devices/tap-1/push') {
         fake.pushCalls.push(req.method())
         fake.push = { ...fake.push!, subscribed: req.method() === 'POST' }
@@ -91,7 +94,13 @@ const test = base.extend<{ fake: FakeTap; sockets: { send: (event: string) => vo
   },
 })
 
-const paired = (page: Page) => page.addInitScript((t) => localStorage.setItem('arcanum-terminal', JSON.stringify(t)), PAIRED)
+// Paired once (not again on every load: "Opnieuw koppelen" forgets it).
+const paired = (page: Page) =>
+  page.addInitScript((t) => {
+    if (sessionStorage.getItem('seeded')) return
+    sessionStorage.setItem('seeded', '1')
+    localStorage.setItem('arcanum-terminal', JSON.stringify(t))
+  }, PAIRED)
 
 async function noSidewaysScroll(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'horizontal overflow').toBeLessThanOrEqual(0)
@@ -127,6 +136,19 @@ test.describe('pairing', () => {
     expect(await page.locator('link[rel="manifest"]').getAttribute('href')).toBe('/tap/manifest.webmanifest')
     await context.close()
   })
+})
+
+test("can't see its kassa's payments: says so — never a reload loop — and offers a new code", async ({ phone: page, fake }) => {
+  await paired(page)
+  fake.tapStatus = 403
+  let loads = 0
+  page.on('load', () => loads++)
+  await page.goto('/tap')
+  await expect(page.getByTestId('tap-problem')).toContainText('kan de betalingen van zijn kassa niet zien')
+  await page.waitForTimeout(500)
+  expect(loads).toBe(1)
+  await page.getByRole('button', { name: 'Opnieuw koppelen' }).click()
+  await expect(page.getByTestId('tap-pair')).toBeVisible()
 })
 
 test.describe('a payment from its kassa', () => {

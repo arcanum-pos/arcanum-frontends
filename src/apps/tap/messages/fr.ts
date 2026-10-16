@@ -3,6 +3,9 @@ import type { TapMessages } from './nl'
 const fr: TapMessages = {
   title: 'Tap to Pay',
   loading: 'Chargement…',
+  notThisPhone: 'Ce téléphone ne peut pas voir les paiements de sa caisse.',
+  cantLoad: 'Le chargement a échoué.',
+  pairAgain: 'Associer à nouveau',
   pairTitle: 'Associer ce téléphone',
   pairHint: 'Dans la console, sous Appareils, créez un code d’association pour un téléphone Tap to Pay (choisissez la caisse), et tapez-le ici.',
   pairCode: 'Code d’association',

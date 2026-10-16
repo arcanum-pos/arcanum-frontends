@@ -3,6 +3,9 @@ import type { TapMessages } from './nl'
 const en: TapMessages = {
   title: 'Tap to Pay',
   loading: 'Loading…',
+  notThisPhone: "This phone can't see its till's payments.",
+  cantLoad: "Couldn't load.",
+  pairAgain: 'Pair again',
   pairTitle: 'Pair this phone',
   pairHint: 'In the console, under Devices, make a pairing code for a Tap to Pay phone (choose the till), and type it here.',
   pairCode: 'Pairing code',
