@@ -313,6 +313,13 @@ export default function App() {
   const loadRegisterRef = useRef(loadRegister)
   loadRegisterRef.current = loadRegister
 
+  // Kasopmaak counts against what the shift adds up to right now — the
+  // payments since this kassa last looked included.
+  async function openCashUp() {
+    await loadRegister()
+    setCashUpOpen(true)
+  }
+
   async function refreshAll() {
     loadCatalog()
     loadEvent()
@@ -711,6 +718,8 @@ export default function App() {
     const tabId = currentRef.current?.tabId
     setTipInput('')
     clearPaymentView()
+    // The shift's totals moved (what the drawer should hold).
+    loadRegister()
     const org = posOrgIdRef.current
     if (!tabId || !org) {
       selectTab('quick')
@@ -983,7 +992,7 @@ export default function App() {
                 <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={current !== null} onClick={() => setMovementOpen(true)}>
                   {st.movement}
                 </Button>
-                <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={current !== null} onClick={() => setCashUpOpen(true)} data-testid="open-cash-up">
+                <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={current !== null} onClick={openCashUp} data-testid="open-cash-up">
                   {st.cashUp}
                 </Button>
               </>
@@ -1079,7 +1088,7 @@ export default function App() {
               <Button
                 onClick={() => {
                   setLeaving(false)
-                  setCashUpOpen(true)
+                  openCashUp()
                 }}
               >
                 {st.cashUp}

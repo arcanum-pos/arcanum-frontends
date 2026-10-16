@@ -64,6 +64,22 @@ test('counted per note and coin; a cash movement; the kasopmaak with its differe
   await expect(kassa.getByTestId('open-register').getByLabel('Wisselgeld')).toHaveValue('40,00')
 })
 
+test("the kasopmaak counts the cash payments made since the kassa last looked (no reload, no focus)", async ({ kassa }) => {
+  const open = kassa.getByTestId('open-register')
+  await open.getByLabel('Wisselgeld').fill('50')
+  await open.getByRole('button', button('Kassa openen')).click()
+  await expect(kassa.getByTestId('shift-label')).toBeVisible()
+  for (let i = 0; i < 2; i++) {
+    await kassa.getByRole('button', button('10 × Bon')).click()
+    await kassa.getByLabel('Contant').check()
+    await kassa.getByRole('button', button(/^Afrekenen/)).click()
+    await kassa.getByRole('button', button('Bevestig ontvangst contant geld')).click()
+    await kassa.getByRole('button', button('Volgende klant')).click()
+  }
+  await kassa.getByTestId('open-cash-up').click()
+  await expect(kassa.getByTestId('cash-up').getByTestId('cash-up-expected')).toHaveText('€ 70,00')
+})
+
 test('blind count: no expected amount while counting', async ({ kassa, backend }) => {
   backend.blindCount = true
   await kassa.getByTestId('open-register').getByRole('button', button('Kassa openen')).click()
