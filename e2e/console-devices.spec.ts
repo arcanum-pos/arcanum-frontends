@@ -176,3 +176,36 @@ test('a table screen at the entrance: no station to choose', async ({ console: o
   await expect(dialog.getByTestId('pairing-code')).toBeVisible()
   expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'station', stationId: null, view: 'tables', name: 'Ingang' })
 })
+
+test("a kassa's Tap to Pay phone: always for a kassa; its QR opens the phone's own page", async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.orgDevices = [
+    { terminal_id: 'pos-1', role: 'pos', linked_to: null, created_at: '2026-10-01T10:00:00Z', online: true, name: 'Kassa toog' },
+    { terminal_id: 'pos-2', role: 'pos', linked_to: null, created_at: '2026-10-01T10:00:00Z', online: true, name: 'Kassa terras' },
+  ]
+  await open('/devices')
+  await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Type' }).click()
+  await page.getByRole('option', { name: 'Tap to Pay-telefoon' }).click()
+  await expect(dialog).toContainText('Een telefoon met de SumUp-app')
+  // No "link later": the first kassa to start with.
+  await expect(dialog.getByRole('combobox', { name: 'Voor welke kassa?' })).toHaveText('Kassa toog')
+  await dialog.getByRole('combobox', { name: 'Voor welke kassa?' }).click()
+  await expect(page.getByRole('option')).toHaveText(['Kassa toog', 'Kassa terras'])
+  await page.getByRole('option', { name: 'Kassa terras' }).click()
+  await dialog.getByLabel('Naam').fill('Telefoon terras')
+  await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
+  await expect(dialog.getByTestId('pairing-code')).toBeVisible()
+  expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'tap', name: 'Telefoon terras', linkTo: 'pos-2' })
+})
+
+test('a Tap to Pay phone needs a kassa first', async ({ console: open, page }) => {
+  await open('/devices')
+  await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Type' }).click()
+  await page.getByRole('option', { name: 'Tap to Pay-telefoon' }).click()
+  await dialog.getByLabel('Naam').fill('Telefoon')
+  await expect(dialog).toContainText('Koppel eerst een kassa')
+  await expect(dialog.getByRole('button', { name: 'Koppelcode maken' })).toBeDisabled()
+})

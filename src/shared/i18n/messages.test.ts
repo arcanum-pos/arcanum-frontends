@@ -9,6 +9,7 @@ import { KASSA_MESSAGES } from '@/apps/kassa/messages'
 import { LOGIN_PROMPT_MESSAGES } from '@/apps/login-prompt/messages'
 import { SETTINGS_MESSAGES } from '@/apps/settings/messages'
 import { STATUS_MESSAGES } from '@/shared/payment-labels'
+import { TAP_MESSAGES } from '@/apps/tap/messages'
 import { LOCALES, type Messages } from '.'
 
 // `satisfies` already catches a missing message at compile time; this also
@@ -26,6 +27,7 @@ const MESSAGE_SETS: Record<string, Messages<unknown>> = {
   settings: SETTINGS_MESSAGES,
   'login prompt': LOGIN_PROMPT_MESSAGES,
   'payment status': STATUS_MESSAGES,
+  'tap to pay phone': TAP_MESSAGES,
 }
 
 function shapeProblems(source: unknown, other: unknown, path: string): string[] {

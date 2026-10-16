@@ -271,7 +271,7 @@ export class FakeCatalogAdmin {
 
   // Toestellen → Toestel toevoegen: codes as the backend makes them. A test
   // "claims" one on a device with claimPairing (the start page's side).
-  pairings: { id: string; role: 'pos' | 'cfd' | 'station'; stationId?: string | null; view?: 'pickup' | null; name: string; status: string; code: string; createdAt: string; expiresAt: string; claimedAt: string | null; claimedBy: string | null; terminalId: string | null; createdBy: string; linkTo: string | null }[] = []
+  pairings: { id: string; role: 'pos' | 'cfd' | 'station' | 'tap'; stationId?: string | null; view?: 'pickup' | null; name: string; status: string; code: string; createdAt: string; expiresAt: string; claimedAt: string | null; claimedBy: string | null; terminalId: string | null; createdBy: string; linkTo: string | null }[] = []
 
   private pairingRoute(method: string, path: string, body: any): FakeResponse {
     const id = path.split('/device-pairings/')[1]

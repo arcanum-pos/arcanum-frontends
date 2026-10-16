@@ -16,7 +16,8 @@ import { ADMIN_ORG_MESSAGES } from '../messages/org'
 // shown once; the device enters it on the start page (root `/` — the QR
 // opens it with the code filled in). Polls until it's claimed or expired.
 // A customer display can be meant for one kassa (`kassas`, by name): it's
-// linked to it as soon as it's paired.
+// linked to it as soon as it's paired. A Tap to Pay phone always is, and
+// its QR opens the phone's own page (/tap), where it's paired.
 const LATER = 'later'
 
 export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; kassas: OrgDevice[]; onPaired: () => void }) {
@@ -24,7 +25,8 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
   const [open, setOpen] = useState(false)
   // 'pickup': a station screen for guests (role 'station', view 'pickup').
   // 'entrance': the entrance screen (role 'station', view 'tables', no station — release D).
-  const [role, setRole] = useState<'pos' | 'cfd' | 'station' | 'pickup' | 'entrance'>('pos')
+  // 'tap': a kassa's Tap to Pay phone (always for one kassa).
+  const [role, setRole] = useState<'pos' | 'cfd' | 'station' | 'pickup' | 'entrance' | 'tap'>('pos')
   const forStation = role === 'station' || role === 'pickup'
   // A station screen shows one prep station.
   const [stations, setStations] = useState<Station[] | null>(null)
@@ -63,7 +65,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
     setError(null)
     try {
       const view = role === 'pickup' ? 'pickup' : role === 'entrance' ? 'tables' : null
-      setPairing(await createDevicePairing(orgId, view ? 'station' : (role as 'pos' | 'cfd' | 'station'), name.trim(), linkTo === LATER ? null : linkTo, role === 'entrance' ? null : stationId || null, view))
+      setPairing(await createDevicePairing(orgId, view ? 'station' : (role as 'pos' | 'cfd' | 'station' | 'tap'), name.trim(), linkTo === LATER ? null : linkTo, role === 'entrance' ? null : stationId || null, view))
       setStatus('open')
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -95,7 +97,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
 
   const secondsLeft = pairing ? Math.max(0, Math.round((Date.parse(pairing.expiresAt) - now) / 1000)) : 0
   const shownStatus = status === 'open' && pairing && secondsLeft === 0 ? 'expired' : status
-  const url = pairing ? `${window.location.origin}/pair?code=${encodeURIComponent(pairing.code.replace('-', ''))}` : ''
+  const url = pairing ? `${window.location.origin}/${pairing.role === 'tap' ? 'tap' : 'pair'}?code=${encodeURIComponent(pairing.code.replace('-', ''))}` : ''
 
   return (
     <Dialog
@@ -121,7 +123,14 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label>{m.type}</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as 'pos' | 'cfd' | 'station' | 'pickup' | 'entrance')}>
+              <Select
+                value={role}
+                onValueChange={(v) => {
+                  setRole(v as 'pos' | 'cfd' | 'station' | 'pickup' | 'entrance' | 'tap')
+                  // A Tap to Pay phone is always for a kassa: the first one, to start with.
+                  if (v === 'tap' && linkTo === LATER && kassas[0]) setLinkTo(kassas[0].terminal_id)
+                }}
+              >
                 <SelectTrigger aria-label={m.type}>
                   <SelectValue />
                 </SelectTrigger>
@@ -131,14 +140,15 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
                   <SelectItem value="station">{m.roles.station}</SelectItem>
                   <SelectItem value="pickup">{m.pickupScreen}</SelectItem>
                   <SelectItem value="entrance">{m.entranceScreen}</SelectItem>
+                  <SelectItem value="tap">{m.roles.tap}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="device-name">{m.deviceName}</Label>
-              <Input id="device-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === 'pos' ? m.namePlaceholderPos : role === 'station' ? m.namePlaceholderStation : role === 'pickup' ? m.namePlaceholderPickup : role === 'entrance' ? m.namePlaceholderEntrance : m.namePlaceholderCfd} autoComplete="off" />
+              <Input id="device-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === 'pos' ? m.namePlaceholderPos : role === 'station' ? m.namePlaceholderStation : role === 'pickup' ? m.namePlaceholderPickup : role === 'entrance' ? m.namePlaceholderEntrance : role === 'tap' ? m.namePlaceholderTap : m.namePlaceholderCfd} autoComplete="off" />
             </div>
-            {role === 'cfd' && (
+            {(role === 'cfd' || role === 'tap') && (
               <div className="grid gap-2">
                 <Label>{m.forKassa}</Label>
                 <Select value={linkTo} onValueChange={setLinkTo}>
@@ -146,7 +156,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={LATER}>{m.linkLater}</SelectItem>
+                    {role === 'cfd' && <SelectItem value={LATER}>{m.linkLater}</SelectItem>}
                     {kassas.map((k) => (
                       <SelectItem key={k.terminal_id} value={k.terminal_id}>
                         {k.name || k.terminal_id}
@@ -157,6 +167,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
               </div>
             )}
             {role === 'entrance' && <p className="text-xs text-muted-foreground">{m.entranceHint}</p>}
+            {role === 'tap' && <p className="text-xs text-muted-foreground">{kassas.length ? m.tapHint : m.tapNeedsKassa}</p>}
             {forStation && (
               <div className="grid gap-2">
                 <Label>{m.station}</Label>
@@ -202,7 +213,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
 
         <DialogFooter>
           {!pairing && (
-            <Button onClick={create} disabled={busy || !name.trim() || (forStation && !stationId)}>
+            <Button onClick={create} disabled={busy || !name.trim() || (forStation && !stationId) || (role === 'tap' && linkTo === LATER)}>
               {busy ? m.busy : m.makeCode}
             </Button>
           )}

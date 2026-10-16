@@ -154,6 +154,9 @@ export default {
     deviceName: 'Nom',
     namePlaceholderPos: 'p. ex. Caisse comptoir',
     namePlaceholderCfd: 'p. ex. Écran client comptoir',
+    namePlaceholderTap: 'p. ex. Téléphone comptoir',
+    tapHint: 'Un téléphone avec l’app SumUp : quand la caisse choisit Tap to Pay, il reçoit le paiement (avec une notification). Ouvrez le code sur ce téléphone ; sur un iPhone, ajoutez-le d’abord à l’écran d’accueil.',
+    tapNeedsKassa: 'Associez d’abord une caisse : un téléphone Tap to Pay appartient à une caisse.',
     namePlaceholderStation: 'p. ex. Écran cuisine',
     station: 'Poste',
     stationHint: 'L’écran affiche les bons de ce poste.',
@@ -190,7 +193,7 @@ export default {
     linkedTo: 'Lié à',
     registeredAt: 'Enregistré le',
     empty: 'Aucun appareil enregistré pour cette organisation.',
-    roles: { pos: 'Caisse', cfd: 'Écran client', station: 'Écran de poste', sim: 'Simulateur SumUp (abandonné)' },
+    roles: { pos: 'Caisse', cfd: 'Écran client', station: 'Écran de poste', sim: 'Simulateur SumUp (abandonné)', tap: 'Téléphone Tap to Pay' },
     reader: 'Lecteur SumUp',
     readerStatus: {
       paired: 'Couplé',

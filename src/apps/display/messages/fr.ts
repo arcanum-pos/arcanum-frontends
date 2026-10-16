@@ -22,16 +22,18 @@ export default {
   expiresIn: (seconds: number) => `Expire dans ${seconds} s`,
   expired: 'Expiré',
 
-  methods: { bancontact: 'Bancontact', cash: 'Espèces', sumup: 'SumUp' },
+  methods: { bancontact: 'Bancontact', cash: 'Espèces', sumup: 'SumUp', tap: 'Tap to Pay' },
   payWith: {
     cash: 'Veuillez payer en espèces',
     sumup: 'Veuillez payer via SumUp',
+    tap: 'Veuillez payer via Tap to Pay',
     bancontact: 'Veuillez payer via Bancontact',
   },
   instructions: {
     bancontact: 'Ouvrez votre app bancaire, scannez le code et confirmez. L’écran passe automatiquement à la suite.',
     cash: 'Payez au comptoir — l’écran continue dès que la réception est confirmée.',
     sumup: 'Payez par carte ou smartphone sur le terminal de paiement.',
+    tap: 'Approchez votre carte ou smartphone du téléphone du caissier.',
   },
 
   thanks: 'Merci !',

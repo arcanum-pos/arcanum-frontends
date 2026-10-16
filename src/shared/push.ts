@@ -1,7 +1,9 @@
-// Web Push on the follow page (release G', ROADMAP §8b): a notification
-// when a station's part is ready, even with the phone locked. Android and
-// desktop browsers can do it right here; an iPhone only from a page added to
-// its home screen (then opened from there) — so it gets those steps instead.
+// Web Push (release G', ROADMAP §8b): on the follow page, a notification
+// when a station's part is ready; on a kassa's Tap to Pay phone, a payment
+// to take — even with the phone locked. Android and desktop browsers can do
+// it right here; an iPhone only from a page added to its home screen (then
+// opened from there) — so it gets those steps instead. `scope`: the pages
+// the service worker (/push-sw.js) is for — '/volg/' or '/tap'.
 
 export type PushSupport = 'yes' | 'ios-home-screen' | 'no'
 
@@ -33,17 +35,17 @@ function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
 // The permission is asked first, before anything is awaited: Safari only
 // shows its question straight from the tap — after an await it refuses
 // without asking (and the site lands on its "Deny" list).
-export async function subscribePush(publicKey: string): Promise<PushSubscriptionJSON | 'denied'> {
+export async function subscribePush(publicKey: string, scope = '/volg/'): Promise<PushSubscriptionJSON | 'denied'> {
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return 'denied'
-  const registration = await navigator.serviceWorker.register('/push-sw.js', { scope: '/volg/' })
+  const registration = await navigator.serviceWorker.register('/push-sw.js', { scope })
   const existing = await registration.pushManager.getSubscription()
   const subscription = existing ?? (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) }))
   return subscription.toJSON()
 }
 
-export async function unsubscribePush(): Promise<void> {
-  const registration = await navigator.serviceWorker?.getRegistration('/volg/')
+export async function unsubscribePush(scope = '/volg/'): Promise<void> {
+  const registration = await navigator.serviceWorker?.getRegistration(scope)
   await (await registration?.pushManager.getSubscription())?.unsubscribe()
 }
 

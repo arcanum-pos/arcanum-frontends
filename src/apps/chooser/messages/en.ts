@@ -20,7 +20,7 @@ const en: ChooserMessages = {
   replaceHint: 'You opened a pairing code. If you pair this browser with it, it stops being this device and you’ll have to pair that again later.',
   replaceYes: 'Pair with the new code',
   replaceNo: (name: string) => `No, open ${name}`,
-  roles: { pos: 'a till', cfd: 'a customer display', station: 'a station screen' },
+  roles: { pos: 'a till', cfd: 'a customer display', station: 'a station screen', tap: 'a Tap to Pay phone' },
 }
 
 export default en

@@ -5,7 +5,7 @@ import { apiErrorMessage } from '@/shared/api-errors'
 import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
-import { linkOrderManifest, pushSupport, subscribePush, unsubscribePush } from './push'
+import { linkOrderManifest, pushSupport, subscribePush, unsubscribePush } from '@/shared/push'
 import { SELF_ORDER_MESSAGES } from './messages'
 import {
   bancontactTarget,

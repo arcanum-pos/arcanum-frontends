@@ -168,6 +168,9 @@ const nl = {
     deviceName: 'Naam',
     namePlaceholderPos: 'bv. Kassa toog',
     namePlaceholderCfd: 'bv. Klantscherm toog',
+    namePlaceholderTap: 'bv. Telefoon toog',
+    tapHint: 'Een telefoon met de SumUp-app: kiest de kassa Tap to Pay, dan krijgt hij de betaling (met een melding). Open de code op die telefoon; op een iPhone eerst op het beginscherm zetten.',
+    tapNeedsKassa: 'Koppel eerst een kassa: een Tap to Pay-telefoon hoort bij een kassa.',
     namePlaceholderStation: 'bv. Scherm keuken',
     station: 'Station',
     stationHint: 'Het scherm toont de bonnen van dit station.',
@@ -204,7 +207,7 @@ const nl = {
     linkedTo: 'Gekoppeld aan',
     registeredAt: 'Geregistreerd op',
     empty: 'Nog geen toestellen geregistreerd voor deze organisatie.',
-    roles: { pos: 'Kassa', cfd: 'Klantscherm', station: 'Stationscherm', sim: 'SumUp-simulator (vervallen)' } satisfies Record<DeviceRole, string>,
+    roles: { pos: 'Kassa', cfd: 'Klantscherm', station: 'Stationscherm', sim: 'SumUp-simulator (vervallen)', tap: 'Tap to Pay-telefoon' } satisfies Record<DeviceRole, string>,
     reader: 'SumUp-reader',
     readerStatus: {
       paired: 'Gekoppeld',

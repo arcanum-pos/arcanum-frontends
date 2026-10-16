@@ -76,6 +76,8 @@ export default function App() {
   orderModeRef.current = kassaModes.length > 1 ? orderModeId : null
   const [notice, setNotice] = useState('')
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bancontact')
+  // SumUp Tap to Pay set up for the org (the SumUp app on a phone): a fourth method.
+  const [tapToPay, setTapToPay] = useState(false)
   // Fooi for the next payment, as typed (comma input). Added on top of the
   // outstanding amount; reset once a payment completes.
   const [tipInput, setTipInput] = useState('')
@@ -586,12 +588,15 @@ export default function App() {
     // Cash and SumUp are both "manual confirm" flows: the cashier collects
     // payment outside the app (or the linked reader resolves it) and
     // confirms here so it's recorded under the right method.
+    // Tap to Pay: a SumUp payment the SumUp app takes, on this kassa's phone
+    // (it gets a notification) or any phone scanning the QR; SumUp confirms it.
     const method = paymentMethod
+    const tap = method === 'tap'
     const readerId = method === 'sumup' ? getSumupReader()?.id : undefined
     const res = await fetch(`${WORKER_URL}/sumup/charge`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...staffHeaders(org) },
-      body: JSON.stringify({ ...common, method, readerId }),
+      body: JSON.stringify({ ...common, method: tap ? 'sumup' : method, readerId, ...(tap ? { app: true } : {}) }),
     })
     const data = await res.json()
     if (!res.ok || !data.chargeId) throw TabApiError.fromResponse(res.status, data, m.chargeFailed)
@@ -608,10 +613,11 @@ export default function App() {
       part,
       remainsOpen,
       dispatchedToReader: !!readerId,
+      tapToken: tap ? data.tapToken : undefined,
     })
     setManualStatus({ kind: 'waiting' })
     broadcastCurrent()
-    if (method === 'sumup') checkSumupStatus(data.chargeId)
+    if (method === 'sumup' || tap) checkSumupStatus(data.chargeId)
   }
 
   async function checkBancontactStatus(chargeId: string) {
@@ -640,7 +646,7 @@ export default function App() {
 
   async function checkSumupStatus(chargeId: string) {
     const cur = currentRef.current
-    if (!cur || cur.method !== 'sumup' || cur.chargeId !== chargeId || cur.status === 'RESOLVED') return
+    if (!cur || (cur.method !== 'sumup' && cur.method !== 'tap') || cur.chargeId !== chargeId || cur.status === 'RESOLVED') return
 
     try {
       const res = await fetch(`${WORKER_URL}/sumup/status/${chargeId}`)
@@ -728,6 +734,23 @@ export default function App() {
   // would then lose a real payment. The poller times those out.
   async function cancelPayment() {
     const cur = currentRef.current
+    // Tap to Pay: the backend asks SumUp first — just paid on the phone, it
+    // stays paid (and is shown so) instead of being cancelled.
+    if (cur && cur.method === 'tap' && !isPaymentResolved(cur)) {
+      const res = await fetch(`${WORKER_URL}/sumup/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chargeId: cur.chargeId, success: false }),
+      }).catch(() => null)
+      const data = res?.ok ? await res.json().catch(() => null) : null
+      if (data?.status === 'succeeded') {
+        await checkSumupStatus(cur.chargeId)
+        return
+      }
+      clearPaymentView()
+      selectTab(cur.tabId || 'quick')
+      return
+    }
     if (cur && !isPaymentResolved(cur) && (cur.method === 'cash' || (cur.method === 'sumup' && !cur.dispatchedToReader))) {
       await resolveTrackedCharge(cur.chargeId, false)
     }
@@ -801,6 +824,11 @@ export default function App() {
       posTerminalIdRef.current = terminal.terminalId
       posOrgIdRef.current = terminal.orgId
       setOrgId(terminal.orgId)
+      // Is Tap to Pay set up for the org? (the readers list says so)
+      fetch(`${WORKER_URL}/sumup/readers?org_id=${encodeURIComponent(terminal.orgId)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => setTapToPay(data?.tapToPay === true))
+        .catch(() => {})
       setTerminalIdLabel(terminal.terminalId)
 
       // Replaces polling: the notification socket pushes payment_updated
@@ -878,7 +906,8 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.name])
 
-  const showConfirmButton = current !== null && current.status !== 'RESOLVED'
+  // Tap to Pay is never confirmed by hand: SumUp does.
+  const showConfirmButton = current !== null && current.status !== 'RESOLVED' && current.method !== 'tap'
   const draftKeys = new Set(Object.keys(drafts))
   const panelTitle = active === 'quick' ? m.quickTitle : shownTab ? tabTitle(m, shownTab) : m.loading
   const itemCount = draft.reduce((n, l) => n + l.quantity, 0) + (shownTab?.lines || []).filter((l) => !l.voidsLineId).reduce((n, l) => n + netQuantity(l), 0)
@@ -1090,6 +1119,7 @@ export default function App() {
                 tab={shownTab}
                 draft={draft}
                 paymentMethod={paymentMethod}
+                tapToPay={tapToPay}
                 tipInput={tipInput}
                 onTipInputChange={setTipInput}
                 busy={busy || tabLoading}

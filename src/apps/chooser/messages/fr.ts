@@ -20,7 +20,7 @@ const fr: ChooserMessages = {
   replaceHint: 'Vous avez ouvert un code de couplage. Si vous l’utilisez pour ce navigateur, il ne sera plus cet appareil et vous devrez le coupler à nouveau plus tard.',
   replaceYes: 'Coupler avec le nouveau code',
   replaceNo: (name: string) => `Non, ouvrir ${name}`,
-  roles: { pos: 'une caisse', cfd: 'un écran client', station: 'un écran de poste' },
+  roles: { pos: 'une caisse', cfd: 'un écran client', station: 'un écran de poste', tap: 'un téléphone Tap to Pay' },
 }
 
 export default fr

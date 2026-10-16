@@ -1,6 +1,7 @@
-// The follow page's service worker (Web Push, release G'): shows "your
-// order is ready" when the backend pushes it — even with the page closed —
-// and opens that order's page when the notification is tapped.
+// The service worker for Web Push (release G'): shows the notification the
+// backend pushes — "your order is ready" on a follow page, a payment to take
+// on a kassa's Tap to Pay phone — even with the page closed, and opens its
+// page when it's tapped (that page already open: brought to the front).
 self.addEventListener('push', (event) => {
   let data = {}
   try {
@@ -18,7 +19,8 @@ self.addEventListener('notificationclick', (event) => {
   const url = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const client of list) if (client.url === url && 'focus' in client) return client.focus()
+      const path = new URL(url).pathname
+      for (const client of list) if (new URL(client.url).pathname === path && 'focus' in client) return client.focus()
       return self.clients.openWindow(url)
     })
   )

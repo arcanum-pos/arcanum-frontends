@@ -22,16 +22,18 @@ export default {
   expiresIn: (seconds: number) => `Expires in ${seconds}s`,
   expired: 'Expired',
 
-  methods: { bancontact: 'Bancontact', cash: 'Cash', sumup: 'SumUp' },
+  methods: { bancontact: 'Bancontact', cash: 'Cash', sumup: 'SumUp', tap: 'Tap to Pay' },
   payWith: {
     cash: 'Please pay in cash',
     sumup: 'Please pay via SumUp',
+    tap: 'Please pay via Tap to Pay',
     bancontact: 'Please pay via Bancontact',
   },
   instructions: {
     bancontact: 'Open your banking app, scan the code and confirm. The screen moves on automatically.',
     cash: 'Pay at the counter — the screen moves on once the payment is confirmed.',
     sumup: 'Pay with your card or phone on the payment terminal.',
+    tap: "Hold your card or phone against the cashier's phone.",
   },
 
   thanks: 'Thank you!',

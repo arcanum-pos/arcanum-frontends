@@ -148,6 +148,10 @@ export class FakeBackend {
   tabs: Tab[] = []
   lines: Line[] = []
   charges: FakeCharge[] = []
+  // SumUp Tap to Pay set up for the org (the readers list says so); and
+  // whether SumUp has it paid when the kassa cancels (it asks first).
+  tapToPay = false
+  tapPaidAtSumup = false
   catalogs: FakeCatalog[] = [standardCatalog()]
   events: FakeEvent[] = []
   private tabCounter = 0
@@ -458,7 +462,15 @@ export class FakeBackend {
     if (method === 'POST' && (p === '/api/bancontact/sumup/charge' || p === '/api/bancontact/payments')) {
       return this.createCharge(p.endsWith('/payments') ? 'bancontact' : body.method || 'sumup', body)
     }
+    if (method === 'GET' && p === '/api/bancontact/sumup/readers') return { status: 200, body: { readers: [], tapToPay: this.tapToPay } }
     if (method === 'POST' && p === '/api/bancontact/sumup/confirm') {
+      // Tap to Pay: never confirmed by hand; a cancel asks SumUp first.
+      const app = this.charges.find((c) => c.id === body.chargeId && c.body?.app)
+      if (app) {
+        if (body.success !== false) return { status: 409, body: { error: 'x', code: 'tap_payment_not_manual' } }
+        this.resolveCharge(app.id, this.tapPaidAtSumup)
+        return { status: 200, body: { ok: true, chargeId: app.id, status: app.status } }
+      }
       this.resolveCharge(body.chargeId, body.success !== false)
       return { status: 200, body: { ok: true, chargeId: body.chargeId } }
     }
@@ -707,6 +719,7 @@ export class FakeBackend {
     if (method === 'bancontact') {
       return { status: 201, body: { chargeId: charge.id, status: 'PENDING', amount: body.amount, expiresAt: new Date(Date.now() + 120_000).toISOString(), qrCodeUrl: QR_URL } }
     }
+    if (body.app) return { status: 201, body: { chargeId: charge.id, sumupApp: { affiliateKey: 'sup_afk_test', appId: 'be.example.pos' }, tapToken: `tok-${charge.id}` } }
     return { status: 201, body: { chargeId: charge.id } }
   }
 }

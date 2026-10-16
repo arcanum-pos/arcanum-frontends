@@ -55,7 +55,7 @@ export default {
   toPay: 'To pay',
 
   paymentMethod: 'Payment method',
-  methods: { bancontact: 'Bancontact', cash: 'Cash', sumup: 'SumUp' },
+  methods: { bancontact: 'Bancontact', cash: 'Cash', sumup: 'SumUp', tap: 'Tap to Pay' },
   roundUp: 'Round up',
   noTip: 'No tip',
   pay: (amount: string | null) => (amount ? `Charge ${amount}` : 'Charge'),
@@ -107,12 +107,15 @@ export default {
 
   part: (index: number, of: number) => `Part ${index} of ${of}`,
   qrAlt: 'QR code for payment',
+  tapQrAlt: 'QR code for Tap to Pay',
+  tapHint: "This till's phone got a notification. Or scan this code with a phone that has the SumUp app.",
   status: 'Status:',
   expiresIn: (seconds: number) => `Expires in ${seconds}s`,
   expired: 'Expired',
   manual: {
     cash: { waiting: 'Waiting for cash payment', confirm: 'Confirm cash received', paid: 'Paid (cash)' },
     sumup: { waiting: 'Waiting for SumUp payment (automatic, or confirm below)', confirm: 'Confirm SumUp payment', paid: 'Paid (SumUp)' },
+    tap: { waiting: 'Waiting for Tap to Pay on the phone', confirm: 'SumUp confirms it', paid: 'Paid (Tap to Pay)' },
   },
   sumupFailed: (error: string) => `SumUp payment failed: ${error}`,
   sumupFailedRetry: 'SumUp payment failed. Try again or confirm manually.',

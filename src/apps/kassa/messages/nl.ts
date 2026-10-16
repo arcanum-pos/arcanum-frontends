@@ -64,7 +64,7 @@ const nl = {
 
   // Paying
   paymentMethod: 'Betaalmethode',
-  methods: { bancontact: 'Bancontact', cash: 'Contant', sumup: 'SumUp' } satisfies Record<PaymentMethod, string>,
+  methods: { bancontact: 'Bancontact', cash: 'Contant', sumup: 'SumUp', tap: 'Tap to Pay' } satisfies Record<PaymentMethod, string>,
   roundUp: 'Afronden',
   noTip: 'Geen fooi',
   pay: (amount: string | null) => (amount ? `Afrekenen ${amount}` : 'Afrekenen'),
@@ -122,13 +122,16 @@ const nl = {
   // A payment in progress
   part: (index: number, of: number) => `Deel ${index} van ${of}`,
   qrAlt: 'QR-code voor betaling',
+  tapQrAlt: 'QR-code voor Tap to Pay',
+  tapHint: 'De telefoon van deze kassa kreeg een melding. Of scan deze code met een telefoon met de SumUp-app.',
   status: 'Status:',
   expiresIn: (seconds: number) => `Vervalt over ${seconds}s`,
   expired: 'Verlopen',
   manual: {
     cash: { waiting: 'Wacht op contante betaling', confirm: 'Bevestig ontvangst contant geld', paid: 'Betaald (contant)' },
     sumup: { waiting: 'Wacht op SumUp betaling (automatisch, of bevestig hieronder)', confirm: 'Bevestig SumUp betaling', paid: 'Betaald (SumUp)' },
-  } satisfies Record<'cash' | 'sumup', { waiting: string; confirm: string; paid: string }>,
+    tap: { waiting: 'Wacht op Tap to Pay op de telefoon', confirm: 'SumUp bevestigt het', paid: 'Betaald (Tap to Pay)' },
+  } satisfies Record<'cash' | 'sumup' | 'tap', { waiting: string; confirm: string; paid: string }>,
   sumupFailed: (error: string) => `SumUp betaling mislukt: ${error}`,
   sumupFailedRetry: 'SumUp betaling mislukt. Probeer opnieuw of bevestig handmatig.',
   nextPart: 'Volgend deel',

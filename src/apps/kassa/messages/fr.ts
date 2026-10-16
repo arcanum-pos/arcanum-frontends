@@ -55,7 +55,7 @@ export default {
   toPay: 'À payer',
 
   paymentMethod: 'Mode de paiement',
-  methods: { bancontact: 'Bancontact', cash: 'Espèces', sumup: 'SumUp' },
+  methods: { bancontact: 'Bancontact', cash: 'Espèces', sumup: 'SumUp', tap: 'Tap to Pay' },
   roundUp: 'Arrondir',
   noTip: 'Aucun',
   pay: (amount: string | null) => (amount ? `Encaisser ${amount}` : 'Encaisser'),
@@ -107,12 +107,15 @@ export default {
 
   part: (index: number, of: number) => `Partie ${index} sur ${of}`,
   qrAlt: 'Code QR pour le paiement',
+  tapQrAlt: 'Code QR pour Tap to Pay',
+  tapHint: 'Le téléphone de cette caisse a reçu une notification. Ou scannez ce code avec un téléphone qui a l’app SumUp.',
   status: 'Statut :',
   expiresIn: (seconds: number) => `Expire dans ${seconds} s`,
   expired: 'Expiré',
   manual: {
     cash: { waiting: 'En attente du paiement en espèces', confirm: 'Confirmer la réception des espèces', paid: 'Payé (espèces)' },
     sumup: { waiting: 'En attente du paiement SumUp (automatique, ou confirmez ci-dessous)', confirm: 'Confirmer le paiement SumUp', paid: 'Payé (SumUp)' },
+    tap: { waiting: 'En attente de Tap to Pay sur le téléphone', confirm: 'SumUp le confirme', paid: 'Payé (Tap to Pay)' },
   },
   sumupFailed: (error: string) => `Échec du paiement SumUp : ${error}`,
   sumupFailedRetry: 'Échec du paiement SumUp. Réessayez ou confirmez manuellement.',

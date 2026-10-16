@@ -23,10 +23,11 @@ const nl = {
   expiresIn: (seconds: number) => `Vervalt over ${seconds}s`,
   expired: 'Verlopen',
 
-  methods: { bancontact: 'Bancontact', cash: 'Contant', sumup: 'SumUp' } as Record<string, string>,
+  methods: { bancontact: 'Bancontact', cash: 'Contant', sumup: 'SumUp', tap: 'Tap to Pay' } as Record<string, string>,
   payWith: {
     cash: 'Gelieve contant te betalen',
     sumup: 'Gelieve te betalen via SumUp',
+    tap: 'Gelieve te betalen via Tap to Pay',
     bancontact: 'Gelieve te betalen via Bancontact',
   } as Record<string, string>,
   // What the customer is told while the payment runs, per method.
@@ -34,6 +35,7 @@ const nl = {
     bancontact: 'Open je bankapp, scan de code en bevestig. Het scherm springt automatisch verder.',
     cash: 'Betaal aan de toog — het scherm springt verder zodra de ontvangst bevestigd is.',
     sumup: 'Betaal met je kaart of gsm op de betaalterminal.',
+    tap: 'Houd je kaart of gsm tegen de telefoon van de kassier.',
   } as Record<string, string>,
 
   thanks: 'Bedankt!',

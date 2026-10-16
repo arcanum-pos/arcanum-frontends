@@ -122,7 +122,9 @@ export function readAmountCents(value: string): number {
   return Number.isFinite(euros) && euros > 0 ? Math.round(euros * 100) : 0
 }
 
-export type PaymentMethod = 'bancontact' | 'cash' | 'sumup'
+// 'tap': SumUp Tap to Pay on the kassa's phone (or any phone scanning the
+// payment's QR) — a SumUp payment the SumUp app takes, confirmed by SumUp.
+export type PaymentMethod = 'bancontact' | 'cash' | 'sumup' | 'tap'
 
 export interface CurrentPayment {
   method: PaymentMethod
@@ -149,6 +151,8 @@ export interface CurrentPayment {
   // cancelling here can't stop the customer from still paying on it, so
   // the charge is left for the reader/poller to resolve.
   dispatchedToReader?: boolean
+  // Tap to Pay: the payment's own token — its QR's link (/tap?charge=…&t=…).
+  tapToken?: string
 }
 
 export function isPaymentResolved(current: CurrentPayment): boolean {
@@ -159,6 +163,14 @@ export function isPaymentResolved(current: CurrentPayment): boolean {
 export type ManualStatus = { kind: 'waiting' } | { kind: 'paid' } | { kind: 'failed'; error: string | null }
 
 export const PAYMENT_METHODS: PaymentMethod[] = ['bancontact', 'cash', 'sumup']
+
+// The methods this kassa offers: Tap to Pay too once it's set up (console → Betaalproviders).
+export const paymentMethodsFor = (tapToPay: boolean): PaymentMethod[] => (tapToPay ? [...PAYMENT_METHODS, 'tap'] : PAYMENT_METHODS)
+
+// The link a Tap to Pay payment's QR opens: the phone page, for this payment.
+export function tapLink(origin: string, chargeId: string, token: string): string {
+  return `${origin}/tap?charge=${encodeURIComponent(chargeId)}&t=${encodeURIComponent(token)}`
+}
 
 // --- Search and group filter (kassa product picker) ---
 

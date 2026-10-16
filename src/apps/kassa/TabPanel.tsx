@@ -7,7 +7,7 @@ import {
   clampTip,
   draftTotalCents,
   FOOI_CODE,
-  PAYMENT_METHODS,
+  paymentMethodsFor,
   payableUnits,
   readAmountCents,
   roundUpTipCents,
@@ -33,6 +33,7 @@ export function TabPanel({
   tab,
   draft,
   paymentMethod,
+  tapToPay = false,
   tipInput,
   busy,
   onPaymentMethodChange,
@@ -57,6 +58,8 @@ export function TabPanel({
   tab: TabDetail | null
   draft: DraftLine[]
   paymentMethod: PaymentMethod
+  // Tap to Pay is set up for the org: a fourth method.
+  tapToPay?: boolean
   tipInput: string
   busy: boolean
   onPaymentMethodChange: (method: PaymentMethod) => void
@@ -259,8 +262,8 @@ export function TabPanel({
       <section className="flex flex-col gap-3 rounded-xl border bg-card p-3.5">
         <div>
           <p className="mb-2.5 text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{m.paymentMethod}</p>
-          <div className="grid grid-cols-3 gap-2">
-            {PAYMENT_METHODS.map((method) => (
+          <div className={cn('grid gap-2', tapToPay ? 'grid-cols-2' : 'grid-cols-3')}>
+            {paymentMethodsFor(tapToPay).map((method) => (
               // A real radio underneath (keyboard, screen readers), styled as a tile.
               <label
                 key={method}

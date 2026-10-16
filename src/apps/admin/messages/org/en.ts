@@ -154,6 +154,9 @@ export default {
     deviceName: 'Name',
     namePlaceholderPos: 'e.g. Bar till',
     namePlaceholderCfd: 'e.g. Bar customer display',
+    namePlaceholderTap: 'e.g. Bar phone',
+    tapHint: 'A phone with the SumUp app: when the till chooses Tap to Pay, it gets the payment (with a notification). Open the code on that phone; on an iPhone, add it to the home screen first.',
+    tapNeedsKassa: 'Pair a till first: a Tap to Pay phone belongs to a till.',
     namePlaceholderStation: 'e.g. Kitchen screen',
     station: 'Station',
     stationHint: 'The screen shows this station’s tickets.',
@@ -190,7 +193,7 @@ export default {
     linkedTo: 'Linked to',
     registeredAt: 'Registered on',
     empty: 'No devices registered for this organisation yet.',
-    roles: { pos: 'Till', cfd: 'Customer display', station: 'Station screen', sim: 'SumUp simulator (discontinued)' },
+    roles: { pos: 'Till', cfd: 'Customer display', station: 'Station screen', sim: 'SumUp simulator (discontinued)', tap: 'Tap to Pay phone' },
     reader: 'SumUp reader',
     readerStatus: {
       paired: 'Paired',

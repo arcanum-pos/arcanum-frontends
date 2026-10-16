@@ -229,7 +229,8 @@ export async function whoami(): Promise<Whoami> {
 // 'sim': the SumUp simulator, removed 2026-10-06 — only still listed so an
 // old registration can be recognised and removed.
 // 'station': a station screen (one prep station's tickets).
-export type DeviceRole = 'pos' | 'cfd' | 'station' | 'sim'
+// 'tap': a kassa's Tap to Pay phone (the SumUp app on it).
+export type DeviceRole = 'pos' | 'cfd' | 'station' | 'tap' | 'sim'
 
 export interface OrgDevice {
   terminal_id: string
@@ -266,7 +267,7 @@ export async function renameOrgDevice(orgId: string, terminalId: string, name: s
 
 export interface DevicePairing {
   id: string
-  role: 'pos' | 'cfd' | 'station'
+  role: 'pos' | 'cfd' | 'station' | 'tap'
   name: string
   status: 'open' | 'claimed' | 'revoked' | 'expired'
   createdBy: string
@@ -281,13 +282,13 @@ export interface DevicePairing {
   code?: string
 }
 
-// `linkTo`: for a customer display, the kassa it's for — linked as soon as it's paired.
+// `linkTo`: for a customer display or Tap to Pay phone, the kassa it's for — linked as soon as it's paired.
 // `stationId`: for a station screen, the prep station it shows; `view`
 // 'pickup': it's the pickup screen for guests (only order numbers).
-export function createDevicePairing(orgId: string, role: 'pos' | 'cfd' | 'station', name: string, linkTo?: string | null, stationId?: string | null, view?: 'pickup' | 'tables' | null): Promise<DevicePairing & { code: string }> {
+export function createDevicePairing(orgId: string, role: 'pos' | 'cfd' | 'station' | 'tap', name: string, linkTo?: string | null, stationId?: string | null, view?: 'pickup' | 'tables' | null): Promise<DevicePairing & { code: string }> {
   return request(`/${encodeURIComponent(orgId)}/device-pairings`, {
     method: 'POST',
-    body: JSON.stringify({ role, name, linkTo: role === 'cfd' ? linkTo || null : null, stationId: role === 'station' ? stationId || null : null, ...(role === 'station' && view ? { view } : {}) }),
+    body: JSON.stringify({ role, name, linkTo: role === 'cfd' || role === 'tap' ? linkTo || null : null, stationId: role === 'station' ? stationId || null : null, ...(role === 'station' && view ? { view } : {}) }),
   })
 }
 

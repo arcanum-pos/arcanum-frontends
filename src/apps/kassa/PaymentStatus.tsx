@@ -1,8 +1,9 @@
+import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
 import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { STATUS_MESSAGES } from '@/shared/payment-labels'
-import { isPaymentResolved, type CurrentPayment, type ManualStatus } from './lib'
+import { isPaymentResolved, tapLink, type CurrentPayment, type ManualStatus } from './lib'
 import { KASSA_MESSAGES } from './messages'
 
 // A payment in progress, in place of the kassa (styled after the payment
@@ -25,12 +26,12 @@ export function PaymentStatus({
   onCancel: () => void
   onNext: () => void
 }) {
-  const isManual = current.method === 'cash' || current.method === 'sumup'
+  const isManual = current.method === 'cash' || current.method === 'sumup' || current.method === 'tap'
   const resolved = isPaymentResolved(current)
   const m = useMessages(KASSA_MESSAGES)
   const statusLabels = useMessages(STATUS_MESSAGES)
   const methodLabel = m.methods[current.method] ?? current.method
-  const manual = isManual ? m.manual[current.method as 'cash' | 'sumup'] : null
+  const manual = isManual ? m.manual[current.method as 'cash' | 'sumup' | 'tap'] : null
   const manualText = !manual || !manualStatus
     ? ''
     : manualStatus.kind === 'waiting'
@@ -89,8 +90,17 @@ export function PaymentStatus({
 
         {isManual && (
           <>
+            {/* Tap to Pay: the kassa's phone got it; any phone with the SumUp app can scan this. */}
+            {current.method === 'tap' && current.tapToken && !resolved && (
+              <div className="flex flex-col items-center gap-2" data-testid="tap-qr" data-link={tapLink(window.location.origin, current.chargeId, current.tapToken)}>
+                <div className="rounded-2xl border bg-white p-3.5">
+                  <QRCodeSVG value={tapLink(window.location.origin, current.chargeId, current.tapToken)} size={200} marginSize={0} title={m.tapQrAlt} />
+                </div>
+                <p className="max-w-[300px] text-[12.5px] text-muted-foreground">{m.tapHint}</p>
+              </div>
+            )}
             <p className="flex items-center gap-2 text-[13px] text-foreground/75">
-              {!resolved && current.method === 'sumup' && <Spinner />}
+              {!resolved && (current.method === 'sumup' || current.method === 'tap') && <Spinner />}
               <span>{manualText}</span>
             </p>
             {showConfirmButton && (
