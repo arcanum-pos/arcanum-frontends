@@ -85,7 +85,8 @@ const nl = {
   pushOn: 'Melding aanzetten',
   pushSet: 'Je krijgt een melding op deze gsm zodra iets klaar is.',
   pushOff: 'Uitzetten',
-  pushDenied: 'Meldingen zijn geweigerd voor deze site. Zet ze aan in de instellingen van je browser, of kies een sms.',
+  pushDenied: (sms: boolean) =>
+    `Meldingen zijn geblokkeerd in deze browser — in zijn instellingen, of omdat dit een privévenster is. Geen probleem: zolang deze pagina openstaat, volgt ze je bestelling vanzelf.${sms ? ' Of laat hieronder je nummer achter voor een sms.' : ''}`,
   pushFailed: 'Meldingen lukken niet in deze browser.',
   pushIosTitle: 'Melding op je iPhone',
   pushIosSteps: ['Tik onderaan op Deel (het vierkantje met het pijltje).', 'Kies "Zet op beginscherm" en tik op Voeg toe.', 'Open "Bestelling" vanaf je beginscherm en tik daar op "Melding aanzetten".'],

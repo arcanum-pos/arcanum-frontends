@@ -85,7 +85,8 @@ const en: SelfOrderMessages = {
   pushOn: 'Turn on notification',
   pushSet: 'You’ll get a notification on this phone as soon as something is ready.',
   pushOff: 'Turn off',
-  pushDenied: 'Notifications are blocked for this site. Allow them in your browser’s settings, or choose a text message.',
+  pushDenied: (sms: boolean) =>
+    `Notifications are blocked in this browser — in its settings, or because this is a private window. No problem: while this page is open, it follows your order by itself.${sms ? ' Or leave your number below for a text message.' : ''}`,
   pushFailed: 'Notifications don’t work in this browser.',
   pushIosTitle: 'A notification on your iPhone',
   pushIosSteps: ['Tap Share at the bottom (the square with the arrow).', 'Choose “Add to Home Screen”, then Add.', 'Open “Bestelling” from your home screen and tap “Turn on notification” there.'],

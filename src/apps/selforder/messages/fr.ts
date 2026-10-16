@@ -85,7 +85,8 @@ const fr: SelfOrderMessages = {
   pushOn: 'Activer la notification',
   pushSet: 'Vous recevrez une notification sur ce téléphone dès que quelque chose est prêt.',
   pushOff: 'Désactiver',
-  pushDenied: 'Les notifications sont refusées pour ce site. Activez-les dans les réglages du navigateur, ou choisissez un SMS.',
+  pushDenied: (sms: boolean) =>
+    `Les notifications sont bloquées dans ce navigateur — dans ses réglages, ou parce que c’est une fenêtre privée. Pas de souci : tant que cette page reste ouverte, elle suit votre commande toute seule.${sms ? ' Ou laissez votre numéro ci-dessous pour un SMS.' : ''}`,
   pushFailed: 'Les notifications ne fonctionnent pas dans ce navigateur.',
   pushIosTitle: 'Notification sur votre iPhone',
   pushIosSteps: ['Touchez Partager en bas (le carré avec la flèche).', 'Choisissez « Sur l’écran d’accueil » puis Ajouter.', 'Ouvrez « Bestelling » depuis l’écran d’accueil et touchez « Activer la notification ».'],

@@ -599,7 +599,7 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
         </ul>
       )}
 
-      {status.push && (status.push.available || status.push.subscribed) && <PushCard token={token} push={status.push} orgName={status.orgName} onChanged={refresh} />}
+      {status.push && (status.push.available || status.push.subscribed) && <PushCard token={token} push={status.push} orgName={status.orgName} smsOffered={!!status.sms?.available} onChanged={refresh} />}
 
       {/* With a notification on, no SMS (one message is enough): only what went. */}
       {status.sms && ((status.sms.available && !status.push?.subscribed) || status.sms.stations.length > 0) && (
@@ -657,11 +657,14 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
 // "A notification when it's ready" (Web Push, release G'): turned on with a
 // tap (the browser asks permission), or — on an iPhone outside the home
 // screen — the steps to get there first.
-function PushCard({ token, push, orgName, onChanged }: { token: string; push: NonNullable<FollowStatus['push']>; orgName: string; onChanged: () => void }) {
+// Blocked already (in the browser's settings, or a private window that
+// refuses): said straight away, instead of a button that can't work.
+function PushCard({ token, push, orgName, smsOffered, onChanged }: { token: string; push: NonNullable<FollowStatus['push']>; orgName: string; smsOffered: boolean; onChanged: () => void }) {
   const m = useMessages(SELF_ORDER_MESSAGES)
   const [support] = useState(pushSupport)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [blocked, setBlocked] = useState(() => support === 'yes' && Notification.permission === 'denied')
   const path = `/api/public/orders/${encodeURIComponent(token)}/push`
   useEffect(() => (support === 'no' ? undefined : linkOrderManifest(token, orgName)), [support, token, orgName])
   async function turnOn() {
@@ -669,7 +672,7 @@ function PushCard({ token, push, orgName, onChanged }: { token: string; push: No
     setError(null)
     try {
       const subscription = await subscribePush(push.publicKey)
-      if (subscription === 'denied') return setError(m.pushDenied)
+      if (subscription === 'denied') return setBlocked(true)
       await call(path, { method: 'POST', body: JSON.stringify({ subscription }) })
       onChanged()
     } catch {
@@ -705,6 +708,10 @@ function PushCard({ token, push, orgName, onChanged }: { token: string; push: No
             <li key={step}>{step}</li>
           ))}
         </ol>
+      ) : blocked ? (
+        <p className="text-sm text-muted-foreground" role="status" data-testid="push-blocked">
+          {m.pushDenied(smsOffered)}
+        </p>
       ) : (
         <>
           <p className="text-sm text-muted-foreground">{m.pushHint}</p>

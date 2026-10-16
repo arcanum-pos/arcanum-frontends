@@ -604,8 +604,9 @@ test('on a tab whose mode asks it: a name and a mobile number or e-mail first â€
 })
 
 // A browser that can do Web Push, faked: the test browser has no push
-// service of its own. `permission`: what the guest answers.
-const pushBrowser = (permission: string) => {
+// service of its own. `permission`: what the guest answers; `already`: the
+// permission before anything is asked ('denied': blocked for the site, or a private window).
+const pushBrowser = ({ permission, already }: { permission: string; already: string }) => {
   const subscription = { toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/xyz', keys: { p256dh: 'P256', auth: 'AUTH' } }), unsubscribe: async () => true }
   const registration = {
     pushManager: {
@@ -620,7 +621,7 @@ const pushBrowser = (permission: string) => {
   Object.defineProperty(window, 'PushManager', { value: function PushManager() {}, configurable: true })
   // Like Safari: asked after something was awaited (the service worker
   // registered first), it refuses without asking.
-  Object.defineProperty(window, 'Notification', { value: { requestPermission: async () => ((window as any).__sw ? 'denied' : permission) }, configurable: true })
+  Object.defineProperty(window, 'Notification', { value: { permission: already, requestPermission: async () => ((window as any).__sw ? 'denied' : permission) }, configurable: true })
   Object.defineProperty(navigator, 'serviceWorker', {
     value: {
       register: async (url: string, options: { scope: string }) => {
@@ -637,7 +638,7 @@ const SERVER_KEY = 'BP' + 'A'.repeat(85)
 
 test.describe("a notification when it's ready (Web Push, release G')", () => {
   test('turned on with a tap: the subscription goes to the backend; then no SMS asked; turned off again', async ({ phone: page, fake }) => {
-    await page.addInitScript(pushBrowser, 'granted')
+    await page.addInitScript(pushBrowser, { permission: 'granted', already: 'default' })
     fake.state = 'preparing'
     fake.sms = { available: true, phone: null, stations: [] }
     fake.push = { publicKey: SERVER_KEY, available: true, subscribed: false }
@@ -658,14 +659,32 @@ test.describe("a notification when it's ready (Web Push, release G')", () => {
     expect(fake.pushCalls[1].method).toBe('DELETE')
   })
 
-  test('the guest says no: says how to allow it, nothing sent', async ({ phone: page, fake }) => {
-    await page.addInitScript(pushBrowser, 'denied')
+  test('the guest says no: why, and that the page follows the order anyway; nothing sent', async ({ phone: page, fake }) => {
+    await page.addInitScript(pushBrowser, { permission: 'denied', already: 'default' })
     fake.state = 'preparing'
     fake.push = { publicKey: SERVER_KEY, available: true, subscribed: false }
     await page.goto(`/volg/${TOKEN}`)
     await page.getByTestId('push-turn-on').click()
-    await expect(page.getByTestId('push').getByRole('alert')).toContainText('Meldingen zijn geweigerd')
+    const blocked = page.getByTestId('push-blocked')
+    await expect(blocked).toContainText('Meldingen zijn geblokkeerd in deze browser')
+    await expect(blocked).toContainText('privÃ©venster')
+    await expect(blocked).toContainText('volgt ze je bestelling vanzelf')
+    // No SMS offered here: none suggested.
+    await expect(blocked).not.toContainText('sms')
+    await expect(page.getByTestId('push-turn-on')).toHaveCount(0)
     expect(fake.pushCalls).toEqual([])
+  })
+
+  test('blocked already (settings, private window): said at once, no button; the SMS suggested when it is offered', async ({ phone: page, fake }) => {
+    await page.addInitScript(pushBrowser, { permission: 'denied', already: 'denied' })
+    fake.state = 'preparing'
+    fake.sms = { available: true, phone: null, stations: [] }
+    fake.push = { publicKey: SERVER_KEY, available: true, subscribed: false }
+    await page.goto(`/volg/${TOKEN}`)
+    await expect(page.getByTestId('push-blocked')).toContainText('Of laat hieronder je nummer achter voor een sms')
+    await expect(page.getByTestId('push-turn-on')).toHaveCount(0)
+    await expect(page.getByTestId('sms')).toBeVisible()
+    await noSidewaysScroll(page)
   })
 
   test('not offered without the installation key', async ({ phone: page, fake }) => {
