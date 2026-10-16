@@ -9,6 +9,13 @@ test('not set up: three methods, no Tap to Pay', async ({ kassa }) => {
   await expect(kassa.getByLabel('Tap to Pay')).toHaveCount(0)
 })
 
+test("set up, while SumUp can't list the readers: still offered", async ({ kassa, backend }) => {
+  backend.tapToPay = true
+  backend.readersFail = true
+  await kassa.reload()
+  await expect(kassa.getByLabel('Tap to Pay')).toBeVisible()
+})
+
 test.describe('set up', () => {
   test.beforeEach(async ({ kassa, backend }) => {
     backend.tapToPay = true

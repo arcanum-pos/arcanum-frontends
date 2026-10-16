@@ -152,6 +152,8 @@ export class FakeBackend {
   // whether SumUp has it paid when the kassa cancels (it asks first).
   tapToPay = false
   tapPaidAtSumup = false
+  // SumUp can't list the readers right now (the answer still says whether Tap to Pay is set up).
+  readersFail = false
   catalogs: FakeCatalog[] = [standardCatalog()]
   events: FakeEvent[] = []
   private tabCounter = 0
@@ -462,7 +464,10 @@ export class FakeBackend {
     if (method === 'POST' && (p === '/api/bancontact/sumup/charge' || p === '/api/bancontact/payments')) {
       return this.createCharge(p.endsWith('/payments') ? 'bancontact' : body.method || 'sumup', body)
     }
-    if (method === 'GET' && p === '/api/bancontact/sumup/readers') return { status: 200, body: { readers: [], tapToPay: this.tapToPay } }
+    if (method === 'GET' && p === '/api/bancontact/sumup/readers')
+      return this.readersFail
+        ? { status: 502, body: { error: 'x', code: 'sumup_readers_failed', configured: true, readers: [], tapToPay: this.tapToPay } }
+        : { status: 200, body: { readers: [], tapToPay: this.tapToPay } }
     if (method === 'POST' && p === '/api/bancontact/sumup/confirm') {
       // Tap to Pay: never confirmed by hand; a cancel asks SumUp first.
       const app = this.charges.find((c) => c.id === body.chargeId && c.body?.app)

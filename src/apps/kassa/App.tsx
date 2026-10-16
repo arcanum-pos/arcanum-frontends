@@ -824,11 +824,7 @@ export default function App() {
       posTerminalIdRef.current = terminal.terminalId
       posOrgIdRef.current = terminal.orgId
       setOrgId(terminal.orgId)
-      // Is Tap to Pay set up for the org? (the readers list says so)
-      fetch(`${WORKER_URL}/sumup/readers?org_id=${encodeURIComponent(terminal.orgId)}`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => setTapToPay(data?.tapToPay === true))
-        .catch(() => {})
+      loadTapToPay(terminal.orgId)
       setTerminalIdLabel(terminal.terminalId)
 
       // Replaces polling: the notification socket pushes payment_updated
@@ -851,6 +847,23 @@ export default function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Is Tap to Pay set up for the org? The readers list says so — also when
+  // SumUp itself can't list the readers right now (then a 502 that still
+  // carries it). Asked again whenever the kassa is looked at again (set up
+  // in the console meanwhile).
+  function loadTapToPay(org: string) {
+    fetch(`${WORKER_URL}/sumup/readers?org_id=${encodeURIComponent(org)}`)
+      .then((res) => res.json())
+      .then((data) => setTapToPay(data?.tapToPay === true))
+      .catch(() => {})
+  }
+  useEffect(() => {
+    if (!orgId) return
+    const onVisible = () => document.visibilityState === 'visible' && loadTapToPay(orgId)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [orgId])
 
   // Besides the live tabs_changed push: reload when this kassa is looked at
   // again (a push missed while the socket was down).
