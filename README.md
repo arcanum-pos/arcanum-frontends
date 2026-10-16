@@ -275,5 +275,5 @@ suite.
 every HTML page with the Content-Security-Policy. On Cloudflare the files
 come from the assets binding (`worker/index.ts`); self-hosted from the disk
 (`worker/node.ts`): `npm run build && npm run build:node`, then
-`DIST=dist PORT=8080 node dist-node/server.js`. `worker/index.test.ts` runs
+`DIST=dist PORT=8080 node dist-node/server.mjs`. `worker/index.test.ts` runs
 the same checks against both.
