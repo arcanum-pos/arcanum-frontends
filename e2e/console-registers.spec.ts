@@ -5,7 +5,7 @@ import { expect, test } from './console-fixtures'
 test('add, rename and archive a drawer; an open one stays; blind count; the latest shifts', async ({ console: open, page, catalogAdmin }) => {
   catalogAdmin.registers.push({ id: 'bar', name: 'Bar', archived: false, open: true })
   catalogAdmin.shifts.push(
-    { id: 's2', number: 2, registerId: 'bar', registerName: 'Bar', status: 'open', openedAt: '2026-10-15T18:00:00Z', openedBy: 'An', closedAt: null, closedBy: null, openingFloatCents: 5000, expectedCents: null, countedCents: null, differenceCents: null, note: null },
+    { id: 's2', number: 2, registerId: 'bar', registerName: 'Bar', status: 'open', openedAt: '2026-10-15T18:00:00Z', openedBy: 'An', closedAt: null, closedBy: null, openingFloatCents: 5000, expectedCents: null, countedCents: null, differenceCents: null, note: null, people: [{ name: 'Bert', payments: 4 }, { name: 'Barbara', payments: 2 }] },
     { id: 's1', number: 1, registerId: 'bar', registerName: 'Bar', status: 'closed', openedAt: '2026-10-14T18:00:00Z', openedBy: 'Jan', closedAt: '2026-10-15T01:00:00Z', closedBy: 'Jan', openingFloatCents: 5000, expectedCents: 32050, countedCents: 31850, differenceCents: -200, note: 'Fout teruggegeven' }
   )
   await open('/registers')
@@ -26,6 +26,8 @@ test('add, rename and archive a drawer; an open one stays; blind count; the late
 
   const rows = page.getByTestId('shift-row')
   await expect(rows.first()).toContainText('nog open')
+  // Who worked on it.
+  await expect(rows.first().getByTestId('shift-people')).toHaveText('Bert (4) · Barbara (2)')
   await expect(rows.nth(1)).toContainText('-€ 2,00')
   await expect(rows.nth(1)).toContainText('€ 318,50')
 })

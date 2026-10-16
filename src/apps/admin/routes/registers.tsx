@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatEuro } from '@/shared/format'
 import { INTL_LOCALES, useLocale, useMessages, type Messages } from '@/shared/i18n'
+import { peopleLine } from '@/shared/register'
 import { PromptDialog } from '../components/prompt-dialog'
 import { createRegister, listRegistersAdmin, listShifts, setBlindCount, updateRegister, type RegisterRecord } from '../lib/api'
 import { useAsync } from '../lib/use-async'
@@ -34,7 +35,7 @@ const TEXTS: Messages<{
   restore: string
   save: string
   shifts: string
-  shiftColumns: { shift: string; register: string; opened: string; closed: string; expected: string; counted: string; difference: string }
+  shiftColumns: { shift: string; register: string; opened: string; people: string; closed: string; expected: string; counted: string; difference: string }
   noShifts: string
   stillOpen: string
 }> = {
@@ -55,7 +56,7 @@ const TEXTS: Messages<{
     restore: 'Terugzetten',
     save: 'Opslaan',
     shifts: 'Laatste shifts',
-    shiftColumns: { shift: 'Shift', register: 'Lade', opened: 'Geopend', closed: 'Gesloten', expected: 'Verwacht', counted: 'Geteld', difference: 'Verschil' },
+    shiftColumns: { shift: 'Shift', register: 'Lade', opened: 'Geopend', people: 'Wie (betalingen)', closed: 'Gesloten', expected: 'Verwacht', counted: 'Geteld', difference: 'Verschil' },
     noShifts: 'Nog geen shifts.',
     stillOpen: 'nog open',
   },
@@ -76,7 +77,7 @@ const TEXTS: Messages<{
     restore: 'Rétablir',
     save: 'Enregistrer',
     shifts: 'Derniers services',
-    shiftColumns: { shift: 'Service', register: 'Tiroir', opened: 'Ouvert', closed: 'Fermé', expected: 'Attendu', counted: 'Compté', difference: 'Écart' },
+    shiftColumns: { shift: 'Service', register: 'Tiroir', opened: 'Ouvert', people: 'Qui (paiements)', closed: 'Fermé', expected: 'Attendu', counted: 'Compté', difference: 'Écart' },
     noShifts: 'Pas encore de service.',
     stillOpen: 'encore ouvert',
   },
@@ -97,7 +98,7 @@ const TEXTS: Messages<{
     restore: 'Restore',
     save: 'Save',
     shifts: 'Latest shifts',
-    shiftColumns: { shift: 'Shift', register: 'Drawer', opened: 'Opened', closed: 'Closed', expected: 'Expected', counted: 'Counted', difference: 'Difference' },
+    shiftColumns: { shift: 'Shift', register: 'Drawer', opened: 'Opened', people: 'Who (payments)', closed: 'Closed', expected: 'Expected', counted: 'Counted', difference: 'Difference' },
     noShifts: 'No shifts yet.',
     stillOpen: 'still open',
   },
@@ -196,6 +197,7 @@ export default function RegistersPage() {
             <TableHead>{t.shiftColumns.shift}</TableHead>
             <TableHead>{t.shiftColumns.register}</TableHead>
             <TableHead>{t.shiftColumns.opened}</TableHead>
+            <TableHead>{t.shiftColumns.people}</TableHead>
             <TableHead>{t.shiftColumns.closed}</TableHead>
             <TableHead className="text-right">{t.shiftColumns.expected}</TableHead>
             <TableHead className="text-right">{t.shiftColumns.counted}</TableHead>
@@ -205,7 +207,7 @@ export default function RegistersPage() {
         <TableBody>
           {(shifts ?? []).length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="text-muted-foreground">
+              <TableCell colSpan={8} className="text-muted-foreground">
                 {t.noShifts}
               </TableCell>
             </TableRow>
@@ -216,6 +218,9 @@ export default function RegistersPage() {
               <TableCell>{s.registerName}</TableCell>
               <TableCell>
                 {when(s.openedAt)} {s.openedBy && <span className="text-muted-foreground">· {s.openedBy}</span>}
+              </TableCell>
+              <TableCell className="text-sm" data-testid="shift-people">
+                {peopleLine(s.people)}
               </TableCell>
               <TableCell>{s.status === 'open' ? <Badge>{t.stillOpen}</Badge> : when(s.closedAt)}</TableCell>
               <TableCell className="text-right font-mono tabular-nums">{s.expectedCents !== null ? formatEuro(s.expectedCents) : ''}</TableCell>

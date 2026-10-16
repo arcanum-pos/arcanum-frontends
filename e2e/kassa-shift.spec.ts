@@ -80,6 +80,16 @@ test("the kasopmaak counts the cash payments made since the kassa last looked (n
   await expect(kassa.getByTestId('cash-up').getByTestId('cash-up-expected')).toHaveText('€ 70,00')
 })
 
+test('the kasopmaak shows who worked on the shift, with their payments', async ({ kassa, backend }) => {
+  const open = kassa.getByTestId('open-register')
+  await open.getByLabel('Wisselgeld').fill('50')
+  await open.getByRole('button', button('Kassa openen')).click()
+  await expect(kassa.getByTestId('shift-label')).toBeVisible()
+  backend.shiftPeople = [{ name: 'Bert', payments: 3 }, { name: 'Barbara', payments: 1 }]
+  await kassa.getByTestId('open-cash-up').click()
+  await expect(kassa.getByTestId('cash-up').getByTestId('cash-up-people')).toHaveText('Wie werkte mee (betalingen): Bert (3) · Barbara (1)')
+})
+
 test('blind count: no expected amount while counting', async ({ kassa, backend }) => {
   backend.blindCount = true
   await kassa.getByTestId('open-register').getByRole('button', button('Kassa openen')).click()

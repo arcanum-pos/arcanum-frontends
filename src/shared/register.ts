@@ -65,6 +65,18 @@ export interface Shift {
   differenceCents?: number
   note?: string | null
   leftInDrawerCents?: number
+  // Who worked on it: who took payments (how many), opened, closed or moved cash.
+  people?: ShiftPerson[]
+}
+
+export interface ShiftPerson {
+  name: string
+  payments: number
+}
+
+// "Bert (2) · Barbara (1)": the people on a shift, with their payments.
+export function peopleLine(people: ShiftPerson[] | undefined): string {
+  return (people ?? []).map((p) => (p.payments ? `${p.name} (${p.payments})` : p.name)).join(' · ')
 }
 
 export interface RegisterState {

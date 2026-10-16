@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatEuro } from '@/shared/format'
 import { INTL_LOCALES, useLocale, useMessages, type Messages } from '@/shared/i18n'
-import { addMovement, closeShift, countTotal, DENOMINATIONS, openShift, type Count, type RegisterState, type Shift } from '@/shared/register'
+import { addMovement, closeShift, countTotal, DENOMINATIONS, openShift, peopleLine, type Count, type RegisterState, type Shift } from '@/shared/register'
 import { centsToInput, readAmountCents } from './lib'
 
 // The kassa's side of registers and shifts (DOMAIN_MODEL.md "Registers,
@@ -48,6 +48,7 @@ const TEXTS: Messages<{
   note: string
   noteRequired: string
   leftInDrawer: string
+  people: string
   leftHint: string
   methods: string
   methodNames: Record<string, string>
@@ -89,6 +90,7 @@ const TEXTS: Messages<{
     note: 'Opmerking',
     noteRequired: 'Er is een verschil: schrijf erbij wat er gebeurd is.',
     leftInDrawer: 'Blijft in de lade',
+    people: 'Wie werkte mee (betalingen)',
     leftHint: 'Het wisselgeld voor de volgende shift. De rest gaat eruit.',
     methods: 'Per betaalmethode',
     methodNames: { cash: 'Contant', sumup: 'SumUp', bancontact: 'Bancontact' },
@@ -130,6 +132,7 @@ const TEXTS: Messages<{
     note: 'Remarque',
     noteRequired: 'Il y a un écart : expliquez ce qui s’est passé.',
     leftInDrawer: 'Reste dans le tiroir',
+    people: 'Qui a travaillé (paiements)',
     leftHint: 'Le fond de caisse du service suivant. Le reste sort.',
     methods: 'Par moyen de paiement',
     methodNames: { cash: 'Espèces', sumup: 'SumUp', bancontact: 'Bancontact' },
@@ -171,6 +174,7 @@ const TEXTS: Messages<{
     note: 'Note',
     noteRequired: 'There is a difference: write down what happened.',
     leftInDrawer: 'Stays in the drawer',
+    people: 'Who worked (payments)',
     leftHint: 'The float for the next shift. The rest goes out.',
     methods: 'Per payment method',
     methodNames: { cash: 'Cash', sumup: 'SumUp', bancontact: 'Bancontact' },
@@ -383,6 +387,12 @@ export function CashUp({ orgId, state, onBack, onClosed }: { orgId: string; stat
           <dt>{t.leftInDrawer}</dt>
           <dd className="text-right font-mono tabular-nums">{formatEuro(result.leftInDrawerCents ?? 0)}</dd>
         </dl>
+        {(result.people ?? []).length > 0 && (
+          <p className="text-sm" data-testid="cash-up-people">
+            <span className="text-muted-foreground">{t.people}: </span>
+            {peopleLine(result.people)}
+          </p>
+        )}
         <Button className="w-fit" onClick={onClosed}>
           {t.done}
         </Button>
@@ -407,6 +417,13 @@ export function CashUp({ orgId, state, onBack, onClosed }: { orgId: string; stat
       {(shift.openTabs ?? 0) > 0 && (
         <p className="flex gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200" data-testid="cash-up-open-tabs">
           <AlertTriangle className="size-4 shrink-0" /> {t.openTabs(shift.openTabs!)}
+        </p>
+      )}
+
+      {(shift.people ?? []).length > 0 && (
+        <p className="text-sm" data-testid="cash-up-people">
+          <span className="text-muted-foreground">{t.people}: </span>
+          {peopleLine(shift.people)}
         </p>
       )}
 

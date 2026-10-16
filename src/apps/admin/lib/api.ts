@@ -452,6 +452,8 @@ export interface ShiftRecord {
   countedCents: number | null
   differenceCents: number | null
   note: string | null
+  // Who worked on it: who took payments (how many), opened or closed it.
+  people?: { name: string; payments: number }[]
 }
 
 export function listRegistersAdmin(orgId: string): Promise<{ blindCount: boolean; registers: RegisterRecord[] }> {
