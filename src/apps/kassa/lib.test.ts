@@ -4,6 +4,7 @@ import {
   addToDraft,
   centsToInput,
   clampTip,
+  customerViewOrder,
   draftTotalCents,
   entryToPickerItem,
   payableUnits,
@@ -339,5 +340,22 @@ describe('split per item', () => {
 
   it('"Alles wat open is" selects every payable unit', () => {
     expect(selectAllPayable(tab)).toEqual({ pintje: 2, steak: 1 })
+  })
+})
+
+describe('customerViewOrder: the customer display while the order is entered', () => {
+  const draft = (quantity: number): DraftLine[] => [{ ...bon, quantity }]
+  it('the Toog sale being entered: its lines, no title', () => {
+    expect(customerViewOrder(m, draft(3), null, 'Fuif')).toEqual({ label: '', number: null, eventName: 'Fuif', paidCents: 0, followUrl: null, lines: [{ name: 'Bon', quantity: 3, unitPriceCents: 100 }] })
+  })
+  it("an open tab: what's on it (net of voids) and what's tapped in but not sent yet", () => {
+    const open = { ...tab([line({ id: 'a', quantity: 2 }), line({ id: 'b', name: 'Cola', unitPriceCents: 220, quantity: 1, voidedQuantity: 1 })]), paidCents: 100, followUrl: '/volg/x' }
+    const order = customerViewOrder(m, draft(1), open, null)!
+    expect(order).toMatchObject({ label: 'Tafel 4', paidCents: 100, followUrl: null })
+    expect(order.lines).toEqual([{ name: 'Bon', quantity: 2, unitPriceCents: 100 }, { name: 'Bon', quantity: 1, unitPriceCents: 100 }])
+  })
+  it('nothing on it: nothing to show', () => {
+    expect(customerViewOrder(m, [], null, null)).toBeNull()
+    expect(customerViewOrder(m, [], tab([]), null)).toBeNull()
   })
 })

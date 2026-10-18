@@ -8,6 +8,8 @@ export default {
   notLinked: 'not linked to a till',
 
   yourOrder: 'Your order',
+  total: 'Total',
+  checkOrder: 'Is your order right? Tell the cashier.',
   yourShare: 'Your share',
   alreadyPaid: 'Already paid',
   tip: 'Tip',

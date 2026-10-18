@@ -12,8 +12,10 @@ import { payPhase, type PayPhase } from './lib'
 import { DISPLAY_MESSAGES } from './messages'
 import { showOrgIcons } from '@/shared/install'
 
-// Customer-facing display, three states: rust (idle), waiting for the
-// payment (the order, the total and — for Bancontact — the QR), and paid.
+// Customer-facing display, four states: rust (idle), the order while the
+// cashier enters it (the customer checks it before paying, 2026-10-18),
+// waiting for the payment (the order, the total and — for Bancontact — the
+// QR), and paid. A payment always goes before the order being entered.
 // Styled after design_files/ (Kassa + CFD voorstel); no platform branding.
 // Follows the device's theme (light/dark, see shared/theme.ts): rust, the
 // order list and "Bedankt!" in the theme itself, the payment panel beside
@@ -27,7 +29,8 @@ import { showOrgIcons } from '@/shared/install'
 //  - cross-device, via arcanum-devicehub's notification socket — carries
 //    only an event name + id, never real data, so every event here
 //    triggers a real, session-checked fetch through the BFF first (the
-//    charge status carries the order too).
+//    charge status carries the order too; `order_shown`: the order being
+//    entered, from …/devices/:self/customer-view).
 //
 // Speaks nl/fr/en: the customer picks with the corner toggle, and it goes
 // back to the device's own language (see main.tsx) when the display
@@ -60,6 +63,28 @@ export default function App() {
   // Kept as a state, not a text, so it follows the language.
   const [link, setLink] = useState<{ state: 'loading' } | { state: 'linked'; posId: string } | { state: 'unlinked' } | null>(null)
   const channelRef = useRef<BroadcastChannel | null>(null)
+  // The order while the cashier enters it; `seq` the kassa's own counter —
+  // the newest wins, whichever way (channel or backend) it came.
+  const [entering, setEntering] = useState<CustomerOrder | null>(null)
+  const enteringSeqRef = useRef(0)
+
+  function showEntering(order: CustomerOrder | null, seq: unknown) {
+    if (typeof seq !== 'number' || seq <= enteringSeqRef.current) return
+    enteringSeqRef.current = seq
+    setEntering(order)
+    if (order?.eventName) setEventName(order.eventName)
+  }
+
+  async function fetchEntering(orgId: string, terminalId: string) {
+    try {
+      const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/devices/${encodeURIComponent(terminalId)}/customer-view`)
+      if (!res.ok) return
+      const data = await res.json()
+      showEntering(readCustomerOrder(data.order), data.seq)
+    } catch {
+      // the next change brings it
+    }
+  }
 
   function showIdle() {
     setPayment(null)
@@ -135,10 +160,15 @@ export default function App() {
       if ('orgId' in terminal) showOrgIcons(terminal.orgId, 'display')
       setLink({ state: 'loading' })
 
+      // A display on its own device asks for its kassa's order being entered;
+      // a kassa's second window gets it over the channel (below).
+      const orgId = 'orgId' in terminal ? terminal.orgId : null
+      if (orgId) void fetchEntering(orgId, terminal.terminalId)
       socket = connectNotifications(terminal.terminalId, {
         linked: (msg) => setLink({ state: 'linked', posId: String(msg.pos_terminal_id) }),
         unlinked: () => setLink({ state: 'unlinked' }),
         payment_updated: (msg) => fetchAndShowTrackedPayment(msg.payment_id),
+        order_shown: () => orgId && fetchEntering(orgId, terminal.terminalId),
         reset: () => showIdle(),
       })
     })
@@ -169,6 +199,8 @@ export default function App() {
         setStatus(msg.status)
       } else if (msg.type === 'reset') {
         showIdle()
+      } else if (msg.type === 'order-view') {
+        showEntering(readCustomerOrder(msg.order), msg.seq)
       } else if (msg.type === 'context') {
         setEventName(typeof msg.eventName === 'string' && msg.eventName.trim() ? msg.eventName.trim() : null)
       }
@@ -200,7 +232,9 @@ export default function App() {
 
   return (
     <div className="relative flex min-h-svh flex-col bg-background text-foreground">
-      {!payment && (
+      {!payment && entering && <EnteringView order={entering} eventName={eventName} />}
+
+      {!payment && !entering && (
         <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
           {eventName && (
             <h1 className="text-[38px] font-semibold tracking-tight" data-testid="cfd-event">
@@ -340,6 +374,49 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
           {!failed && <p className={cn('max-w-[340px] text-[13.5px]', muted)}>{m.instructions[payment.method] || ''}</p>}
           {countdownText && <p className={cn('font-mono text-xs', muted)}>{countdownText}</p>}
         </div>
+      </section>
+    </div>
+  )
+}
+
+// While the cashier enters the order: the lines as they come, and the
+// total — the customer checks it (and says so at the kassa) before paying.
+function EnteringView({ order, eventName }: { order: CustomerOrder; eventName: string | null }) {
+  const m = useMessages(DISPLAY_MESSAGES)
+  const bill = customerBill(order, 0)
+  return (
+    <div className="flex min-h-svh flex-1 flex-col bg-background md:flex-row" data-testid="cfd-entering">
+      <section className="flex min-w-0 flex-col bg-background text-foreground md:flex-[1.25]" data-testid="cfd-order">
+        <div className="border-b px-8 pt-7 pb-4">
+          <p className="text-xs font-semibold tracking-[0.1em] text-muted-foreground uppercase">{m.yourOrder}</p>
+          {bill.title && <h1 className="mt-1 text-2xl font-semibold tracking-tight">{bill.title}</h1>}
+        </div>
+        <ul className="flex-1 overflow-y-auto px-8 pt-1.5 pb-6">
+          {bill.lines.map((l, i) => (
+            <li key={i} className="flex items-center gap-3 border-b border-border/60 py-3 animate-in fade-in duration-200">
+              <span className="flex h-7 min-w-9 items-center justify-center rounded-lg bg-muted px-2 font-mono text-sm font-semibold text-foreground/75">{l.quantity}</span>
+              <span className="flex-1 text-lg font-medium tracking-tight">{l.name}</span>
+              <span className="font-mono text-lg font-semibold tabular-nums">{formatEuro(l.totalCents)}</span>
+            </li>
+          ))}
+          {bill.alreadyPaidCents > 0 && (
+            <li className="flex items-center justify-between py-3 text-muted-foreground">
+              <span className="text-base">{m.alreadyPaid}</span>
+              <span className="font-mono text-base tabular-nums">− {formatEuro(bill.alreadyPaidCents)}</span>
+            </li>
+          )}
+        </ul>
+      </section>
+      <section className="flex flex-col gap-8 bg-neutral-950 px-8 pt-8 pb-20 text-neutral-50 md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%] dark:bg-white dark:text-neutral-950" data-testid="cfd-total">
+        <div>
+          {(order.eventName || eventName) && <p className="mb-6 truncate text-sm font-medium text-neutral-400 dark:text-neutral-500">{order.eventName || eventName}</p>}
+          <p className="text-xs font-semibold tracking-[0.1em] text-neutral-400 uppercase dark:text-neutral-500">{m.total}</p>
+          <p className="mt-2 font-mono text-[56px] leading-none font-semibold tracking-tight tabular-nums" data-testid="cfd-entering-total">
+            {formatEuro(bill.openCents)}
+          </p>
+          <p className="mt-3 text-[13.5px] text-neutral-400 dark:text-neutral-500">{m.items(bill.itemCount)}</p>
+        </div>
+        <p className="flex flex-1 items-center justify-center text-center text-lg text-neutral-200 dark:text-neutral-800">{m.checkOrder}</p>
       </section>
     </div>
   )

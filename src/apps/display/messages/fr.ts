@@ -8,6 +8,8 @@ export default {
   notLinked: 'lié à aucune caisse',
 
   yourOrder: 'Votre commande',
+  total: 'Total',
+  checkOrder: 'Ta commande est correcte ? Dis-le à la caisse.',
   yourShare: 'Votre part',
   alreadyPaid: 'Déjà payé',
   tip: 'Pourboire',

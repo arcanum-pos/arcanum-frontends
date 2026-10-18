@@ -8,6 +8,9 @@ const nl = {
   notLinked: 'niet gekoppeld aan een kassa',
 
   yourOrder: 'Jouw bestelling',
+  // While the order is entered (before the payment).
+  total: 'Totaal',
+  checkOrder: 'Klopt je bestelling? Zeg het aan de kassa.',
   yourShare: 'Jouw deel',
   alreadyPaid: 'Al betaald',
   tip: 'Fooi',

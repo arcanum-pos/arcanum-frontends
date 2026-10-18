@@ -221,3 +221,79 @@ test('the device language picked on the chooser is the CFD\'s home language, not
   await expect(page.getByText('Prêt pour la prochaine commande')).toBeVisible()
   void backend
 })
+
+// While the cashier enters the order (2026-10-18): the customer sees it and
+// says whether it's right, before the cashier asks for the payment.
+test('same device: the order shows as the cashier taps it in — then the payment takes over, and after it the screen rests', async ({ kassa, backend, push }) => {
+  const display = await kassa.context().newPage()
+  await openDisplay(display, backend)
+
+  await kassa.getByRole('button', { name: '10 × Bon', exact: true }).click()
+  const entering = display.getByTestId('cfd-entering')
+  await expect(entering.getByRole('listitem')).toHaveText([/^10\s*Bon\s*€ 10,00$/])
+  await kassa.getByRole('button', { name: /^Fietstocht \(niet-lid\)/ }).click()
+  await expect(entering.getByRole('listitem')).toHaveText([/^10\s*Bon\s*€ 10,00$/, /^1\s*Fietstocht \(niet-lid\)\s*€ 8,00$/])
+  await expect(display.getByTestId('cfd-entering-total')).toHaveText('€ 18,00')
+  await expect(entering).toContainText('Klopt je bestelling? Zeg het aan de kassa.')
+  // A Toog sale: no name to show.
+  await expect(entering.getByRole('heading')).toHaveCount(0)
+
+  // The cashier asks for the payment: the payment screen.
+  await kassa.getByRole('button', { name: /^Afrekenen/ }).click()
+  await expect(display.getByTestId('cfd-waiting')).toBeVisible()
+  await expect(entering).toHaveCount(0)
+  const charge = backend.charges[0]
+  backend.resolveCharge(charge.id, true)
+  push({ event: 'payment_updated', payment_id: charge.id, method: 'bancontact' })
+  await display.getByTestId('cfd-paid').click()
+  // The next customer: the resting screen, not the old order.
+  await expect(display.getByText('Klaar voor de volgende bestelling')).toBeVisible()
+  await expect(entering).toHaveCount(0)
+})
+
+test('the kassa sends the order on its screen to the backend, for a display on another device; emptied, nothing', async ({ kassa, backend }) => {
+  await kassa.getByRole('button', { name: '5 × Bon', exact: true }).click()
+  await expect.poll(() => backend.customerViewPuts.at(-1)?.order?.lines).toEqual([{ name: 'Bon', quantity: 5, unitPriceCents: 100 }])
+  expect(backend.customerViewPuts.at(-1)?.terminal).toBe('pos-e2e')
+  await kassa.getByRole('button', { name: 'Leegmaken' }).click()
+  await expect.poll(() => backend.customerViewPuts.at(-1)?.order).toBeNull()
+  // Each newer than the one before.
+  const seqs = backend.customerViewPuts.map((p) => p.seq)
+  expect([...seqs].sort((a, b) => a - b)).toEqual(seqs)
+})
+
+test('another device: the order being entered comes after the push — the newest wins', async ({ page, backend }) => {
+  await page.addInitScript(() => localStorage.setItem('arcanum-terminal', JSON.stringify({ terminalId: 'cfd-2', role: 'cfd', orgId: 'org-e2e', orgName: 'E2E' })))
+  backend.devices.set('cfd-2', { terminal_id: 'cfd-2', org_id: 'org-e2e', role: 'cfd', linked_to: 'pos-e2e', name: 'Scherm' })
+  const sockets: WebSocketRoute[] = []
+  await page.routeWebSocket(/\/devices\/connect/, (ws) => {
+    sockets.push(ws)
+  })
+  await page.route(/\/(api\/|whoami)/, async (route) => {
+    const req = route.request()
+    const url = new URL(req.url())
+    const { status, body } = backend.handle(req.method(), url.pathname + url.search, req.postDataJSON?.() ?? null)
+    await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+  })
+  await page.goto('/display.html')
+  await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()
+  await expect.poll(() => sockets.length).toBeGreaterThan(0)
+
+  backend.customerView = { order: { label: 'Tafel 4', number: 12, eventName: null, paidCents: 250, lines: [{ name: 'Pintje', quantity: 3, unitPriceCents: 250 }] }, seq: 10 }
+  sockets.forEach((ws) => ws.send(JSON.stringify({ event: 'order_shown' })))
+  const entering = page.getByTestId('cfd-entering')
+  await expect(entering.getByRole('heading', { name: 'Tafel 4' })).toBeVisible()
+  await expect(entering.getByRole('listitem').first()).toHaveText(/^3\s*Pintje\s*€ 7,50$/)
+  await expect(entering).toContainText('Al betaald')
+  await expect(page.getByTestId('cfd-entering-total')).toHaveText('€ 5,00')
+
+  // An older one (arriving late) doesn't replace it.
+  backend.customerView = { order: null, seq: 9 }
+  sockets.forEach((ws) => ws.send(JSON.stringify({ event: 'order_shown' })))
+  await page.waitForTimeout(300)
+  await expect(entering).toBeVisible()
+  // Emptied: the resting screen.
+  backend.customerView = { order: null, seq: 11 }
+  sockets.forEach((ws) => ws.send(JSON.stringify({ event: 'order_shown' })))
+  await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()
+})

@@ -18,6 +18,7 @@ import {
   addToDraft,
   clampTip,
   customerOrderFromTab,
+  customerViewOrder,
   selectionCents,
   selectionLines,
   type ItemSelection,
@@ -43,6 +44,7 @@ import { TabStrip, type ActiveKey } from './TabStrip'
 import * as tabsApi from './tabs-api'
 import { netQuantity, QUICK_SALE_LABEL, TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
 import { showOrgIcons } from '@/shared/install'
+import type { CustomerOrder } from '@/shared/customer-order'
 
 const WORKER_URL = '/api/bancontact'
 
@@ -67,6 +69,9 @@ export default function App() {
   // The event new rekeningen (and so their sales) are tagged with — optional.
   const [event, setEvent] = useState<EventSelection | null>(() => getEventSelection())
   const eventRef = useRef<EventSelection | null>(event)
+  // What the customer display was last told while the order is entered, and sent to the backend.
+  const customerViewRef = useRef<{ order: CustomerOrder | null; seq: number }>({ order: null, seq: 0 })
+  const customerViewSentRef = useRef<string | null>(null)
   eventRef.current = event
   // The event's ordering modes, when it lets the kassa pick one; with more
   // than one, the one a new order gets (sticky until changed) — information
@@ -917,6 +922,7 @@ export default function App() {
       if (msg.type === 'request-state') {
         broadcastContext()
         broadcastCurrent()
+        channel.postMessage({ type: 'order-view', ...customerViewRef.current })
       }
       // The CFD's success overlay was tapped — only meaningful once paid.
       else if (msg.type === 'reset-requested' && currentRef.current && isPaymentResolved(currentRef.current)) finishPayment()
@@ -929,6 +935,36 @@ export default function App() {
     broadcastContext()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [event?.name])
+
+  // The customer display while the order is entered: the order on this
+  // screen (customerViewOrder), a moment after the last tap — to a display in
+  // a second window of this kassa directly, to one on another device through
+  // the backend (customer-view.ts: it pushes, the display fetches). The
+  // customer says whether it's right; then the cashier asks for the payment.
+  // Not while a tab is still loading (no flicker to the resting screen).
+  const customerView = tabLoading ? undefined : JSON.stringify(customerViewOrder(m, draft, shownTab, event?.name ?? null))
+  useEffect(() => {
+    if (customerView === undefined) return
+    const timer = setTimeout(() => {
+      const order = JSON.parse(customerView) as CustomerOrder | null
+      // Newer always higher, also across a reload of the kassa.
+      const seq = Math.max(Date.now(), customerViewRef.current.seq + 1)
+      customerViewRef.current = { order, seq }
+      channelRef.current?.postMessage({ type: 'order-view', order, seq })
+      const org = posOrgIdRef.current
+      const pos = posTerminalIdRef.current
+      if (!org || !pos || customerViewSentRef.current === customerView) return
+      customerViewSentRef.current = customerView
+      fetch(`/api/organizations/${encodeURIComponent(org)}/devices/${encodeURIComponent(pos)}/customer-view`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order, seq }),
+      }).catch(() => {
+        customerViewSentRef.current = null
+      })
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [customerView])
 
   // Tap to Pay is never confirmed by hand: SumUp does.
   const showConfirmButton = current !== null && current.status !== 'RESOLVED' && current.method !== 'tap'

@@ -312,6 +312,9 @@ export class FakeBackend {
     ['pos-e2e', { terminal_id: 'pos-e2e', org_id: 'org-e2e', role: 'pos', linked_to: null, name: 'Kassa 1' }],
   ])
   // Pairing codes a test made "in the console": code (as shown) → role + name.
+  // The order being entered: what kassa's sent (PUT), what a display gets (GET).
+  customerViewPuts: { terminal: string; order: any; seq: number }[] = []
+  customerView: { order: any; seq: number } = { order: null, seq: 0 }
   pairingCodes = new Map<string, { role: 'pos' | 'cfd'; name: string }>()
   // The signed-in person's role in org-e2e (Instellingen's Beheer is for admins).
   memberRole: 'admin' | 'cashier' | 'waiter' = 'cashier'
@@ -444,6 +447,13 @@ export class FakeBackend {
       if (entry && entry[1].role === 'pos') return { status: 401, body: { error: 'Een kassa koppel je terwijl je aangemeld bent — meld je eerst aan', code: 'pairing_needs_login', role: 'pos' } }
       return this.claim(key)
     }
+    // The order being entered (customer-view.ts): the kassa sends it, a display fetches its kassa's.
+    const view = p.match(/^\/api\/organizations\/[^/]+\/devices\/([^/]+)\/customer-view$/)
+    if (view && method === 'PUT') {
+      this.customerViewPuts.push({ terminal: decodeURIComponent(view[1]), ...body })
+      return { status: 200, body: { shown: true } }
+    }
+    if (view && method === 'GET') return { status: 200, body: this.customerView }
     const device = p.match(/^\/api\/organizations\/([^/]+)\/devices\/([^/]+)(?:\/(display|linked|linkable|link|unlink|reset))?$/)
     if (device) return this.handleDevice(method, decodeURIComponent(device[2]), device[3], body)
 
