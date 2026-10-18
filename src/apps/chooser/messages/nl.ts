@@ -30,12 +30,6 @@ const nl = {
   macSteps: (name: string) => ['Kies in de menubalk Archief → Voeg toe aan Dock.', `Kies Voeg toe: de naam ${name} staat al ingevuld.`, `Open ${name} vanuit het Dock: daar wordt het gekoppeld.`],
   codeValid: 'De koppelcode is 10 minuten geldig: doe het meteen.',
   inBrowserAfterAll: 'Toch in deze browser koppelen',
-  thisDevice: 'dit toestel',
-  hereTitle: 'Deze browser koppelen?',
-  hereHint: (name: string) => `Koppel je hier, dan is deze browser voortaan ${name}: de startpagina opent dan dat scherm. Open de link liever in Safari (als app), in een ander browserprofiel of op het toestel zelf.`,
-  copyLink: 'Kopieer de link',
-  copied: 'Gekopieerd',
-  pairHereAnyway: 'Toch hier koppelen',
   appNames: { pos: 'Kassa', cfd: 'Klantscherm', station: 'Station', tap: 'Tap to Pay' } satisfies Record<Role, string>,
   roles: { pos: 'een kassa', cfd: 'een klantscherm', station: 'een stationscherm', tap: 'een Tap to Pay-telefoon' } satisfies Record<Role, string>,
 }

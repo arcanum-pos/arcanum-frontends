@@ -27,12 +27,10 @@ import { CHOOSER_MESSAGES } from './messages'
 //     from the pairing link opens that link every time).
 //   - `&role=&name=` (the console's link): the page is that device — its icon
 //     and name — so whatever is added to a home screen or Dock from here is
-//     that device. In Safari (its apps get their own storage, shared/install)
+//     that device (arcanum-bff sends it with that head: Safari's Add to Dock
+//     reads only what was sent). In Safari (its apps get their own storage, shared/install)
 //     it asks first: as an app (the steps, then it pairs in the app) or in
 //     this browser.
-//   - `&here` (the console's "Open op deze computer"): a browser whose apps
-//     share its storage — the admin's own — isn't paired unasked: the start
-//     page would open that device from then on.
 type View =
   | { step: 'loading' }
   | { step: 'start'; removed: boolean }
@@ -41,7 +39,6 @@ type View =
   | { step: 'sign-in'; code: string }
   | { step: 'install'; code: string; removed: boolean }
   | { step: 'install-steps'; code: string; removed: boolean }
-  | { step: 'here'; code: string; removed: boolean }
 
 export default function App() {
   const m = useMessages(CHOOSER_MESSAGES)
@@ -58,13 +55,13 @@ export default function App() {
     const role = params.get('role')
     return isRole(role) ? { role, name: params.get('name')?.trim().slice(0, 60) || m.appNames[role] } : null
   })
-  const [copied, setCopied] = useState(false)
 
+  // The same head as arcanum-bff sends — for a page served without it (vite preview).
   useEffect(() => {
     if (device) showAsDevice(device.role, device.name)
   }, [device])
 
-  // The link without `here`: for another browser or device.
+  // The pairing link, the device included (back here after signing in).
   function link(code: string) {
     const query = new URLSearchParams({ code: code.replace(/[\s-]/g, '') })
     if (device) {
@@ -74,12 +71,9 @@ export default function App() {
     return `/pair?${query}`
   }
 
-  // A link's code: paired right away — unless an app should do it (Safari),
-  // or this is the admin's own browser.
+  // A link's code: paired right away — unless an app should do it (Safari).
   function pairOrAsk(value: string, removed = false) {
-    if (isStandalone()) return claim(value, removed)
-    if (device && appStorage() !== 'shared') return setView({ step: 'install', code: value, removed })
-    if (params.has('here')) return setView({ step: 'here', code: value, removed })
+    if (!isStandalone() && device && appStorage() !== 'shared') return setView({ step: 'install', code: value, removed })
     claim(value, removed)
   }
 
@@ -219,27 +213,6 @@ export default function App() {
               </Button>
             </>
           )}
-        </section>
-      </KioskShell>
-    )
-  }
-
-  if (view.step === 'here') {
-    const name = device?.name ?? m.thisDevice
-    const { code } = view
-    async function copy() {
-      await navigator.clipboard?.writeText(`${window.location.origin}${link(code)}`).catch(() => {})
-      setCopied(true)
-    }
-    return (
-      <KioskShell devicePickers>
-        <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="pair-here">
-          <h1 className="font-heading text-xl font-bold">{m.hereTitle}</h1>
-          <p className="text-sm">{m.hereHint(name)}</p>
-          <Button onClick={copy}>{copied ? m.copied : m.copyLink}</Button>
-          <Button variant="outline" onClick={() => claim(view.code, view.removed)} disabled={busy}>
-            {busy ? m.busy : m.pairHereAnyway}
-          </Button>
         </section>
       </KioskShell>
     )

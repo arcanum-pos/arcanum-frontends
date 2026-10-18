@@ -190,6 +190,7 @@ const nl = {
     linkCopied: 'Gekopieerd',
     openHere: 'Open op deze computer',
     asAppHint: 'In Safari (iPhone, iPad, Mac) installeer je het eerst als app, met zijn eigen icoon: de link legt uit hoe.',
+    thisMacHint: 'Op deze Mac testen? Kopieer de link en open hem in Safari: elk toestel wordt er een eigen app in het Dock.',
     pairedDevice: (name: string) => `${name} is gekoppeld.`,
     pairedDisplayFor: (name: string, kassa: string) => `${name} is gekoppeld en toont de betalingen van ${kassa}.`,
     forKassa: 'Voor welke kassa?',

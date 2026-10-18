@@ -76,11 +76,7 @@ test('Toestel toevoegen: a pairing code with its QR, until a device claims it', 
   await expect(dialog).toContainText('/pair en geef deze code in')
   await expect(dialog).toContainText('een kassa vraagt je eerst aan te melden')
   expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'pos', name: 'Kassa toog' })
-  // The link carries the device (its icon and name for an app installed from
-  // it); "Open op deze computer" says it's the admin's own browser.
-  const origin = new URL(page.url()).origin
-  await expect(code.getByRole('link', { name: 'Open op deze computer' })).toHaveAttribute('href', `${origin}/pair?code=K7PM4XQ1&role=pos&name=Kassa+toog&here`)
-  await expect(code.getByRole('link', { name: 'Open op deze computer' })).toHaveAttribute('target', '_blank')
+  // The link carries the device (its icon and name for an app installed from it).
   await expect(code).toContainText('installeer je het eerst als app')
 
   // A device claims it: the dialog notices, and the list shows the new kassa by name.
@@ -214,4 +210,39 @@ test('a Tap to Pay phone needs a kassa first', async ({ console: open, page }) =
   await dialog.getByLabel('Naam').fill('Telefoon')
   await expect(dialog).toContainText('Koppel eerst een kassa')
   await expect(dialog.getByRole('button', { name: 'Koppelcode maken' })).toBeDisabled()
+})
+
+// Several devices on one Mac: each its own app in Safari's Dock (its own
+// storage). "Open op deze computer" only where the console itself runs in
+// Safari; in another browser on a Mac: open the link in Safari.
+test.describe('the pairing link on this computer', () => {
+  const pairing = async (open: (path: string) => Promise<unknown>, page: import('@playwright/test').Page) => {
+    await open('/devices')
+    await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByLabel('Naam').fill('Kassa toog')
+    await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
+    return dialog.getByTestId('pairing-code')
+  }
+
+  test.describe('console in Safari on a Mac', () => {
+    test.use({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15' })
+    test('"Open op deze computer": the link, in a new tab', async ({ console: open, page }) => {
+      const code = await pairing(open, page)
+      const link = code.getByRole('link', { name: 'Open op deze computer' })
+      await expect(link).toHaveAttribute('href', `${new URL(page.url()).origin}/pair?code=K7PM4XQ1&role=pos&name=Kassa+toog`)
+      await expect(link).toHaveAttribute('target', '_blank')
+      await expect(code).not.toContainText('open hem in Safari')
+    })
+  })
+
+  test.describe('console in Chrome on a Mac', () => {
+    test.use({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36' })
+    test('no "Open op deze computer" (Chrome would pair its own profile): copy the link into Safari', async ({ console: open, page }) => {
+      const code = await pairing(open, page)
+      await expect(code.getByRole('link', { name: 'Open op deze computer' })).toHaveCount(0)
+      await expect(code.getByRole('button', { name: 'Kopieer link' })).toBeVisible()
+      await expect(code).toContainText('Kopieer de link en open hem in Safari')
+    })
+  })
 })

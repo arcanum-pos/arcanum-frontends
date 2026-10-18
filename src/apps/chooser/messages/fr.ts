@@ -28,12 +28,6 @@ const fr: ChooserMessages = {
   macSteps: (name: string) => ['Dans la barre des menus, choisis Fichier → Ajouter au Dock.', `Choisis Ajouter : le nom ${name} est déjà rempli.`, `Ouvre ${name} depuis le Dock : il y sera couplé.`],
   codeValid: 'Le code de couplage est valable 10 minutes : fais-le tout de suite.',
   inBrowserAfterAll: 'Coupler quand même dans ce navigateur',
-  thisDevice: 'cet appareil',
-  hereTitle: 'Coupler ce navigateur ?',
-  hereHint: (name: string) => `Si tu couples ici, ce navigateur devient ${name} : la page d’accueil ouvrira cet écran. Ouvre plutôt le lien dans Safari (comme app), dans un autre profil de navigateur ou sur l’appareil lui-même.`,
-  copyLink: 'Copier le lien',
-  copied: 'Copié',
-  pairHereAnyway: 'Coupler ici quand même',
   appNames: { pos: 'Caisse', cfd: 'Écran client', station: 'Station', tap: 'Tap to Pay' },
   roles: { pos: 'une caisse', cfd: 'un écran client', station: 'un écran de poste', tap: 'un téléphone Tap to Pay' },
 }

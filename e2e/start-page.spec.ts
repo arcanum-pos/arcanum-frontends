@@ -292,25 +292,6 @@ test.describe('the pairing link, in Chrome', () => {
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/kassa-180.png')
     await expect(page.getByTestId('pair-sign-in').getByRole('link', { name: 'Aanmelden' })).toHaveAttribute('href', `/login?returnTo=${encodeURIComponent('/pair?code=K7PM4XQ2&role=pos&name=Kassa+1')}`)
   })
-
-  test('"Open op deze computer" (the admin\'s own browser): not paired unasked — the link to copy, or pair here anyway', async ({ page }) => {
-    await page.addInitScript(() => {
-      ;(window as any).__copied = []
-      Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (text: string) => (window as any).__copied.push(text) }, configurable: true })
-    })
-    const asked: unknown[] = []
-    await stationClaim(page, asked)
-    await page.goto(`${STATION_LINK}&here`)
-    const here = page.getByTestId('pair-here')
-    await expect(here).toContainText('dan is deze browser voortaan Scherm keuken')
-    await here.getByRole('button', { name: 'Kopieer de link' }).click()
-    await expect(here.getByRole('button', { name: 'Gekopieerd' })).toBeVisible()
-    expect(await page.evaluate(() => (window as any).__copied)).toEqual([`${new URL(page.url()).origin}/pair?code=K7PM4XQ2&role=station&name=Scherm+keuken`])
-    expect(asked).toEqual([])
-    await here.getByRole('button', { name: 'Toch hier koppelen' }).click()
-    await page.waitForURL(/\/station/)
-    expect(asked).toEqual([{ code: 'K7PM4XQ2' }])
-  })
 })
 
 test('the app opens its pairing link again, days later: the code it was paired with just opens the screen', async ({ page }) => {

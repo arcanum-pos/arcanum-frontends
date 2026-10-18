@@ -28,12 +28,6 @@ const en: ChooserMessages = {
   macSteps: (name: string) => ['In the menu bar, choose File → Add to Dock.', `Choose Add: the name ${name} is already filled in.`, `Open ${name} from the Dock: it gets paired there.`],
   codeValid: 'The pairing code is valid for 10 minutes: do it right away.',
   inBrowserAfterAll: 'Pair in this browser after all',
-  thisDevice: 'this device',
-  hereTitle: 'Pair this browser?',
-  hereHint: (name: string) => `If you pair here, this browser becomes ${name} from now on: the start page will open that screen. Better open the link in Safari (as an app), in another browser profile, or on the device itself.`,
-  copyLink: 'Copy the link',
-  copied: 'Copied',
-  pairHereAnyway: 'Pair here anyway',
   appNames: { pos: 'Till', cfd: 'Customer display', station: 'Station', tap: 'Tap to Pay' },
   roles: { pos: 'a till', cfd: 'a customer display', station: 'a station screen', tap: 'a Tap to Pay phone' },
 }

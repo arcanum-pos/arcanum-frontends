@@ -176,6 +176,7 @@ export default {
     linkCopied: 'Copié',
     openHere: 'Ouvrir sur cet ordinateur',
     asAppHint: 'Dans Safari (iPhone, iPad, Mac), installez-le d’abord comme app, avec sa propre icône : le lien explique comment.',
+    thisMacHint: 'Tester sur ce Mac ? Copiez le lien et ouvrez-le dans Safari : chaque appareil y devient sa propre app dans le Dock.',
     pairedDevice: (name: string) => `${name} est couplé.`,
     pairedDisplayFor: (name: string, kassa: string) => `${name} est couplé et affiche les paiements de ${kassa}.`,
     forKassa: 'Pour quelle caisse ?',

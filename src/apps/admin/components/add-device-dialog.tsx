@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMessages } from '@/shared/i18n'
+import { appStorage } from '@/shared/install'
 import { createDevicePairing, listDevicePairings, type DevicePairing, type OrgDevice } from '../lib/api'
 import { listStations, type Station } from '../lib/catalog-api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
@@ -20,8 +21,10 @@ import { ADMIN_ORG_MESSAGES } from '../messages/org'
 // its QR opens the phone's own page (/tap), where it's paired.
 // The link carries the device's role and name: the pairing page shows that
 // device's icon and name, so an app added from it (Safari: install first,
-// then pair — shared/install) is that device. "Open op deze computer" adds
-// `here`: the page doesn't pair the admin's own browser unasked.
+// then pair — shared/install) is that device. Several devices on one
+// computer: each its own app in Safari's Dock (its own storage) — so "Open op
+// deze computer" only where the console itself runs in Safari on a Mac; in
+// another browser on a Mac, the advice to paste the link into Safari.
 const LATER = 'later'
 
 export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; kassas: OrgDevice[]; onPaired: () => void }) {
@@ -221,14 +224,17 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
                     <Copy />
                     {copied ? m.linkCopied : m.copyLink}
                   </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={`${url}&here`} target="_blank" rel="noopener">
-                      <ExternalLink />
-                      {m.openHere}
-                    </a>
-                  </Button>
+                  {appStorage() === 'mac' && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={url} target="_blank" rel="noopener">
+                        <ExternalLink />
+                        {m.openHere}
+                      </a>
+                    </Button>
+                  )}
                 </div>
                 <p className="text-center text-xs text-muted-foreground">{m.asAppHint}</p>
+                {appStorage() === 'shared' && /Macintosh/.test(navigator.userAgent) && <p className="text-center text-xs text-muted-foreground">{m.thisMacHint}</p>}
               </>
             )}
           </div>

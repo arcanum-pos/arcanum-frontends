@@ -176,6 +176,7 @@ export default {
     linkCopied: 'Copied',
     openHere: 'Open on this computer',
     asAppHint: 'In Safari (iPhone, iPad, Mac) you install it as an app first, with its own icon: the link explains how.',
+    thisMacHint: 'Testing on this Mac? Copy the link and open it in Safari: each device becomes its own app in the Dock there.',
     pairedDevice: (name: string) => `${name} is paired.`,
     pairedDisplayFor: (name: string, kassa: string) => `${name} is paired and shows the payments of ${kassa}.`,
     forKassa: 'For which till?',
