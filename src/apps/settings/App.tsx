@@ -18,6 +18,7 @@ import { EventPanel } from './EventPanel'
 import { SlotPanel } from './SlotPanel'
 import { useSourceUrl } from '@/shared/source-url'
 import { SETTINGS_MESSAGES } from './messages'
+import { showOrgIcons } from '@/shared/install'
 
 export default function App() {
   const m = useMessages(SETTINGS_MESSAGES)
@@ -45,6 +46,8 @@ export default function App() {
       }
       setPosTerminalId(terminal.terminalId)
       setPosOrgId(terminal.orgId)
+      // Part of the kassa: its icon.
+      showOrgIcons(terminal.orgId, 'kassa')
       listMyMemberships()
         .then((memberships) => setIsAdmin(memberships.some((ms) => ms.orgId === terminal.orgId && ms.role === 'admin')))
         .catch(() => setIsAdmin(false))

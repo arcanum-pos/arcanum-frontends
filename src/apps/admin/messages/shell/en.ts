@@ -92,6 +92,20 @@ export default {
   theme: 'Theme',
   themeRemembered: 'Remembered on this device.',
   themes: { light: 'Light', dark: 'Dark', system: 'System' },
+  appIcons: {
+    title: 'App icons',
+    hint: 'The icon of each page installed as an app (home screen, Dock, start menu) and in the tab — for this organisation. Without one of its own: the default icon. A device gets it when it is installed from its pairing link.',
+    pages: { kassa: 'Till', display: 'Customer display', waiter: 'Waiter', tap: 'Tap to Pay phone', selforder: 'Ordering (guests)', station: 'Station screen (default)', pickup: 'Pickup screen', entrance: 'Table screen (entrance)' },
+    prepStation: 'Station screen',
+    own: 'Own icon',
+    standard: 'Default',
+    upload: 'Upload',
+    uploadFor: (name: string) => `Icon for ${name}`,
+    remove: 'Remove',
+    busy: 'Working…',
+    unreadable: 'This image could not be read. Choose a PNG, JPEG, WebP or SVG.',
+    adminsOnly: 'Only admins can change the icons.',
+  },
 
   // Settings → Preferences
   preferencesSubtitle: 'Personal preferences for this interface.',

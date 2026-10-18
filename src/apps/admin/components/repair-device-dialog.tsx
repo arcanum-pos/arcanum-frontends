@@ -49,7 +49,7 @@ export function RepairDeviceDialog({ orgId, device, onClose, onRepaired }: { org
           <DialogDescription>{m.repairHint}</DialogDescription>
         </DialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        {pairing && status === 'open' && <PairingCode pairing={pairing} secondsLeft={secondsLeft} />}
+        {pairing && status === 'open' && <PairingCode orgId={orgId} pairing={pairing} secondsLeft={secondsLeft} />}
         {pairing && status === 'claimed' && <PairingClaimed text={m.repaired(name)} />}
         {pairing && (status === 'expired' || status === 'revoked') && <p className="text-sm text-muted-foreground">{m.codeExpired}</p>}
         <DialogFooter>

@@ -9,6 +9,7 @@ import { sumupAppLink } from '@/shared/sumup-app'
 import { connectNotifications, forgetTerminal, getRegisteredTerminal, pairDevice, type Terminal } from '@/shared/terminal'
 import { readTapAddress, tapReturnUrl, type TapAddress } from './lib'
 import { TAP_MESSAGES } from './messages'
+import { showOrgIcons } from '@/shared/install'
 
 // A kassa's Tap to Pay phone (2026-10-16). Paired with a code for one kassa
 // (from this page itself: on an iPhone the home-screen app keeps its own
@@ -55,7 +56,10 @@ export default function App() {
   const [terminal, setTerminal] = useState<Terminal | null | undefined>(undefined)
 
   useEffect(() => {
-    getRegisteredTerminal('tap').then(setTerminal)
+    getRegisteredTerminal('tap').then((t) => {
+      if (t) showOrgIcons(t.orgId, 'tap')
+      setTerminal(t)
+    })
   }, [])
 
   // Done with that one payment: back to the phone's own page (if it's paired).

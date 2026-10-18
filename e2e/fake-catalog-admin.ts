@@ -78,6 +78,7 @@ export class FakeCatalogAdmin {
   staffRequired = false
   staffCalls: { method: string; body: any }[] = []
   myRole: 'admin' | 'cashier' | 'waiter' = 'admin'
+  orgIcons = new Map<string, { updatedAt: string; png: Record<string, string> }>()
   members: any[] = []
   tables: any[] = []
   // Kassalades.
@@ -125,6 +126,18 @@ export class FakeCatalogAdmin {
     }
     // The signed-in person's role here (release C: Bediening sees only the waiter screen).
     if (path === '/api/organizations/memberships' && method === 'GET') return ok([{ orgId: ORG_ID, orgName: 'E2E', role: this.myRole }])
+    // Weergave → App-iconen: the org's own icons per page (arcanum-backend org-icons.ts).
+    if (path === `/api/organizations/${ORG_ID}/icons` && method === 'GET') return ok([...this.orgIcons].map(([slot, i]) => ({ slot, updatedAt: i.updatedAt })))
+    const icon = path.match(/^\/api\/organizations\/[^/]+\/icons\/([^/]+)$/)
+    if (icon && method === 'PUT') {
+      const updatedAt = new Date().toISOString()
+      this.orgIcons.set(decodeURIComponent(icon[1]), { updatedAt, png: body.png })
+      return ok({ slot: decodeURIComponent(icon[1]), updatedAt })
+    }
+    if (icon && method === 'DELETE') {
+      this.orgIcons.delete(decodeURIComponent(icon[1]))
+      return ok({ ok: true })
+    }
     if (/^\/api\/organizations\/[^/]+\/members$/.test(path) && method === 'GET') return ok(this.members)
     if (/^\/api\/organizations\/[^/]+\/members$/.test(path) && method === 'POST') {
       const member = { id: this.id('m'), invitedEmail: body.email, role: body.role, status: 'pending', invitedAt: new Date().toISOString(), userSub: null }

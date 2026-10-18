@@ -11,6 +11,7 @@ import { clearTable, connectLive, listEvents, listReaders, listTables, mergeTabl
 import { EntranceScreen } from '@/shared/entrance-screen'
 import { sumupAppLink, sumupAppReturn } from '@/shared/sumup-app'
 import { WAITER_MESSAGES } from './messages'
+import { showOrgIcons } from '@/shared/install'
 
 // The waiter screen (DOMAIN_MODEL.md "Tables and waiters", release C): on a
 // waiter's own phone, signed in (role Bediening, or admin / Kassa). The
@@ -82,6 +83,11 @@ export default function App() {
       setError(err instanceof Error ? err.message : String(err))
     }
   }, [orgId])
+
+  // The organisation's own icon (the entrance screen's when it's that).
+  useEffect(() => {
+    if (orgId) showOrgIcons(orgId, entrance ? 'entrance' : 'waiter')
+  }, [orgId, entrance])
 
   useEffect(() => {
     if (!orgId || entrance) return

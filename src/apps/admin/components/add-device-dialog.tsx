@@ -167,7 +167,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
           </div>
         )}
 
-        {pairing && shownStatus === 'open' && <PairingCode pairing={pairing} secondsLeft={secondsLeft} />}
+        {pairing && shownStatus === 'open' && <PairingCode orgId={orgId} pairing={pairing} secondsLeft={secondsLeft} />}
         {pairing && shownStatus === 'claimed' && (
           <PairingClaimed text={pairing.linkTo ? m.pairedDisplayFor(pairing.name, kassas.find((k) => k.terminal_id === pairing.linkTo)?.name || pairing.linkTo) : m.pairedDevice(pairing.name)} />
         )}

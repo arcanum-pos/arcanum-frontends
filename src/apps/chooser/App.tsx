@@ -55,12 +55,13 @@ export default function App() {
   // The device the console's link is for (`role`, `name`).
   const [device] = useState(() => {
     const role = params.get('role')
-    return isRole(role) ? { role, name: params.get('name')?.trim().slice(0, 60) || m.appNames[role] } : null
+    // icon: the organisation's own (<org>/<slot>), arcanum-bff checks it.
+    return isRole(role) ? { role, name: params.get('name')?.trim().slice(0, 60) || m.appNames[role], icon: params.get('icon') } : null
   })
 
   // The same head as arcanum-bff sends — for a page served without it (vite preview).
   useEffect(() => {
-    if (device) showAsDevice(device.role, device.name)
+    if (device) showAsDevice(device.role, device.name, device.icon)
   }, [device])
 
   // The pairing link, the device included (back here after signing in).
@@ -69,6 +70,7 @@ export default function App() {
     if (device) {
       query.set('role', device.role)
       query.set('name', device.name)
+      if (device.icon) query.set('icon', device.icon)
     }
     return `/pair?${query}`
   }
@@ -191,7 +193,7 @@ export default function App() {
     return (
       <KioskShell devicePickers>
         <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="install">
-          <img src={`/icons/${ICON_FOR_ROLE[device.role]}-180.png`} alt="" className="mx-auto size-16 rounded-2xl" />
+          <img src={document.head.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href') ?? `/icons/${ICON_FOR_ROLE[device.role]}-180.png`} alt="" className="mx-auto size-16 rounded-2xl" />
           <h1 className="font-heading text-xl font-bold">{device.name}</h1>
           {view.step === 'install' ? (
             <>

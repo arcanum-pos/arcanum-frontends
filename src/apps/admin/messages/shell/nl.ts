@@ -96,6 +96,21 @@ const nl = {
   theme: 'Thema',
   themeRemembered: 'Wordt onthouden op dit toestel.',
   themes: { light: 'Licht', dark: 'Donker', system: 'Systeem' },
+  // Settings → Appearance → App icons (the organisation's, admins)
+  appIcons: {
+    title: 'App-iconen',
+    hint: 'Het icoon van elke pagina die je als app installeert (beginscherm, Dock, startmenu) en in het tabblad — voor deze organisatie. Zonder eigen icoon: het standaardicoon. Een toestel krijgt het als het geïnstalleerd wordt via zijn koppellink.',
+    pages: { kassa: 'Kassa', display: 'Klantscherm', waiter: 'Bediening', tap: 'Tap to Pay-telefoon', selforder: 'Bestellen (gasten)', station: 'Stationscherm (standaard)', pickup: 'Afhaalscherm', entrance: 'Tafelscherm (ingang)' },
+    prepStation: 'Stationscherm',
+    own: 'Eigen icoon',
+    standard: 'Standaard',
+    upload: 'Uploaden',
+    uploadFor: (name: string) => `Icoon voor ${name}`,
+    remove: 'Verwijderen',
+    busy: 'Bezig…',
+    unreadable: 'Deze afbeelding kon niet gelezen worden. Kies een PNG, JPEG, WebP of SVG.',
+    adminsOnly: 'Alleen beheerders kunnen de iconen wijzigen.',
+  },
 
   // Settings → Preferences
   preferencesSubtitle: 'Persoonlijke voorkeuren voor deze interface.',

@@ -70,6 +70,7 @@ class FakeSelfOrder {
     return {
       eventName: 'Fuif in de Kabouterbossen',
       orgName: 'Scouts Kabouterland',
+      orgId: 'org-1',
       locale: 'nl',
       open: this.open,
       modes: this.open ? modes : [],
@@ -81,6 +82,7 @@ class FakeSelfOrder {
       number: 7,
       eventName: 'Fuif in de Kabouterbossen',
       orgName: 'Scouts Kabouterland',
+      orgId: 'org-1',
       locale: 'nl',
       selfOrder: true,
       modeId: this.modeId,
@@ -777,7 +779,9 @@ test.describe("a notification when it's ready (Web Push, release G')", () => {
       await expect(push).toContainText('Melding op je iPhone')
       await expect(push.getByTestId('push-ios-steps').locator('li')).toHaveCount(3)
       await expect(push.getByTestId('push-turn-on')).toHaveCount(0)
-      await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', `/volg/${TOKEN}/manifest.webmanifest`)
+      // The organisation's own icon on it (Weergave → App-iconen).
+      await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', `/volg/${TOKEN}/manifest.webmanifest?icon=org-1%2Fselforder`)
+      await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/org/org-1/selforder-180.png')
       await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Scouts Kabouterland')
     })
   })

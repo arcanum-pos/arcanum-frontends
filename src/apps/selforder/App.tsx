@@ -26,6 +26,7 @@ import {
   type FollowStatus,
   type Menu,
 } from './lib'
+import { showOrgIcons } from '@/shared/install'
 
 // A guest's own phone — DOMAIN_MODEL.md "Self-ordering and station screens".
 //   /bestel/<event code>: (how you order, with more than one ordering mode) → 1 menu
@@ -178,7 +179,10 @@ function SelfOrder({ code }: { code: string }) {
 
   useEffect(() => {
     call<Menu>(`/api/public/self-order/${encodeURIComponent(code)}`)
-      .then(setMenu)
+      .then((loaded) => {
+        if (loaded.orgId) showOrgIcons(loaded.orgId, 'selforder')
+        setMenu(loaded)
+      })
       .catch((err) => setError(err.status === 404 ? m.closed : err.message))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code])
@@ -541,6 +545,11 @@ function Stepper({ name, quantity, onChange }: { name: string; quantity: number;
 function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOver?: () => void; onOrderMore?: (modeId: string | null) => void }) {
   const m = useMessages(SELF_ORDER_MESSAGES)
   const { status, error, live, refresh } = useFollow(token)
+  // The organisation's own icon, for the tab and a home screen.
+  const orgId = status?.orgId
+  useEffect(() => {
+    if (orgId) showOrgIcons(orgId, 'selforder')
+  }, [orgId])
 
   // Opened on an order that's finished already: to the menu at once, or to
   // the order this phone placed since (onOpen) — not the old order again.
@@ -617,7 +626,7 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
         </ul>
       )}
 
-      {status.push && (status.push.available || status.push.subscribed) && <PushCard token={token} push={status.push} orgName={status.orgName} smsOffered={!!status.sms?.available} onChanged={refresh} />}
+      {status.push && (status.push.available || status.push.subscribed) && <PushCard token={token} push={status.push} orgName={status.orgName} orgId={status.orgId} smsOffered={!!status.sms?.available} onChanged={refresh} />}
 
       {/* With a notification on, no SMS (one message is enough): only what went. */}
       {status.sms && ((status.sms.available && !status.push?.subscribed) || status.sms.stations.length > 0) && (
@@ -677,14 +686,14 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
 // screen — the steps to get there first.
 // Blocked already (in the browser's settings, or a private window that
 // refuses): said straight away, instead of a button that can't work.
-function PushCard({ token, push, orgName, smsOffered, onChanged }: { token: string; push: NonNullable<FollowStatus['push']>; orgName: string; smsOffered: boolean; onChanged: () => void }) {
+function PushCard({ token, push, orgName, orgId, smsOffered, onChanged }: { token: string; push: NonNullable<FollowStatus['push']>; orgName: string; orgId?: string; smsOffered: boolean; onChanged: () => void }) {
   const m = useMessages(SELF_ORDER_MESSAGES)
   const [support] = useState(pushSupport)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [blocked, setBlocked] = useState(() => support === 'yes' && Notification.permission === 'denied')
   const path = `/api/public/orders/${encodeURIComponent(token)}/push`
-  useEffect(() => (support === 'no' ? undefined : linkOrderManifest(token, orgName)), [support, token, orgName])
+  useEffect(() => (support === 'no' ? undefined : linkOrderManifest(token, orgName, orgId)), [support, token, orgName, orgId])
   // Notifications on for an earlier order (the next one placed from the home
   // screen, say): this order too, without a tap. Turned off: the browser's
   // subscription is gone, so not again.

@@ -2,6 +2,16 @@
 // unpairing one. SumUp is answered by the fake backend (fake-catalog-admin.ts).
 import { expect, test } from './console-fixtures'
 
+// "Kopieer link" in the code dialog: what it put on the clipboard.
+async function copiedLink(page: import('@playwright/test').Page): Promise<string> {
+  await page.evaluate(() => {
+    ;(window as any).__copied = []
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (text: string) => (window as any).__copied.push(text) }, configurable: true })
+  })
+  await page.getByRole('dialog').getByRole('button', { name: 'Kopieer link' }).click()
+  return (await page.evaluate(() => (window as any).__copied))[0]
+}
+
 test('without a SumUp account there is nothing to pair', async ({ console: open, page }) => {
   await open('/devices')
   await expect(page.getByRole('heading', { name: 'Toestellen' })).toBeVisible()
@@ -157,6 +167,8 @@ test('a pickup screen (Afhaalscherm): a station screen for guests, for one stati
   await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
   await expect(dialog.getByTestId('pairing-code')).toBeVisible()
   expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'station', stationId: 'st-keuken', view: 'pickup', name: 'Afhaal keuken' })
+  // The pickup screen's own icon (Weergave → App-iconen) on the link.
+  expect(new URL(await copiedLink(page)).searchParams.get('icon')).toBe('org-e2e/pickup')
   catalogAdmin.claimPairing(catalogAdmin.pairings[0].code)
   await expect(dialog.getByTestId('pairing-claimed')).toBeVisible({ timeout: 10_000 })
   await dialog.getByRole('button', { name: 'Klaar' }).click()
@@ -177,6 +189,20 @@ test('a table screen at the entrance: no station to choose', async ({ console: o
   await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
   await expect(dialog.getByTestId('pairing-code')).toBeVisible()
   expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'station', stationId: null, view: 'tables', name: 'Ingang' })
+  expect(new URL(await copiedLink(page)).searchParams.get('icon')).toBe('org-e2e/entrance')
+})
+
+test("a prep station's screen: its link carries that station's icon", async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.stations.push({ id: 'st-keuken', name: 'Keuken', position: 0 } as never)
+  await open('/devices')
+  await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Type' }).click()
+  await page.getByRole('option', { name: 'Stationscherm' }).click()
+  await dialog.getByLabel('Naam').fill('Scherm keuken')
+  await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
+  const link = new URL(await copiedLink(page))
+  expect(Object.fromEntries(link.searchParams)).toMatchObject({ role: 'station', name: 'Scherm keuken', icon: 'org-e2e/station-st-keuken' })
 })
 
 test("a kassa's Tap to Pay phone: always for a kassa; its QR opens the phone's own page", async ({ console: open, page, catalogAdmin }) => {
@@ -230,7 +256,7 @@ test.describe('the pairing link on this computer', () => {
     test('"Open op deze computer": the link, in a new tab', async ({ console: open, page }) => {
       const code = await pairing(open, page)
       const link = code.getByRole('link', { name: 'Open op deze computer' })
-      await expect(link).toHaveAttribute('href', `${new URL(page.url()).origin}/pair?code=K7PM4XQ1&role=pos&name=Kassa+toog`)
+      await expect(link).toHaveAttribute('href', `${new URL(page.url()).origin}/pair?code=K7PM4XQ1&role=pos&name=Kassa+toog&icon=org-e2e%2Fkassa`)
       await expect(link).toHaveAttribute('target', '_blank')
       await expect(code).not.toContainText('open hem in Safari')
     })

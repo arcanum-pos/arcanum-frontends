@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { STATION_MESSAGES } from './messages'
 import { Pickup } from './Pickup'
 import { nextStatus, previousStatus, visibleTickets, type Ticket, type TicketStatus } from './lib'
+import { iconSlot, showOrgIcons } from '@/shared/install'
 
 // A station screen (device role 'station'): the prep tickets (bonnen) of the
 // one station this device is linked to, in columns by status — DOMAIN_MODEL.md
@@ -133,6 +134,8 @@ export default function App() {
         // The entrance screen (release D): the promised tables, no station.
         entrance: info.view === 'tables',
       })
+      // Its own icon: the prep station's, the pickup or entrance screen's.
+      showOrgIcons(terminal.orgId, iconSlot('station', { stationId: info.station_id, view: info.view ?? (askedPickup() ? 'pickup' : null) }), info.station_name ?? terminal.name)
     })
     const clock = setInterval(() => setNow(Date.now()), 60_000)
     return () => clearInterval(clock)

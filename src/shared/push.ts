@@ -60,7 +60,8 @@ export async function unsubscribePush(scope = '/volg/'): Promise<void> {
 // On an iPhone the home-screen icon must open this very order (it doesn't
 // share Safari's storage): the order's own manifest (made by arcanum-bff),
 // and the name under the icon.
-export function linkOrderManifest(token: string, title: string): () => void {
+// `orgId`: its icons are the organisation's own (arcanum-bff, `icon`).
+export function linkOrderManifest(token: string, title: string, orgId?: string | null): () => void {
   const added: HTMLElement[] = []
   const add = (tag: string, attrs: Record<string, string>) => {
     const el = document.createElement(tag)
@@ -68,7 +69,7 @@ export function linkOrderManifest(token: string, title: string): () => void {
     document.head.appendChild(el)
     added.push(el)
   }
-  add('link', { rel: 'manifest', href: `/volg/${encodeURIComponent(token)}/manifest.webmanifest` })
+  add('link', { rel: 'manifest', href: `/volg/${encodeURIComponent(token)}/manifest.webmanifest${orgId ? `?${new URLSearchParams({ icon: `${orgId}/selforder` })}` : ''}` })
   add('meta', { name: 'apple-mobile-web-app-capable', content: 'yes' })
   add('meta', { name: 'apple-mobile-web-app-title', content: title })
   return () => added.forEach((el) => el.remove())

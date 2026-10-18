@@ -202,6 +202,20 @@ added from, `?terminal=…` included). Each `<name>.html` links its set;
 followed order (`/volg/…`) get their manifests from arcanum-bff, with these
 icons. arcanum-bff serves `/icons/*` without a session, like `/assets/*`.
 
+**An organisation's own icons** (2026-10-18): console → Instellingen →
+Weergave → **App-iconen** (admins), per page (kassa, klantscherm,
+bediening, Tap to Pay, bestellen, station screen, pickup, entrance) and per
+prep station. The browser makes the four sizes from one image
+(`admin/lib/icon-image.ts`, on white); arcanum-backend keeps them
+(`org-icons.ts`, migration 0042); arcanum-bff serves
+`/icons/org/<org>/<slot>-<size>.png`: the org's, else the default above (a
+prep station without its own: the org's station icon). A pairing link
+carries `icon=<org>/<slot>` and the bff sends `/pair` (and `/tap`) with it;
+each screen switches to its org's icons once it knows its organisation
+(`shared/install.ts` `showOrgIcons`) — for the tab and installing from
+Chrome, Edge or Android. Safari takes the icon the page was *sent* with, so
+there it comes from the pairing link.
+
 ## Content-Security-Policy
 
 Every screen's page is sent with one policy, `worker/csp.ts`: scripts only

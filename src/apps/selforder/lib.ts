@@ -26,6 +26,8 @@ export interface MenuMode {
 export interface Menu {
   eventName: string
   orgName: string
+  // Its own app icon (org-icons): absent from an older backend.
+  orgId?: string
   locale: string
   open: boolean
   modes: MenuMode[]
@@ -62,6 +64,7 @@ export interface FollowStatus {
   number: number
   eventName: string | null
   orgName: string
+  orgId?: string
   locale: string
   selfOrder: boolean
   // Its ordering mode (another round orders from its menu), and the mode's

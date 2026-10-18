@@ -42,6 +42,7 @@ import { TabsOverview } from './TabsOverview'
 import { TabStrip, type ActiveKey } from './TabStrip'
 import * as tabsApi from './tabs-api'
 import { netQuantity, QUICK_SALE_LABEL, TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
+import { showOrgIcons } from '@/shared/install'
 
 const WORKER_URL = '/api/bancontact'
 
@@ -833,6 +834,7 @@ export default function App() {
       posTerminalIdRef.current = terminal.terminalId
       posOrgIdRef.current = terminal.orgId
       setOrgId(terminal.orgId)
+      showOrgIcons(terminal.orgId, 'kassa')
       loadTapToPay(terminal.orgId)
       setTerminalIdLabel(terminal.terminalId)
 

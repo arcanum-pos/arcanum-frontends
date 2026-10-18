@@ -92,6 +92,20 @@ export default {
   theme: 'Thème',
   themeRemembered: 'Mémorisé sur cet appareil.',
   themes: { light: 'Clair', dark: 'Sombre', system: 'Système' },
+  appIcons: {
+    title: 'Icônes d’app',
+    hint: 'L’icône de chaque page installée comme app (écran d’accueil, Dock, menu Démarrer) et dans l’onglet — pour cette organisation. Sans icône propre : l’icône par défaut. Un appareil la reçoit s’il est installé via son lien de couplage.',
+    pages: { kassa: 'Caisse', display: 'Écran client', waiter: 'Service', tap: 'Téléphone Tap to Pay', selforder: 'Commander (clients)', station: 'Écran de poste (par défaut)', pickup: 'Écran de retrait', entrance: 'Écran des tables (entrée)' },
+    prepStation: 'Écran de poste',
+    own: 'Icône propre',
+    standard: 'Par défaut',
+    upload: 'Téléverser',
+    uploadFor: (name: string) => `Icône pour ${name}`,
+    remove: 'Supprimer',
+    busy: 'En cours…',
+    unreadable: 'Cette image n’a pas pu être lue. Choisissez un PNG, JPEG, WebP ou SVG.',
+    adminsOnly: 'Seuls les administrateurs peuvent modifier les icônes.',
+  },
 
   // Settings → Preferences
   preferencesSubtitle: 'Préférences personnelles pour cette interface.',

@@ -246,3 +246,12 @@ test('just paired: "Installeer als app" when the browser can install it — once
   await offer()
   await expect(page.getByTestId('install-prompt')).toHaveCount(0)
 })
+
+// Its organisation's own icon (Weergave → App-iconen), for the tab and for
+// installing from here: the prep station's — arcanum-bff serves it, or the default.
+test("the station's own icon, once it knows its station", async ({ station: page }) => {
+  await expect(page.getByTestId('column-ordered')).toBeVisible()
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken-180.png')
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken-96.png')
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken.webmanifest?name=Keuken')
+})

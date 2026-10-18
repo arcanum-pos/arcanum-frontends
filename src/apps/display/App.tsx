@@ -10,6 +10,7 @@ import { STATUS_MESSAGES } from '@/shared/payment-labels'
 import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { payPhase, type PayPhase } from './lib'
 import { DISPLAY_MESSAGES } from './messages'
+import { showOrgIcons } from '@/shared/install'
 
 // Customer-facing display, three states: rust (idle), waiting for the
 // payment (the order, the total and — for Bancontact — the QR), and paid.
@@ -131,6 +132,7 @@ export default function App() {
       }
 
       setTerminalHint(`CFD-ID: ${terminal.terminalId}`)
+      if ('orgId' in terminal) showOrgIcons(terminal.orgId, 'display')
       setLink({ state: 'loading' })
 
       socket = connectNotifications(terminal.terminalId, {

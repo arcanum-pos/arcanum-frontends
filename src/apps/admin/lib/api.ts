@@ -278,6 +278,8 @@ export interface DevicePairing {
   terminalId: string | null
   linkTo: string | null
   view?: 'pickup' | 'tables' | null
+  // A station screen's prep station.
+  stationId?: string | null
   // A re-pair code: the existing device it's for.
   repairs?: string | null
   // Only in the answer to createDevicePairing — never stored readable.
@@ -298,6 +300,25 @@ export function createDevicePairing(orgId: string, role: 'pos' | 'cfd' | 'statio
 // (its identity, name, links, history); whichever browser was it stops being it.
 export function createDeviceRepair(orgId: string, terminalId: string): Promise<DevicePairing & { code: string }> {
   return request(`/${encodeURIComponent(orgId)}/devices/${encodeURIComponent(terminalId)}/repair`, { method: 'POST' })
+}
+
+// Weergave → App-iconen: the organisation's own app icons (arcanum-backend
+// org-icons.ts) — which pages have one; set one (every size, PNG base64); remove it.
+export interface OrgIcon {
+  slot: string
+  updatedAt: string
+}
+
+export function listOrgIcons(orgId: string): Promise<OrgIcon[]> {
+  return request(`/${encodeURIComponent(orgId)}/icons`)
+}
+
+export function setOrgIcon(orgId: string, slot: string, png: Record<number, string>): Promise<OrgIcon> {
+  return request(`/${encodeURIComponent(orgId)}/icons/${encodeURIComponent(slot)}`, { method: 'PUT', body: JSON.stringify({ png }) })
+}
+
+export async function removeOrgIcon(orgId: string, slot: string): Promise<void> {
+  await request(`/${encodeURIComponent(orgId)}/icons/${encodeURIComponent(slot)}`, { method: 'DELETE' })
 }
 
 export function listDevicePairings(orgId: string): Promise<DevicePairing[]> {

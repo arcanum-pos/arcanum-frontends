@@ -3,7 +3,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { CheckCircle2, Copy, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useMessages } from '@/shared/i18n'
-import { appStorage } from '@/shared/install'
+import { appStorage, iconSlot, orgIconRef } from '@/shared/install'
 import { listDevicePairings, type DevicePairing } from '../lib/api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 
@@ -49,18 +49,20 @@ export function usePairingStatus(orgId: string, pairing: ShownPairing | null, on
   return { status: status === 'open' && pairing && secondsLeft === 0 ? 'expired' : status, secondsLeft }
 }
 
-// What the QR and the link open: /pair with the code, and the device's role
-// and name; a Tap to Pay phone its own page (/tap).
-function pairingUrl(pairing: ShownPairing): string {
+// What the QR and the link open: /pair with the code, the device's role and
+// name, and which of the organisation's icons it gets (Weergave → App-iconen);
+// a Tap to Pay phone its own page (/tap).
+function pairingUrl(orgId: string, pairing: ShownPairing): string {
   const code = pairing.code.replace('-', '')
-  if (pairing.role === 'tap') return `${window.location.origin}/tap?code=${encodeURIComponent(code)}`
-  return `${window.location.origin}/pair?${new URLSearchParams({ code, role: pairing.role, name: pairing.name })}`
+  const icon = orgIconRef(orgId, iconSlot(pairing.role, pairing))
+  if (pairing.role === 'tap') return `${window.location.origin}/tap?${new URLSearchParams({ code, icon })}`
+  return `${window.location.origin}/pair?${new URLSearchParams({ code, role: pairing.role, name: pairing.name, icon })}`
 }
 
-export function PairingCode({ pairing, secondsLeft }: { pairing: ShownPairing; secondsLeft: number }) {
+export function PairingCode({ orgId, pairing, secondsLeft }: { orgId: string; pairing: ShownPairing; secondsLeft: number }) {
   const m = useMessages(ADMIN_ORG_MESSAGES).devices
   const [copied, setCopied] = useState(false)
-  const url = pairingUrl(pairing)
+  const url = pairingUrl(orgId, pairing)
   return (
     <div className="flex flex-col items-center gap-3" data-testid="pairing-code">
       <p className="font-mono text-4xl font-bold tracking-widest">{pairing.code}</p>

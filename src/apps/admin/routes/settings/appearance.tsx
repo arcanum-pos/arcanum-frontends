@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { cn } from '@/lib/utils'
 import { useMessages } from '@/shared/i18n'
 import { useTheme } from '../../lib/theme'
+import { useOrg } from '../../lib/org-context'
+import { AppIconsCard } from '../../components/app-icons-card'
 import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 
 const OPTIONS = [
@@ -14,6 +16,7 @@ const OPTIONS = [
 export default function AppearancePage() {
   const m = useMessages(ADMIN_SHELL_MESSAGES)
   const { theme, setTheme } = useTheme()
+  const { currentOrg } = useOrg()
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,6 +50,8 @@ export default function AppearancePage() {
           </div>
         </CardContent>
       </Card>
+
+      {currentOrg && <AppIconsCard orgId={currentOrg.id} />}
     </div>
   )
 }
