@@ -95,7 +95,7 @@ export default {
   appIcons: {
     title: 'App icons',
     hint: 'The icon of each page installed as an app (home screen, Dock, start menu) and in the tab — for this organisation. Without one of its own: the default icon. A device gets it when it is installed from its pairing link.',
-    pages: { kassa: 'Till', display: 'Customer display', waiter: 'Waiter', tap: 'Tap to Pay phone', selforder: 'Ordering (guests)', station: 'Station screen (default)', pickup: 'Pickup screen', entrance: 'Table screen (entrance)' },
+    pages: { kassa: 'Till', display: 'Customer display', waiter: 'Waiter', tap: 'Tap to Pay phone', selforder: 'Ordering (guests)', station: 'Station screen (default)', pickup: 'Pickup screen', entrance: 'Table screen (entrance)', console: 'Console (admin)' },
     prepStation: 'Station screen',
     own: 'Own icon',
     standard: 'Default',

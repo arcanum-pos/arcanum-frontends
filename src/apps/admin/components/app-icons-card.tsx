@@ -15,10 +15,11 @@ import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 // Weergave → App-iconen (2026-10-18): the organisation's own icon per page
 // that can be installed as an app — what a phone, tablet or computer shows
 // on its home screen, Dock or start menu, and in the tab. Per prep station
-// too. Not set: the default (shown here as well). Admins change them;
+// too, and the console (sent with the icon of the organisation you last
+// worked in — a cookie). Not set: the default (shown here as well). Admins change them;
 // a device gets them when it's installed from its pairing link (or, in
 // Chrome, Edge and Android, from the screen itself).
-const PAGES = ['kassa', 'display', 'waiter', 'tap', 'selforder', 'station', 'pickup', 'entrance'] as const
+const PAGES = ['kassa', 'display', 'waiter', 'tap', 'selforder', 'station', 'pickup', 'entrance', 'console'] as const
 
 export function AppIconsCard({ orgId }: { orgId: string }) {
   const m = useMessages(ADMIN_SHELL_MESSAGES).appIcons

@@ -100,7 +100,7 @@ const nl = {
   appIcons: {
     title: 'App-iconen',
     hint: 'Het icoon van elke pagina die je als app installeert (beginscherm, Dock, startmenu) en in het tabblad — voor deze organisatie. Zonder eigen icoon: het standaardicoon. Een toestel krijgt het als het geïnstalleerd wordt via zijn koppellink.',
-    pages: { kassa: 'Kassa', display: 'Klantscherm', waiter: 'Bediening', tap: 'Tap to Pay-telefoon', selforder: 'Bestellen (gasten)', station: 'Stationscherm (standaard)', pickup: 'Afhaalscherm', entrance: 'Tafelscherm (ingang)' },
+    pages: { kassa: 'Kassa', display: 'Klantscherm', waiter: 'Bediening', tap: 'Tap to Pay-telefoon', selforder: 'Bestellen (gasten)', station: 'Stationscherm (standaard)', pickup: 'Afhaalscherm', entrance: 'Tafelscherm (ingang)', console: 'Console (beheer)' },
     prepStation: 'Stationscherm',
     own: 'Eigen icoon',
     standard: 'Standaard',

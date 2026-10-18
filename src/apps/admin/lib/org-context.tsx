@@ -1,7 +1,17 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { showOrgIcons } from '@/shared/install'
 import { createOrganization, getCapabilities, listMyOrganizations, type Capabilities, type Organization } from './api'
 
 const CURRENT_ORG_KEY = 'arcanum-admin-current-org'
+// The same, for arcanum-bff: it sends /console with this organisation's own
+// console icon (Weergave → App-iconen) — Safari's Add to Dock reads only what
+// was sent. Just the id, nothing secret.
+const CONSOLE_ORG_COOKIE = 'arcanum-console-org'
+
+function rememberConsoleOrg(id: string) {
+  const secure = window.location.protocol === 'https:' ? '; Secure' : ''
+  document.cookie = `${CONSOLE_ORG_COOKIE}=${encodeURIComponent(id)}; Path=/; Max-Age=31536000; SameSite=Lax${secure}`
+}
 
 interface OrgContextValue {
   orgs: Organization[]
@@ -76,6 +86,15 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   }
 
   const currentOrg = orgs.find((o) => o.id === currentOrgId) ?? orgs[0] ?? null
+
+  // The organisation's own console icon: here (the tab, installing from
+  // Chrome or Edge), and the next time the console is sent (the cookie).
+  const shownOrgId = currentOrg?.id ?? null
+  useEffect(() => {
+    if (!shownOrgId) return
+    rememberConsoleOrg(shownOrgId)
+    showOrgIcons(shownOrgId, 'console', 'Console')
+  }, [shownOrgId])
 
   return (
     <OrgContext.Provider value={{ orgs, currentOrg, loading, error, setCurrentOrgId, addOrg, updateCurrentOrg, reloadOrgs, capabilities }}>

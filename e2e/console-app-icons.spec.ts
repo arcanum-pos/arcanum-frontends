@@ -29,6 +29,7 @@ test('every page that takes an icon, a prep station among them; all the default 
     ['station-st-1', 'Keuken'],
     ['pickup', 'Afhaalscherm'],
     ['entrance', 'Tafelscherm (ingang)'],
+    ['console', 'Console (beheer)'],
   ]) {
     const row = page.getByTestId(`app-icon-${slot}`)
     await expect(row).toContainText(label)
@@ -75,4 +76,12 @@ test('not an admin: the icons, not the buttons', async ({ console: open, page, c
   await expect(page.getByTestId('app-icon-kassa')).toBeVisible()
   await expect(page.getByText('Alleen beheerders kunnen de iconen wijzigen.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Uploaden' })).toHaveCount(0)
+})
+
+test("the console: its own organisation's icon here, and a cookie so arcanum-bff sends it with that icon next time", async ({ console: open, page, context }) => {
+  await open('/settings/appearance')
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/org/org-e2e/console-180.png')
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/icons/org/org-e2e/console.webmanifest?name=Console')
+  const cookie = (await context.cookies()).find((c) => c.name === 'arcanum-console-org')
+  expect(cookie).toMatchObject({ value: 'org-e2e', path: '/', sameSite: 'Lax' })
 })
