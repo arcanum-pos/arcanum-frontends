@@ -23,7 +23,8 @@ const out = path.join(root, 'public/icons')
 // key: the file names; glyph: a lucide icon (or 'kabouter', the brand);
 // colors: the background's gradient, top to bottom; name: under the icon.
 // No manifest for selforder and tap: arcanum-bff makes theirs (they open
-// one order, or /tap).
+// one order, or /tap). Instellingen has none of its own: it's part of the
+// kassa, so it uses the kassa's.
 export const ICONS = [
   { key: 'arcanum', glyph: 'kabouter', colors: ['#3f3f46', '#09090b'], name: 'Arcanum', manifest: true },
   { key: 'admin', glyph: 'layout-dashboard', colors: ['#6366f1', '#3730a3'], name: 'Console', manifest: true },
@@ -31,7 +32,6 @@ export const ICONS = [
   { key: 'waiter', glyph: 'hand-platter', colors: ['#f59e0b', '#b45309'], name: 'Bediening', manifest: true },
   { key: 'station', glyph: 'chef-hat', colors: ['#ef4444', '#991b1b'], name: 'Station', manifest: true },
   { key: 'display', glyph: 'monitor', colors: ['#0ea5e9', '#0369a1'], name: 'Klantscherm', manifest: true },
-  { key: 'settings', glyph: 'settings', colors: ['#64748b', '#334155'], name: 'Instellingen', manifest: true },
   { key: 'tap', glyph: 'smartphone-nfc', colors: ['#8b5cf6', '#5b21b6'], name: 'Tap to Pay', manifest: false },
   { key: 'selforder', glyph: 'utensils', colors: ['#ec4899', '#9d174d'], name: 'Bestellen', manifest: false },
 ]
