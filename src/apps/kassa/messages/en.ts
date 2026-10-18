@@ -6,6 +6,8 @@ export default {
   orderMode: 'Ordering mode for a new order',
   catalogNamed: (name: string) => `Menu ${name}`,
   openDisplay: 'Open customer display',
+  showOrder: 'Show order',
+  showOrderHint: 'Shows the order on the customer display while you enter it. Off: the customer display rests, e.g. while you check tabs. At payment it always shows it.',
   settings: 'Settings',
   logout: 'Log out',
   leaveTitle: 'The till is still open',

@@ -1,4 +1,5 @@
 import { useWaiterOnly, WaiterOnly } from '@/shared/waiter-only'
+import { Eye, EyeOff } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getRegister, registerState, setRegister, type RegisterState } from '@/shared/register'
 import { CashUp, MovementDialog, OpenRegister, useShiftTexts } from './Shift'
@@ -59,6 +60,26 @@ type NameDialogMode = 'new' | 'park' | 'rename'
 // and are shared by every kassa of the org. No live sync between kassas yet
 // — the open-tab list reloads on focus, on switching and after every
 // action, and the server refuses anything based on a stale view (409).
+// The "Bestelling tonen" switch, remembered on this kassa (on unless switched off).
+const SHOW_ORDER_KEY = 'arcanum-cfd-show-order'
+
+function readShowOrder(): boolean {
+  try {
+    return localStorage.getItem(SHOW_ORDER_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+function storeShowOrder(on: boolean) {
+  try {
+    if (on) localStorage.removeItem(SHOW_ORDER_KEY)
+    else localStorage.setItem(SHOW_ORDER_KEY, 'off')
+  } catch {
+    // not remembered
+  }
+}
+
 export default function App() {
   // Fixed while the page is open (the language is changed in Instellingen),
   // so texts put in state below are safe to build from it right away.
@@ -69,6 +90,9 @@ export default function App() {
   // The event new rekeningen (and so their sales) are tagged with — optional.
   const [event, setEvent] = useState<EventSelection | null>(() => getEventSelection())
   const eventRef = useRef<EventSelection | null>(event)
+  // Whether the customer display shows the order while it's entered (the
+  // cashier's switch, per kassa — off while checking tabs). Payments always show.
+  const [showOrder, setShowOrder] = useState(readShowOrder)
   // What the customer display was last told while the order is entered, and sent to the backend.
   const customerViewRef = useRef<{ order: CustomerOrder | null; seq: number }>({ order: null, seq: 0 })
   const customerViewSentRef = useRef<string | null>(null)
@@ -942,7 +966,8 @@ export default function App() {
   // the backend (customer-view.ts: it pushes, the display fetches). The
   // customer says whether it's right; then the cashier asks for the payment.
   // Not while a tab is still loading (no flicker to the resting screen).
-  const customerView = tabLoading ? undefined : JSON.stringify(customerViewOrder(m, draft, shownTab, event?.name ?? null))
+  // Switched off: nothing — the display rests until the payment.
+  const customerView = tabLoading ? undefined : JSON.stringify(showOrder ? customerViewOrder(m, draft, shownTab, event?.name ?? null) : null)
   useEffect(() => {
     if (customerView === undefined) return
     const timer = setTimeout(() => {
@@ -1046,6 +1071,20 @@ export default function App() {
             </Button>
             <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={openingDisplay} onClick={openDisplay}>
               {m.openDisplay}
+            </Button>
+            <Button
+              variant={showOrder ? 'secondary' : 'outline'}
+              className="h-[34px] px-3 text-[13px]"
+              aria-pressed={showOrder}
+              title={m.showOrderHint}
+              onClick={() => {
+                setShowOrder(!showOrder)
+                storeShowOrder(!showOrder)
+              }}
+              data-testid="show-order"
+            >
+              {showOrder ? <Eye /> : <EyeOff />}
+              {m.showOrder}
             </Button>
             <Button variant="outline" className="h-[34px] px-3 text-[13px]" asChild>
               <a href="/settings.html">{m.settings}</a>

@@ -6,6 +6,8 @@ export default {
   orderMode: 'Mode de commande pour une nouvelle commande',
   catalogNamed: (name: string) => `Carte ${name}`,
   openDisplay: 'Ouvrir l’écran client',
+  showOrder: 'Afficher la commande',
+  showOrderHint: 'Affiche la commande sur l’écran client pendant que tu la saisis. Désactivé : l’écran client reste au repos, p. ex. pendant que tu consultes des additions. Au paiement, il l’affiche toujours.',
   settings: 'Paramètres',
   logout: 'Se déconnecter',
   leaveTitle: 'La caisse est encore ouverte',

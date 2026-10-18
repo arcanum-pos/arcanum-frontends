@@ -10,6 +10,9 @@ const nl = {
   orderMode: 'Bestelwijze voor een nieuwe bestelling',
   catalogNamed: (name: string) => `Menukaart ${name}`,
   openDisplay: 'Klantscherm openen',
+  // The customer display while the order is entered: on/off (payments always show).
+  showOrder: 'Bestelling tonen',
+  showOrderHint: 'Toont de bestelling op het klantscherm terwijl je ze ingeeft. Uit: het klantscherm rust, bv. terwijl je rekeningen nakijkt. Bij het afrekenen toont het ze altijd.',
   settings: 'Instellingen',
   logout: 'Uitloggen',
   leaveTitle: 'De kassa is nog open',

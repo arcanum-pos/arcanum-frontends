@@ -297,3 +297,37 @@ test('another device: the order being entered comes after the push — the newes
   sockets.forEach((ws) => ws.send(JSON.stringify({ event: 'order_shown' })))
   await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()
 })
+
+// "Bestelling tonen" on the kassa (per kassa, remembered): off, the display
+// rests while the cashier taps or checks tabs — the payment always shows it.
+test('"Bestelling tonen" off: the display rests while the order is entered — the payment still shows it all', async ({ kassa, backend }) => {
+  const display = await kassa.context().newPage()
+  await openDisplay(display, backend)
+  const toggle = kassa.getByTestId('show-order')
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true')
+  await kassa.getByRole('button', { name: '5 × Bon', exact: true }).click()
+  await expect(display.getByTestId('cfd-entering')).toBeVisible()
+
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false')
+  await expect(display.getByText('Klaar voor de volgende bestelling')).toBeVisible()
+  await kassa.getByRole('button', { name: /^Fietstocht \(niet-lid\)/ }).click()
+  await kassa.waitForTimeout(400)
+  await expect(display.getByTestId('cfd-entering')).toHaveCount(0)
+  // Nothing for a display on another device either.
+  await expect.poll(() => backend.customerViewPuts.at(-1)?.order).toBeNull()
+
+  // The payment: every detail, as always.
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', { name: /^Afrekenen/ }).click()
+  const waiting = display.getByTestId('cfd-waiting')
+  await expect(waiting.getByRole('listitem')).toHaveText([/^5\s*Bon\s*€ 5,00$/, /^1\s*Fietstocht \(niet-lid\)\s*€ 8,00$/])
+  await kassa.getByRole('button', { name: 'Bevestig ontvangst contant geld' }).click()
+  await expect(display.getByTestId('cfd-paid')).toBeVisible()
+
+  // Remembered on this kassa.
+  await kassa.reload()
+  await expect(kassa.getByTestId('show-order')).toHaveAttribute('aria-pressed', 'false')
+  await kassa.getByTestId('show-order').click()
+  await expect(kassa.getByTestId('show-order')).toHaveAttribute('aria-pressed', 'true')
+})
