@@ -13,6 +13,7 @@ const nl = {
   manageHint: 'De console: menukaarten, toestellen, gebruikers en rapporten.',
   manage: 'Naar de console',
   removed: 'Dit toestel is niet meer gekoppeld (het werd verwijderd in de console). Koppel het opnieuw met een nieuwe code.',
+  moved: 'Dit toestel werd elders opnieuw gekoppeld: een beheerder verhuisde het naar een ander toestel of een app. Was dat niet de bedoeling? Koppel het hier opnieuw met een nieuwe code.',
   pairedTitle: (name: string) => `Dit toestel is ${name}`,
   org: (name: string) => `Organisatie: ${name}`,
   open: 'Openen',

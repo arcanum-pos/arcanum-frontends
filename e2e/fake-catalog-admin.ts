@@ -154,6 +154,13 @@ export class FakeCatalogAdmin {
       return ok({ ok: true })
     }
     if (/^\/api\/organizations\/[^/]+\/device-pairings(\/.*)?$/.test(path)) return this.pairingRoute(method, path, body)
+    // "Opnieuw koppelen": a code for an existing device.
+    const repair = path.match(/^\/api\/organizations\/[^/]+\/devices\/([^/]+)\/repair$/)
+    if (repair && method === 'POST') {
+      const existing = this.orgDevices.find((d) => d.terminal_id === decodeURIComponent(repair[1]))
+      if (!existing) return { status: 404, body: { error: 'x', code: 'device_not_found' } }
+      return this.pairingRoute('POST', '/device-pairings', { role: existing.role, name: existing.name, repairs: existing.terminal_id })
+    }
     // Kassalades and shifts (arcanum-backend shifts.ts).
     if (/^\/api\/organizations\/[^/]+\/registers$/.test(path) && method === 'GET') return ok({ blindCount: this.blindCount, registers: this.registers })
     if (/^\/api\/organizations\/[^/]+\/registers$/.test(path) && method === 'POST') {
@@ -271,7 +278,7 @@ export class FakeCatalogAdmin {
 
   // Toestellen → Toestel toevoegen: codes as the backend makes them. A test
   // "claims" one on a device with claimPairing (the start page's side).
-  pairings: { id: string; role: 'pos' | 'cfd' | 'station' | 'tap'; stationId?: string | null; view?: 'pickup' | null; name: string; status: string; code: string; createdAt: string; expiresAt: string; claimedAt: string | null; claimedBy: string | null; terminalId: string | null; createdBy: string; linkTo: string | null }[] = []
+  pairings: { id: string; role: 'pos' | 'cfd' | 'station' | 'tap'; stationId?: string | null; view?: 'pickup' | null; name: string; status: string; code: string; createdAt: string; expiresAt: string; claimedAt: string | null; claimedBy: string | null; terminalId: string | null; createdBy: string; linkTo: string | null; repairs?: string | null }[] = []
 
   private pairingRoute(method: string, path: string, body: any): FakeResponse {
     const id = path.split('/device-pairings/')[1]
@@ -292,6 +299,7 @@ export class FakeCatalogAdmin {
         linkTo: body.linkTo ?? null,
         stationId: body.stationId ?? null,
         view: body.view ?? null,
+        repairs: body.repairs ?? null,
       }
       this.pairings.push(pairing)
       return { status: 201, body: pairing }
@@ -311,6 +319,11 @@ export class FakeCatalogAdmin {
     pairing.status = 'claimed'
     pairing.claimedAt = new Date().toISOString()
     pairing.claimedBy = 'Ann'
+    // A re-pair code: the same device, nothing new in the list.
+    if (pairing.repairs) {
+      pairing.terminalId = pairing.repairs
+      return
+    }
     pairing.terminalId = `pos-${pairing.id}`
     const station = this.stations.find((s) => s.id === pairing.stationId)
     this.orgDevices.push({

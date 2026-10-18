@@ -30,6 +30,9 @@ export interface Terminal {
   // The code it was paired with (normalized): an app installed from the
   // pairing link opens that link every time — then it just opens its screen.
   pairedWith?: string
+  // Which pairing this is (the backend's claimId): re-paired elsewhere since
+  // (a re-pair code moved the device), this browser isn't it any more.
+  claimId?: string
 }
 
 // A code as the backend reads it: case and dashes (spaces) ignored.
@@ -57,6 +60,20 @@ export function forgetTerminal(): void {
   localStorage.removeItem(TERMINAL_KEY)
 }
 
+// Set when this browser stopped being a device because it was re-paired
+// elsewhere: the start page says so (once).
+const MOVED_KEY = 'arcanum-terminal-moved'
+
+export function takeMovedNotice(): boolean {
+  try {
+    const moved = localStorage.getItem(MOVED_KEY) === '1'
+    localStorage.removeItem(MOVED_KEY)
+    return moved
+  } catch {
+    return false
+  }
+}
+
 const devicesPath = (orgId: string, suffix = '') => `/api/organizations/${encodeURIComponent(orgId)}/devices${suffix}`
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -73,13 +90,14 @@ export interface ClaimedDevice {
   orgName: string
   orgLocale: string | null
   name: string
+  claimId?: string
 }
 
 // "Dit toestel koppelen": claims the code an admin made in the console;
 // this browser becomes that device (its role, organisation and name).
 export async function claimPairingCode(code: string): Promise<ClaimedDevice> {
   const device = await call<ClaimedDevice>('/api/organizations/device-pairings/claim', { method: 'POST', body: JSON.stringify({ code }) })
-  const terminal: Terminal = { terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name, pairedWith: normalizeCode(code) }
+  const terminal: Terminal = { terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name, pairedWith: normalizeCode(code), claimId: device.claimId }
   localStorage.setItem(TERMINAL_KEY, JSON.stringify(terminal))
   setDeviceName(device.name)
   return device
@@ -97,7 +115,7 @@ export async function pairDevice(code: string): Promise<ClaimedDevice> {
   const data = await res.json().catch(() => null)
   if (res.ok) {
     const device = data as ClaimedDevice
-    localStorage.setItem(TERMINAL_KEY, JSON.stringify({ terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name, pairedWith: normalizeCode(code) } satisfies Terminal))
+    localStorage.setItem(TERMINAL_KEY, JSON.stringify({ terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name, pairedWith: normalizeCode(code), claimId: device.claimId } satisfies Terminal))
     setDeviceName(device.name)
     return device
   }
@@ -114,16 +132,19 @@ export async function pairDevice(code: string): Promise<ClaimedDevice> {
 // the stored identity, if it has this role and the organisation still
 // knows it. Removed in the console (or never paired) → null, and the
 // stored identity is forgotten, so the caller sends the browser to the
-// start page. Offline → the stored identity as is (keep selling).
+// start page. Re-paired elsewhere since (its pairing, `claim`, isn't the
+// device's current one) → the same, and the start page says why.
+// Offline → the stored identity as is (keep selling).
 export async function getRegisteredTerminal(expectedRole: Role): Promise<Terminal | null> {
   const stored = getStoredTerminalInfo()
   if (!stored || stored.role !== expectedRole || !stored.orgId) return null
   try {
-    await call(devicesPath(stored.orgId, `/${encodeURIComponent(stored.terminalId)}`))
+    await call(devicesPath(stored.orgId, `/${encodeURIComponent(stored.terminalId)}?claim=${encodeURIComponent(stored.claimId ?? '')}`))
   } catch (err) {
-    const status = (err as { status?: number }).status
-    if (status === 404 || status === 403) {
+    const { status, code } = err as { status?: number; code?: string }
+    if (status === 404 || status === 403 || code === 'device_paired_elsewhere') {
       forgetTerminal()
+      if (code === 'device_paired_elsewhere') localStorage.setItem(MOVED_KEY, '1')
       return null
     }
   }

@@ -278,6 +278,8 @@ export interface DevicePairing {
   terminalId: string | null
   linkTo: string | null
   view?: 'pickup' | 'tables' | null
+  // A re-pair code: the existing device it's for.
+  repairs?: string | null
   // Only in the answer to createDevicePairing — never stored readable.
   code?: string
 }
@@ -290,6 +292,12 @@ export function createDevicePairing(orgId: string, role: 'pos' | 'cfd' | 'statio
     method: 'POST',
     body: JSON.stringify({ role, name, linkTo: role === 'cfd' || role === 'tap' ? linkTo || null : null, stationId: role === 'station' ? stationId || null : null, ...(role === 'station' && view ? { view } : {}) }),
   })
+}
+
+// "Opnieuw koppelen": a code that makes a browser this existing device again
+// (its identity, name, links, history); whichever browser was it stops being it.
+export function createDeviceRepair(orgId: string, terminalId: string): Promise<DevicePairing & { code: string }> {
+  return request(`/${encodeURIComponent(orgId)}/devices/${encodeURIComponent(terminalId)}/repair`, { method: 'POST' })
 }
 
 export function listDevicePairings(orgId: string): Promise<DevicePairing[]> {

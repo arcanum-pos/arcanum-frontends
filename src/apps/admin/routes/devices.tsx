@@ -23,6 +23,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { listDevicePairings, listOrgDevices, listSumupReaders, pairSumupReader, removeDevice, removeSumupReader, revokeDevicePairing, type OrgDevice, type SumupReader } from '../lib/api'
 import { AddDeviceDialog } from '../components/add-device-dialog'
+import { RepairDeviceDialog } from '../components/repair-device-dialog'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
@@ -77,6 +78,8 @@ export default function DevicesPage() {
   const nameOf = (terminalId: string) => devices?.find((d) => d.terminal_id === terminalId)?.name ?? null
 
   const [removingId, setRemovingId] = useState<string | null>(null)
+  // "Opnieuw koppelen": the device a re-pair code is shown for.
+  const [repairing, setRepairing] = useState<OrgDevice | null>(null)
   const [pairOpen, setPairOpen] = useState(false)
   const [pairingCode, setPairingCode] = useState('')
   const [readerName, setReaderName] = useState('')
@@ -308,11 +311,13 @@ export default function DevicesPage() {
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8" disabled={removingId === device.terminal_id}>
+                      <Button variant="ghost" size="icon" className="size-8" disabled={removingId === device.terminal_id} aria-label={m.devices.deviceActions(device.name || device.terminal_id)}>
                         <MoreHorizontal />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {/* A kassa's own second window has no pairing of its own. */}
+                      {!device.terminal_id.startsWith('display-of-') && <DropdownMenuItem onClick={() => setRepairing(device)}>{m.devices.repair}</DropdownMenuItem>}
                       <DropdownMenuItem variant="destructive" onClick={() => handleRemove(device)}>
                         {m.remove}
                       </DropdownMenuItem>
@@ -323,6 +328,18 @@ export default function DevicesPage() {
             ))}
         </TableBody>
       </Table>
+
+      {orgId && (
+        <RepairDeviceDialog
+          orgId={orgId}
+          device={repairing}
+          onClose={() => setRepairing(null)}
+          onRepaired={() => {
+            reload()
+            reloadPairings()
+          }}
+        />
+      )}
 
       <p className="text-sm text-muted-foreground">{m.devices.footnote}</p>
     </div>

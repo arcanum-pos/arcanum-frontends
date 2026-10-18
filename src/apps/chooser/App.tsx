@@ -6,7 +6,7 @@ import { KioskShell } from '@/shared/kiosk-shell'
 import { isLocale, storedLocale, storeLocale, useLocale, useMessages } from '@/shared/i18n'
 import { appStorage, ICON_FOR_ROLE, isRole, OFFER_INSTALL_KEY, showAsDevice } from '@/shared/install'
 import { isStandalone } from '@/shared/push'
-import { getRegisteredTerminal, getStoredTerminalInfo, NeedsSignIn, normalizeCode, pairDevice, PAGE_FOR_ROLE, type Terminal } from '@/shared/terminal'
+import { getRegisteredTerminal, getStoredTerminalInfo, NeedsSignIn, normalizeCode, pairDevice, PAGE_FOR_ROLE, takeMovedNotice, type Terminal } from '@/shared/terminal'
 import { CHOOSER_MESSAGES } from './messages'
 
 // The start page (root `/`) and the pairing page (`/pair`, the same app —
@@ -48,6 +48,8 @@ export default function App() {
   const [code, setCode] = useState(() => params.get('code') ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // This browser stopped being a device: re-paired elsewhere (a kassa sends it here).
+  const [moved, setMoved] = useState(false)
   // A code is single use: claim it once, also when React runs the effect twice.
   const claiming = useRef(false)
   // The device the console's link is for (`role`, `name`).
@@ -109,6 +111,7 @@ export default function App() {
     const urlOrg = params.get('org')
     const stored = getStoredTerminalInfo()
     if (!stored) {
+      setMoved(takeMovedNotice())
       if (urlCode) pairOrAsk(urlCode)
       else setView({ step: 'start', removed: false })
       return
@@ -117,6 +120,7 @@ export default function App() {
     const same = !!urlCode && stored.pairedWith === normalizeCode(urlCode)
     getRegisteredTerminal(stored.role).then((terminal) => {
       if (!terminal) {
+        setMoved(takeMovedNotice())
         if (urlCode && !same) pairOrAsk(urlCode, true)
         else setView({ step: 'start', removed: true })
       } else if (urlCode) {
@@ -235,7 +239,11 @@ export default function App() {
     <KioskShell devicePickers>
       <div className="flex flex-col gap-4">
         <h1 className="text-center font-heading text-xl font-bold">{m.title}</h1>
-        {view.removed && <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">{m.removed}</p>}
+        {(moved || view.removed) && (
+          <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground" data-testid="unpaired-notice">
+            {moved ? m.moved : m.removed}
+          </p>
+        )}
 
         <section className="flex flex-col gap-3 rounded-xl bg-card p-5 ring-1 ring-foreground/10" data-testid="pair">
           <div>

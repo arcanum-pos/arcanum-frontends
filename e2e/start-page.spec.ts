@@ -72,7 +72,7 @@ test('a wrong code: the reason, and nothing stored', async ({ page }) => {
 
 test('a paired device opens its screen right away', async ({ page }) => {
   await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Scouts', name: 'Kassa 1' })
-  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1$/, (route) => route.fulfill({ json: { terminal_id: 'pos-1', org_id: 'org-1', role: 'pos' } }))
+  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1(\?|$)/, (route) => route.fulfill({ json: { terminal_id: 'pos-1', org_id: 'org-1', role: 'pos' } }))
   await stopAtKassa(page)
   await page.goto('/chooser.html')
   await page.waitForURL(KASSA)
@@ -80,7 +80,7 @@ test('a paired device opens its screen right away', async ({ page }) => {
 
 test('?start: a paired device shows itself instead, with "Openen"', async ({ page }) => {
   await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Scouts', name: 'Kassa 1' })
-  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1$/, (route) => route.fulfill({ json: { terminal_id: 'pos-1', org_id: 'org-1', role: 'pos' } }))
+  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1(\?|$)/, (route) => route.fulfill({ json: { terminal_id: 'pos-1', org_id: 'org-1', role: 'pos' } }))
   await stopAtKassa(page)
   await page.goto('/chooser.html?start')
   await expect(page.getByRole('heading', { name: 'Dit toestel is Kassa 1' })).toBeVisible()
@@ -91,7 +91,7 @@ test('?start: a paired device shows itself instead, with "Openen"', async ({ pag
 
 test('removed in the console: says so, forgets it, and offers pairing again', async ({ page }) => {
   await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Scouts' })
-  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1$/, (route) => route.fulfill({ status: 404, json: { error: 'x', code: 'device_not_found' } }))
+  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1(\?|$)/, (route) => route.fulfill({ status: 404, json: { error: 'x', code: 'device_not_found' } }))
   await page.goto('/chooser.html')
   await expect(page.getByText('Dit toestel is niet meer gekoppeld (het werd verwijderd in de console).')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dit toestel koppelen' })).toBeVisible()
@@ -108,7 +108,7 @@ const claimRoute = async (page: Page, claimed: unknown[]) => {
   })
 }
 const exists = (page: Page) =>
-  page.route(/\/api\/organizations\/org-1\/devices\/pos-1$/, (route) => route.fulfill({ json: { terminal_id: 'pos-1', org_id: 'org-1', role: 'pos' } }))
+  page.route(/\/api\/organizations\/org-1\/devices\/pos-1(\?|$)/, (route) => route.fulfill({ json: { terminal_id: 'pos-1', org_id: 'org-1', role: 'pos' } }))
 
 test("a link's code on a browser that already is another org's kassa: asks first — keep it, or pair with the new code", async ({ page }) => {
   const claimed: unknown[] = []
@@ -152,7 +152,7 @@ test("a demo's second click: already that demo's kassa — just opens it", async
 test("an expired demo's kassa left in the browser: pairs with the new code right away", async ({ page }) => {
   const claimed: unknown[] = []
   await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Demo', name: 'Kassa 1' })
-  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1$/, (route) => route.fulfill({ status: 404, json: { error: 'x', code: 'device_not_found' } }))
+  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1(\?|$)/, (route) => route.fulfill({ status: 404, json: { error: 'x', code: 'device_not_found' } }))
   await claimRoute(page, claimed)
   await stopAtKassa(page)
   await page.goto('/chooser.html?code=ABCD-EFGH&org=demo-1')
@@ -307,10 +307,35 @@ test('the app opens its pairing link again, days later: the code it was paired w
 
 test('…removed in the console since: says so — the used code is not tried again', async ({ page }) => {
   await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Scouts', name: 'Kassa 1', pairedWith: 'K7PM4XQ2' })
-  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1$/, (route) => route.fulfill({ status: 404, json: { error: 'x', code: 'device_not_found' } }))
+  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1(\?|$)/, (route) => route.fulfill({ status: 404, json: { error: 'x', code: 'device_not_found' } }))
   const claimed: unknown[] = []
   await claimRoute(page, claimed)
   await page.goto('/pair.html?code=K7PM4XQ2&role=pos')
   await expect(page.getByText('Dit toestel is niet meer gekoppeld')).toBeVisible()
   expect(claimed).toEqual([])
+})
+
+// Re-paired elsewhere (a re-pair code moved this device to another browser or
+// an app): this browser checks itself with its pairing, hears so, says why.
+test('re-paired elsewhere: this browser stops being the device, and the start page says why', async ({ page }) => {
+  await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Scouts', name: 'Kassa 1', claimId: 'pair-1' })
+  const asked: string[] = []
+  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1/, (route) => {
+    asked.push(new URL(route.request().url()).search)
+    return route.fulfill({ status: 409, json: { error: 'x', code: 'device_paired_elsewhere' } })
+  })
+  await page.goto('/chooser.html')
+  await expect(page.getByTestId('unpaired-notice')).toContainText('Dit toestel werd elders opnieuw gekoppeld')
+  expect(asked).toEqual(['?claim=pair-1'])
+  expect(await page.evaluate(() => localStorage.getItem('arcanum-terminal'))).toBeNull()
+})
+
+test('a pairing claimed now is remembered, to check itself with later', async ({ page }) => {
+  await page.route(/\/api\/public\/pair$/, (route) =>
+    route.fulfill({ status: 201, json: { terminalId: 'st-9', role: 'station', orgId: 'org-1', orgName: 'Scouts', orgLocale: 'nl', name: 'Scherm', claimId: 'pair-7' } })
+  )
+  await page.route(/\/station(\.html)?$/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>station</p>' }))
+  await page.goto('/pair.html?code=K7PM4XQ2')
+  await page.waitForURL(/\/station/)
+  expect(JSON.parse((await page.evaluate(() => localStorage.getItem('arcanum-terminal')))!)).toMatchObject({ terminalId: 'st-9', claimId: 'pair-7' })
 })

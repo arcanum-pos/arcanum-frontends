@@ -46,7 +46,7 @@ describe('getRegisteredTerminal', () => {
     const fetchMock = vi.fn(async () => Response.json({ terminal_id: 't1' }))
     vi.stubGlobal('fetch', fetchMock)
     expect(await getRegisteredTerminal('pos')).toEqual(pos)
-    expect(fetchMock).toHaveBeenCalledWith('/api/organizations/o1/devices/t1', expect.anything())
+    expect(fetchMock).toHaveBeenCalledWith('/api/organizations/o1/devices/t1?claim=', expect.anything())
   })
 
   it('removed in the console (404) or no longer a member (403): forgotten', async () => {

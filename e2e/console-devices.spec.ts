@@ -246,3 +246,32 @@ test.describe('the pairing link on this computer', () => {
     })
   })
 })
+
+// "Opnieuw koppelen" (DOMAIN_MODEL.md "Devices", re-pairing): a code that
+// makes a browser this existing device again — the same device in the list.
+test('a device that lost its pairing: "Opnieuw koppelen" gives a code for that device; claimed, it is the same device', async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.orgDevices = [
+    { terminal_id: 'pos-1', role: 'pos', linked_to: null, created_at: '2026-10-01T10:00:00Z', online: false, name: 'Kassa toog' },
+    { terminal_id: 'display-of-pos-1', role: 'cfd', linked_to: 'pos-1', created_at: '2026-10-01T10:00:00Z', online: false, name: 'Kassa toog · klantscherm' },
+  ]
+  await open('/devices')
+  // A kassa's own second window has no pairing of its own.
+  await page.getByRole('button', { name: 'Acties voor Kassa toog · klantscherm' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Opnieuw koppelen' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  await page.getByRole('button', { name: 'Acties voor Kassa toog', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Opnieuw koppelen' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { name: 'Kassa toog opnieuw koppelen' })).toBeVisible()
+  await expect(dialog).toContainText('Het blijft hetzelfde toestel')
+  const code = dialog.getByTestId('pairing-code')
+  await expect(code).toContainText('K7PM-4XQ1')
+  await expect(code.getByTestId('pairing-qr').locator('svg')).toBeVisible()
+  expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'pos', name: 'Kassa toog', repairs: 'pos-1' })
+
+  catalogAdmin.claimPairing('K7PM-4XQ1')
+  await expect(dialog.getByTestId('pairing-claimed')).toHaveText('Kassa toog is opnieuw gekoppeld.', { timeout: 10_000 })
+  await dialog.getByRole('button', { name: 'Klaar' }).click()
+  await expect(page.getByRole('row').filter({ hasText: 'Kassa toog' })).toHaveCount(2)
+})

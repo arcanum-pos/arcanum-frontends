@@ -11,6 +11,7 @@ const en: ChooserMessages = {
   manageHint: 'The console: menus, devices, users and reports.',
   manage: 'Go to the console',
   removed: 'This device is no longer paired (it was removed in the console). Pair it again with a new code.',
+  moved: 'This device was paired again elsewhere: an admin moved it to another device or an app. Not what you meant? Pair it here again with a new code.',
   pairedTitle: (name: string) => `This device is ${name}`,
   org: (name: string) => `Organisation: ${name}`,
   open: 'Open',

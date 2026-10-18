@@ -11,6 +11,7 @@ const fr: ChooserMessages = {
   manageHint: 'La console : cartes, appareils, utilisateurs et rapports.',
   manage: 'Vers la console',
   removed: 'Cet appareil n’est plus couplé (il a été supprimé dans la console). Couplez-le à nouveau avec un nouveau code.',
+  moved: 'Cet appareil a été recouplé ailleurs : un administrateur l’a déplacé vers un autre appareil ou une app. Ce n’était pas voulu ? Recouple-le ici avec un nouveau code.',
   pairedTitle: (name: string) => `Cet appareil est ${name}`,
   org: (name: string) => `Organisation : ${name}`,
   open: 'Ouvrir',
