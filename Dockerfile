@@ -10,7 +10,11 @@ RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build && npm run build:node
 
-FROM node:24-alpine
+# The image that runs: distroless — Node 24 on Debian, nothing else (no
+# shell, no package manager: less to patch). Node is its entrypoint. As uid
+# 1000, like the Alpine image before (the installer runs it so; existing data
+# volumes belong to it).
+FROM gcr.io/distroless/nodejs24-debian13
 LABEL org.opencontainers.image.source="https://github.com/arcanum-pos/arcanum-frontends" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later" \
       org.opencontainers.image.description="tresjr frontends — every screen"
@@ -18,6 +22,6 @@ WORKDIR /app
 ENV NODE_ENV=production PORT=8080 DIST=/app/dist
 COPY --from=build /src/dist ./dist
 COPY --from=build /src/dist-node/server.mjs ./dist-node/server.mjs
-USER node
+USER 1000:1000
 EXPOSE 8080
-CMD ["node", "dist-node/server.mjs"]
+CMD ["dist-node/server.mjs"]
