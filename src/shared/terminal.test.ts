@@ -78,7 +78,7 @@ describe('claimPairingCode', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ terminalId: 't9', role: 'cfd', orgId: 'o1', orgName: 'Scouts', orgLocale: 'fr', name: 'Scherm' }, { status: 201 })))
     const device = await claimPairingCode('k7pm-4xq2')
     expect(device.orgLocale).toBe('fr')
-    expect(JSON.parse(items['arcanum-terminal'])).toEqual({ terminalId: 't9', role: 'cfd', orgId: 'o1', orgName: 'Scouts', name: 'Scherm' })
+    expect(JSON.parse(items['arcanum-terminal'])).toEqual({ terminalId: 't9', role: 'cfd', orgId: 'o1', orgName: 'Scouts', name: 'Scherm', pairedWith: 'K7PM4XQ2' })
     expect(JSON.parse(items['arcanum-device']).name).toBe('Scherm')
   })
 

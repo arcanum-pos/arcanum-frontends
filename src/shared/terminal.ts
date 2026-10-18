@@ -27,7 +27,13 @@ export interface Terminal {
   orgName?: string
   // From the pairing code (older devices have none).
   name?: string
+  // The code it was paired with (normalized): an app installed from the
+  // pairing link opens that link every time — then it just opens its screen.
+  pairedWith?: string
 }
+
+// A code as the backend reads it: case and dashes (spaces) ignored.
+export const normalizeCode = (code: string) => code.replace(/[\s-]/g, '').toUpperCase()
 
 const TERMINAL_KEY = 'arcanum-terminal'
 
@@ -73,7 +79,7 @@ export interface ClaimedDevice {
 // this browser becomes that device (its role, organisation and name).
 export async function claimPairingCode(code: string): Promise<ClaimedDevice> {
   const device = await call<ClaimedDevice>('/api/organizations/device-pairings/claim', { method: 'POST', body: JSON.stringify({ code }) })
-  const terminal: Terminal = { terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name }
+  const terminal: Terminal = { terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name, pairedWith: normalizeCode(code) }
   localStorage.setItem(TERMINAL_KEY, JSON.stringify(terminal))
   setDeviceName(device.name)
   return device
@@ -91,7 +97,7 @@ export async function pairDevice(code: string): Promise<ClaimedDevice> {
   const data = await res.json().catch(() => null)
   if (res.ok) {
     const device = data as ClaimedDevice
-    localStorage.setItem(TERMINAL_KEY, JSON.stringify({ terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name } satisfies Terminal))
+    localStorage.setItem(TERMINAL_KEY, JSON.stringify({ terminalId: device.terminalId, role: device.role, orgId: device.orgId, orgName: device.orgName, name: device.name, pairedWith: normalizeCode(code) } satisfies Terminal))
     setDeviceName(device.name)
     return device
   }

@@ -71,11 +71,17 @@ test('Toestel toevoegen: a pairing code with its QR, until a device claims it', 
   const code = dialog.getByTestId('pairing-code')
   await expect(code).toContainText('K7PM-4XQ1')
   await expect(code).toContainText(/Nog (9:5\d|10:00) geldig/)
-  await expect(code.locator('svg')).toBeVisible() // the QR
+  await expect(code.getByTestId('pairing-qr').locator('svg')).toBeVisible() // the QR
   // The device opens <installation>/pair (or scans the QR, which points there with the code).
   await expect(dialog).toContainText('/pair en geef deze code in')
   await expect(dialog).toContainText('een kassa vraagt je eerst aan te melden')
   expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'pos', name: 'Kassa toog' })
+  // The link carries the device (its icon and name for an app installed from
+  // it); "Open op deze computer" says it's the admin's own browser.
+  const origin = new URL(page.url()).origin
+  await expect(code.getByRole('link', { name: 'Open op deze computer' })).toHaveAttribute('href', `${origin}/pair?code=K7PM4XQ1&role=pos&name=Kassa+toog&here`)
+  await expect(code.getByRole('link', { name: 'Open op deze computer' })).toHaveAttribute('target', '_blank')
+  await expect(code).toContainText('installeer je het eerst als app')
 
   // A device claims it: the dialog notices, and the list shows the new kassa by name.
   catalogAdmin.claimPairing('K7PM-4XQ1')

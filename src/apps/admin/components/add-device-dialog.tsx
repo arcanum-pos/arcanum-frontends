@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { CheckCircle2, Plus } from 'lucide-react'
+import { CheckCircle2, Copy, ExternalLink, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -18,6 +18,10 @@ import { ADMIN_ORG_MESSAGES } from '../messages/org'
 // A customer display can be meant for one kassa (`kassas`, by name): it's
 // linked to it as soon as it's paired. A Tap to Pay phone always is, and
 // its QR opens the phone's own page (/tap), where it's paired.
+// The link carries the device's role and name: the pairing page shows that
+// device's icon and name, so an app added from it (Safari: install first,
+// then pair — shared/install) is that device. "Open op deze computer" adds
+// `here`: the page doesn't pair the admin's own browser unasked.
 const LATER = 'later'
 
 export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; kassas: OrgDevice[]; onPaired: () => void }) {
@@ -38,6 +42,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
   const [pairing, setPairing] = useState<(DevicePairing & { code: string }) | null>(null)
   const [status, setStatus] = useState<DevicePairing['status']>('open')
   const [now, setNow] = useState(() => Date.now())
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!forStation || stations) return
@@ -57,6 +62,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
     setError(null)
     setPairing(null)
     setStatus('open')
+    setCopied(false)
   }
 
   async function create() {
@@ -97,7 +103,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
 
   const secondsLeft = pairing ? Math.max(0, Math.round((Date.parse(pairing.expiresAt) - now) / 1000)) : 0
   const shownStatus = status === 'open' && pairing && secondsLeft === 0 ? 'expired' : status
-  const url = pairing ? `${window.location.origin}/${pairing.role === 'tap' ? 'tap' : 'pair'}?code=${encodeURIComponent(pairing.code.replace('-', ''))}` : ''
+  const url = pairing ? pairingUrl(pairing) : ''
 
   return (
     <Dialog
@@ -197,10 +203,34 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
         {pairing && shownStatus === 'open' && (
           <div className="flex flex-col items-center gap-3" data-testid="pairing-code">
             <p className="font-mono text-4xl font-bold tracking-widest">{pairing.code}</p>
-            <div className="rounded-lg bg-white p-3">
+            <div className="rounded-lg bg-white p-3" data-testid="pairing-qr">
               <QRCodeSVG value={url} size={176} marginSize={0} />
             </div>
             <p className="text-sm text-muted-foreground">{m.expiresIn(`${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`)}</p>
+            {pairing.role !== 'tap' && (
+              <>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      await navigator.clipboard?.writeText(url).catch(() => {})
+                      setCopied(true)
+                    }}
+                  >
+                    <Copy />
+                    {copied ? m.linkCopied : m.copyLink}
+                  </Button>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`${url}&here`} target="_blank" rel="noopener">
+                      <ExternalLink />
+                      {m.openHere}
+                    </a>
+                  </Button>
+                </div>
+                <p className="text-center text-xs text-muted-foreground">{m.asAppHint}</p>
+              </>
+            )}
           </div>
         )}
         {pairing && shownStatus === 'claimed' && (
@@ -232,4 +262,12 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
       </DialogContent>
     </Dialog>
   )
+}
+
+// What the QR and the link open: /pair with the code, and the device's role
+// and name; a Tap to Pay phone its own page (/tap).
+function pairingUrl(pairing: DevicePairing & { code: string }): string {
+  const code = pairing.code.replace('-', '')
+  if (pairing.role === 'tap') return `${window.location.origin}/tap?code=${encodeURIComponent(code)}`
+  return `${window.location.origin}/pair?${new URLSearchParams({ code, role: pairing.role, name: pairing.name })}`
 }

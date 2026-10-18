@@ -219,3 +219,30 @@ test("who's working: chosen in the header (with a PIN), recorded on Start, passe
   await page.reload()
   await expect(page.getByTestId('staff-button')).toHaveText('Jan')
 })
+
+// Just paired in Chrome, Edge or Android (their apps share the browser's
+// storage, shared/install): the screen offers to install itself, once.
+test('just paired: "Installeer als app" when the browser can install it — once', async ({ station: page }) => {
+  const offer = () =>
+    page.evaluate(() => {
+      const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt: async () => void ((window as any).__prompted = true) })
+      window.dispatchEvent(event)
+    })
+  // Not just paired: nothing.
+  await offer()
+  await expect(page.getByTestId('install-prompt')).toHaveCount(0)
+  await page.evaluate(() => sessionStorage.setItem('arcanum-offer-install', '1'))
+  await page.reload()
+  await expect(page.getByTestId('column-ordered')).toBeVisible()
+  await offer()
+  const prompt = page.getByTestId('install-prompt')
+  await expect(prompt).toContainText('Installeer als app')
+  await prompt.getByRole('button', { name: 'Installeren' }).click()
+  await expect(prompt).toHaveCount(0)
+  expect(await page.evaluate(() => (window as any).__prompted)).toBe(true)
+  // Asked once: not again.
+  await page.reload()
+  await expect(page.getByTestId('column-ordered')).toBeVisible()
+  await offer()
+  await expect(page.getByTestId('install-prompt')).toHaveCount(0)
+})

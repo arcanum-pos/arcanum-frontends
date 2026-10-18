@@ -53,6 +53,8 @@ test("the console's QR (or a demo) brings the code: pairs right away, no click, 
     orgId: 'org-1',
     orgName: 'Scouts Kabouterland',
     name: 'Kassa toog',
+    // The code it was paired with: an app installed from this link opens it every time.
+    pairedWith: 'K7PM4XQ2',
   })
   expect(JSON.parse((await page.evaluate(() => localStorage.getItem('arcanum-device')))!).name).toBe('Kassa toog')
 })
@@ -191,4 +193,143 @@ test("/pair: a kassa's code with nobody signed in — sign in first, back to /pa
   const view = page.getByTestId('pair-sign-in')
   await expect(view).toContainText('Meld je aan om deze kassa te koppelen')
   await expect(view.getByRole('link', { name: 'Aanmelden' })).toHaveAttribute('href', `/login?returnTo=${encodeURIComponent('/pair?code=k7pm4xq2')}`)
+})
+
+// Install first, then pair (DOMAIN_MODEL.md "Devices", 2026-10-18): the
+// console's link carries the device (role, name). Safari gives an app on the
+// home screen or in the Dock its own storage — a device paired in the
+// browser isn't paired in the app — so there the page asks first.
+const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Mobile/15E148 Safari/604.1'
+const MAC_SAFARI = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15'
+const CHROME = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+const STATION_LINK = '/pair.html?code=K7PM4XQ2&role=station&name=Scherm%20keuken'
+
+async function stationClaim(page: Page, asked: unknown[]) {
+  await page.route(/\/api\/public\/pair$/, async (route) => {
+    asked.push(route.request().postDataJSON())
+    await route.fulfill({ status: 201, json: { terminalId: 'st-9', role: 'station', orgId: 'org-1', orgName: 'Scouts', orgLocale: 'nl', name: 'Scherm keuken' } })
+  })
+  await page.route(/\/station(\.html)?$/, (route) => route.fulfill({ contentType: 'text/html', body: '<p>station</p>' }))
+}
+
+test.describe('the pairing link, in Safari on an iPhone', () => {
+  test.use({ userAgent: IPHONE })
+
+  test("is that device (icon, name, manifest); asks first — as an app shows the steps, nothing paired", async ({ page }) => {
+    const asked: unknown[] = []
+    await stationClaim(page, asked)
+    await page.goto(STATION_LINK)
+    const install = page.getByTestId('install')
+    await expect(install.getByRole('heading', { name: 'Scherm keuken' })).toBeVisible()
+    await expect(page).toHaveTitle('Scherm keuken')
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/station-180.png')
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/pair/manifest.webmanifest?role=station&name=Scherm+keuken')
+    await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute('content', 'Scherm keuken')
+    await install.getByRole('button', { name: 'Als app (aanbevolen)' }).click()
+    const steps = page.getByTestId('install-steps')
+    await expect(steps).toHaveAttribute('data-kind', 'ios')
+    await expect(steps.locator('li').nth(1)).toHaveText('Kies Zet op beginscherm: de naam Scherm keuken staat al ingevuld.')
+    expect(asked).toEqual([])
+    // Changed my mind: in this browser after all.
+    await install.getByRole('button', { name: 'Toch in deze browser koppelen' }).click()
+    await page.waitForURL(/\/station/)
+    expect(asked).toEqual([{ code: 'K7PM4XQ2' }])
+  })
+
+  test('"In deze browser": pairs right here', async ({ page }) => {
+    const asked: unknown[] = []
+    await stationClaim(page, asked)
+    await page.goto(STATION_LINK)
+    await page.getByRole('button', { name: 'In deze browser' }).click()
+    await page.waitForURL(/\/station/)
+    expect(asked).toEqual([{ code: 'K7PM4XQ2' }])
+  })
+
+  test('opened as the app (from the home screen): pairs right away', async ({ page }) => {
+    await page.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: true, configurable: true }))
+    const asked: unknown[] = []
+    await stationClaim(page, asked)
+    await page.goto(STATION_LINK)
+    await page.waitForURL(/\/station/)
+    expect(asked).toEqual([{ code: 'K7PM4XQ2' }])
+  })
+
+  test('an older link without the device: pairs right away, as before', async ({ page }) => {
+    const asked: unknown[] = []
+    await stationClaim(page, asked)
+    await page.goto('/pair.html?code=K7PM4XQ2')
+    await page.waitForURL(/\/station/)
+  })
+})
+
+test.describe('the pairing link, in Safari on a Mac', () => {
+  test.use({ userAgent: MAC_SAFARI })
+  test('as an app: Add to Dock', async ({ page }) => {
+    await stationClaim(page, [])
+    await page.goto(STATION_LINK)
+    await page.getByRole('button', { name: 'Als app (aanbevolen)' }).click()
+    await expect(page.getByTestId('install-steps')).toHaveAttribute('data-kind', 'mac')
+    await expect(page.getByTestId('install-steps').locator('li').first()).toHaveText('Kies in de menubalk Archief → Voeg toe aan Dock.')
+  })
+})
+
+test.describe('the pairing link, in Chrome', () => {
+  test.use({ userAgent: CHROME })
+
+  test('pairs right away (its apps share the storage), then the screen offers to install', async ({ page }) => {
+    const asked: unknown[] = []
+    await stationClaim(page, asked)
+    await page.goto(STATION_LINK)
+    await page.waitForURL(/\/station/)
+    expect(asked).toEqual([{ code: 'K7PM4XQ2' }])
+    expect(await page.evaluate(() => sessionStorage.getItem('arcanum-offer-install'))).toBe('1')
+  })
+
+  test("a kassa's: sign in first, and back to the same link — the device included", async ({ page }) => {
+    await kassaNeedsSession(page)
+    await page.route(/\/api\/organizations\/device-pairings\/claim$/, (route) => route.fulfill({ status: 401, json: { error: 'Unauthorized' } }))
+    await page.goto('/pair.html?code=K7PM-4XQ2&role=pos&name=Kassa%201')
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/kassa-180.png')
+    await expect(page.getByTestId('pair-sign-in').getByRole('link', { name: 'Aanmelden' })).toHaveAttribute('href', `/login?returnTo=${encodeURIComponent('/pair?code=K7PM4XQ2&role=pos&name=Kassa+1')}`)
+  })
+
+  test('"Open op deze computer" (the admin\'s own browser): not paired unasked — the link to copy, or pair here anyway', async ({ page }) => {
+    await page.addInitScript(() => {
+      ;(window as any).__copied = []
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText: async (text: string) => (window as any).__copied.push(text) }, configurable: true })
+    })
+    const asked: unknown[] = []
+    await stationClaim(page, asked)
+    await page.goto(`${STATION_LINK}&here`)
+    const here = page.getByTestId('pair-here')
+    await expect(here).toContainText('dan is deze browser voortaan Scherm keuken')
+    await here.getByRole('button', { name: 'Kopieer de link' }).click()
+    await expect(here.getByRole('button', { name: 'Gekopieerd' })).toBeVisible()
+    expect(await page.evaluate(() => (window as any).__copied)).toEqual([`${new URL(page.url()).origin}/pair?code=K7PM4XQ2&role=station&name=Scherm+keuken`])
+    expect(asked).toEqual([])
+    await here.getByRole('button', { name: 'Toch hier koppelen' }).click()
+    await page.waitForURL(/\/station/)
+    expect(asked).toEqual([{ code: 'K7PM4XQ2' }])
+  })
+})
+
+test('the app opens its pairing link again, days later: the code it was paired with just opens the screen', async ({ page }) => {
+  await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Scouts', name: 'Kassa 1', pairedWith: 'K7PM4XQ2' })
+  await exists(page)
+  const claimed: unknown[] = []
+  await claimRoute(page, claimed)
+  await stopAtKassa(page)
+  await page.goto('/pair.html?code=k7pm-4xq2&role=pos&name=Kassa%201')
+  await page.waitForURL(KASSA)
+  expect(claimed).toEqual([])
+})
+
+test('…removed in the console since: says so — the used code is not tried again', async ({ page }) => {
+  await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Scouts', name: 'Kassa 1', pairedWith: 'K7PM4XQ2' })
+  await page.route(/\/api\/organizations\/org-1\/devices\/pos-1$/, (route) => route.fulfill({ status: 404, json: { error: 'x', code: 'device_not_found' } }))
+  const claimed: unknown[] = []
+  await claimRoute(page, claimed)
+  await page.goto('/pair.html?code=K7PM4XQ2&role=pos')
+  await expect(page.getByText('Dit toestel is niet meer gekoppeld')).toBeVisible()
+  expect(claimed).toEqual([])
 })

@@ -4,7 +4,9 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { KioskShell } from '@/shared/kiosk-shell'
 import { isLocale, storedLocale, storeLocale, useLocale, useMessages } from '@/shared/i18n'
-import { getRegisteredTerminal, getStoredTerminalInfo, NeedsSignIn, pairDevice, PAGE_FOR_ROLE, type Terminal } from '@/shared/terminal'
+import { appStorage, ICON_FOR_ROLE, isRole, OFFER_INSTALL_KEY, showAsDevice } from '@/shared/install'
+import { isStandalone } from '@/shared/push'
+import { getRegisteredTerminal, getStoredTerminalInfo, NeedsSignIn, normalizeCode, pairDevice, PAGE_FOR_ROLE, type Terminal } from '@/shared/terminal'
 import { CHOOSER_MESSAGES } from './messages'
 
 // The start page (root `/`) and the pairing page (`/pair`, the same app —
@@ -21,12 +23,25 @@ import { CHOOSER_MESSAGES } from './messages'
 //     pairs right away, no click. Unless this browser already is a device
 //     that still exists: the same org's (`org`, a demo's second click) just
 //     opens; another org's asks first — a real kassa isn't replaced unseen.
+//     The code this device was paired with: it just opens (an app installed
+//     from the pairing link opens that link every time).
+//   - `&role=&name=` (the console's link): the page is that device — its icon
+//     and name — so whatever is added to a home screen or Dock from here is
+//     that device. In Safari (its apps get their own storage, shared/install)
+//     it asks first: as an app (the steps, then it pairs in the app) or in
+//     this browser.
+//   - `&here` (the console's "Open op deze computer"): a browser whose apps
+//     share its storage — the admin's own — isn't paired unasked: the start
+//     page would open that device from then on.
 type View =
   | { step: 'loading' }
   | { step: 'start'; removed: boolean }
   | { step: 'paired'; terminal: Terminal }
   | { step: 'replace'; terminal: Terminal; code: string }
   | { step: 'sign-in'; code: string }
+  | { step: 'install'; code: string; removed: boolean }
+  | { step: 'install-steps'; code: string; removed: boolean }
+  | { step: 'here'; code: string; removed: boolean }
 
 export default function App() {
   const m = useMessages(CHOOSER_MESSAGES)
@@ -38,6 +53,35 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   // A code is single use: claim it once, also when React runs the effect twice.
   const claiming = useRef(false)
+  // The device the console's link is for (`role`, `name`).
+  const [device] = useState(() => {
+    const role = params.get('role')
+    return isRole(role) ? { role, name: params.get('name')?.trim().slice(0, 60) || m.appNames[role] } : null
+  })
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    if (device) showAsDevice(device.role, device.name)
+  }, [device])
+
+  // The link without `here`: for another browser or device.
+  function link(code: string) {
+    const query = new URLSearchParams({ code: code.replace(/[\s-]/g, '') })
+    if (device) {
+      query.set('role', device.role)
+      query.set('name', device.name)
+    }
+    return `/pair?${query}`
+  }
+
+  // A link's code: paired right away — unless an app should do it (Safari),
+  // or this is the admin's own browser.
+  function pairOrAsk(value: string, removed = false) {
+    if (isStandalone()) return claim(value, removed)
+    if (device && appStorage() !== 'shared') return setView({ step: 'install', code: value, removed })
+    if (params.has('here')) return setView({ step: 'here', code: value, removed })
+    claim(value, removed)
+  }
 
   async function claim(value: string, removed = false) {
     if (claiming.current) return
@@ -48,6 +92,14 @@ export default function App() {
       const device = await pairDevice(value)
       // A new device speaks the organisation's language — unless one was picked here.
       storeLocale(storedLocale() ?? (isLocale(device.orgLocale) ? device.orgLocale : locale))
+      // Chrome, Edge, Android: the screen offers to install itself.
+      if (!isStandalone() && appStorage() === 'shared') {
+        try {
+          sessionStorage.setItem(OFFER_INSTALL_KEY, '1')
+        } catch {
+          // no offer
+        }
+      }
       window.location.href = PAGE_FOR_ROLE[device.role]
     } catch (err) {
       claiming.current = false
@@ -63,16 +115,18 @@ export default function App() {
     const urlOrg = params.get('org')
     const stored = getStoredTerminalInfo()
     if (!stored) {
-      if (urlCode) claim(urlCode)
+      if (urlCode) pairOrAsk(urlCode)
       else setView({ step: 'start', removed: false })
       return
     }
+    // The code this device was paired with (used up): never claimed again.
+    const same = !!urlCode && stored.pairedWith === normalizeCode(urlCode)
     getRegisteredTerminal(stored.role).then((terminal) => {
       if (!terminal) {
-        if (urlCode) claim(urlCode, true)
+        if (urlCode && !same) pairOrAsk(urlCode, true)
         else setView({ step: 'start', removed: true })
       } else if (urlCode) {
-        if (urlOrg && urlOrg === terminal.orgId) window.location.replace(PAGE_FOR_ROLE[terminal.role])
+        if (same || (urlOrg && urlOrg === terminal.orgId)) window.location.replace(PAGE_FOR_ROLE[terminal.role])
         else setView({ step: 'replace', terminal, code: urlCode })
       } else if (params.has('start')) setView({ step: 'paired', terminal })
       else window.location.replace(PAGE_FOR_ROLE[terminal.role])
@@ -119,7 +173,7 @@ export default function App() {
 
   // A kassa's code: someone signs in on this device first — then back here, and it pairs.
   if (view.step === 'sign-in') {
-    const back = `/pair?code=${encodeURIComponent(view.code.replace(/[\s-]/g, ''))}`
+    const back = link(view.code)
     return (
       <KioskShell devicePickers>
         <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="pair-sign-in">
@@ -127,6 +181,64 @@ export default function App() {
           <p className="text-sm text-muted-foreground">{m.signInHint}</p>
           <Button asChild size="lg">
             <a href={`/login?returnTo=${encodeURIComponent(back)}`}>{m.signIn}</a>
+          </Button>
+        </section>
+      </KioskShell>
+    )
+  }
+
+  if ((view.step === 'install' || view.step === 'install-steps') && device) {
+    const kind = appStorage()
+    const steps = kind === 'mac' ? m.macSteps(device.name) : m.iosSteps(device.name)
+    return (
+      <KioskShell devicePickers>
+        <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="install">
+          <img src={`/icons/${ICON_FOR_ROLE[device.role]}-180.png`} alt="" className="mx-auto size-16 rounded-2xl" />
+          <h1 className="font-heading text-xl font-bold">{device.name}</h1>
+          {view.step === 'install' ? (
+            <>
+              <p className="text-sm">{m.installQuestion}</p>
+              <Button size="lg" onClick={() => setView({ ...view, step: 'install-steps' })}>
+                {m.asApp}
+              </Button>
+              <p className="text-xs text-muted-foreground">{m.asAppHint}</p>
+              <Button variant="outline" onClick={() => claim(view.code, view.removed)} disabled={busy}>
+                {busy ? m.busy : m.inBrowser}
+              </Button>
+            </>
+          ) : (
+            <>
+              <ol className="flex list-decimal flex-col gap-2 pl-5 text-left text-sm" data-testid="install-steps" data-kind={kind}>
+                {steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+              <p className="text-xs text-muted-foreground">{m.codeValid}</p>
+              <Button variant="ghost" size="sm" onClick={() => claim(view.code, view.removed)} disabled={busy}>
+                {busy ? m.busy : m.inBrowserAfterAll}
+              </Button>
+            </>
+          )}
+        </section>
+      </KioskShell>
+    )
+  }
+
+  if (view.step === 'here') {
+    const name = device?.name ?? m.thisDevice
+    const { code } = view
+    async function copy() {
+      await navigator.clipboard?.writeText(`${window.location.origin}${link(code)}`).catch(() => {})
+      setCopied(true)
+    }
+    return (
+      <KioskShell devicePickers>
+        <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="pair-here">
+          <h1 className="font-heading text-xl font-bold">{m.hereTitle}</h1>
+          <p className="text-sm">{m.hereHint(name)}</p>
+          <Button onClick={copy}>{copied ? m.copied : m.copyLink}</Button>
+          <Button variant="outline" onClick={() => claim(view.code, view.removed)} disabled={busy}>
+            {busy ? m.busy : m.pairHereAnyway}
           </Button>
         </section>
       </KioskShell>
