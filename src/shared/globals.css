@@ -133,3 +133,18 @@
     @apply font-sans;
     }
 }
+/* A sheet made for paper (the console's table QR codes): rendered straight
+   into <body> as .print-sheet, and when printing the only thing on the page —
+   not the sidebar or header around it. A4, its own margins. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  body:has(> .print-sheet) > :not(.print-sheet) {
+    display: none !important;
+  }
+  body:has(> .print-sheet) {
+    background: #fff;
+  }
+}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { MoreHorizontal, Plus, Printer } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Badge } from '@/components/ui/badge'
@@ -151,7 +152,7 @@ export default function TablesPage() {
             {t.cancel}
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3" data-testid="qr-sheet">
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 print:hidden" data-testid="qr-sheet">
           {active.map((x) => (
             <div key={x.id} className="flex break-inside-avoid flex-col items-center gap-2 rounded-xl border p-4">
               <QRCodeSVG value={qrUrl(x.qrToken)} size={160} marginSize={0} />
@@ -160,6 +161,23 @@ export default function TablesPage() {
             </div>
           ))}
         </div>
+        {/* What goes on paper: only the cards (globals.css .print-sheet hides
+            the console around them), in millimetres for A4 — 3 across, 4 down
+            a page, a card never split over two pages. */}
+        {createPortal(
+          <div className="print-sheet hidden print:block" data-testid="qr-print">
+            <div className="grid grid-cols-3 gap-[6mm]">
+              {active.map((x) => (
+                <div key={x.id} className="flex h-[62mm] break-inside-avoid flex-col items-center justify-center gap-[2mm] rounded-[3mm] border border-black p-[4mm] text-black">
+                  <QRCodeSVG value={qrUrl(x.qrToken)} size={160} marginSize={0} style={{ width: '42mm', height: '42mm' }} />
+                  <span className="text-[14pt] leading-tight font-bold">{t.table(x.name)}</span>
+                  {x.zone && <span className="text-[9pt] leading-tight">{x.zone}</span>}
+                </div>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
       </div>
     )
 
