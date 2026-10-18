@@ -33,7 +33,7 @@ used to serve several of these, is retired.
 1. `mkdir src/apps/<name>` and add `main.tsx` (copy `src/apps/admin/main.tsx`
    as a starting point) + `App.tsx`.
 2. Add `<name>.html` at the repo root (copy `admin.html`, update the
-   `<script src>` path and `<title>`).
+   `<script src>` path, `<title>` and the icon links — see "App icons").
 3. Add `'<name>'` to the `APPS` array in `vite.config.ts`.
 4. `npx shadcn@latest add <component>` for whatever UI primitives that
    screen actually needs — don't import ones it doesn't.
@@ -185,6 +185,22 @@ Use the theme tokens (`bg-background`, `text-muted-foreground`, …), not fixed
 colours. The one deliberate exception is the customer display's payment
 panel beside the order list: the opposite of the theme (`bg-neutral-950 …
 dark:bg-white`), next to an order list in the theme itself.
+
+## App icons
+
+Every screen has its own icon for a home screen, dock or start menu
+(iOS/iPadOS, Android, Chrome/Edge/Safari on a computer) and the browser tab, so a kassa,
+a waiter's phone and a station screen look different: a colour plus a lucide
+glyph, the kabouter for the general entry points (chooser, pairing,
+sign-in). `scripts/app-icons.mjs` holds the table and generates
+`public/icons/` (committed; run `node scripts/app-icons.mjs` after a change):
+a 96px favicon, a 180px `apple-touch-icon` (iOS takes no SVG; without
+it you get a letter on grey), and 192/512px plus a `.webmanifest`
+(`display: standalone`, no `start_url`, so the icon opens the page it was
+added from, `?terminal=…` included). Each `<name>.html` links its set;
+`scripts/app-icons.test.ts` checks the files and sizes. Tap to Pay and a
+followed order (`/volg/…`) get their manifests from arcanum-bff, with these
+icons. arcanum-bff serves `/icons/*` without a session, like `/assets/*`.
 
 ## Content-Security-Policy
 

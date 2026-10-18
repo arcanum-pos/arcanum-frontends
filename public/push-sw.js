@@ -10,7 +10,7 @@ self.addEventListener('push', (event) => {
     // not ours
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || '', { body: data.body || '', tag: data.tag, data: { url: data.url || '/' }, icon: '/favicon.svg' })
+    self.registration.showNotification(data.title || '', { body: data.body || '', tag: data.tag, data: { url: data.url || '/' }, icon: '/icons/selforder-192.png' })
   )
 })
 
