@@ -211,8 +211,10 @@ export function setSplit(orgId: string, tabId: string, parts: number | null) {
   return request<TabDetail>(orgId, `/${encodeURIComponent(tabId)}/split`, { method: 'POST', body: { parts } })
 }
 
-export function cancelTab(orgId: string, tabId: string, reason?: string) {
-  return request<TabDetail>(orgId, `/${encodeURIComponent(tabId)}/cancel`, { method: 'POST', body: { reason } })
+// `voidAll` ("Ticket annuleren"): every line still on it voided with the
+// reason first, in the same step — nothing deleted.
+export function cancelTab(orgId: string, tabId: string, reason?: string, voidAll = false) {
+  return request<TabDetail>(orgId, `/${encodeURIComponent(tabId)}/cancel`, { method: 'POST', body: voidAll ? { ...device(), reason, voidAll } : { reason } })
 }
 
 // A Toog sale's tab is stored under this name in every language — the

@@ -233,7 +233,7 @@ export class FakeBackend {
   }
 
   // orderId -> tabId, so lines don't need their own tabId field.
-  private lineTab = new Map<string, string>()
+  lineTab = new Map<string, string>()
 
   private summary(tab: Tab) {
     const lines = this.tabLines(tab.id)
@@ -312,6 +312,8 @@ export class FakeBackend {
     ['pos-e2e', { terminal_id: 'pos-e2e', org_id: 'org-e2e', role: 'pos', linked_to: null, name: 'Kassa 1' }],
   ])
   // Pairing codes a test made "in the console": code (as shown) → role + name.
+  // "Ticket annuleren" requests (cancel with voidAll).
+  cancelAllRequests: { tabId: string; reason: string }[] = []
   // The order being entered: what kassa's sent (PUT), what a display gets (GET).
   customerViewPuts: { terminal: string; order: any; seq: number }[] = []
   customerView: { order: any; seq: number } = { order: null, seq: 0 }
@@ -628,8 +630,20 @@ export class FakeBackend {
       return { status: 200, body: this.detail(tab) }
     }
     if (action === 'cancel' && method === 'POST') {
-      const s = this.summary(tab)
       const anyPayment = this.charges.some((c) => c.tabId === tab.id && c.status !== 'failed')
+      // "Ticket annuleren": every line voided with the reason first, like the backend (one step).
+      if (body?.voidAll) {
+        if (!body.reason?.trim()) return { status: 400, body: { error: 'reason is required' } }
+        if (tab.status !== 'open' || anyPayment) return this.refusal(tab.id)
+        this.cancelAllRequests.push({ tabId: tab.id, reason: body.reason })
+        const orderId = nextId('order')
+        this.lineTab.set(orderId, tab.id)
+        for (const original of this.tabLines(tab.id).filter((l) => !l.voidsLineId)) {
+          const remaining = original.quantity + this.lines.filter((v) => v.voidsLineId === original.id).reduce((n, v) => n + v.quantity, 0)
+          if (remaining > 0) this.lines.push({ ...original, id: nextId('line'), orderId, quantity: -remaining, voidsLineId: original.id, voidReason: body.reason, createdAt: new Date().toISOString() })
+        }
+      }
+      const s = this.summary(tab)
       if (tab.status !== 'open' || s.totalCents !== 0 || anyPayment) return this.refusal(tab.id)
       tab.status = 'cancelled'
       tab.closedAt = new Date().toISOString()

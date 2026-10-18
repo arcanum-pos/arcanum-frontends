@@ -36,7 +36,7 @@ import {
 import { fetchKassaCatalog, listEvents, type KassaCatalog } from './catalog-api'
 import { ItemPicker, type CatalogState } from './ItemPicker'
 import { PaymentStatus } from './PaymentStatus'
-import { NameDialog, VoidDialog } from './TabDialogs'
+import { CancelTicketDialog, NameDialog, VoidDialog } from './TabDialogs'
 import { KASSA_MESSAGES } from './messages'
 import { SplitDialog } from './SplitDialog'
 import { TabPanel } from './TabPanel'
@@ -143,6 +143,8 @@ export default function App() {
   const [drafts, setDrafts] = useState<Record<string, DraftLine[]>>({})
   const [nameDialog, setNameDialog] = useState<NameDialogMode | null>(null)
   const [voidTarget, setVoidTarget] = useState<TabLine | null>(null)
+  // "Ticket annuleren" asked for the shown tab.
+  const [cancellingTicket, setCancellingTicket] = useState(false)
   const [splitDialogOpen, setSplitDialogOpen] = useState(false)
   // Split per item: on which rekening, and the units picked for the next payment.
   const [itemMode, setItemMode] = useState<{ tabId: string; selection: ItemSelection } | null>(null)
@@ -467,6 +469,19 @@ export default function App() {
     runTabAction(async (org) => {
       setActiveTab(await tabsApi.voidLine(org, tabId, line.id, reason, quantity))
       refreshTabs()
+    })
+  }
+
+  // The whole ticket: every line voided with the reason, then cancelled (one step,
+  // server-side); what was still in the draft goes too.
+  function confirmCancelTicket(reason: string) {
+    setCancellingTicket(false)
+    if (!shownTab) return
+    const tabId = shownTab.id
+    runTabAction(async (org) => {
+      await tabsApi.cancelTab(org, tabId, reason, true)
+      setDraftFor(tabId, [])
+      selectTab('quick')
     })
   }
 
@@ -1231,6 +1246,7 @@ export default function App() {
                 onPark={() => setNameDialog('park')}
                 onRename={() => setNameDialog('rename')}
                 onCancelTab={cancelEmptyTab}
+                onCancelTicket={() => setCancellingTicket(true)}
                 onRefresh={refreshAll}
                 onSplit={() => setSplitDialogOpen(true)}
                 onStopSplit={stopSplit}
@@ -1276,6 +1292,14 @@ export default function App() {
         onClose={() => setSplitDialogOpen(false)}
       />
       <VoidDialog key={voidTarget?.id ?? 'closed'} line={voidTarget} onConfirm={confirmVoid} onClose={() => setVoidTarget(null)} />
+      <CancelTicketDialog
+        key={cancellingTicket ? `cancel-${shownTab?.id}` : 'closed'}
+        open={cancellingTicket && !!shownTab}
+        items={(shownTab?.lines || []).filter((l) => !l.voidsLineId).reduce((n, l) => n + netQuantity(l), 0)}
+        amount={formatEuro(shownTab?.totalCents ?? 0)}
+        onConfirm={confirmCancelTicket}
+        onClose={() => setCancellingTicket(false)}
+      />
     </div>
   )
 }

@@ -29,7 +29,7 @@ test('a payment running on another kassa locks the tab here', async ({ kassa, ba
   await kassa.getByRole('button', { name: /^#1 Jan/ }).click()
   await expect(kassa.getByText('Er loopt een betaling voor deze rekening')).toBeVisible()
   await expect(kassa.getByRole('button', { name: /^Afrekenen/ })).toBeDisabled()
-  await expect(panel(kassa).getByRole('button', { name: 'Annuleren' })).toBeDisabled()
+  await expect(panel(kassa).getByRole('button', { name: 'Annuleren', exact: true })).toBeDisabled()
 })
 
 test('a tab closed on another kassa: adding to it is refused and the kassa falls back to Toog', async ({ kassa, backend }) => {

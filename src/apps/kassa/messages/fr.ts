@@ -68,6 +68,8 @@ export default {
   addOrder: 'Ajouter la commande à l’addition',
   park: 'Mettre sur une addition',
   closeEmpty: 'Fermer l’addition vide',
+  cancelTicket: 'Annuler le ticket',
+  cancelTicketDescription: (items: number, amount: string) => `${items === 1 ? 'L’article' : `Les ${items} articles`} (${amount}) ${items === 1 ? 'est annulé' : 'sont annulés'}, chacun avec cette raison, et le ticket est fermé. Rien n’est effacé : les lignes et l’annulation restent visibles dans l’historique.`,
 
   catalogLoading: 'Chargement de la carte…',
   noCatalog: 'Pas encore de carte — un administrateur en crée une dans la console.',

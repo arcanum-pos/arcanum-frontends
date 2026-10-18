@@ -135,3 +135,61 @@ export function VoidDialog({
     </Dialog>
   )
 }
+
+// "Ticket annuleren": the whole ticket at once (an accidental Afrekenen,
+// a customer who leaves) — one reason, every line voided with it, the ticket
+// closed as cancelled. Append-only like a single void: nothing is deleted.
+export function CancelTicketDialog({
+  open,
+  items,
+  amount,
+  onConfirm,
+  onClose,
+}: {
+  open: boolean
+  items: number
+  amount: string
+  onConfirm: (reason: string) => void
+  onClose: () => void
+}) {
+  const m = useMessages(KASSA_MESSAGES)
+  const [reason, setReason] = useState('')
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (reason.trim()) onConfirm(reason.trim())
+          }}
+          data-testid="cancel-ticket"
+        >
+          <DialogHeader>
+            <DialogTitle>{m.cancelTicket}</DialogTitle>
+            <DialogDescription>{m.cancelTicketDescription(items, amount)}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="cancel-reason">{m.reason}</Label>
+            <div className="flex flex-wrap gap-2">
+              {m.quickReasons.map((r) => (
+                <Button key={r} type="button" size="sm" variant={reason === r ? 'default' : 'outline'} onClick={() => setReason(r)}>
+                  {r}
+                </Button>
+              ))}
+            </div>
+            <Input id="cancel-reason" placeholder={m.reasonPlaceholder} maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} />
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              {m.back}
+            </Button>
+            <Button type="submit" variant="destructive" disabled={!reason.trim()}>
+              {m.cancelTicket}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}

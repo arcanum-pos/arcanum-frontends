@@ -46,6 +46,7 @@ export function TabPanel({
   onPark,
   onRename,
   onCancelTab,
+  onCancelTicket,
   onRefresh,
   onSplit,
   onStopSplit,
@@ -72,6 +73,7 @@ export function TabPanel({
   onPark: () => void
   onRename: () => void
   onCancelTab: () => void
+  onCancelTicket: () => void
   onRefresh: () => void
   // "Splitsen": pay what's open in equal parts (opens the dialog).
   onSplit: () => void
@@ -354,6 +356,12 @@ export function TabPanel({
           {tab && tab.totalCents === 0 && tab.paidCents === 0 && draft.length === 0 && (
             <SecondaryButton disabled={locked} onClick={onCancelTab}>
               {m.closeEmpty}
+            </SecondaryButton>
+          )}
+          {/* Something on it, nothing paid: the whole ticket at once (not while a payment runs). */}
+          {tab && tab.totalCents > 0 && tab.paidCents === 0 && !split && !byItems && (
+            <SecondaryButton disabled={locked} onClick={onCancelTicket}>
+              {m.cancelTicket}
             </SecondaryButton>
           )}
         </div>

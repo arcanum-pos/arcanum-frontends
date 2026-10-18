@@ -78,6 +78,9 @@ const nl = {
   addOrder: 'Bestelling toevoegen aan rekening',
   park: 'Op rekening zetten',
   closeEmpty: 'Lege rekening sluiten',
+  // "Ticket annuleren": every line voided at once, with one reason, then the ticket cancelled.
+  cancelTicket: 'Ticket annuleren',
+  cancelTicketDescription: (items: number, amount: string) => `Alle ${items === 1 ? '1 item' : `${items} items`} (${amount}) worden geannuleerd, elk met deze reden, en het ticket wordt gesloten. Niets wordt gewist: de lijnen en de annulering blijven zichtbaar in de geschiedenis.`,
 
   // Product picker
   catalogLoading: 'Menukaart laden…',
