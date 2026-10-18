@@ -180,3 +180,15 @@ export const isFinal = (state: FollowState) => state === 'delivered' || state ==
 // Nothing more will happen to it: final, and not a tab that's still open
 // (more rounds can come, it still has to be settled).
 export const isDone = (status: Pick<FollowStatus, 'state' | 'tabOpen'>) => !status.tabOpen && isFinal(status.state)
+
+// Where a follow page goes when it opens (not when its order changes while
+// open). A home-screen app opens the order it was added from, every time:
+// once that's finished — collected, paid, not an open tab — straight to the
+// event's menu; or to the order this phone placed since, if there is one.
+// Cancelled stays: it says why (not paid in time). A kassa customer's order
+// (no event to order from) stays too.
+export function onOpen(status: Pick<FollowStatus, 'state' | 'tabOpen' | 'selfOrderCode'>, token: string, savedToken: string | null): 'stay' | 'menu' | { token: string } {
+  const finished = !status.tabOpen && (status.state === 'delivered' || status.state === 'nothing_to_prepare')
+  if (!finished || !status.selfOrderCode) return 'stay'
+  return savedToken && savedToken !== token ? { token: savedToken } : 'menu'
+}

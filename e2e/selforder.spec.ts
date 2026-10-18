@@ -11,6 +11,8 @@ import { guardCsp } from './csp-guard'
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const CODE = 'abcdefghijklmnopqrstuvwxyz012345'
 const TOKEN = 'tok_abcdefghijklmnopqrstu'
+// An order this phone placed later (a home-screen app's next order).
+const NEWER = 'tok_newerabcdefghijklmno'
 
 type Station = { name: string; status: 'ordered' | 'in_progress' | 'ready' | 'delivered' }
 
@@ -30,6 +32,8 @@ class FakeSelfOrder {
   stations: Station[] = [{ name: 'Bar', status: 'ordered' }, { name: 'Keuken', status: 'ordered' }]
   // A second ordering mode (take away, its own menu) — guests choose first.
   takeAway = false
+  // A kassa customer's order (the customer display's QR): no event to order from.
+  selfOrderCode: string | null = CODE
   // The follow page: the tab's mode, and its name when there's more than one.
   modeId = 'm-plaatse'
   modeName: string | null = null
@@ -89,7 +93,7 @@ class FakeSelfOrder {
       stations: this.stations,
       lines: [{ name: 'Pils', quantity: 2, unitPriceCents: 250 }, { name: 'Frieten', quantity: 1, unitPriceCents: 400 }],
       totalCents: 900,
-      selfOrderCode: CODE,
+      selfOrderCode: this.selfOrderCode,
       payment: this.state === 'awaiting_payment' || this.tabOpen ? this.followPayment : null,
       // Like the backend: no live updates once it's done — an open tab isn't.
       hubTicket: !this.tabOpen && ['delivered', 'cancelled', 'nothing_to_prepare'].includes(this.state) ? null : 'ticket-7',
@@ -144,6 +148,7 @@ const test = base.extend<{ fake: FakeSelfOrder; hub: { sockets: WebSocketRoute[]
         return route.fulfill({ status: 201, json: { token: TOKEN, number: 7 } })
       }
       if (url.pathname === `/api/public/orders/${TOKEN}`) return route.fulfill({ json: fake.status() })
+      if (url.pathname === `/api/public/orders/${NEWER}`) return route.fulfill({ json: { ...fake.status(), number: 8, state: 'preparing', stations: [{ name: 'Bar', status: 'in_progress' }], hubTicket: null } })
       if (url.pathname === `/api/public/orders/${TOKEN}/orders`) {
         fake.rounds.push(route.request().postDataJSON())
         return route.fulfill({ status: 201, json: { ok: true } })
@@ -274,7 +279,7 @@ test('step 4 asks nothing about its link where the browser remembers the order',
   await expect(page.getByTestId('keep-link')).toHaveCount(0)
 })
 
-test('storage blocked: step 4 offers to keep its link — copied to the clipboard', async ({ phone: page, fake }) => {
+test('storage blocked: step 4 offers to keep its link — copied to the clipboard', async ({ phone: page, fake, hub }) => {
   await page.addInitScript(blockStorage)
   // The clipboard, stubbed (the same in every browser engine).
   await page.addInitScript(() => {
@@ -291,7 +296,7 @@ test('storage blocked: step 4 offers to keep its link — copied to the clipboar
   expect(await page.evaluate(() => (window as any).__copied)).toEqual([`${new URL(page.url()).origin}/volg/${TOKEN}`])
   // Done: nothing to keep any more.
   fake.state = 'delivered'
-  await page.reload()
+  hub.push()
   await expect(page.getByTestId('follow-message')).toHaveText('Alles afgehaald. Smakelijk!')
   await expect(keep).toHaveCount(0)
 })
@@ -364,6 +369,52 @@ test('cancelled (not paid in time): says so, and offers a new order', async ({ p
   await page.getByRole('button', { name: 'Nieuwe bestelling' }).click()
   await page.waitForURL(`**/bestel/${CODE}`)
   await expect(page.getByRole('button', { name: 'Pils toevoegen' })).toBeVisible()
+})
+
+// A home-screen app opens the order it was added from — every time, days
+// later too. Once that's finished: not the old order again.
+const DELIVERED: Station[] = [{ name: 'Bar', status: 'delivered' }, { name: 'Keuken', status: 'delivered' }]
+const remember = (page: Page, token: string) => page.evaluate(([code, t]) => localStorage.setItem(`arcanum-selforder:${code}`, JSON.stringify({ cart: {}, token: t, modeId: null })), [CODE, token])
+
+test('opened on a finished order (collected, paid): straight to the menu — from its own link and from the event\'s', async ({ phone: page, fake }) => {
+  fake.state = 'delivered'
+  fake.stations = DELIVERED
+  await page.goto(`/volg/${TOKEN}`)
+  await page.waitForURL(`**/bestel/${CODE}`)
+  await expect(page.getByRole('button', { name: 'Pils toevoegen' })).toBeVisible()
+  await expect(page.getByTestId('follow')).toHaveCount(0)
+  // The event's link, with this phone remembering that order: the menu too.
+  await remember(page, TOKEN)
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Pils toevoegen' })).toBeVisible()
+  await expect(page.getByTestId('follow')).toHaveCount(0)
+  // Paid, nothing to prepare: the same.
+  fake.state = 'nothing_to_prepare'
+  await page.goto(`/volg/${TOKEN}`)
+  await page.waitForURL(`**/bestel/${CODE}`)
+})
+
+test('opened on a finished order, with a newer one placed on this phone since: that one', async ({ phone: page, fake }) => {
+  await page.goto(`/bestel/${CODE}`)
+  await remember(page, NEWER)
+  fake.state = 'delivered'
+  fake.stations = DELIVERED
+  await page.goto(`/volg/${TOKEN}`)
+  await page.waitForURL(`**/volg/${NEWER}`)
+  await expect(page.getByTestId('order-number')).toHaveText('8')
+})
+
+test('a finished order that is not one to go on from stays: a tab still to settle, a kassa customer\'s', async ({ phone: page, fake }) => {
+  fake.state = 'delivered'
+  fake.stations = DELIVERED
+  fake.tabOpen = true
+  await page.goto(`/volg/${TOKEN}`)
+  await expect(page.getByTestId('order-number')).toHaveText('7')
+  fake.tabOpen = false
+  fake.selfOrderCode = null
+  await page.reload()
+  await expect(page.getByTestId('follow-message')).toHaveText('Alles afgehaald. Smakelijk!')
+  expect(page.url()).toContain(`/volg/${TOKEN}`)
 })
 
 test('in French on a French phone', async ({ browser }) => {
@@ -607,7 +658,7 @@ test('on a tab whose mode asks it: a name and a mobile number or e-mail first �
 // service of its own. `permission`: what the guest answers; `already`: the
 // permission before anything is asked ('denied': blocked for the site, or a private window).
 const pushBrowser = ({ permission, already }: { permission: string; already: string }) => {
-  const subscription = { toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/xyz', keys: { p256dh: 'P256', auth: 'AUTH' } }), unsubscribe: async () => true }
+  const subscription = { toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/xyz', keys: { p256dh: 'P256', auth: 'AUTH' } }), unsubscribe: async () => !((window as any).__subscribed = false) }
   const registration = {
     pushManager: {
       getSubscription: async () => ((window as any).__subscribed ? subscription : null),
@@ -685,6 +736,27 @@ test.describe("a notification when it's ready (Web Push, release G')", () => {
     await expect(page.getByTestId('push-turn-on')).toHaveCount(0)
     await expect(page.getByTestId('sms')).toBeVisible()
     await noSidewaysScroll(page)
+  })
+
+  test('a browser that took notifications for an earlier order: this one gets them too, without a tap — not after turning them off', async ({ phone: page, fake }) => {
+    await page.addInitScript(pushBrowser, { permission: 'granted', already: 'granted' })
+    await page.addInitScript(() => {
+      if (!sessionStorage.getItem('off')) (window as any).__subscribed = true
+    })
+    fake.state = 'preparing'
+    fake.push = { publicKey: SERVER_KEY, available: true, subscribed: false }
+    await page.goto(`/volg/${TOKEN}`)
+    await expect(page.getByTestId('push-on')).toBeVisible()
+    expect(fake.pushCalls).toEqual([{ method: 'POST', body: { subscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/xyz', keys: { p256dh: 'P256', auth: 'AUTH' } } } }])
+    // Nothing asked, nothing registered anew.
+    expect(await page.evaluate(() => (window as any).__sw)).toBeUndefined()
+    // Turned off (the browser's subscription gone): the next time, a button again.
+    await page.evaluate(() => sessionStorage.setItem('off', '1'))
+    await page.getByRole('button', { name: 'Uitzetten' }).click()
+    await expect(page.getByTestId('push-turn-on')).toBeVisible()
+    await page.reload()
+    await expect(page.getByTestId('push-turn-on')).toBeVisible()
+    expect(fake.pushCalls.map((c) => c.method)).toEqual(['POST', 'DELETE'])
   })
 
   test('not offered without the installation key', async ({ phone: page, fake }) => {

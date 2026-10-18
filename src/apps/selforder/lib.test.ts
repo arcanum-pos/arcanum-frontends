@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bancontactTarget, cartLines, cartTotals, changeQuantity, modeFromSearch, newlyReady, pickMode, route, type FollowStatus, type Menu, type MenuCatalog } from './lib'
+import { bancontactTarget, cartLines, cartTotals, changeQuantity, modeFromSearch, newlyReady, onOpen, pickMode, route, type FollowStatus, type Menu, type MenuCatalog } from './lib'
 
 const catalog: MenuCatalog = { id: 'c', sections: [{ id: 's', name: 'Drank', entries: [{ variantId: 'a', name: 'Pils', priceCents: 250 }, { variantId: 'b', name: 'Cola', priceCents: 200 }] }] }
 const mode = (id: string, name: string) => ({ id, name, payment: { counter: true, bancontact: false }, catalog })
@@ -60,5 +60,18 @@ describe('self-order pages', () => {
     expect(bancontactTarget(links, true)).toBe('https://deeplink.test/1')
     expect(bancontactTarget(links, false)).toBe('https://checkout.test/1')
     expect(bancontactTarget({ ...links, deeplinkUrl: null }, true)).toBe('https://checkout.test/1')
+  })
+
+  it('opened on a finished order: the menu, or the order this phone placed since; otherwise it stays', () => {
+    const at = (state: string, more: { tabOpen?: boolean; selfOrderCode?: string | null } = {}) => ({ state: state as FollowStatus['state'], tabOpen: false, selfOrderCode: 'ev', ...more })
+    expect(onOpen(at('delivered'), 'a', null)).toBe('menu')
+    expect(onOpen(at('nothing_to_prepare'), 'a', 'a')).toBe('menu')
+    expect(onOpen(at('delivered'), 'a', 'b')).toEqual({ token: 'b' })
+    // Not finished: still preparing, a tab to settle, or cancelled (it says why).
+    expect(onOpen(at('preparing'), 'a', 'b')).toBe('stay')
+    expect(onOpen(at('delivered', { tabOpen: true }), 'a', null)).toBe('stay')
+    expect(onOpen(at('cancelled'), 'a', null)).toBe('stay')
+    // A kassa customer's order: no event to order from.
+    expect(onOpen(at('delivered', { selfOrderCode: null }), 'a', null)).toBe('stay')
   })
 })

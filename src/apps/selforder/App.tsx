@@ -5,7 +5,7 @@ import { apiErrorMessage } from '@/shared/api-errors'
 import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
-import { linkOrderManifest, pushSupport, subscribePush, unsubscribePush } from '@/shared/push'
+import { existingPush, linkOrderManifest, pushSupport, subscribePush, unsubscribePush } from '@/shared/push'
 import { SELF_ORDER_MESSAGES } from './messages'
 import {
   bancontactTarget,
@@ -16,6 +16,7 @@ import {
   loadSaved,
   modeFromSearch,
   newlyReady,
+  onOpen,
   pickMode,
   readyPlaces,
   route,
@@ -36,7 +37,9 @@ import {
 // tab restored, or coming back from Bancontact all land on it. This phone
 // also remembers the order per event (localStorage), so the event's link
 // brings it back too. Only where the browser keeps nothing at all does step
-// 4 offer to keep its link (share or copy).
+// 4 offer to keep its link (share or copy). Opened on an order that's
+// finished already (a home-screen app opens the order it was added from,
+// days later too): straight to the menu, or to the order placed since (onOpen).
 // Step 4 follows the order live: the order hub says "changed", the page then
 // fetches its status — and fetches it once more after a reconnect (a phone
 // waking up). Never polling. Ready: a big message, a vibration and a beep.
@@ -539,6 +542,21 @@ function Follow({ token, onStartOver, onOrderMore }: { token: string; onStartOve
   const m = useMessages(SELF_ORDER_MESSAGES)
   const { status, error, live, refresh } = useFollow(token)
 
+  // Opened on an order that's finished already: to the menu at once, or to
+  // the order this phone placed since (onOpen) — not the old order again.
+  const opened = useRef(false)
+  useEffect(() => {
+    if (!status || opened.current) return
+    opened.current = true
+    const code = status.selfOrderCode
+    const next = onOpen(status, token, code ? loadSaved(code).token : null)
+    if (next === 'stay' || !code) return
+    if (next !== 'menu') return window.location.replace(`/volg/${next.token}`)
+    if (onStartOver) return onStartOver()
+    save(code, { cart: loadSaved(code).cart, token: null, modeId: null })
+    window.location.replace(`/bestel/${code}`)
+  }, [status, token, onStartOver])
+
   // Everything collected (and, on a tab, paid): a self-order phone goes back to the menu.
   useEffect(() => {
     if (status?.state !== 'delivered' || status.tabOpen || !onStartOver) return
@@ -667,6 +685,23 @@ function PushCard({ token, push, orgName, smsOffered, onChanged }: { token: stri
   const [blocked, setBlocked] = useState(() => support === 'yes' && Notification.permission === 'denied')
   const path = `/api/public/orders/${encodeURIComponent(token)}/push`
   useEffect(() => (support === 'no' ? undefined : linkOrderManifest(token, orgName)), [support, token, orgName])
+  // Notifications on for an earlier order (the next one placed from the home
+  // screen, say): this order too, without a tap. Turned off: the browser's
+  // subscription is gone, so not again.
+  useEffect(() => {
+    if (support !== 'yes' || !push.available || push.subscribed) return
+    let gone = false
+    existingPush()
+      .then(async (subscription) => {
+        if (!subscription || gone) return
+        await call(path, { method: 'POST', body: JSON.stringify({ subscription }) })
+        onChanged()
+      })
+      .catch(() => {})
+    return () => {
+      gone = true
+    }
+  }, [support, push.available, push.subscribed, path, onChanged])
   async function turnOn() {
     setBusy(true)
     setError(null)
@@ -684,8 +719,10 @@ function PushCard({ token, push, orgName, smsOffered, onChanged }: { token: stri
   async function turnOff() {
     setBusy(true)
     try {
-      await call(path, { method: 'DELETE' })
+      // The browser's own subscription first: otherwise a refresh in between
+      // finds it still there, and signs this order up again (above).
       await unsubscribePush().catch(() => {})
+      await call(path, { method: 'DELETE' })
       onChanged()
     } finally {
       setBusy(false)
@@ -964,7 +1001,8 @@ function useFollow(token: string) {
     }
   }, [token])
 
-  return { status, error, live, refresh: () => refreshRef.current() }
+  const refresh = useCallback(() => refreshRef.current(), [])
+  return { status, error, live, refresh }
 }
 
 // --- The "ready" signal: a vibration and a short beep ---

@@ -44,6 +44,14 @@ export async function subscribePush(publicKey: string, scope = '/volg/'): Promis
   return subscription.toJSON()
 }
 
+// This browser's subscription, when it has one already and may still notify
+// (allowed for an earlier order): the next order needs no tap. Never asks.
+export async function existingPush(scope = '/volg/'): Promise<PushSubscriptionJSON | null> {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return null
+  const registration = await navigator.serviceWorker?.getRegistration(scope)
+  return (await registration?.pushManager.getSubscription())?.toJSON() ?? null
+}
+
 export async function unsubscribePush(scope = '/volg/'): Promise<void> {
   const registration = await navigator.serviceWorker?.getRegistration(scope)
   await (await registration?.pushManager.getSubscription())?.unsubscribe()
