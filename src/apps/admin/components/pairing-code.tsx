@@ -70,29 +70,32 @@ export function PairingCode({ orgId, pairing, secondsLeft }: { orgId: string; pa
         <QRCodeSVG value={url} size={176} marginSize={0} />
       </div>
       <p className="text-sm text-muted-foreground">{m.expiresIn(`${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}`)}</p>
+      {/* Kopieer link for every device (a Tap to Pay phone too: its own page,
+          by message instead of the QR); the app advice only for the pairing
+          page's devices — a Tap to Pay phone pairs on /tap itself. */}
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={async () => {
+            await navigator.clipboard?.writeText(url).catch(() => {})
+            setCopied(true)
+          }}
+        >
+          <Copy />
+          {copied ? m.linkCopied : m.copyLink}
+        </Button>
+        {pairing.role !== 'tap' && appStorage() === 'mac' && (
+          <Button variant="outline" size="sm" asChild>
+            <a href={url} target="_blank" rel="noopener">
+              <ExternalLink />
+              {m.openHere}
+            </a>
+          </Button>
+        )}
+      </div>
       {pairing.role !== 'tap' && (
         <>
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                await navigator.clipboard?.writeText(url).catch(() => {})
-                setCopied(true)
-              }}
-            >
-              <Copy />
-              {copied ? m.linkCopied : m.copyLink}
-            </Button>
-            {appStorage() === 'mac' && (
-              <Button variant="outline" size="sm" asChild>
-                <a href={url} target="_blank" rel="noopener">
-                  <ExternalLink />
-                  {m.openHere}
-                </a>
-              </Button>
-            )}
-          </div>
           <p className="text-center text-xs text-muted-foreground">{m.asAppHint}</p>
           {appStorage() === 'shared' && /Macintosh/.test(navigator.userAgent) && <p className="text-center text-xs text-muted-foreground">{m.thisMacHint}</p>}
         </>

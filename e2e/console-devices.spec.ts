@@ -225,6 +225,11 @@ test("a kassa's Tap to Pay phone: always for a kassa; its QR opens the phone's o
   await dialog.getByRole('button', { name: 'Koppelcode maken' }).click()
   await expect(dialog.getByTestId('pairing-code')).toBeVisible()
   expect(catalogAdmin.pairings[0]).toMatchObject({ role: 'tap', name: 'Telefoon terras', linkTo: 'pos-2' })
+  // Its link to copy too: the phone's own page (/tap) with the code and its icon — no app advice.
+  const link = new URL(await copiedLink(page))
+  expect(link.pathname).toBe('/tap')
+  expect(Object.fromEntries(link.searchParams)).toEqual({ code: 'K7PM4XQ1', icon: 'org-e2e/tap' })
+  await expect(dialog).not.toContainText('installeer je het eerst als app')
 })
 
 test('a Tap to Pay phone needs a kassa first', async ({ console: open, page }) => {
