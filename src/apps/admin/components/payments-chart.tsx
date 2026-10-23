@@ -10,6 +10,7 @@ import { niceTicks, type Bucket, type Step } from '../lib/report-buckets'
 export const METHOD_ORDER = ['bancontact', 'cash', 'sumup'] as const
 
 const HEIGHT = 220
+const GAP = 2
 const PAD = { top: 12, right: 8, bottom: 26, left: 52 }
 
 export function PaymentsChart({
@@ -115,14 +116,16 @@ export function PaymentsChart({
                   const y0 = y(acc)
                   acc += v
                   const y1 = y(acc)
-                  // 2px of surface between stacked segments; the top one rounded.
-                  const h = Math.max(1, y0 - y1 - (k > 0 ? 2 : 0))
+                  // The same 2px of surface under every segment but the
+                  // lowest, so each gap between two segments is equal; the
+                  // top one rounded.
+                  const h = Math.max(1, y0 - y1 - (k > 0 ? GAP : 0))
                   const isTop = k === parts.length - 1
                   const color = `var(--series-${(METHOD_ORDER as readonly string[]).includes(m) ? m : 'other'})`
                   return isTop ? (
                     <path key={m} className="pointer-events-none" fill={color} d={roundedTop(x, y1, barW, h, Math.min(4, barW / 2, h))} />
                   ) : (
-                    <rect key={m} className="pointer-events-none" x={x} y={y0 - h} width={barW} height={h} fill={color} />
+                    <rect key={m} className="pointer-events-none" x={x} y={y1} width={barW} height={h} fill={color} />
                   )
                 })}
               </g>

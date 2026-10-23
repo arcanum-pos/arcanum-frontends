@@ -143,16 +143,23 @@ test('the event filter sits next to the period and narrows the report, the chart
     tx('b', 'bancontact', 1200, 'ev1', at(20, 10)),
     tx('c', 'sumup', 800, 'ev1', at(21, 40)),
     tx('d', 'cash', 300, 'ev2', at(20, 12)),
+    tx('e', 'sumup', 800, 'ev2', at(20, 14)),
   ]
   const page = await console('/reports')
 
   // All events: one bar per quarter from 20:00 to 22:00, the 20:00 one stacked from three payments.
   const count = page.getByTestId('chart-count')
   await expect(count.getByTestId('chart-count-bar')).toHaveCount(8)
-  await expect(count.getByTestId('chart-count-bar').first()).toHaveAttribute('data-total', '3')
-  await expect(page.getByTestId('chart-amount-bar').first()).toHaveAttribute('data-total', '2000')
+  await expect(count.getByTestId('chart-count-bar').first()).toHaveAttribute('data-total', '4')
+  await expect(page.getByTestId('chart-amount-bar').first()).toHaveAttribute('data-total', '2800')
   await expect(page.getByTestId('chart-count-legend')).toHaveText(/Bancontact.*Contant.*SumUp/)
-  await expect(page.getByTestId('transactions').getByRole('row')).toHaveCount(5)
+  // Between every two stacked segments the same 2px of surface.
+  const gaps = await count.getByTestId('chart-count-bar').first().evaluate((bar) => {
+    const boxes = [...bar.querySelectorAll('rect.pointer-events-none, path')].map((el) => (el as SVGGraphicsElement).getBBox()).sort((a, b) => b.y - a.y)
+    return boxes.slice(1).map((box, i) => Math.round((boxes[i].y - (box.y + box.height)) * 10) / 10)
+  })
+  expect(gaps).toEqual([2, 2])
+  await expect(page.getByTestId('transactions').getByRole('row')).toHaveCount(6)
   expect(catalogAdmin.reportQueries.at(-1)!.event).toBeUndefined()
 
   // Hovering a bar shows its numbers per method and the total.
