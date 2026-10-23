@@ -175,3 +175,54 @@ test('one ordering mode, picked at the kassa: no choice to make, the backend set
   await payToog(kassa)
   expect(backend.tabs[0].orderModeId).toBe('m-plaatse')
 })
+
+test("the CFD in the org's colours, the event's own colours winning; its logo and the event's name in the header", async ({ kassa, backend }) => {
+  backend.events = [FIETSTOCHT]
+  backend.branding = { primary: '#1f6b3a', accent: '#f2c500', logoUrl: '/api/public/branding/org-e2e/logo.png?v=1' }
+  backend.eventBranding.set(FIETSTOCHT.id, { primary: '#c8102e', accent: null })
+  await kassa.evaluate((e) => localStorage.setItem('arcanum-event', JSON.stringify(e)), FIETSTOCHT)
+  await kassa.reload()
+
+  const display = await kassa.context().newPage()
+  await display.routeWebSocket(/\/devices\/connect/, () => {})
+  await display.route(/\/(api\/|whoami)/, async (route) => {
+    const url = new URL(route.request().url())
+    if (url.pathname.endsWith('/logo.png')) return route.fulfill({ status: 404 })
+    const { status, body } = backend.handle(route.request().method(), url.pathname + url.search, null)
+    await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+  })
+  await display.goto('/display.html?terminal=cfd-e2e')
+
+  const header = display.getByTestId('cfd-brand')
+  await expect(header.getByTestId('cfd-brand-event')).toHaveText('Fietstocht 2026')
+  await expect(header.getByTestId('cfd-logo')).toHaveAttribute('src', '/api/public/branding/org-e2e/logo.png?v=1')
+  expect(backend.brandingRequests).toContainEqual({ orgId: 'org-e2e', eventId: FIETSTOCHT.id })
+  // The event's own main colour, the org's accent; text that reads on it.
+  const total = display.getByTestId('cfd-total')
+  await expect(total).toHaveCSS('background-color', 'rgb(200, 16, 46)')
+  await expect(total).toHaveCSS('color', 'rgb(255, 255, 255)')
+  await expect(header.locator('div[aria-hidden="true"]')).toHaveCSS('background-color', 'rgb(242, 197, 0)')
+  // The event's name is in the header, not again in the panel.
+  await expect(display.getByTestId('cfd-event')).toHaveCount(0)
+
+  // The order being entered: the quantities in the accent, readable (dark on yellow).
+  await kassa.getByRole('button', { name: '5 × Bon', exact: true }).click()
+  const quantity = display.getByTestId('cfd-entering').locator('li span').first()
+  await expect(quantity).toHaveCSS('background-color', 'rgb(242, 197, 0)')
+  await expect(quantity).toHaveCSS('color', 'rgb(10, 10, 10)')
+})
+
+test('the CFD without branding looks as before: no header', async ({ kassa, backend }) => {
+  const display = await kassa.context().newPage()
+  await display.routeWebSocket(/\/devices\/connect/, () => {})
+  await display.route(/\/(api\/|whoami)/, async (route) => {
+    const url = new URL(route.request().url())
+    const { status, body } = backend.handle(route.request().method(), url.pathname + url.search, null)
+    await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+  })
+  await display.goto('/display.html?terminal=cfd-e2e')
+  await expect(display.getByTestId('cfd-idle')).toBeVisible()
+  await expect.poll(() => backend.brandingRequests.length).toBeGreaterThan(0)
+  await expect(display.getByTestId('cfd-brand')).toHaveCount(0)
+  await expect(display.locator('[data-branded]')).toHaveCount(0)
+})

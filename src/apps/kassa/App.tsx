@@ -189,9 +189,10 @@ export default function App() {
     channelRef.current?.postMessage(c ? { type: 'payment', ...c } : { type: 'reset' })
   }
 
-  // What a same-device CFD shows when idle (the event, if any).
+  // What a same-device CFD shows when idle: the event, if any — and whose
+  // logo and colours (its org, and the event's own colours).
   function broadcastContext() {
-    channelRef.current?.postMessage({ type: 'context', eventName: eventRef.current?.name ?? null })
+    channelRef.current?.postMessage({ type: 'context', eventName: eventRef.current?.name ?? null, eventId: eventRef.current?.id ?? null, orgId: posOrgIdRef.current })
   }
 
   function stopCountdown() {
@@ -1029,7 +1030,7 @@ export default function App() {
   useEffect(() => {
     broadcastContext()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event?.name])
+  }, [event?.name, event?.id, orgId])
 
   // The customer display while the order is entered: the order on this
   // screen (customerViewOrder), a moment after the last tap — to a display in
@@ -1038,7 +1039,7 @@ export default function App() {
   // customer says whether it's right; then the cashier asks for the payment.
   // Not while a tab is still loading (no flicker to the resting screen).
   // Switched off: nothing — the display rests until the payment.
-  const customerView = tabLoading ? undefined : JSON.stringify(showOrder ? customerViewOrder(m, draft, shownTab, event?.name ?? null) : null)
+  const customerView = tabLoading ? undefined : JSON.stringify(showOrder ? customerViewOrder(m, draft, shownTab, event?.name ?? null, event?.id ?? null) : null)
   useEffect(() => {
     if (customerView === undefined) return
     const timer = setTimeout(() => {

@@ -145,4 +145,8 @@ export default {
   pairing_too_many_attempts: 'Too many wrong pairing codes — try again in 10 minutes',
   pairing_not_member: 'You’re not a member of this pairing code’s organisation — sign in with the right account',
   devicehub_failed: 'Devices are briefly unreachable — try again',
+  icon_slot_unknown: 'This page can’t have an icon of its own',
+  icon_invalid: 'This icon couldn’t be saved ({size} px): choose another image',
+  branding_color_invalid: 'Choose a colour as #rrggbb',
+  branding_logo_invalid: 'This logo couldn’t be saved: choose another image',
 } satisfies ApiErrorMessages

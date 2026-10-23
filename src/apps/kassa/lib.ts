@@ -112,6 +112,7 @@ export function customerOrderFromTab(m: Pick<KassaMessages, 'tip'>, tab: TabDeta
     label: tab.label,
     number: shownNumber(tab),
     eventName: tab.eventName ?? null,
+    eventId: tab.eventId ?? null,
     followUrl: tab.followUrl ?? null,
     paidCents: tab.paidCents,
     lines: tab.lines
@@ -124,13 +125,19 @@ export function customerOrderFromTab(m: Pick<KassaMessages, 'tip'>, tab: TabDeta
 // payment): the order on the kassa's screen — the Toog sale being entered,
 // or the open tab with what's tapped in but not sent yet. Null: nothing to
 // show (the display rests).
-export function customerViewOrder(m: Pick<KassaMessages, 'tip'>, draft: DraftLine[], tab: TabDetail | null, eventName: string | null): CustomerOrder | null {
+export function customerViewOrder(
+  m: Pick<KassaMessages, 'tip'>,
+  draft: DraftLine[],
+  tab: TabDetail | null,
+  eventName: string | null,
+  eventId: string | null = null
+): CustomerOrder | null {
   const drafted = draft.filter((l) => l.quantity > 0).map((l) => ({ name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents }))
-  const base: CustomerOrder = tab ? customerOrderFromTab(m, tab) : { label: '', number: null, eventName, paidCents: 0, lines: [] }
+  const base: CustomerOrder = tab ? customerOrderFromTab(m, tab) : { label: '', number: null, eventName, eventId, paidCents: 0, lines: [] }
   const lines = [...base.lines, ...drafted]
   if (lines.length === 0) return null
   // Not the follow link yet: that's for once it's paid.
-  return { ...base, eventName: base.eventName ?? eventName, followUrl: null, lines }
+  return { ...base, eventName: base.eventName ?? eventName, eventId: base.eventId ?? eventId, followUrl: null, lines }
 }
 
 // Max tip the backend accepts (tipCents 0..100000).

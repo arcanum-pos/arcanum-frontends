@@ -394,9 +394,15 @@ export interface Event {
   kassaModes?: boolean
   // The last order number given out (0: the next is #1).
   lastOrderNumber?: number
+  // The customer display's colours for this event; null: the organisation's.
+  brand?: { primary: string | null; accent: string | null }
 }
 
-export function updateEvent(orgId: string, eventId: string, fields: { name?: string; date?: string; selfOrderEnabled?: boolean; linkName?: string; kassaModes?: boolean }): Promise<Event> {
+export function updateEvent(
+  orgId: string,
+  eventId: string,
+  fields: { name?: string; date?: string; selfOrderEnabled?: boolean; linkName?: string; kassaModes?: boolean; brandPrimary?: string | null; brandAccent?: string | null }
+): Promise<Event> {
   return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify(fields) })
 }
 
@@ -531,4 +537,28 @@ export function updateTable(orgId: string, tableId: string, changes: { name?: st
 
 export function newTableQr(orgId: string, tableId: string): Promise<TableRecord> {
   return request(`/${encodeURIComponent(orgId)}/tables/${encodeURIComponent(tableId)}/new-qr`, { method: 'POST' })
+}
+
+// Weergave → Klantscherm: the customer display's logo and two colours
+// (arcanum-backend branding.ts) — only the customer display uses them.
+export interface OrgBranding {
+  primary: string | null
+  accent: string | null
+  logo: { updatedAt: string } | null
+}
+
+export function getBranding(orgId: string): Promise<OrgBranding> {
+  return request(`/${encodeURIComponent(orgId)}/branding`)
+}
+
+export function setBrandingColors(orgId: string, colors: { primary?: string | null; accent?: string | null }): Promise<OrgBranding> {
+  return request(`/${encodeURIComponent(orgId)}/branding`, { method: 'PUT', body: JSON.stringify(colors) })
+}
+
+export function setBrandingLogo(orgId: string, png: string): Promise<OrgBranding> {
+  return request(`/${encodeURIComponent(orgId)}/branding/logo`, { method: 'PUT', body: JSON.stringify({ png }) })
+}
+
+export function removeBrandingLogo(orgId: string): Promise<OrgBranding> {
+  return request(`/${encodeURIComponent(orgId)}/branding/logo`, { method: 'DELETE' })
 }

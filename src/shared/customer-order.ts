@@ -11,8 +11,9 @@ export interface CustomerOrderLine {
 export interface CustomerOrder {
   label: string
   number: number | null
-  // The event the tab is tagged with, if any.
+  // The event the tab is tagged with, if any — and its id (its colours on the display).
   eventName?: string | null
+  eventId?: string | null
   // Already paid on this tab before this payment (split payments).
   paidCents?: number | null
   // Per item: the units this payment covers (null = the whole rekening or an equal part).
@@ -80,7 +81,7 @@ export function customerBill(order: CustomerOrder | null | undefined, amountCent
 // Only what the CFD can safely show — anything else from the wire is dropped.
 export function readCustomerOrder(value: unknown): CustomerOrder | null {
   if (!value || typeof value !== 'object') return null
-  const v = value as { label?: unknown; number?: unknown; eventNumber?: unknown; eventName?: unknown; paidCents?: unknown; paying?: unknown; lines?: unknown; followUrl?: unknown }
+  const v = value as { label?: unknown; number?: unknown; eventNumber?: unknown; eventName?: unknown; eventId?: unknown; paidCents?: unknown; paying?: unknown; lines?: unknown; followUrl?: unknown }
   if (!Array.isArray(v.lines)) return null
   const readLines = (list: unknown[]) =>
     list
@@ -93,6 +94,7 @@ export function readCustomerOrder(value: unknown): CustomerOrder | null {
     // The event's short number when there is one (what's called out).
     number: Number.isInteger(v.eventNumber) ? (v.eventNumber as number) : Number.isInteger(v.number) ? (v.number as number) : null,
     eventName: typeof v.eventName === 'string' && v.eventName.trim() ? v.eventName.trim() : null,
+    eventId: typeof v.eventId === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(v.eventId) ? v.eventId : null,
     paidCents: Number.isInteger(v.paidCents) ? (v.paidCents as number) : null,
     paying,
     lines,

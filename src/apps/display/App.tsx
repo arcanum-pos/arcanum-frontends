@@ -11,6 +11,10 @@ import { connectNotifications, getRegisteredTerminal } from '@/shared/terminal'
 import { payPhase, type PayPhase } from './lib'
 import { DISPLAY_MESSAGES } from './messages'
 import { showOrgIcons } from '@/shared/install'
+import { fetchBranding, NO_BRANDING, textOn, type Branding } from '@/shared/branding'
+
+// How often a resting display looks again for new branding (the console changed it).
+const BRANDING_REFRESH_MS = 5 * 60_000
 
 // Customer-facing display, four states: rust (idle), the order while the
 // cashier enters it (the customer checks it before paying, 2026-10-18),
@@ -67,12 +71,18 @@ export default function App() {
   // the newest wins, whichever way (channel or backend) it came.
   const [entering, setEntering] = useState<CustomerOrder | null>(null)
   const enteringSeqRef = useRef(0)
+  // Whose logo and colours: the org (the display's own, or a same-device
+  // kassa's), the event's own colours where it has them (branding.ts).
+  const [brandOrg, setBrandOrg] = useState<string | null>(null)
+  const [brandEvent, setBrandEvent] = useState<string | null>(null)
+  const [branding, setBranding] = useState<Branding>(NO_BRANDING)
 
   function showEntering(order: CustomerOrder | null, seq: unknown) {
     if (typeof seq !== 'number' || seq <= enteringSeqRef.current) return
     enteringSeqRef.current = seq
     setEntering(order)
     if (order?.eventName) setEventName(order.eventName)
+    if (order?.eventId) setBrandEvent(order.eventId)
   }
 
   async function fetchEntering(orgId: string, terminalId: string) {
@@ -95,6 +105,7 @@ export default function App() {
   // (e.g. a status-only update keeps the order and the QR).
   function showPayment(next: Partial<Payment> & { method: string }) {
     if (next.order?.eventName) setEventName(next.order.eventName)
+    if (next.order?.eventId) setBrandEvent(next.order.eventId)
     setPayment((prev) => ({
       method: next.method,
       amountCents: next.amountCents ?? prev?.amountCents ?? 0,
@@ -157,7 +168,10 @@ export default function App() {
       }
 
       setTerminalHint(`CFD-ID: ${terminal.terminalId}`)
-      if ('orgId' in terminal) showOrgIcons(terminal.orgId, 'display')
+      if ('orgId' in terminal) {
+        showOrgIcons(terminal.orgId, 'display')
+        setBrandOrg(terminal.orgId)
+      }
       setLink({ state: 'loading' })
 
       // A display on its own device asks for its kassa's order being entered;
@@ -203,6 +217,8 @@ export default function App() {
         showEntering(readCustomerOrder(msg.order), msg.seq)
       } else if (msg.type === 'context') {
         setEventName(typeof msg.eventName === 'string' && msg.eventName.trim() ? msg.eventName.trim() : null)
+        if (typeof msg.orgId === 'string' && msg.orgId) setBrandOrg(msg.orgId)
+        setBrandEvent(typeof msg.eventId === 'string' && msg.eventId ? msg.eventId : null)
       }
     }
 
@@ -211,6 +227,33 @@ export default function App() {
     return () => channel.close()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // The branding for this org and event — and again now and then, so a change
+  // in the console reaches a display that's left on all evening.
+  useEffect(() => {
+    if (!brandOrg) return
+    let stopped = false
+    const load = () =>
+      fetchBranding(brandOrg, brandEvent)
+        .then((b) => !stopped && setBranding(b))
+        .catch(() => {})
+    load()
+    const timer = setInterval(load, BRANDING_REFRESH_MS)
+    return () => {
+      stopped = true
+      clearInterval(timer)
+    }
+  }, [brandOrg, brandEvent])
+  const branded = !!(branding.primary || branding.accent || branding.logoUrl)
+  const brandStyle = branded
+    ? ({
+        '--brand': branding.primary ?? '#0a0a0a',
+        '--brand-fg': textOn(branding.primary ?? '#0a0a0a'),
+        '--brand-accent': branding.accent ?? branding.primary ?? '#0a0a0a',
+        '--brand-accent-fg': textOn(branding.accent ?? branding.primary ?? '#0a0a0a'),
+      } as React.CSSProperties)
+    : undefined
+  const headerEvent = payment?.order?.eventName || entering?.eventName || eventName
 
   const linkedHint = !link ? '' : link.state === 'loading' ? m.loadingStatus : link.state === 'linked' ? m.linkedTo(link.posId) : m.notLinked
   const phase: PayPhase | null = payment ? payPhase(payment.status) : null
@@ -231,15 +274,17 @@ export default function App() {
   const countdownText = secondsLeft === null ? '' : secondsLeft > 0 ? m.expiresIn(secondsLeft) : m.expired
 
   return (
-    <div className="relative flex min-h-svh flex-col bg-background text-foreground">
-      {!payment && entering && <EnteringView order={entering} eventName={eventName} />}
+    <div className="relative flex min-h-svh flex-col bg-background text-foreground" style={brandStyle} data-branded={branded || undefined}>
+      {branded && <BrandHeader branding={branding} eventName={headerEvent} />}
+
+      {!payment && entering && <EnteringView order={entering} eventName={eventName} branded={branded} />}
 
       {/* Rust: the same screen as while the order is entered — no lines yet, € 0,00. */}
-      {!payment && !entering && <EnteringView order={null} eventName={eventName} />}
+      {!payment && !entering && <EnteringView order={null} eventName={eventName} branded={branded} />}
 
-      {payment && phase !== 'paid' && <WaitingView payment={payment} eventName={eventName} failed={phase === 'failed'} countdownText={countdownText} />}
+      {payment && phase !== 'paid' && <WaitingView payment={payment} eventName={eventName} failed={phase === 'failed'} countdownText={countdownText} branded={branded} />}
 
-      {payment && phase === 'paid' && <PaidView payment={payment} eventName={eventName} onTap={() => channelRef.current?.postMessage({ type: 'reset-requested' })} />}
+      {payment && phase === 'paid' && <PaidView payment={payment} eventName={eventName} branded={branded} onTap={() => channelRef.current?.postMessage({ type: 'reset-requested' })} />}
 
       <div className="fixed right-4 bottom-4 flex items-center gap-3">
         <ThemePicker />
@@ -261,13 +306,42 @@ export default function App() {
   )
 }
 
+// Branded: across the top, the main colour with the logo and the event's
+// name, and under it a stripe in the accent (the scarf). The event's name
+// then lives here, not in the payment panel.
+function BrandHeader({ branding, eventName }: { branding: Branding; eventName: string | null }) {
+  return (
+    <header className="shrink-0" data-testid="cfd-brand">
+      <div className={cn('flex min-h-20 items-center gap-5 px-8 py-3', branding.primary ? 'bg-[var(--brand)] text-[var(--brand-fg)]' : 'border-b bg-background')}>
+        {branding.logoUrl && <img src={branding.logoUrl} alt="" className="max-h-16 max-w-[40%] object-contain" data-testid="cfd-logo" />}
+        {eventName && (
+          <h1 className="min-w-0 truncate text-[28px] font-semibold tracking-tight" data-testid="cfd-brand-event">
+            {eventName}
+          </h1>
+        )}
+      </div>
+      {branding.accent && <div className="h-1.5 bg-[var(--brand-accent)]" aria-hidden="true" />}
+    </header>
+  )
+}
+
+// The payment panel beside the order list: dark (light in dark mode) —
+// branded, in the main colour with text that reads on it.
+const PANEL = 'bg-neutral-950 text-neutral-50 dark:bg-white dark:text-neutral-950'
+const PANEL_BRANDED = 'bg-[var(--brand)] text-[var(--brand-fg)]'
+const PANEL_MUTED = 'text-neutral-400 dark:text-neutral-500'
+const PANEL_MUTED_BRANDED = 'text-[var(--brand-fg)]/70'
+// The quantity in front of a line.
+const QTY = 'bg-muted text-foreground/75'
+const QTY_BRANDED = 'bg-[var(--brand-accent)] text-[var(--brand-accent-fg)]'
+
 function readPart(index: unknown, of: unknown): Payment['part'] {
   return Number.isInteger(index) && Number.isInteger(of) && (index as number) >= 1 && (of as number) >= (index as number) ? { index: index as number, of: of as number } : null
 }
 
 // Waiting for the payment: the order on the left ("Jouw bestelling"), the
 // total and how to pay on the right — for Bancontact with the QR.
-function WaitingView({ payment, eventName, failed, countdownText }: { payment: Payment; eventName: string | null; failed: boolean; countdownText: string }) {
+function WaitingView({ payment, eventName, failed, countdownText, branded }: { payment: Payment; eventName: string | null; failed: boolean; countdownText: string; branded: boolean }) {
   const m = useMessages(DISPLAY_MESSAGES)
   const statusLabels = useMessages(STATUS_MESSAGES)
   const bill = customerBill(payment.order, payment.amountCents, payment.tipCents)
@@ -288,10 +362,10 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
   // Beside the order list, the payment panel takes the opposite of the theme
   // (dark on a light screen, white on a dark one); alone, it's the theme.
   const paired = shownLines.length > 0
-  const muted = paired ? 'text-neutral-400 dark:text-neutral-500' : 'text-muted-foreground'
+  const muted = paired ? (branded ? PANEL_MUTED_BRANDED : PANEL_MUTED) : 'text-muted-foreground'
 
   return (
-    <div className="flex min-h-svh flex-1 flex-col bg-background md:flex-row" data-testid="cfd-waiting">
+    <div className="flex min-h-0 flex-1 flex-col bg-background md:flex-row" data-testid="cfd-waiting">
       {paired && (
         <section className="flex min-w-0 flex-col bg-background text-foreground md:flex-[1.25]" data-testid="cfd-order">
           <div className="border-b px-8 pt-7 pb-4">
@@ -301,7 +375,7 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
           <ul className="flex-1 overflow-y-auto px-8 pt-1.5 pb-6">
             {shownLines.map((l, i) => (
               <li key={i} className="flex items-center gap-3 border-b border-border/60 py-3">
-                <span className="flex h-7 min-w-9 items-center justify-center rounded-lg bg-muted px-2 font-mono text-sm font-semibold text-foreground/75">{l.quantity}</span>
+                <span className={cn('flex h-7 min-w-9 items-center justify-center rounded-lg px-2 font-mono text-sm font-semibold', branded ? QTY_BRANDED : QTY)}>{l.quantity}</span>
                 <span className="flex-1 text-lg font-medium tracking-tight">{l.name}</span>
                 <span className="font-mono text-lg font-semibold tabular-nums">{formatEuro(l.totalCents)}</span>
               </li>
@@ -327,12 +401,12 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
       <section
         className={cn(
           'flex flex-col gap-8 px-8 pt-8 pb-20',
-          paired ? 'bg-neutral-950 text-neutral-50 md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%] dark:bg-white dark:text-neutral-950' : 'flex-1 bg-background text-center text-foreground'
+          paired ? cn('md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%]', branded ? PANEL_BRANDED : PANEL) : 'flex-1 bg-background text-center text-foreground'
         )}
         data-testid="cfd-pay"
       >
         <div>
-          {(payment.order?.eventName || eventName) && (
+          {!branded && (payment.order?.eventName || eventName) && (
             <p className={cn('mb-6 truncate text-sm font-medium', muted)} data-testid="cfd-event">
               {payment.order?.eventName || eventName}
             </p>
@@ -359,7 +433,7 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
               <span className={cn('absolute inset-0 rounded-full', failed ? 'bg-red-500' : 'bg-amber-400')} />
               {!failed && <span className="absolute -inset-1.5 animate-ping rounded-full bg-amber-400/60" />}
             </span>
-            <span className={cn('text-lg', paired ? 'text-neutral-200 dark:text-neutral-800' : 'text-foreground/85')} data-testid="cfd-status">
+            <span className={cn('text-lg', paired ? (branded ? 'text-[var(--brand-fg)]' : 'text-neutral-200 dark:text-neutral-800') : 'text-foreground/85')} data-testid="cfd-status">
               {statusText}
             </span>
           </div>
@@ -375,12 +449,12 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
 // total — the customer checks it (and says so at the kassa) before paying.
 // Without an order (rust): the same screen, empty, at € 0,00, ready for
 // the next one — so the display doesn't change shape when an order starts.
-function EnteringView({ order, eventName }: { order: CustomerOrder | null; eventName: string | null }) {
+function EnteringView({ order, eventName, branded }: { order: CustomerOrder | null; eventName: string | null; branded: boolean }) {
   const m = useMessages(DISPLAY_MESSAGES)
   const bill = customerBill(order, 0)
   const event = order?.eventName || eventName
   return (
-    <div className="flex min-h-svh flex-1 flex-col bg-background md:flex-row" data-testid={order ? 'cfd-entering' : 'cfd-idle'}>
+    <div className="flex min-h-0 flex-1 flex-col bg-background md:flex-row" data-testid={order ? 'cfd-entering' : 'cfd-idle'}>
       <section className="flex min-w-0 flex-col bg-background text-foreground md:flex-[1.25]" data-testid="cfd-order">
         <div className="border-b px-8 pt-7 pb-4">
           <p className="text-xs font-semibold tracking-[0.1em] text-muted-foreground uppercase">{m.yourOrder}</p>
@@ -389,7 +463,7 @@ function EnteringView({ order, eventName }: { order: CustomerOrder | null; event
         <ul className="flex-1 overflow-y-auto px-8 pt-1.5 pb-6">
           {bill.lines.map((l, i) => (
             <li key={i} className="flex items-center gap-3 border-b border-border/60 py-3 animate-in fade-in duration-200">
-              <span className="flex h-7 min-w-9 items-center justify-center rounded-lg bg-muted px-2 font-mono text-sm font-semibold text-foreground/75">{l.quantity}</span>
+              <span className={cn('flex h-7 min-w-9 items-center justify-center rounded-lg px-2 font-mono text-sm font-semibold', branded ? QTY_BRANDED : QTY)}>{l.quantity}</span>
               <span className="flex-1 text-lg font-medium tracking-tight">{l.name}</span>
               <span className="font-mono text-lg font-semibold tabular-nums">{formatEuro(l.totalCents)}</span>
             </li>
@@ -402,20 +476,20 @@ function EnteringView({ order, eventName }: { order: CustomerOrder | null; event
           )}
         </ul>
       </section>
-      <section className="flex flex-col gap-8 bg-neutral-950 px-8 pt-8 pb-20 text-neutral-50 md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%] dark:bg-white dark:text-neutral-950" data-testid="cfd-total">
+      <section className={cn('flex flex-col gap-8 px-8 pt-8 pb-20 md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%]', branded ? PANEL_BRANDED : PANEL)} data-testid="cfd-total">
         <div>
-          {event && (
-            <p className="mb-6 truncate text-sm font-medium text-neutral-400 dark:text-neutral-500" data-testid="cfd-event">
+          {!branded && event && (
+            <p className={cn('mb-6 truncate text-sm font-medium', PANEL_MUTED)} data-testid="cfd-event">
               {event}
             </p>
           )}
-          <p className="text-xs font-semibold tracking-[0.1em] text-neutral-400 uppercase dark:text-neutral-500">{m.total}</p>
+          <p className={cn('text-xs font-semibold tracking-[0.1em] uppercase', branded ? PANEL_MUTED_BRANDED : PANEL_MUTED)}>{m.total}</p>
           <p className="mt-2 font-mono text-[56px] leading-none font-semibold tracking-tight tabular-nums" data-testid="cfd-entering-total">
             {formatEuro(bill.openCents)}
           </p>
-          <p className="mt-3 text-[13.5px] text-neutral-400 dark:text-neutral-500">{m.items(bill.itemCount)}</p>
+          <p className={cn('mt-3 text-[13.5px]', branded ? PANEL_MUTED_BRANDED : PANEL_MUTED)}>{m.items(bill.itemCount)}</p>
         </div>
-        <p className="flex flex-1 items-center justify-center text-center text-lg text-neutral-200 dark:text-neutral-800">{order ? m.checkOrder : m.idle}</p>
+        <p className={cn('flex flex-1 items-center justify-center text-center text-lg', branded ? 'text-[var(--brand-fg)]' : 'text-neutral-200 dark:text-neutral-800')}>{order ? m.checkOrder : m.idle}</p>
       </section>
     </div>
   )
@@ -423,12 +497,12 @@ function EnteringView({ order, eventName }: { order: CustomerOrder | null; event
 
 // Paid: a calm confirmation (design_files' "Bedankt!"), not a pop-up. A tap
 // tells a same-device kassa the customer is done (it moves on to the next).
-function PaidView({ payment, eventName, onTap }: { payment: Payment; eventName: string | null; onTap: () => void }) {
+function PaidView({ payment, eventName, branded, onTap }: { payment: Payment; eventName: string | null; branded: boolean; onTap: () => void }) {
   const m = useMessages(DISPLAY_MESSAGES)
   const method = m.methods[payment.method] || payment.method
   return (
     <div
-      className="flex min-h-svh flex-1 cursor-pointer flex-col items-center justify-center gap-4 bg-background p-8 text-center text-foreground animate-in fade-in duration-300"
+      className="flex min-h-0 flex-1 cursor-pointer flex-col items-center justify-center gap-4 bg-background p-8 text-center text-foreground animate-in fade-in duration-300"
       onClick={onTap}
       data-testid="cfd-paid"
     >
@@ -444,7 +518,7 @@ function PaidView({ payment, eventName, onTap }: { payment: Payment; eventName: 
           {m.part(payment.part.index, payment.part.of)}
         </p>
       )}
-      {(payment.order?.eventName || eventName) && (
+      {!branded && (payment.order?.eventName || eventName) && (
         <p className="mt-2 text-sm text-muted-foreground" data-testid="cfd-event">
           {payment.order?.eventName || eventName}
         </p>

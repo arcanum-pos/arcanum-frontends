@@ -369,7 +369,7 @@ describe('split per item', () => {
 describe('customerViewOrder: the customer display while the order is entered', () => {
   const draft = (quantity: number): DraftLine[] => [{ ...bon, quantity }]
   it('the Toog sale being entered: its lines, no title', () => {
-    expect(customerViewOrder(m, draft(3), null, 'Fuif')).toEqual({ label: '', number: null, eventName: 'Fuif', paidCents: 0, followUrl: null, lines: [{ name: 'Bon', quantity: 3, unitPriceCents: 100 }] })
+    expect(customerViewOrder(m, draft(3), null, 'Fuif', 'ev-1')).toEqual({ label: '', number: null, eventName: 'Fuif', eventId: 'ev-1', paidCents: 0, followUrl: null, lines: [{ name: 'Bon', quantity: 3, unitPriceCents: 100 }] })
   })
   it("an open tab: what's on it (net of voids) and what's tapped in but not sent yet", () => {
     const open = { ...tab([line({ id: 'a', quantity: 2 }), line({ id: 'b', name: 'Cola', unitPriceCents: 220, quantity: 1, voidedQuantity: 1 })]), paidCents: 100, followUrl: '/volg/x' }

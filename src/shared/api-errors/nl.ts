@@ -146,6 +146,10 @@ const nl = {
   pairing_too_many_attempts: 'Te veel foute koppelcodes — probeer over 10 minuten opnieuw',
   pairing_not_member: 'Je bent geen lid van de organisatie van deze koppelcode — meld je aan met het juiste account',
   devicehub_failed: 'Toestellen zijn even niet bereikbaar — probeer opnieuw',
+  icon_slot_unknown: 'Voor deze pagina kan je geen icoon instellen',
+  icon_invalid: 'Dit icoon kon niet bewaard worden ({size} px): kies een andere afbeelding',
+  branding_color_invalid: 'Kies een kleur als #rrggbb',
+  branding_logo_invalid: 'Dit logo kon niet bewaard worden: kies een andere afbeelding',
 }
 
 export type ApiErrorCode = keyof typeof nl

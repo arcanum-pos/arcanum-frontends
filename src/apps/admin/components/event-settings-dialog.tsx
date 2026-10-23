@@ -21,6 +21,7 @@ import {
 } from '../lib/api'
 import type { CatalogSummary } from '../lib/catalog-api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
+import { ColorField } from './color-field'
 
 // Evenementen → "Instellen": an event's ordering modes (bestelwijzen: "Ter
 // plaatse", "Take away", "Alleen aan de kassa", … — each its own menu,
@@ -251,6 +252,13 @@ export function EventSettingsDialog({
                     }
                   />
                 )}
+
+                <Section title={m.brandTitle} hint={m.brandHint} testId="event-brand">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <ColorField id="event-primary" label={m.brandPrimary} value={current.brand?.primary ?? null} emptyLabel={m.brandInherit} clearLabel={m.brandClear} disabled={busy} onChange={(brandPrimary) => run(() => updateEvent(orgId, current.id, { brandPrimary }))} />
+                    <ColorField id="event-accent" label={m.brandAccent} value={current.brand?.accent ?? null} emptyLabel={m.brandInherit} clearLabel={m.brandClear} disabled={busy} onChange={(brandAccent) => run(() => updateEvent(orgId, current.id, { brandAccent }))} />
+                  </div>
+                </Section>
 
                 <Section
                   title={m.numbers}

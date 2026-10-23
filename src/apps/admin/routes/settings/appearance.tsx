@@ -5,6 +5,7 @@ import { useMessages } from '@/shared/i18n'
 import { useTheme } from '../../lib/theme'
 import { useOrg } from '../../lib/org-context'
 import { AppIconsCard } from '../../components/app-icons-card'
+import { DisplayBrandingCard } from '../../components/display-branding-card'
 import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 
 const OPTIONS = [
@@ -51,6 +52,7 @@ export default function AppearancePage() {
         </CardContent>
       </Card>
 
+      {currentOrg && <DisplayBrandingCard orgId={currentOrg.id} />}
       {currentOrg && <AppIconsCard orgId={currentOrg.id} />}
     </div>
   )

@@ -60,12 +60,16 @@ describe('readCustomerOrder', () => {
       label: 'T',
       number: 1,
       eventName: 'Fuif',
+      eventId: null,
       paidCents: null,
       paying: null,
       lines: [{ name: 'A', quantity: 1, unitPriceCents: 100 }],
       followUrl: null,
     })
     expect(readCustomerOrder({ lines: [], eventName: 42 })?.eventName).toBeNull()
+    // An event's id only as one (it goes into the branding URL).
+    expect(readCustomerOrder({ lines: [], eventId: 'ev_1-a' })?.eventId).toBe('ev_1-a')
+    expect(readCustomerOrder({ lines: [], eventId: '../x?y' })?.eventId).toBeNull()
     // The event's short number wins over the tab number.
     expect(readCustomerOrder({ lines: [], number: 1287, eventNumber: 5 })?.number).toBe(5)
     expect(readCustomerOrder(null)).toBeNull()

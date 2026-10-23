@@ -34,3 +34,22 @@ export async function iconSizes(file: Blob): Promise<Record<number, string>> {
   }
   return out
 }
+
+// The customer display's logo (Weergave → Klantscherm): the image as a PNG of
+// at most 512 px a side, its own shape kept and its transparency too — drawn
+// here, so whatever was uploaded (an SVG too) arrives as a plain PNG.
+export const LOGO_MAX_SIDE = 512
+
+export async function logoPng(file: Blob): Promise<string> {
+  const img = await load(file)
+  const width = img.naturalWidth || LOGO_MAX_SIDE
+  const height = img.naturalHeight || LOGO_MAX_SIDE
+  const scale = Math.min(1, LOGO_MAX_SIDE / width, LOGO_MAX_SIDE / height)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.max(1, Math.round(width * scale))
+  canvas.height = Math.max(1, Math.round(height * scale))
+  const ctx = canvas.getContext('2d')!
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+  return canvas.toDataURL('image/png').split(',')[1]
+}

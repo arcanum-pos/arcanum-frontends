@@ -79,6 +79,9 @@ export class FakeCatalogAdmin {
   staffCalls: { method: string; body: any }[] = []
   myRole: 'admin' | 'cashier' | 'waiter' = 'admin'
   orgIcons = new Map<string, { updatedAt: string; png: Record<string, string> }>()
+  // Weergave → Klantscherm (arcanum-backend branding.ts).
+  branding: { primary: string | null; accent: string | null; logo: { updatedAt: string; png: string } | null } = { primary: null, accent: null, logo: null }
+  brandingCalls: any[] = []
   members: any[] = []
   tables: any[] = []
   // Kassalades.
@@ -128,6 +131,25 @@ export class FakeCatalogAdmin {
     if (path === '/api/organizations/memberships' && method === 'GET') return ok([{ orgId: ORG_ID, orgName: 'E2E', role: this.myRole }])
     // Weergave → App-iconen: the org's own icons per page (arcanum-backend org-icons.ts).
     if (path === `/api/organizations/${ORG_ID}/icons` && method === 'GET') return ok([...this.orgIcons].map(([slot, i]) => ({ slot, updatedAt: i.updatedAt })))
+    const brandingView = () => ({ primary: this.branding.primary, accent: this.branding.accent, logo: this.branding.logo ? { updatedAt: this.branding.logo.updatedAt } : null })
+    if (path === `/api/organizations/${ORG_ID}/branding` && method === 'GET') return ok(brandingView())
+    if (path === `/api/organizations/${ORG_ID}/branding` && method === 'PUT') {
+      this.brandingCalls.push(body)
+      for (const key of ['primary', 'accent'] as const) {
+        if (body[key] === undefined) continue
+        if (body[key] !== null && !/^#[0-9a-f]{6}$/i.test(body[key])) return { status: 400, body: { error: 'Kies een kleur als #rrggbb', code: 'branding_color_invalid' } }
+        this.branding[key] = body[key] === null ? null : body[key].toLowerCase()
+      }
+      return ok(brandingView())
+    }
+    if (path === `/api/organizations/${ORG_ID}/branding/logo` && method === 'PUT') {
+      this.branding.logo = { updatedAt: new Date().toISOString(), png: body.png }
+      return ok(brandingView())
+    }
+    if (path === `/api/organizations/${ORG_ID}/branding/logo` && method === 'DELETE') {
+      this.branding.logo = null
+      return ok(brandingView())
+    }
     const icon = path.match(/^\/api\/organizations\/[^/]+\/icons\/([^/]+)$/)
     if (icon && method === 'PUT') {
       const updatedAt = new Date().toISOString()
@@ -264,6 +286,9 @@ export class FakeCatalogAdmin {
         }
         if (body.selfOrderEnabled !== undefined) e.selfOrder.enabled = body.selfOrderEnabled
         if (body.kassaModes !== undefined) e.kassaModes = body.kassaModes
+        e.brand ??= { primary: null, accent: null }
+        if (body.brandPrimary !== undefined) e.brand.primary = body.brandPrimary
+        if (body.brandAccent !== undefined) e.brand.accent = body.brandAccent
         if (e.selfOrder.enabled && !e.selfOrder.code) e.selfOrder.code = `code-${this.id('c')}`
         if (body.linkName !== undefined) {
           const name = String(body.linkName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')

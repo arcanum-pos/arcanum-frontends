@@ -308,6 +308,10 @@ export class FakeBackend {
   // --- Devices (arcanum-backend devices.ts) ---
   // The registry, as the backend answers it for org-e2e. The kassa fixture's
   // own terminal is in it; remove it to play "removed in the console".
+  // The customer display's branding: the org's, and per event its own colours.
+  branding: { primary: string | null; accent: string | null; logoUrl: string | null } = { primary: null, accent: null, logoUrl: null }
+  eventBranding = new Map<string, { primary: string | null; accent: string | null }>()
+  brandingRequests: { orgId: string; eventId: string | null }[] = []
   devices = new Map<string, { terminal_id: string; org_id: string; role: string; linked_to: string | null; name: string | null }>([
     ['pos-e2e', { terminal_id: 'pos-e2e', org_id: 'org-e2e', role: 'pos', linked_to: null, name: 'Kassa 1' }],
   ])
@@ -443,6 +447,13 @@ export class FakeBackend {
     if (p === '/api/organizations/memberships' && method === 'GET') return { status: 200, body: [{ orgId: 'org-e2e', orgName: 'E2E', role: this.memberRole }] }
     if (p === '/api/organizations/device-pairings/claim' && method === 'POST') return this.claim(String(body?.code ?? ''))
     // Like the backend: a station screen's or customer display's code pairs here, a kassa's needs the session claim.
+    // The customer display's logo and colours (arcanum-backend branding.ts): the event's colours win.
+    const brand = p.match(/^\/api\/public\/branding\/([^/]+)$/)
+    if (brand && method === 'GET') {
+      this.brandingRequests.push({ orgId: decodeURIComponent(brand[1]), eventId: url.searchParams.get('event') })
+      const own = url.searchParams.get('event') ? this.eventBranding.get(url.searchParams.get('event')!) : undefined
+      return { status: 200, body: { primary: own?.primary ?? this.branding.primary, accent: own?.accent ?? this.branding.accent, logoUrl: this.branding.logoUrl } }
+    }
     if (p === '/api/public/pair' && method === 'POST') {
       const key = String(body?.code ?? '').toUpperCase().replace(/[\s-]/g, '')
       const entry = [...this.pairingCodes].find(([c]) => c.replace('-', '') === key)

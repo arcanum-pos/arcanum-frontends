@@ -145,4 +145,8 @@ export default {
   pairing_too_many_attempts: 'Trop de codes de couplage erronés — réessayez dans 10 minutes',
   pairing_not_member: 'Vous n’êtes pas membre de l’organisation de ce code de couplage — connectez-vous avec le bon compte',
   devicehub_failed: 'Les appareils sont momentanément injoignables — réessayez',
+  icon_slot_unknown: 'Impossible de définir une icône pour cette page',
+  icon_invalid: 'Cette icône n’a pas pu être enregistrée ({size} px) : choisissez une autre image',
+  branding_color_invalid: 'Choisissez une couleur au format #rrggbb',
+  branding_logo_invalid: 'Ce logo n’a pas pu être enregistré : choisissez une autre image',
 } satisfies ApiErrorMessages
