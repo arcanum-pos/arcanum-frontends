@@ -7,7 +7,7 @@ const en: LoginPromptMessages = {
   hereHint: 'With a code by e-mail, Google or a passkey.',
   signIn: 'Sign in',
   phoneTitle: 'With your phone',
-  phoneHint: 'Scan the QR code and sign in on your phone — this device follows by itself. Handy for a till or customer display.',
+  phoneHint: 'Scan the QR code and sign in on your phone - this device follows by itself. Handy for a till or customer display.',
   pairQuestion: 'Pairing a device with a pairing code?',
   pairLink: 'Pair a device',
 }

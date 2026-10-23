@@ -23,7 +23,7 @@ const fr: StationMessages = {
   passOn: 'Passer à…',
   passOnTitle: (number: number) => `Passer le #${number} à`,
   openPickup: 'Écran de retrait',
-  openPickupHint: 'Ouvre l’écran pour les invités dans une nouvelle fenêtre — glissez-la vers un deuxième écran.',
+  openPickupHint: 'Ouvre l’écran pour les invités dans une nouvelle fenêtre - glissez-la vers un deuxième écran.',
   pickupColumns: { received: 'Reçues', preparing: 'En préparation', ready: 'Prêtes' },
   pickupNothing: 'Rien pour l’instant',
   pickupReady: 'Venez chercher votre commande ici',

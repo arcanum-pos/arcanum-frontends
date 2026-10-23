@@ -44,7 +44,7 @@ describe('tabStatusKind', () => {
 describe('filterOverview', () => {
   const numbers = (list: TabSummary[]) => list.map((t) => t.number)
 
-  it('filters by status — "open" includes a payment in progress', () => {
+  it('filters by status - "open" includes a payment in progress', () => {
     expect(numbers(filterOverview(m, tabs, '', 'all'))).toEqual([1, 2, 3, 4])
     expect(numbers(filterOverview(m, tabs, '', 'open'))).toEqual([2, 3])
     expect(numbers(filterOverview(m, tabs, '', 'paid'))).toEqual([1])

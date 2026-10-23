@@ -27,7 +27,7 @@ const en: WaiterMessages = {
   onReader: (reader) => `The amount is on ${reader}. Let the guest pay.`,
   tapToPay: 'Tap to Pay (SumUp app)',
   tapPaid: 'Paid with Tap to Pay.',
-  tapChecking: 'Not confirmed by SumUp yet — the table updates as soon as it is.',
+  tapChecking: 'Not confirmed by SumUp yet - the table updates as soon as it is.',
   tapFailed: (detail: string | null) => (detail ? `Not paid: ${detail}` : 'Not paid'),
   cashAtTill: (label) => `Cash? The guests pay at the till: tab "${label}".`,
   openEntrance: 'Entrance screen',

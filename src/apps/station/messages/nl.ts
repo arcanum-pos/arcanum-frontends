@@ -23,7 +23,7 @@ const nl = {
   passOn: 'Doorgeven…',
   passOnTitle: (number: number) => `#${number} doorgeven aan`,
   openPickup: 'Afhaalscherm',
-  openPickupHint: 'Opent het scherm voor de gasten in een nieuw venster — sleep het naar een tweede scherm.',
+  openPickupHint: 'Opent het scherm voor de gasten in een nieuw venster - sleep het naar een tweede scherm.',
   pickupColumns: { received: 'Ontvangen', preparing: 'In bereiding', ready: 'Klaar' },
   pickupNothing: 'Nog niets',
   pickupReady: 'Haal je bestelling hier af',

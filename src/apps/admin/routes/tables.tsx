@@ -1,17 +1,17 @@
-import { useState } from 'react'
-import { createPortal } from 'react-dom'
-import { MoreHorizontal, Plus, Printer } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Plus, Printer } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useMessages, type Messages } from '@/shared/i18n'
+import { useLocale, useMessages, type Messages } from '@/shared/i18n'
 import { createTable, listTablesAdmin, newTableQr, updateTable, type TableRecord } from '../lib/api'
 import { useAsync } from '../lib/use-async'
+import { printQrSheet, qrSheetHtml } from '../lib/qr-sheet'
+import { RowActions } from '../components/row-actions'
 import { useOrg } from '../lib/org-context'
 
 // Tafels (DOMAIN_MODEL.md "Tables and waiters", release C): the
@@ -141,43 +141,44 @@ export default function TablesPage() {
 
   const active = (data ?? []).filter((x) => !x.archived)
 
+  const { locale } = useLocale()
+  const sheetRef = useRef<HTMLDivElement>(null)
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  // The cards as shown, their QR codes taken from the page (already drawn).
+  function printCards() {
+    const frame = frameRef.current
+    if (!frame) return
+    const cards = active.map((x) => ({
+      name: t.table(x.name),
+      zone: x.zone,
+      svg: sheetRef.current?.querySelector(`[data-card="${CSS.escape(x.id)}"] svg`)?.outerHTML ?? '',
+    }))
+    printQrSheet(frame, qrSheetHtml(t.printTitle, cards, locale))
+  }
+
   if (printing)
     return (
       <div className="flex flex-col gap-4">
         <div className="flex gap-2 print:hidden">
-          <Button onClick={() => window.print()}>
+          <Button onClick={printCards}>
             <Printer /> {t.print}
           </Button>
           <Button variant="outline" onClick={() => setPrinting(false)}>
             {t.cancel}
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 print:hidden" data-testid="qr-sheet">
+        <div ref={sheetRef} className="grid grid-cols-2 gap-6 sm:grid-cols-3 print:hidden" data-testid="qr-sheet">
           {active.map((x) => (
-            <div key={x.id} className="flex break-inside-avoid flex-col items-center gap-2 rounded-xl border p-4">
+            <div key={x.id} className="flex break-inside-avoid flex-col items-center gap-2 rounded-xl border p-4" data-card={x.id}>
               <QRCodeSVG value={qrUrl(x.qrToken)} size={160} marginSize={0} />
               <span className="text-xl font-bold">{t.table(x.name)}</span>
               {x.zone && <span className="text-sm text-muted-foreground">{x.zone}</span>}
             </div>
           ))}
         </div>
-        {/* What goes on paper: only the cards (globals.css .print-sheet hides
-            the console around them), in millimetres for A4 — 3 across, 4 down
-            a page, a card never split over two pages. */}
-        {createPortal(
-          <div className="print-sheet hidden print:block" data-testid="qr-print">
-            <div className="grid grid-cols-3 gap-[6mm]">
-              {active.map((x) => (
-                <div key={x.id} className="flex h-[62mm] break-inside-avoid flex-col items-center justify-center gap-[2mm] rounded-[3mm] border border-black p-[4mm] text-black">
-                  <QRCodeSVG value={qrUrl(x.qrToken)} size={160} marginSize={0} style={{ width: '42mm', height: '42mm' }} />
-                  <span className="text-[14pt] leading-tight font-bold">{t.table(x.name)}</span>
-                  {x.zone && <span className="text-[9pt] leading-tight">{x.zone}</span>}
-                </div>
-              ))}
-            </div>
-          </div>,
-          document.body
-        )}
+        {/* What goes on paper: a document of its own (lib/qr-sheet.ts),
+            printed from this invisible frame. */}
+        <iframe ref={frameRef} title={t.printTitle} aria-hidden="true" tabIndex={-1} className="pointer-events-none fixed top-0 left-0 size-px opacity-0" data-testid="qr-print-frame" />
       </div>
     )
 
@@ -231,19 +232,15 @@ export default function TablesPage() {
                 <TableCell>{x.zone ?? ''}</TableCell>
                 <TableCell>{x.archived ? <Badge variant="outline">{t.archived}</Badge> : t.states[x.state]}</TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label={t.table(x.name)}>
-                        <MoreHorizontal />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => setEditing(x)}>{t.rename}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => setQrFor(x)}>{t.showQr}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => confirm(t.newQrConfirm) && act(() => newTableQr(orgId, x.id))}>{t.newQr}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => act(() => updateTable(orgId, x.id, { archived: !x.archived }))}>{x.archived ? t.restore : t.archive}</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <RowActions
+                    name={t.table(x.name)}
+                    actions={[
+                      { label: t.rename, onSelect: () => setEditing(x) },
+                      { label: t.showQr, onSelect: () => setQrFor(x) },
+                      { label: t.newQr, onSelect: () => confirm(t.newQrConfirm) && act(() => newTableQr(orgId, x.id)) },
+                      { label: x.archived ? t.restore : t.archive, destructive: !x.archived, onSelect: () => act(() => updateTable(orgId, x.id, { archived: !x.archived })) },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

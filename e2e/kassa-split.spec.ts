@@ -47,7 +47,7 @@ test('split a Toog sale in 3: each part paid on its own, the last takes the roun
   await kassa.getByRole('button', { name: 'Volgend deel', exact: true }).click()
 
   await payCashPart(kassa, 'Afrekenen deel 3/3 · € 8,67', 'Volgende klant')
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
   expect(backend.tabs[0]).toMatchObject({ status: 'closed', receiptNumber: 1 })
   expect(backend.charges.map((c) => [c.amountCents, c.tipCents, c.splitPart])).toEqual([
     [866, 0, 1],
@@ -98,7 +98,7 @@ test('after a part is paid, a void that would go below it is refused with a clea
   const dialog = kassa.getByRole('dialog')
   await dialog.getByRole('button', { name: 'Klant annuleert' }).click()
   await dialog.getByRole('button', { name: 'Lijn annuleren' }).click()
-  await expect(kassa.getByText('Er is al een deel betaald — annuleren zou meer terugbetalen dan er open staat')).toBeVisible()
+  await expect(kassa.getByText('Er is al een deel betaald - annuleren zou meer terugbetalen dan er open staat')).toBeVisible()
 })
 
 test('no "Splitsen" when there is nothing (or less than 2 cents) to split', async ({ kassa }) => {
@@ -187,7 +187,7 @@ test('per item: each person pays what they had; paid units stay marked; "Alles w
   await kassa.getByRole('button', { name: 'Bevestig ontvangst contant geld' }).click()
   await kassa.getByRole('button', { name: 'Volgende klant', exact: true }).click()
 
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
   expect(backend.tabs.find((t) => t.id === tab.id)).toMatchObject({ status: 'closed' })
   expect(backend.charges.map((c) => [c.amountCents, c.lines?.map((l) => l.quantity)])).toEqual([
     [3650, [1, 1]],
@@ -229,7 +229,7 @@ test('per item: the CFD lists only what this person pays', async ({ kassa, backe
   await expect(display.getByTestId('cfd-summary')).toHaveText('Nog open op de rekening: € 45,50 · Contant')
 })
 
-test('per item: paid units can no longer be cancelled — only the unpaid ones are offered', async ({ kassa, backend }) => {
+test('per item: paid units can no longer be cancelled - only the unpaid ones are offered', async ({ kassa, backend }) => {
   await tafel5(kassa, backend)
   await itemRow(kassa, 'Steak').getByRole('button', { name: /^Steak:/ }).click()
   await itemRow(kassa, 'Pintje').getByRole('button', { name: 'meer Pintje' }).click()

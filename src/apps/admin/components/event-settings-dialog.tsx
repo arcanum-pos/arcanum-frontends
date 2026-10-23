@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -22,6 +22,7 @@ import {
 import type { CatalogSummary } from '../lib/catalog-api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import { ColorField } from './color-field'
+import { RowActions } from './row-actions'
 
 // Evenementen → "Instellen": an event's ordering modes (bestelwijzen: "Ter
 // plaatse", "Take away", "Alleen aan de kassa", … — each its own menu,
@@ -378,9 +379,7 @@ function ModeCard({
         <Button variant="ghost" size="icon" disabled={busy || last} onClick={() => onChange({ move: 'down' })} aria-label={m.modeDown}>
           <ChevronDown />
         </Button>
-        <Button variant="ghost" size="icon" disabled={busy} onClick={onDelete} aria-label={m.modeDelete}>
-          <Trash2 />
-        </Button>
+        <RowActions name={mode.name} disabled={busy} actions={[{ label: m.modeDelete, destructive: true, onSelect: onDelete }]} />
       </div>
 
       <Section title={m.modeMenu}>
@@ -390,7 +389,7 @@ function ModeCard({
           onValueChange={(v) => onChange(v === NONE ? { catalogId: null } : { catalogId: v, ...(mode.catalogId ? {} : { selfOrder: true }) })}
           disabled={busy}
         >
-          <SelectTrigger aria-label={`${m.modeMenu} — ${mode.name}`} className="w-full">
+          <SelectTrigger aria-label={`${m.modeMenu} - ${mode.name}`} className="w-full">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -406,13 +405,13 @@ function ModeCard({
 
       <Section
         title={m.modeQr}
-        control={<Switch checked={mode.selfOrder} disabled={busy || !mode.catalogId} onCheckedChange={(on) => onChange({ selfOrder: on })} aria-label={`${m.modeQr} — ${mode.name}`} />}
+        control={<Switch checked={mode.selfOrder} disabled={busy || !mode.catalogId} onCheckedChange={(on) => onChange({ selfOrder: on })} aria-label={`${m.modeQr} - ${mode.name}`} />}
       />
 
       <Section
         title={m.modeAtTable}
         hint={m.modeAtTableHint}
-        control={<Switch checked={!!mode.atTable} disabled={busy || !mode.catalogId} onCheckedChange={(on) => onChange({ atTable: on })} aria-label={`${m.modeAtTable} — ${mode.name}`} />}
+        control={<Switch checked={!!mode.atTable} disabled={busy || !mode.catalogId} onCheckedChange={(on) => onChange({ atTable: on })} aria-label={`${m.modeAtTable} - ${mode.name}`} />}
       />
 
       {mode.selfOrder && (
@@ -446,7 +445,7 @@ function ModeCard({
             checked={!!mode.notifySms}
             disabled={busy || (!sms && !mode.notifySms)}
             onCheckedChange={(on) => onChange({ notifySms: on })}
-            aria-label={`${m.modeSms} — ${mode.name}`}
+            aria-label={`${m.modeSms} - ${mode.name}`}
           />
         }
       />

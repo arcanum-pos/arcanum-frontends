@@ -59,7 +59,7 @@ export const test = base.extend<Fixtures>({
     })
 
     await page.goto('/kassa.html')
-    await expect(page.getByText('Toog — direct afrekenen')).toBeVisible()
+    await expect(page.getByText('Toog - direct afrekenen')).toBeVisible()
     await provide(page)
 
     // An uncaught exception in the app fails the test even if every

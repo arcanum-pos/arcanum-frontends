@@ -253,7 +253,7 @@ export const TEMPLATE_ROWS: ExportRow[] = [
   { groep: 'Eten', product: 'Steak', variant: 'kind', prijsCents: 1200, categorie: 'Eten', station: 'Keuken', btwBp: null, code: null, snelknoppen: null, zichtbaar: true },
 ]
 
-// Text of the "Uitleg" sheet — same rules as DOMAIN_MODEL.md. Part of the
+// Text of the "Uitleg" sheet - same rules as DOMAIN_MODEL.md. Part of the
 // file, so Dutch like the column names it explains.
 export function explanationRows(title: string): [string, string][] {
   return [
@@ -264,22 +264,22 @@ export function explanationRows(title: string): [string, string][] {
     ['Product', 'Het product. Hetzelfde product mag op meerdere rijen staan (één rij per variant).'],
     ['Variant', 'Leeg = product zonder varianten. Anders bv. normaal / jeugd / kind of niet-lid / lid.'],
     ['Prijs', 'Prijs op deze menukaart, in euro (8,50 of 8.50 of € 8,50). Nooit overgenomen van de rij erboven.'],
-    ['Categorie', 'Wat het product is (Drank, Eten, …) — voor rapporten. Hoort bij het product: op één rij invullen volstaat. Leeg bij een bestaand product = ongewijzigd, bij een nieuw product = niet ingesteld.'],
-    ['Station', 'Wie het klaarmaakt — Bar, Keuken, … Hoort bij het product: op één rij invullen volstaat. Leeg bij een bestaand product = ongewijzigd, bij een nieuw product = geen station.'],
+    ['Categorie', 'Wat het product is (Drank, Eten, …) - voor rapporten. Hoort bij het product: op één rij invullen volstaat. Leeg bij een bestaand product = ongewijzigd, bij een nieuw product = niet ingesteld.'],
+    ['Station', 'Wie het klaarmaakt - Bar, Keuken, … Hoort bij het product: op één rij invullen volstaat. Leeg bij een bestaand product = ongewijzigd, bij een nieuw product = geen station.'],
     ['BTW', 'Tarief in % (0, 6, 12, 21). Hoort bij het product: op één rij invullen volstaat. Leeg bij een bestaand product = ongewijzigd, bij een nieuw product = niet ingesteld. Tarieven nog te bevestigen door de boekhouder.'],
     ['Code', 'Optioneel, uniek. Blijft de code gelijk, dan wordt een gewijzigde naam als hernoeming gezien. Leeg bij een bestaande variant = ongewijzigd.'],
-    ['Snelknoppen', 'Optioneel, bv. 5, 10, 20 — knoppen om in één tik meerdere stuks te verkopen.'],
-    ['Zichtbaar', 'ja/nee — nee = staat op de menukaart maar niet op de kassa. Leeg = ja.'],
+    ['Snelknoppen', 'Optioneel, bv. 5, 10, 20 - knoppen om in één tik meerdere stuks te verkopen.'],
+    ['Zichtbaar', 'ja/nee - nee = staat op de menukaart maar niet op de kassa. Leeg = ja.'],
     ['', ''],
     ['Regel', ''],
     ['Lege cel', 'Groep en Product: leeg = waarde van de rij erboven.'],
-    ['', 'Categorie, Station en BTW: horen bij het product — op één rij van dat product invullen volstaat (maakt niet uit welke). Overal leeg: bij een bestaand product blijft de waarde ongewijzigd, bij een nieuw product is ze niet ingesteld.'],
-    ['', 'Producten horen bij de hele organisatie en kunnen op meerdere menukaarten staan: een import wist nooit hun categorie, station, BTW of code — dat doe je in de console.'],
+    ['', 'Categorie, Station en BTW: horen bij het product - op één rij van dat product invullen volstaat (maakt niet uit welke). Overal leeg: bij een bestaand product blijft de waarde ongewijzigd, bij een nieuw product is ze niet ingesteld.'],
+    ['', 'Producten horen bij de hele organisatie en kunnen op meerdere menukaarten staan: een import wist nooit hun categorie, station, BTW of code - dat doe je in de console.'],
     ['Drie begrippen', 'Groep = plaats op de kassa (per menukaart). Categorie = wat het is (rapporten). Station = wie het klaarmaakt (bar, keuken).'],
     ['', 'Prijs, Variant, Code, Snelknoppen en Zichtbaar worden nooit overgenomen.'],
     ['Sorteren', 'Een export vult altijd alles in, zodat sorteren/filteren in Excel veilig is. Met lege cellen: niet sorteren.'],
     ['Importeren', 'Eerst een voorbeeld van alle wijzigingen (nieuw, prijswijzigingen, verwijderde lijnen, fouten per rij), pas daarna Toepassen.'],
-    ['', 'De import vervangt indeling en prijzen van deze menukaart. Producten worden nooit verwijderd — ze kunnen op andere menukaarten staan.'],
+    ['', 'De import vervangt indeling en prijzen van deze menukaart. Producten worden nooit verwijderd - ze kunnen op andere menukaarten staan.'],
     ['Tegenstrijdig', 'Zelfde product met verschillende Categorie, Station of BTW op twee rijen = fout, met rijnummers.'],
   ]
 }

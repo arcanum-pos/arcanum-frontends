@@ -20,7 +20,7 @@ export default {
 
   // Notices of the screens' own
   exportFailed: (error: string) => `Échec de l’exportation : ${error}`,
-  invalidPrice: (name: string) => `Prix non valable pour ${name} — utilisez p. ex. 2,50`,
+  invalidPrice: (name: string) => `Prix non valable pour ${name} - utilisez p. ex. 2,50`,
   invalidQuickQuantities: 'Boutons rapides : 10 nombres entiers au maximum, entre 1 et 999, séparés par des virgules',
 
   // Menus (list)
@@ -36,7 +36,7 @@ export default {
   newCatalogDescription: 'P. ex. par saison ou par événement. Vous y ajoutez ensuite des groupes et des produits.',
   renameCatalog: 'Renommer la carte',
   duplicateCatalog: 'Dupliquer la carte',
-  duplicateDescription: 'Une copie indépendante avec les mêmes groupes et prix — p. ex. pour une nouvelle saison.',
+  duplicateDescription: 'Une copie indépendante avec les mêmes groupes et prix - p. ex. pour une nouvelle saison.',
   copyName: 'Nom de la copie',
   copyOf: (name: string) => `${name} (copie)`,
 
@@ -55,28 +55,29 @@ export default {
       ? 'Le produit de ce groupe disparaît de cette carte. Le produit lui-même reste.'
       : `Les ${count} produits de ce groupe disparaissent de cette carte. Les produits eux-mêmes restent.`,
   noCategory: 'Pas de catégorie',
-  archivedEntry: 'Produit archivé — pas sur la caisse',
+  archivedEntry: 'Produit archivé - pas sur la caisse',
   priceOf: (name: string) => `Prix ${name}`,
   quickQuantitiesOf: (name: string) => `Boutons rapides ${name}`,
   quickQuantitiesPlaceholder: 'boutons rapides, p. ex. 5, 10',
   visible: 'Visible',
   visibleOf: (name: string) => `Visible ${name}`,
-  allOnCatalog: 'Tous les produits sont déjà sur cette carte — créez-en de nouveaux sous Produits.',
+  allOnCatalog: 'Tous les produits sont déjà sur cette carte - créez-en de nouveaux sous Produits.',
   addProductTo: (section: string) => `Ajouter un produit à ${section}`,
   addProductPlaceholder: 'Ajouter un produit…',
   newEntryPrice: (section: string) => `Prix du nouveau produit ${section}`,
 
   // Export / import
   export: 'Exporter',
+  exportAs: (format: string) => `Exporter (${format})`,
   importInto: (name: string) => `Importer dans ${name}`,
   importCatalog: 'Importer une carte',
   importReplaceDescription:
-    'Le fichier remplace les groupes, l’ordre et les prix de cette carte. Les produits ne sont jamais supprimés — ils peuvent figurer sur d’autres cartes — et une Catégorie, un Poste, une TVA ou un Code vide laisse un produit existant inchangé.',
+    'Le fichier remplace les groupes, l’ordre et les prix de cette carte. Les produits ne sont jamais supprimés - ils peuvent figurer sur d’autres cartes - et une Catégorie, un Poste, une TVA ou un Code vide laisse un produit existant inchangé.',
   importNewDescription: 'Crée une nouvelle carte à partir du fichier. Les produits existants sont reconnus par leur code ou leur nom, et réutilisés.',
   importFile: 'Fichier (.xlsx ou .csv)',
   importName: 'Nom de la nouvelle carte',
   ignoredColumns: (headers: string) => `Colonnes ignorées : ${headers}`,
-  importHasErrors: 'Le fichier contient des erreurs — rien n’a été modifié. Corrigez le fichier et réessayez.',
+  importHasErrors: 'Le fichier contient des erreurs - rien n’a été modifié. Corrigez le fichier et réessayez.',
   previewCounts: (rows: number, groups: number) =>
     `${rows === 1 ? '1 ligne' : `${rows} lignes`} dans ${groups === 1 ? '1 groupe' : `${groups} groupes`}.`,
   noChanges: ' Aucune modification.',
@@ -108,13 +109,13 @@ export default {
   productsIntro: (org: string | null) => `Ce que ${org ?? 'cette organisation'} vend. Les prix se définissent par carte.`,
   conceptsCategory: ' = ce que c’est, pour les rapports (Boissons, Repas). ',
   conceptsStation: ' = qui le prépare (Bar, Cuisine). ',
-  conceptsSection: ' = où se trouve le bouton sur la caisse — cela se définit par carte.',
+  conceptsSection: ' = où se trouve le bouton sur la caisse - cela se définit par carte.',
   categoryTerm: 'Catégorie',
   stationTerm: 'Poste',
   sectionTerm: 'Groupe',
   categories: {
     title: 'Catégories',
-    description: 'Ce qu’est un produit (Boissons, Repas, Inscriptions) — pour les rapports.',
+    description: 'Ce qu’est un produit (Boissons, Repas, Inscriptions) - pour les rapports.',
     placeholder: 'Nouvelle catégorie, p. ex. Boissons',
     newLabel: 'Nouvelle catégorie',
     renameTitle: 'Renommer la catégorie',
@@ -140,7 +141,7 @@ export default {
   noProducts: 'Pas encore de produit.',
   archivedBadge: 'archivé',
   defaultVariant: 'par défaut',
-  vatProvisional: 'Les taux de TVA sont provisoires — encore à confirmer avec le comptable.',
+  vatProvisional: 'Les taux de TVA sont provisoires - encore à confirmer avec le comptable.',
   vatNone: 'Aucune',
 
   // Product dialog

@@ -27,7 +27,7 @@ function storeTerminal(page: Page, terminal: Record<string, unknown>) {
   return page.addInitScript((t) => localStorage.setItem('arcanum-terminal', JSON.stringify(t)), terminal)
 }
 
-test('not paired: pair with a code, or go to the console — no role to pick', async ({ page }) => {
+test('not paired: pair with a code, or go to the console - no role to pick', async ({ page }) => {
   await page.goto('/chooser.html')
   await expect(page.getByRole('heading', { name: 'Wat wil je doen?' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Dit toestel koppelen' })).toBeVisible()
@@ -66,7 +66,7 @@ test('a wrong code: the reason, and nothing stored', async ({ page }) => {
   await page.goto('/chooser.html')
   await page.getByLabel('Koppelcode').fill('ABCD-EFGH')
   await page.getByRole('button', { name: 'Koppelen' }).click()
-  await expect(page.getByRole('alert')).toHaveText('Deze koppelcode klopt niet, is al gebruikt of is verlopen — vraag een beheerder om een nieuwe')
+  await expect(page.getByRole('alert')).toHaveText('Deze koppelcode klopt niet, is al gebruikt of is verlopen - vraag een beheerder om een nieuwe')
   expect(await page.evaluate(() => localStorage.getItem('arcanum-terminal'))).toBeNull()
 })
 
@@ -110,7 +110,7 @@ const claimRoute = async (page: Page, claimed: unknown[]) => {
 const exists = (page: Page) =>
   page.route(/\/api\/organizations\/org-1\/devices\/pos-1(\?|$)/, (route) => route.fulfill({ json: { terminal_id: 'pos-1', org_id: 'org-1', role: 'pos' } }))
 
-test("a link's code on a browser that already is another org's kassa: asks first — keep it, or pair with the new code", async ({ page }) => {
+test("a link's code on a browser that already is another org's kassa: asks first - keep it, or pair with the new code", async ({ page }) => {
   const claimed: unknown[] = []
   await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Scouts', name: 'Kassa toog' })
   await exists(page)
@@ -138,7 +138,7 @@ test('…or keeps the device it is: "Nee, open …" opens it, nothing claimed', 
   expect(claimed).toEqual([])
 })
 
-test("a demo's second click: already that demo's kassa — just opens it", async ({ page }) => {
+test("a demo's second click: already that demo's kassa - just opens it", async ({ page }) => {
   const claimed: unknown[] = []
   await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Demo van Bert', name: 'Kassa 1' })
   await exists(page)
@@ -163,7 +163,7 @@ test("an expired demo's kassa left in the browser: pairs with the new code right
 test("a link's code that doesn't work: the reason, with the code filled in to try again", async ({ page }) => {
   await page.route(/\/api\/public\/pair$/, (route) => route.fulfill({ status: 400, json: { error: 'x', code: 'pairing_code_invalid' } }))
   await page.goto('/chooser.html?code=ABCD-EFGH')
-  await expect(page.getByRole('alert')).toHaveText('Deze koppelcode klopt niet, is al gebruikt of is verlopen — vraag een beheerder om een nieuwe')
+  await expect(page.getByRole('alert')).toHaveText('Deze koppelcode klopt niet, is al gebruikt of is verlopen - vraag een beheerder om een nieuwe')
   await expect(page.getByLabel('Koppelcode')).toHaveValue('ABCD-EFGH')
 })
 
@@ -184,7 +184,7 @@ test('/pair: a station screen pairs with its code alone and opens its screen', a
   expect(JSON.parse((await page.evaluate(() => localStorage.getItem('arcanum-terminal')))!)).toMatchObject({ terminalId: 'st-9', role: 'station', orgId: 'org-1' })
 })
 
-test("/pair: a kassa's code with nobody signed in — sign in first, back to /pair with the code", async ({ page }) => {
+test("/pair: a kassa's code with nobody signed in - sign in first, back to /pair with the code", async ({ page }) => {
   await kassaNeedsSession(page)
   await page.route(/\/api\/organizations\/device-pairings\/claim$/, (route) => route.fulfill({ status: 401, json: { error: 'Unauthorized' } }))
   await page.goto('/pair.html')
@@ -215,7 +215,7 @@ async function stationClaim(page: Page, asked: unknown[]) {
 test.describe('the pairing link, in Safari on an iPhone', () => {
   test.use({ userAgent: IPHONE })
 
-  test("is that device (icon, name, manifest); asks first — as an app shows the steps, nothing paired", async ({ page }) => {
+  test("is that device (icon, name, manifest); asks first - as an app shows the steps, nothing paired", async ({ page }) => {
     const asked: unknown[] = []
     await stationClaim(page, asked)
     await page.goto(STATION_LINK)
@@ -285,7 +285,7 @@ test.describe('the pairing link, in Chrome', () => {
     expect(await page.evaluate(() => sessionStorage.getItem('arcanum-offer-install'))).toBe('1')
   })
 
-  test("a kassa's: sign in first, and back to the same link — the device included", async ({ page }) => {
+  test("a kassa's: sign in first, and back to the same link - the device included", async ({ page }) => {
     await kassaNeedsSession(page)
     await page.route(/\/api\/organizations\/device-pairings\/claim$/, (route) => route.fulfill({ status: 401, json: { error: 'Unauthorized' } }))
     await page.goto('/pair.html?code=K7PM-4XQ2&role=pos&name=Kassa%201')
@@ -305,7 +305,7 @@ test('the app opens its pairing link again, days later: the code it was paired w
   expect(claimed).toEqual([])
 })
 
-test('…removed in the console since: says so — the used code is not tried again', async ({ page }) => {
+test('…removed in the console since: says so - the used code is not tried again', async ({ page }) => {
   await storeTerminal(page, { terminalId: 'pos-1', role: 'pos', orgId: 'org-1', orgName: 'Scouts', name: 'Kassa 1', pairedWith: 'K7PM4XQ2' })
   await page.route(/\/api\/organizations\/org-1\/devices\/pos-1(\?|$)/, (route) => route.fulfill({ status: 404, json: { error: 'x', code: 'device_not_found' } }))
   const claimed: unknown[] = []

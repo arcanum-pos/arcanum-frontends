@@ -12,6 +12,8 @@ const nl = {
   loading: 'Laden...',
   custom: 'Aangepast',
   platformDefault: 'Platform-standaard',
+  // The "…" button at the end of a line (row-actions.tsx).
+  rowActions: (name: string) => `Acties voor ${name}`,
   thisOrg: 'deze organisatie',
 
   // Footer
@@ -50,14 +52,14 @@ const nl = {
   importInstead: 'of importeer uit een exportbestand',
   // Demo org banner
   firstOrgTitle: 'Welkom bij je Arcanum',
-  firstOrgText: 'Geef je organisatie een naam om te beginnen — je vereniging, jeugdbeweging of evenement. Je wordt er de beheerder van.',
+  firstOrgText: 'Geef je organisatie een naam om te beginnen - je vereniging, jeugdbeweging of evenement. Je wordt er de beheerder van.',
   firstOrgCreate: 'Organisatie aanmaken',
   firstOrgImport: 'of importeer een organisatie uit een exportbestand (bv. je demo)',
   noMembershipTitle: 'Je bent geen lid van een organisatie',
   noMembershipText: (email: string) => `Je bent aangemeld als ${email}, maar dat adres hoort bij geen enkele organisatie op deze Arcanum.`,
-  noMembershipInvite: 'Vraag een beheerder van je organisatie om je uit te nodigen op dit adres. Werd je al uitgenodigd? Meld je dan aan met precies het adres waarop de uitnodiging kwam — en op dezelfde manier (code per e-mail, Google of passkey).',
+  noMembershipInvite: 'Vraag een beheerder van je organisatie om je uit te nodigen op dit adres. Werd je al uitgenodigd? Meld je dan aan met precies het adres waarop de uitnodiging kwam - en op dezelfde manier (code per e-mail, Google of passkey).',
   noMembershipSignOut: 'Afmelden en een ander account gebruiken',
-  demoTitle: (when: string) => `Dit is een demo — ze verdwijnt vanzelf om ${when}.`,
+  demoTitle: (when: string) => `Dit is een demo - ze verdwijnt vanzelf om ${when}.`,
   demoHint: 'Probeer gerust alles uit. Wil je verder? Neem je demo mee als exportbestand, of maak je eigen installatie.',
   demoTakeAlong: 'Neem je demo mee',
   demoOwnInstall: 'Eigen installatie',
@@ -79,7 +81,7 @@ const nl = {
     activeEvent: 'Actief evenement',
   },
   salesOverTime: 'Verkoop over tijd',
-  notImplemented: 'Nog niet geïmplementeerd — gereserveerde ruimte.',
+  notImplemented: 'Nog niet geïmplementeerd - gereserveerde ruimte.',
   chartComing: 'Grafiek volgt',
 
   // Settings: the side menu, also each page's heading
@@ -99,7 +101,7 @@ const nl = {
   // Settings → Appearance → App icons (the organisation's, admins)
   appIcons: {
     title: 'App-iconen',
-    hint: 'Het icoon van elke pagina die je als app installeert (beginscherm, Dock, startmenu) en in het tabblad — voor deze organisatie. Zonder eigen icoon: het standaardicoon. Een toestel krijgt het als het geïnstalleerd wordt via zijn koppellink.',
+    hint: 'Het icoon van elke pagina die je als app installeert (beginscherm, Dock, startmenu) en in het tabblad - voor deze organisatie. Zonder eigen icoon: het standaardicoon. Een toestel krijgt het als het geïnstalleerd wordt via zijn koppellink.',
     pages: { kassa: 'Kassa', display: 'Klantscherm', waiter: 'Bediening', tap: 'Tap to Pay-telefoon', selforder: 'Bestellen (gasten)', station: 'Stationscherm (standaard)', pickup: 'Afhaalscherm', entrance: 'Tafelscherm (ingang)', console: 'Console (beheer)' },
     prepStation: 'Stationscherm',
     own: 'Eigen icoon',
@@ -113,9 +115,9 @@ const nl = {
   },
   displayBranding: {
     title: "Klantscherm",
-    hint: "Het logo en de kleuren op het klantscherm: een hoofdkleur voor de bovenbalk en het totaal, en een accentkleur voor de streep eronder en de aantallen — bv. het groen van je scoutsgroep en de kleur van de das, of de clubkleuren. Alleen het klantscherm gebruikt ze; de kassa en de console blijven zoals ze zijn.",
+    hint: "Het logo en de kleuren op het klantscherm: een hoofdkleur voor de bovenbalk en het totaal, en een accentkleur voor de streep eronder en de aantallen - bv. het groen van je scoutsgroep en de kleur van de das, of de clubkleuren. Alleen het klantscherm gebruikt ze; de kassa en de console blijven zoals ze zijn.",
     logo: "Logo",
-    logoHint: "PNG, JPEG, WebP of SVG — bewaard als PNG van hoogstens 512 px. Een logo met een doorzichtige achtergrond staat het mooist.",
+    logoHint: "PNG, JPEG, WebP of SVG - bewaard als PNG van hoogstens 512 px. Een logo met een doorzichtige achtergrond staat het mooist.",
     noLogo: "Geen logo",
     upload: "Uploaden",
     replace: "Vervangen",
@@ -124,7 +126,7 @@ const nl = {
     unreadable: "Dit logo kon niet gelezen worden. Kies een PNG, JPEG, WebP of SVG.",
     primary: "Hoofdkleur",
     accent: "Accentkleur",
-    noColor: "Geen — de standaardkleuren van het klantscherm",
+    noColor: "Geen - de standaardkleuren van het klantscherm",
     clear: "Wissen",
     perEvent: "Een evenement kan eigen kleuren hebben: Evenementen → Instellen.",
     adminsOnly: "Alleen beheerders kunnen het klantscherm aanpassen.",
@@ -150,7 +152,7 @@ const nl = {
   profileSubtitle: 'Je identiteit, zoals bevestigd door je identity provider.',
   profileLoadFailed: (error: string) => `Kon profiel niet laden: ${error}`,
   whoAmI: 'Wie ben ik',
-  profileReadOnly: 'Alleen-lezen — wijzig dit bij je identity provider zelf.',
+  profileReadOnly: 'Alleen-lezen - wijzig dit bij je identity provider zelf.',
   email: 'E-mail',
 
   // Settings → Payment Providers
@@ -186,7 +188,7 @@ const nl = {
   bancontactConfirmHint: (merchantId: string) => `Klopt dat? Is dit niet jouw organisatie of rekening, bewaar de sleutel dan niet en neem contact op met Bancontact. (Merchant ID ${merchantId})`,
   bancontactYesSave: 'Ja, bewaren',
   bancontactNotMine: 'Nee, niet bewaren',
-  keysTitle: (provider: string) => `${provider} — sleutels`,
+  keysTitle: (provider: string) => `${provider} - sleutels`,
   keysEncrypted: 'Worden versleuteld opgeslagen (envelope encryption per organisatie).',
   merchantCode: 'Merchant code',
   apiKey: 'API-key',
@@ -200,14 +202,14 @@ const nl = {
   moreInfo: 'Meer uitleg',
 
   // Settings → Gegevens
-  dataSubtitle: 'Al je gegevens meenemen — bijvoorbeeld naar een eigen Arcanum-installatie op je eigen Cloudflare-account.',
+  dataSubtitle: 'Al je gegevens meenemen - bijvoorbeeld naar een eigen Arcanum-installatie op je eigen Cloudflare-account.',
   exportTitle: 'Exporteren',
   exportDescription: (org: string) =>
     `Eén leesbaar JSON-bestand met alle gegevens van ${org}: leden, evenementen, producten, menukaarten, rekeningen, bestellingen, betalingen en transacties.`,
   notInExport: 'Niet in de export',
   notInExportKey: 'de versleutelingssleutel van de organisatie (een import maakt een nieuwe)',
-  notInExportDomain: 'het eigen domein en de identity provider — die horen bij een installatie',
-  notInExportDevices: "toestellen (kassa's, klantschermen) — die registreren zich opnieuw",
+  notInExportDomain: 'het eigen domein en de identity provider - die horen bij een installatie',
+  notInExportDevices: "toestellen (kassa's, klantschermen) - die registreren zich opnieuw",
   notInExportMembers: 'leden komen bij een import terug als uitnodiging en worden actief bij hun eerste login',
   includeSecrets: 'Inclusief geheimen (betaalinstellingen, onversleuteld)',
   secretsWarning:
@@ -217,7 +219,7 @@ const nl = {
   exportFailed: (error: string) => `Export mislukt: ${error}`,
   importTitle: 'Importeren',
   importDescription:
-    'Maakt een nieuwe organisatie aan met alle gegevens uit een exportbestand — van deze of een andere Arcanum-installatie. De huidige organisatie blijft ongewijzigd.',
+    'Maakt een nieuwe organisatie aan met alle gegevens uit een exportbestand - van deze of een andere Arcanum-installatie. De huidige organisatie blijft ongewijzigd.',
   importFromFile: 'Organisatie importeren uit exportbestand',
 }
 

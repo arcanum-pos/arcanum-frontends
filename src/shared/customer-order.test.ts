@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { customerBill, readCustomerOrder, type CustomerOrder } from './customer-order'
+import { customerBill, itemsPerCategory, readCustomerOrder, type CustomerOrder } from './customer-order'
 
 const order: CustomerOrder = {
   label: 'Tafel 4',
@@ -19,6 +19,7 @@ describe('customerBill', () => {
         { name: 'Fietstocht (niet-lid)', quantity: 2, totalCents: 1600 },
       ],
       itemCount: 12,
+      categories: [],
       itemsCents: 2600,
       alreadyPaidCents: 0,
       openCents: 2600,
@@ -63,7 +64,7 @@ describe('readCustomerOrder', () => {
       eventId: null,
       paidCents: null,
       paying: null,
-      lines: [{ name: 'A', quantity: 1, unitPriceCents: 100 }],
+      lines: [{ name: 'A', quantity: 1, unitPriceCents: 100, category: null }],
       followUrl: null,
     })
     expect(readCustomerOrder({ lines: [], eventName: 42 })?.eventName).toBeNull()
@@ -80,7 +81,7 @@ describe('readCustomerOrder', () => {
 describe('readCustomerOrder, per item', () => {
   it('keeps what this payment covers', () => {
     const o = readCustomerOrder({ label: 'T', lines: [{ name: 'A', quantity: 2, unitPriceCents: 100 }], paying: [{ name: 'A', quantity: 1, unitPriceCents: 100 }, { bad: true }] })
-    expect(o?.paying).toEqual([{ name: 'A', quantity: 1, unitPriceCents: 100 }])
+    expect(o?.paying).toEqual([{ name: 'A', quantity: 1, unitPriceCents: 100, category: null }])
     expect(readCustomerOrder({ lines: [], paying: [] })?.paying).toBeNull()
   })
 })
@@ -93,5 +94,33 @@ describe('the same item from several rounds', () => {
       { name: 'Cola', quantity: 1, totalCents: 300 },
     ])
     expect(bill.itemCount).toBe(6)
+  })
+})
+
+describe('itemsPerCategory', () => {
+  it('counts the items per category, in first-seen order, those without one last', () => {
+    expect(
+      itemsPerCategory([
+        { name: 'Pils', quantity: 3, unitPriceCents: 250, category: 'Drank' },
+        { name: 'Bon', quantity: 2, unitPriceCents: 100, category: null },
+        { name: 'Frieten', quantity: 1, unitPriceCents: 400, category: 'Eten' },
+        { name: 'Cola', quantity: 2, unitPriceCents: 250, category: ' Drank ' },
+        { name: 'Weg', quantity: 0, unitPriceCents: 250, category: 'Snoep' },
+      ])
+    ).toEqual([
+      { name: 'Drank', count: 5 },
+      { name: 'Eten', count: 1 },
+      { name: null, count: 2 },
+    ])
+  })
+
+  it('nothing when no product has a category', () => {
+    expect(itemsPerCategory([{ name: 'Bon', quantity: 2, unitPriceCents: 100 }])).toEqual([])
+  })
+
+  it('comes through readCustomerOrder and customerBill (merged lines keep it)', () => {
+    const read = readCustomerOrder({ label: '', lines: [{ name: 'Pils', quantity: 1, unitPriceCents: 250, category: 'Drank' }, { name: 'Pils', quantity: 2, unitPriceCents: 250, category: 'Drank' }, { name: 'X', quantity: 1, unitPriceCents: 1, category: 7 }] })
+    expect(read?.lines.map((l) => l.category)).toEqual(['Drank', 'Drank', null])
+    expect(customerBill(read, 751).categories).toEqual([{ name: 'Drank', count: 3 }, { name: null, count: 1 }])
   })
 })

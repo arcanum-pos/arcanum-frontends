@@ -23,7 +23,7 @@ const en: StationMessages = {
   passOn: 'Pass on…',
   passOnTitle: (number: number) => `Pass #${number} on to`,
   openPickup: 'Pickup screen',
-  openPickupHint: 'Opens the screen for guests in a new window — drag it to a second screen.',
+  openPickupHint: 'Opens the screen for guests in a new window - drag it to a second screen.',
   pickupColumns: { received: 'Received', preparing: 'Being prepared', ready: 'Ready' },
   pickupNothing: 'Nothing yet',
   pickupReady: 'Collect your order here',

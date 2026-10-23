@@ -45,7 +45,7 @@ test('pay with a typed tip: charged on top, shown on the payment view and to the
 test('tip quick buttons: +€1, +€2, round up to a whole euro, and clear', async ({ kassa, backend }) => {
   backend.entry('v-bon')!.priceCents = 150
   await kassa.reload()
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
 
   await kassa.getByRole('button', button('5 × Bon')).click() // € 7,50
   await kassa.getByRole('button', button('+€1')).click()

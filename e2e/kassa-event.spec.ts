@@ -53,7 +53,7 @@ test('an event chosen in Instellingen: shown in the header, and every new rekeni
 
   // "Geen evenement" again: new rekeningen are untagged, open ones keep theirs.
   await settings.getByRole('button', { name: 'Kies geen evenement' }).click()
-  await expect(settings.getByText(/^Geen evenement — /)).toBeVisible()
+  await expect(settings.getByText(/^Geen evenement - /)).toBeVisible()
   await kassa.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(kassa.getByTestId('kassa-event')).toHaveCount(0)
   await kassa.getByRole('button', { name: /^Toog/ }).click()
@@ -64,7 +64,7 @@ test('an event chosen in Instellingen: shown in the header, and every new rekeni
 test('an event that no longer exists is dropped, with a notice', async ({ kassa, backend }) => {
   await kassa.evaluate((e) => localStorage.setItem('arcanum-event', JSON.stringify(e)), FIETSTOCHT)
   await kassa.reload()
-  await expect(kassa.getByText('Het gekozen evenement "Fietstocht 2026" bestaat niet meer — verkopen worden niet meer aan een evenement gekoppeld.')).toBeVisible()
+  await expect(kassa.getByText('Het gekozen evenement "Fietstocht 2026" bestaat niet meer - verkopen worden niet meer aan een evenement gekoppeld.')).toBeVisible()
   await expect(kassa.getByTestId('kassa-event')).toHaveCount(0)
   await payToog(kassa)
   expect(backend.tabs[0].eventId).toBeNull()

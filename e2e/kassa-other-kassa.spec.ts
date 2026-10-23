@@ -47,7 +47,7 @@ test('a tab closed on another kassa: adding to it is refused and the kassa falls
   await kassa.clock.runFor(31_000)
 
   await expect(kassa.getByText('Deze rekening is intussen afgesloten, mogelijk op een andere kassa.')).toBeVisible()
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
   await expect(kassa.getByRole('button', { name: /^#1 Jan/ })).toHaveCount(0)
 })
 

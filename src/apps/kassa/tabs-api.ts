@@ -71,6 +71,8 @@ export interface TabLine {
   name: string
   unitPriceCents: number
   quantity: number
+  // The product's category at sale time.
+  category?: string | null
   voidsLineId: string | null
   voidReason: string | null
   voidedQuantity: number
@@ -99,6 +101,8 @@ export interface DraftLine {
   quantity: number
   // Every line comes from the catalog (free lines are refused since 3d).
   variantId: string
+  // Display only (the customer display's items per category); never sent.
+  category?: string | null
 }
 
 // Carries the server's own error message (already Dutch, user-facing) and,

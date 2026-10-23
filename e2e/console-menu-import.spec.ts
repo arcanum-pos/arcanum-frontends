@@ -71,8 +71,8 @@ test.describe('Menukaart export', () => {
   test('exports ;-separated CSV with decimal comma from the menukaarten list', async ({ console: open, catalogAdmin }) => {
     seed(catalogAdmin)
     const page = await open('/catalogs')
-    await page.getByTestId('catalog-Kaas & wijn').getByRole('button', { name: 'Exporteren' }).click()
-    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'CSV (.csv)' }).click()])
+    await page.getByTestId('catalog-Kaas & wijn').getByRole('button', { name: 'Acties voor Kaas & wijn' }).click()
+    const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'Exporteren (CSV)' }).click()])
     expect(download.suggestedFilename()).toBe('menukaart-Kaas & wijn.csv')
     const text = readFileSync(await download.path(), 'utf8')
     expect(text.charCodeAt(0)).toBe(0xfeff)

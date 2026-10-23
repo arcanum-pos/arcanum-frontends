@@ -21,7 +21,7 @@ async function withGroups(kassa: Page, backend: FakeBackend) {
 const columnGroups = (kassa: Page) =>
   kassa.getByTestId('group-column').evaluateAll((cols) => cols.map((c) => [...c.querySelectorAll('[data-group-id]')].map((g) => (g as HTMLElement).dataset.groupId)))
 
-test('the divider: dragged, the tab panel wider or narrower — kept for this till; a double-click puts it back', async ({ kassa }) => {
+test('the divider: dragged, the tab panel wider or narrower - kept for this till; a double-click puts it back', async ({ kassa }) => {
   const divider = kassa.getByTestId('panel-divider')
   const side = kassa.getByTestId('tab-side')
   const width = async () => Math.round((await side.boundingBox())!.width)
@@ -114,7 +114,7 @@ test('arranging with the keyboard: space picks a group up, the arrows move it, s
   await expect.poll(async () => (await columnGroups(kassa))[0]).toEqual([first[1], first[0], ...first.slice(2)])
 })
 
-test('a drop between the columns goes to the nearest one, at its end — never back by surprise', async ({ kassa, backend }) => {
+test('a drop between the columns goes to the nearest one, at its end - never back by surprise', async ({ kassa, backend }) => {
   await withGroups(kassa, backend)
   await kassa.getByTestId('arrange').click()
   const before = await columnGroups(kassa)

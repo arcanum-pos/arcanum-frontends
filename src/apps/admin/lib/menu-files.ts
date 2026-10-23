@@ -69,12 +69,12 @@ export async function downloadMenu(catalogName: string, rows: ExportRow[], forma
     return
   }
   const today = new Date().toLocaleDateString('nl-BE')
-  const title = `${catalogName} — export van ${today}. Eén bestand = één menukaart, één rij = één knop op de kassa.`
+  const title = `${catalogName} - export van ${today}. Eén bestand = één menukaart, één rij = één knop op de kassa.`
   download(await xlsxBlob(rows, title), exportFileName(catalogName, 'xlsx'))
 }
 
 export async function downloadTemplate() {
-  const title = 'Sjabloon — vervang de voorbeeldrijen door je eigen menukaart. Eén rij = één knop op de kassa.'
+  const title = 'Sjabloon - vervang de voorbeeldrijen door je eigen menukaart. Eén rij = één knop op de kassa.'
   download(await xlsxBlob(TEMPLATE_ROWS, title), 'menukaart-sjabloon.xlsx')
 }
 

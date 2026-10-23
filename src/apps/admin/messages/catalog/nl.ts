@@ -25,7 +25,7 @@ const nl = {
 
   // Notices of the screens' own (the server's come as they are)
   exportFailed: (error: string) => `Exporteren mislukt: ${error}`,
-  invalidPrice: (name: string) => `Ongeldige prijs voor ${name} — gebruik bv. 2,50`,
+  invalidPrice: (name: string) => `Ongeldige prijs voor ${name} - gebruik bv. 2,50`,
   invalidQuickQuantities: 'Snelknoppen: maximaal 10 hele getallen tussen 1 en 999, gescheiden door komma’s',
 
   // Menukaarten (list)
@@ -41,7 +41,7 @@ const nl = {
   newCatalogDescription: 'Bv. per seizoen of per evenement. Nadien voeg je groepen en producten toe.',
   renameCatalog: 'Menukaart hernoemen',
   duplicateCatalog: 'Menukaart dupliceren',
-  duplicateDescription: 'Een onafhankelijke kopie met dezelfde groepen en prijzen — bv. voor een nieuw seizoen.',
+  duplicateDescription: 'Een onafhankelijke kopie met dezelfde groepen en prijzen - bv. voor een nieuw seizoen.',
   copyName: 'Naam van de kopie',
   // Only a suggestion in the name field — whatever's confirmed is stored.
   copyOf: (name: string) => `${name} (kopie)`,
@@ -60,28 +60,29 @@ const nl = {
       ? 'Het product in deze groep verdwijnt van deze menukaart. Het product zelf blijft bestaan.'
       : `De ${count} producten in deze groep verdwijnen van deze menukaart. De producten zelf blijven bestaan.`,
   noCategory: 'Geen categorie',
-  archivedEntry: 'Gearchiveerd product — niet op de kassa',
+  archivedEntry: 'Gearchiveerd product - niet op de kassa',
   priceOf: (name: string) => `Prijs ${name}`,
   quickQuantitiesOf: (name: string) => `Snelknoppen ${name}`,
   quickQuantitiesPlaceholder: 'snelknoppen, bv. 5, 10',
   visible: 'Zichtbaar',
   visibleOf: (name: string) => `Zichtbaar ${name}`,
-  allOnCatalog: 'Alle producten staan al op deze menukaart — maak nieuwe aan onder Producten.',
+  allOnCatalog: 'Alle producten staan al op deze menukaart - maak nieuwe aan onder Producten.',
   addProductTo: (section: string) => `Product toevoegen aan ${section}`,
   addProductPlaceholder: 'Product toevoegen…',
   newEntryPrice: (section: string) => `Prijs nieuw product ${section}`,
 
   // Export / import
   export: 'Exporteren',
+  exportAs: (format: string) => `Exporteren (${format})`,
   importInto: (name: string) => `Importeren in ${name}`,
   importCatalog: 'Menukaart importeren',
   importReplaceDescription:
-    'Het bestand vervangt de groepen, de volgorde en de prijzen van deze menukaart. Producten worden nooit verwijderd — ze kunnen op andere menukaarten staan — en een lege Categorie, Station, BTW of Code laat een bestaand product ongewijzigd.',
+    'Het bestand vervangt de groepen, de volgorde en de prijzen van deze menukaart. Producten worden nooit verwijderd - ze kunnen op andere menukaarten staan - en een lege Categorie, Station, BTW of Code laat een bestaand product ongewijzigd.',
   importNewDescription: 'Maakt een nieuwe menukaart uit het bestand. Bestaande producten worden herkend op code of naam en hergebruikt.',
   importFile: 'Bestand (.xlsx of .csv)',
   importName: 'Naam van de nieuwe menukaart',
   ignoredColumns: (headers: string) => `Genegeerde kolommen: ${headers}`,
-  importHasErrors: 'Het bestand bevat fouten — er is niets gewijzigd. Pas het bestand aan en probeer opnieuw.',
+  importHasErrors: 'Het bestand bevat fouten - er is niets gewijzigd. Pas het bestand aan en probeer opnieuw.',
   previewCounts: (rows: number, groups: number) => `${rows} ${rows === 1 ? 'rij' : 'rijen'} in ${groups} groep${groups === 1 ? '' : 'en'}.`,
   noChanges: ' Geen wijzigingen.',
   unchangedLines: (count: number) => `${count} ${count === 1 ? 'lijn' : 'lijnen'} ongewijzigd.`,
@@ -115,13 +116,13 @@ const nl = {
   // Split around the three bold terms (categoryTerm, stationTerm, sectionTerm).
   conceptsCategory: ' = wat het is, voor rapporten (Drank, Eten). ',
   conceptsStation: ' = wie het klaarmaakt (Bar, Keuken). ',
-  conceptsSection: ' = waar de knop op de kassa staat — dat stel je per menukaart in.',
+  conceptsSection: ' = waar de knop op de kassa staat - dat stel je per menukaart in.',
   categoryTerm: 'Categorie',
   stationTerm: 'Station',
   sectionTerm: 'Groep',
   categories: {
     title: 'Categorieën',
-    description: 'Wat een product is (Drank, Eten, Inschrijvingen) — voor rapporten.',
+    description: 'Wat een product is (Drank, Eten, Inschrijvingen) - voor rapporten.',
     placeholder: 'Nieuwe categorie, bv. Drank',
     newLabel: 'Nieuwe categorie',
     renameTitle: 'Categorie hernoemen',
@@ -148,7 +149,7 @@ const nl = {
   archivedBadge: 'gearchiveerd',
   // A variant without a name (a single-version product).
   defaultVariant: 'standaard',
-  vatProvisional: 'BTW-tarieven zijn voorlopig — nog te bevestigen met de boekhouder.',
+  vatProvisional: 'BTW-tarieven zijn voorlopig - nog te bevestigen met de boekhouder.',
   vatNone: 'Geen',
 
   // Product dialog

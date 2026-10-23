@@ -253,7 +253,7 @@ export class FakeCatalogAdmin {
     // Deleting one: only while nothing was sold for it (usedEvents: has tabs or sales).
     const oneEvent = path.match(/^\/api\/organizations\/[^/]+\/events\/([^/]+)$/)
     if (oneEvent && method === 'DELETE') {
-      if (this.usedEvents.has(oneEvent[1])) return { status: 409, body: { error: 'Dit evenement heeft al rekeningen of verkopen — het blijft bewaard', code: 'event_in_use' } }
+      if (this.usedEvents.has(oneEvent[1])) return { status: 409, body: { error: 'Dit evenement heeft al rekeningen of verkopen - het blijft bewaard', code: 'event_in_use' } }
       this.events = this.events.filter((e) => e.id !== oneEvent[1])
       return ok({ ok: true })
     }
@@ -335,7 +335,7 @@ export class FakeCatalogAdmin {
     const m = path.match(/^\/api\/organizations\/[^/]+\/(catalog|catalogs)(?:\/(.*))?$/)
     if (!m) return { status: 404, body: { error: 'Not found' } }
     const parts = m[2] ? m[2].split('/') : []
-    return m[1] === 'catalog' ? this.catalogRoute(method, parts, query, body || {}) : this.catalogsRoute(method, parts, body || {})
+    return m[1] === 'catalog' ? this.catalogRoute(method, parts, query, body || {}) : this.catalogsRoute(method, parts, body || {}, query)
   }
 
   // Toestellen → Toestel toevoegen: codes as the backend makes them. A test
@@ -527,7 +527,7 @@ export class FakeCatalogAdmin {
       if (body.code !== undefined) variant.code = body.code || null
       if (body.archived === true) {
         const active = this.variants.filter((v) => v.productId === variant.productId && !v.archived)
-        if (active.length <= 1) return conflict('Een product heeft minstens één actieve variant nodig — archiveer dan het product')
+        if (active.length <= 1) return conflict('Een product heeft minstens één actieve variant nodig - archiveer dan het product')
         variant.archived = true
       }
       if (body.archived === false) variant.archived = false
@@ -538,13 +538,14 @@ export class FakeCatalogAdmin {
 
   // --- /catalogs ---
 
-  private catalogsRoute(method: string, [catalogId, action, childId]: string[], body: any): FakeResponse {
+  private catalogsRoute(method: string, [catalogId, action, childId]: string[], body: any, query = ''): FakeResponse {
     if (!catalogId) {
       if (method === 'GET') {
+        const all = query.includes('includeArchived')
         return ok(
           this.catalogs
-            .filter((c) => !c.archived)
-            .sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name))
+            .filter((c) => all || !c.archived)
+            .sort((a, b) => Number(a.archived) - Number(b.archived) || Number(b.isDefault) - Number(a.isDefault) || a.name.localeCompare(b.name))
             .map((c) => this.summary(c))
         )
       }
@@ -570,9 +571,13 @@ export class FakeCatalogAdmin {
       return ok(this.detail(catalog))
     }
     if (action === 'archive') {
-      if (catalog.isDefault) return conflict('De standaardmenukaart kan niet gearchiveerd worden — maak eerst een andere standaard')
+      if (catalog.isDefault) return conflict('De standaardmenukaart kan niet gearchiveerd worden - maak eerst een andere standaard')
       catalog.archived = true
       return ok({ ok: true })
+    }
+    if (action === 'restore') {
+      catalog.archived = false
+      return ok(this.detail(catalog))
     }
     if (action === 'duplicate') {
       const copy = { id: this.id('menu'), name: trimmed(body.name, 60) || `${catalog.name} (kopie)`, isDefault: false, archived: false }
@@ -595,7 +600,7 @@ export class FakeCatalogAdmin {
       const same = (a: string[], b: string[]) => a.length === b.length && new Set(a).size === a.length && b.every((x) => a.includes(x))
       if (this.failNextLayout || !same(given, sectionIds) || !same(givenEntries, entryIds)) {
         this.failNextLayout = false
-        return bad('De indeling is intussen gewijzigd — herlaad en probeer opnieuw')
+        return bad('De indeling is intussen gewijzigd - herlaad en probeer opnieuw')
       }
       layout.forEach((s, i) => {
         this.sections.find((x) => x.id === s.id)!.position = i
@@ -684,7 +689,7 @@ export class FakeCatalogAdmin {
   private importRoute(body: any): FakeResponse {
     this.importRequests.push(body)
     const rows: any[] = Array.isArray(body.rows) ? body.rows : []
-    if (rows.length === 0 || rows.length > 500) return bad('rows must be 1–500 rows')
+    if (rows.length === 0 || rows.length > 500) return bad('rows must be 1-500 rows')
     const target = body.catalogId ? this.catalogs.find((c) => c.id === body.catalogId && !c.archived) : null
     if (body.catalogId && !target) return notFound('Menukaart niet gevonden')
     if (!body.catalogId && !trimmed(body.name, 60)) return bad('name is required (max 60 characters)')

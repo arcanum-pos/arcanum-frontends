@@ -9,6 +9,8 @@ export default {
   loading: 'Loading...',
   custom: 'Custom',
   platformDefault: 'Platform default',
+  // The "…" button at the end of a line (row-actions.tsx).
+  rowActions: (name: string) => `Actions for ${name}`,
   thisOrg: 'this organisation',
 
   // Footer
@@ -46,14 +48,14 @@ export default {
   orgNamePlaceholder: 'e.g. Scouts Elewijt',
   importInstead: 'or import from an export file',
   firstOrgTitle: 'Welcome to your Arcanum',
-  firstOrgText: 'Give your organisation a name to begin — your club, youth movement or event. You become its administrator.',
+  firstOrgText: 'Give your organisation a name to begin - your club, youth movement or event. You become its administrator.',
   firstOrgCreate: 'Create organisation',
   firstOrgImport: 'or import an organisation from an export file (e.g. your demo)',
   noMembershipTitle: 'You’re not a member of an organisation',
   noMembershipText: (email: string) => `You’re signed in as ${email}, but that address doesn’t belong to any organisation on this Arcanum.`,
-  noMembershipInvite: 'Ask an admin of your organisation to invite you at this address. Already invited? Then sign in with exactly the address the invitation went to — and the same way (e-mailed code, Google or passkey).',
+  noMembershipInvite: 'Ask an admin of your organisation to invite you at this address. Already invited? Then sign in with exactly the address the invitation went to - and the same way (e-mailed code, Google or passkey).',
   noMembershipSignOut: 'Sign out and use another account',
-  demoTitle: (when: string) => `This is a demo — it disappears by itself at ${when}.`,
+  demoTitle: (when: string) => `This is a demo - it disappears by itself at ${when}.`,
   demoHint: 'Feel free to try everything. Want to keep going? Take your demo along as an export file, or create your own installation.',
   demoTakeAlong: 'Take your demo along',
   demoOwnInstall: 'Own installation',
@@ -75,7 +77,7 @@ export default {
     activeEvent: 'Active event',
   },
   salesOverTime: 'Sales over time',
-  notImplemented: 'Not implemented yet — reserved space.',
+  notImplemented: 'Not implemented yet - reserved space.',
   chartComing: 'Chart coming soon',
 
   // Settings: the side menu, also each page's heading
@@ -94,7 +96,7 @@ export default {
   themes: { light: 'Light', dark: 'Dark', system: 'System' },
   appIcons: {
     title: 'App icons',
-    hint: 'The icon of each page installed as an app (home screen, Dock, start menu) and in the tab — for this organisation. Without one of its own: the default icon. A device gets it when it is installed from its pairing link.',
+    hint: 'The icon of each page installed as an app (home screen, Dock, start menu) and in the tab - for this organisation. Without one of its own: the default icon. A device gets it when it is installed from its pairing link.',
     pages: { kassa: 'Till', display: 'Customer display', waiter: 'Waiter', tap: 'Tap to Pay phone', selforder: 'Ordering (guests)', station: 'Station screen (default)', pickup: 'Pickup screen', entrance: 'Table screen (entrance)', console: 'Console (admin)' },
     prepStation: 'Station screen',
     own: 'Own icon',
@@ -108,9 +110,9 @@ export default {
   },
   displayBranding: {
     title: "Customer display",
-    hint: "The logo and colours on the customer display: a main colour for the top bar and the total, and an accent for the stripe below it and the quantities — e.g. your scout group’s green and its scarf colour, or the club colours. Only the customer display uses them; the till and the console stay as they are.",
+    hint: "The logo and colours on the customer display: a main colour for the top bar and the total, and an accent for the stripe below it and the quantities - e.g. your scout group’s green and its scarf colour, or the club colours. Only the customer display uses them; the till and the console stay as they are.",
     logo: "Logo",
-    logoHint: "PNG, JPEG, WebP or SVG — kept as a PNG of at most 512 px. A logo on a transparent background looks best.",
+    logoHint: "PNG, JPEG, WebP or SVG - kept as a PNG of at most 512 px. A logo on a transparent background looks best.",
     noLogo: "No logo",
     upload: "Upload",
     replace: "Replace",
@@ -119,7 +121,7 @@ export default {
     unreadable: "This logo couldn’t be read. Choose a PNG, JPEG, WebP or SVG.",
     primary: "Main colour",
     accent: "Accent colour",
-    noColor: "None — the customer display’s default colours",
+    noColor: "None - the customer display’s default colours",
     clear: "Clear",
     perEvent: "An event can have colours of its own: Events → Set up.",
     adminsOnly: "Only admins can change the customer display.",
@@ -145,7 +147,7 @@ export default {
   profileSubtitle: 'Your identity, as confirmed by your identity provider.',
   profileLoadFailed: (error: string) => `Could not load profile: ${error}`,
   whoAmI: 'Who am I',
-  profileReadOnly: 'Read-only — change this at your identity provider itself.',
+  profileReadOnly: 'Read-only - change this at your identity provider itself.',
   email: 'Email',
 
   // Settings → Payment Providers
@@ -181,7 +183,7 @@ export default {
   bancontactConfirmHint: (merchantId: string) => `Is that right? If this isn’t your organisation or account, don’t save the key and contact Bancontact. (Merchant ID ${merchantId})`,
   bancontactYesSave: 'Yes, save',
   bancontactNotMine: 'No, don’t save',
-  keysTitle: (provider: string) => `${provider} — keys`,
+  keysTitle: (provider: string) => `${provider} - keys`,
   keysEncrypted: 'Stored encrypted (envelope encryption per organisation).',
   merchantCode: 'Merchant code',
   apiKey: 'API key',
@@ -195,14 +197,14 @@ export default {
   moreInfo: 'More information',
 
   // Settings → Gegevens
-  dataSubtitle: 'Take all your data with you — for example to your own Arcanum installation on your own Cloudflare account.',
+  dataSubtitle: 'Take all your data with you - for example to your own Arcanum installation on your own Cloudflare account.',
   exportTitle: 'Export',
   exportDescription: (org: string) =>
     `One readable JSON file with all the data of ${org}: members, events, products, menus, bills, orders, payments and transactions.`,
   notInExport: 'Not in the export',
   notInExportKey: 'the organisation’s encryption key (an import creates a new one)',
-  notInExportDomain: 'the custom domain and the identity provider — they belong to an installation',
-  notInExportDevices: 'devices (tills, customer displays) — they register again',
+  notInExportDomain: 'the custom domain and the identity provider - they belong to an installation',
+  notInExportDevices: 'devices (tills, customer displays) - they register again',
   notInExportMembers: 'on import, members come back as invitations and become active on their first login',
   includeSecrets: 'Include secrets (payment settings, unencrypted)',
   secretsWarning:
@@ -212,6 +214,6 @@ export default {
   exportFailed: (error: string) => `Export failed: ${error}`,
   importTitle: 'Import',
   importDescription:
-    'Creates a new organisation with all the data from an export file — from this or another Arcanum installation. The current organisation stays unchanged.',
+    'Creates a new organisation with all the data from an export file - from this or another Arcanum installation. The current organisation stays unchanged.',
   importFromFile: 'Import an organisation from an export file',
 } satisfies AdminShellMessages

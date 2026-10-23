@@ -19,7 +19,7 @@ export default {
   items: (count: number) => (count === 1 ? '1 item' : `${count} items`),
   qrAlt: 'QR code for payment',
   waiting: 'Waiting for your payment',
-  failed: (status: string) => `Payment ${status.toLowerCase()} — please ask at the counter`,
+  failed: (status: string) => `Payment ${status.toLowerCase()} - please ask at the counter`,
   failedFallback: 'Failed',
   expiresIn: (seconds: number) => `Expires in ${seconds}s`,
   expired: 'Expired',
@@ -33,11 +33,15 @@ export default {
   },
   instructions: {
     bancontact: 'Open your banking app, scan the code and confirm. The screen moves on automatically.',
-    cash: 'Pay at the counter — the screen moves on once the payment is confirmed.',
+    cash: 'Pay at the counter - the screen moves on once the payment is confirmed.',
     sumup: 'Pay with your card or phone on the payment terminal.',
     tap: "Hold your card or phone against the cashier's phone.",
   },
 
+  // Above the amount once it's paid.
+  paidLabel: 'Paid',
+  // Items whose product has no category, beside those that have one.
+  otherCategory: 'Other',
   thanks: 'Thank you!',
   yourNumber: (n: number) => `Your number: ${n}`,
   followHint: 'Scan to see when your order is ready.',

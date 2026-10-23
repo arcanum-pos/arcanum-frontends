@@ -61,7 +61,7 @@ const TEXTS: Messages<{
   total: string
 }> = {
   nl: {
-    openTitle: (r) => `Kassa openen — ${r}`,
+    openTitle: (r) => `Kassa openen - ${r}`,
     openText: 'Tel het wisselgeld in de lade. Pas daarna kan deze kassa verkopen.',
     float: 'Wisselgeld',
     byDenomination: 'Per biljet en munt tellen',
@@ -79,7 +79,7 @@ const TEXTS: Messages<{
     reasonPlaceholderOut: 'bv. Naar de kluis, ijs gekocht',
     save: 'Opslaan',
     cancel: 'Annuleren',
-    cashUpTitle: (r, n) => `Kasopmaak — ${r}, shift ${n}`,
+    cashUpTitle: (r, n) => `Kasopmaak - ${r}, shift ${n}`,
     pending: (n) => (n === 1 ? 'Er loopt nog een betaling op deze kassa. Rond die eerst af.' : `Er lopen nog ${n} betalingen op deze kassa. Rond ze eerst af.`),
     openTabs: (n) => (n === 1 ? 'Er staat nog 1 rekening open. Ze loopt door in de volgende shift.' : `Er staan nog ${n} rekeningen open. Ze lopen door in de volgende shift.`),
     count: 'Tel alles wat in de lade zit',
@@ -103,7 +103,7 @@ const TEXTS: Messages<{
     total: 'Totaal',
   },
   fr: {
-    openTitle: (r) => `Ouvrir la caisse — ${r}`,
+    openTitle: (r) => `Ouvrir la caisse - ${r}`,
     openText: 'Comptez la monnaie dans le tiroir. Ensuite seulement, cette caisse peut vendre.',
     float: 'Fond de caisse',
     byDenomination: 'Compter par billet et pièce',
@@ -121,7 +121,7 @@ const TEXTS: Messages<{
     reasonPlaceholderOut: 'p. ex. Vers le coffre, glace achetée',
     save: 'Enregistrer',
     cancel: 'Annuler',
-    cashUpTitle: (r, n) => `Clôture — ${r}, service ${n}`,
+    cashUpTitle: (r, n) => `Clôture - ${r}, service ${n}`,
     pending: (n) => (n === 1 ? 'Un paiement est encore en cours sur cette caisse. Terminez-le d’abord.' : `${n} paiements sont encore en cours sur cette caisse. Terminez-les d’abord.`),
     openTabs: (n) => (n === 1 ? '1 addition est encore ouverte. Elle continue au service suivant.' : `${n} additions sont encore ouvertes. Elles continuent au service suivant.`),
     count: 'Comptez tout ce qui est dans le tiroir',
@@ -145,7 +145,7 @@ const TEXTS: Messages<{
     total: 'Total',
   },
   en: {
-    openTitle: (r) => `Open the till — ${r}`,
+    openTitle: (r) => `Open the till - ${r}`,
     openText: 'Count the change in the drawer. Only then can this till sell.',
     float: 'Opening float',
     byDenomination: 'Count per note and coin',
@@ -163,7 +163,7 @@ const TEXTS: Messages<{
     reasonPlaceholderOut: 'e.g. To the safe, bought ice',
     save: 'Save',
     cancel: 'Cancel',
-    cashUpTitle: (r, n) => `Cash-up — ${r}, shift ${n}`,
+    cashUpTitle: (r, n) => `Cash-up - ${r}, shift ${n}`,
     pending: (n) => (n === 1 ? 'A payment on this till is still under way. Finish it first.' : `${n} payments on this till are still under way. Finish them first.`),
     openTabs: (n) => (n === 1 ? '1 tab is still open. It carries on in the next shift.' : `${n} tabs are still open. They carry on in the next shift.`),
     count: 'Count everything in the drawer',

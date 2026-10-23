@@ -14,10 +14,10 @@ const nl = {
   wrongRole: 'Deze code is voor een ander soort toestel. Maak een code voor een Tap to Pay-telefoon.',
   iosFirstTitle: 'Eerst op je beginscherm',
   iosFirst: ['Tik onderaan op Deel (het vierkantje met het pijltje).', 'Kies "Zet op beginscherm" en tik op Voeg toe.', 'Open "Tap to Pay" vanaf je beginscherm en koppel daar.'],
-  iosFirstWhy: 'Een iPhone toont meldingen alleen voor een pagina op het beginscherm — en die onthoudt de koppeling apart van Safari.',
+  iosFirstWhy: 'Een iPhone toont meldingen alleen voor een pagina op het beginscherm - en die onthoudt de koppeling apart van Safari.',
   // Paired
   forKassa: (name: string) => `Voor ${name}`,
-  noKassa: 'Niet gekoppeld aan een kassa — koppel opnieuw met een nieuwe code.',
+  noKassa: 'Niet gekoppeld aan een kassa - koppel opnieuw met een nieuwe code.',
   waiting: 'Wacht op een betaling aan de kassa.',
   waitingHint: 'Kies aan de kassa "Tap to Pay": de betaling verschijnt hier.',
   // A payment
@@ -30,12 +30,12 @@ const nl = {
   failed: 'Niet betaald',
   failedHint: 'Probeer opnieuw, of kies aan de kassa een andere manier.',
   tryAgain: 'Opnieuw proberen',
-  gone: 'Deze betaling bestaat niet meer — ze werd afgerond of geannuleerd aan de kassa.',
+  gone: 'Deze betaling bestaat niet meer - ze werd afgerond of geannuleerd aan de kassa.',
   notSetUp: 'Tap to Pay is niet ingesteld: vul in de console bij Betaalproviders de affiliate key van SumUp in.',
   done: 'Klaar',
   // Notifications
   pushTitle: 'Melding bij een betaling',
-  pushHint: 'Krijg een melding zodra de kassa Tap to Pay kiest — ook als deze telefoon vergrendeld is.',
+  pushHint: 'Krijg een melding zodra de kassa Tap to Pay kiest - ook als deze telefoon vergrendeld is.',
   pushOn: 'Meldingen aanzetten',
   pushSet: 'Meldingen staan aan.',
   pushOff: 'Uitzetten',

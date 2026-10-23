@@ -15,7 +15,7 @@ test.beforeEach(async ({ kassa }) => {
 
 test('Kassa openen first; then it sells on the register, the shift in the header', async ({ kassa, backend }) => {
   const open = kassa.getByTestId('open-register')
-  await expect(open).toContainText('Kassa openen — Toog')
+  await expect(open).toContainText('Kassa openen - Toog')
   await expect(kassa.getByRole('button', button('10 × Bon'))).toHaveCount(0)
   await open.getByLabel('Wisselgeld').fill('50')
   await open.getByRole('button', button('Kassa openen')).click()

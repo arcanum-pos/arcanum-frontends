@@ -109,12 +109,12 @@ describe('vatLabel', () => {
 
 describe('catalogNoticeText', () => {
   it('words the screens’ own notices and shows the server’s as they are', () => {
-    expect(catalogNoticeText(nl, { kind: 'invalidPrice', name: 'Pils' })).toBe('Ongeldige prijs voor Pils — gebruik bv. 2,50')
+    expect(catalogNoticeText(nl, { kind: 'invalidPrice', name: 'Pils' })).toBe('Ongeldige prijs voor Pils - gebruik bv. 2,50')
     expect(catalogNoticeText(nl, { kind: 'invalidQuickQuantities' })).toBe(
       'Snelknoppen: maximaal 10 hele getallen tussen 1 en 999, gescheiden door komma’s'
     )
     expect(catalogNoticeText(en, { kind: 'exportFailed', error: 'status 500' })).toBe('Export failed: status 500')
-    expect(catalogNoticeText(fr, { kind: 'invalidPrice', name: 'Pils' })).toBe('Prix non valable pour Pils — utilisez p. ex. 2,50')
+    expect(catalogNoticeText(fr, { kind: 'invalidPrice', name: 'Pils' })).toBe('Prix non valable pour Pils - utilisez p. ex. 2,50')
     expect(catalogNoticeText(en, serverNotice(new Error('Rekening is gewijzigd')))).toBe('Rekening is gewijzigd')
   })
 })

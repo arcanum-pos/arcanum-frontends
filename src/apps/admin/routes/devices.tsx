@@ -1,18 +1,12 @@
 import { useState } from 'react'
-import { MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { listDevicePairings, listOrgDevices, listSumupReaders, removeDevice, removeSumupReader, revokeDevicePairing, type OrgDevice, type SumupReader } from '../lib/api'
 import { AddDeviceDialog } from '../components/add-device-dialog'
 import { RepairDeviceDialog } from '../components/repair-device-dialog'
+import { RowActions } from '../components/row-actions'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
@@ -34,6 +28,21 @@ const READER_STATUS_BADGE: Record<ReaderStatus, 'default' | 'secondary' | 'destr
 
 function readerStatus(status: string): ReaderStatus {
   return status in READER_STATUS_BADGE ? (status as ReaderStatus) : 'unknown'
+}
+
+// Online green, offline orange: a light and the word, readable at a glance.
+// (A SumUp reader only says whether it's paired: that stays a plain badge.)
+function OnlineBadge({ online, label }: { online: boolean; label: string }) {
+  return (
+    <Badge
+      variant="outline"
+      className={online ? 'gap-1.5 border-green-600/40 bg-green-500/10 text-green-700 dark:text-green-400' : 'gap-1.5 border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-400'}
+      data-testid={online ? 'device-online' : 'device-offline'}
+    >
+      <span className={online ? 'size-2 rounded-full bg-green-500' : 'size-2 rounded-full bg-orange-500'} aria-hidden="true" />
+      {label}
+    </Badge>
+  )
 }
 
 export default function DevicesPage() {
@@ -70,16 +79,17 @@ export default function DevicesPage() {
   const [repairing, setRepairing] = useState<OrgDevice | null>(null)
   const [readerNotice, setReaderNotice] = useState<string | null>(null)
 
-  async function handleUnpair(reader: SumupReader) {
+  // Removing a reader unpairs it at SumUp: one word for both, like any device.
+  async function handleRemoveReader(reader: SumupReader) {
     if (!orgId) return
-    if (!window.confirm(m.devices.confirmUnpair(reader.name))) return
+    if (!window.confirm(m.devices.confirmRemoveReader(reader.name))) return
     setRemovingId(reader.id)
     setReaderNotice(null)
     try {
       await removeSumupReader(orgId, reader.id)
       reloadReaders()
     } catch (err) {
-      setReaderNotice(m.devices.unpairError(err instanceof Error ? err.message : String(err)))
+      setReaderNotice(m.devices.removeFailed(err instanceof Error ? err.message : String(err)))
     } finally {
       setRemovingId(null)
     }
@@ -193,24 +203,13 @@ export default function DevicesPage() {
                     <div className="font-mono text-xs text-muted-foreground">{reader.id}</div>
                   </TableCell>
                   <TableCell>{(reader.model && READER_MODEL_LABELS[reader.model]) ?? m.devices.reader}</TableCell>
-                  <TableCell className="text-muted-foreground">—</TableCell>
-                  <TableCell className="text-muted-foreground">—</TableCell>
+                  <TableCell className="text-muted-foreground">-</TableCell>
+                  <TableCell className="text-muted-foreground">-</TableCell>
                   <TableCell>
                     <Badge variant={READER_STATUS_BADGE[status]}>{m.devices.readerStatus[status]}</Badge>
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-8" disabled={removingId === reader.id} aria-label={m.devices.readerActions(reader.name)}>
-                          <MoreHorizontal />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem variant="destructive" onClick={() => handleUnpair(reader)}>
-                          {m.devices.unpair}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <RowActions name={reader.name} disabled={removingId === reader.id} actions={[{ label: m.remove, destructive: true, onSelect: () => handleRemoveReader(reader) }]} />
                   </TableCell>
                 </TableRow>
               )
@@ -226,30 +225,23 @@ export default function DevicesPage() {
                   {device.role === 'station' && device.view === 'pickup' ? m.devices.pickupScreen : device.role === 'station' && device.view === 'tables' ? m.devices.entranceScreen : (m.devices.roles[device.role] ?? device.role)}
                   {device.role === 'station' && device.station_name && <div className="text-xs text-muted-foreground">{m.devices.stationOf(device.station_name)}</div>}
                 </TableCell>
-                <TableCell className={device.linked_to && nameOf(device.linked_to) ? undefined : 'font-mono text-xs'}>
-                  {device.linked_to ? (nameOf(device.linked_to) ?? device.linked_to) : '—'}
+                <TableCell className={device.linked_to ? (nameOf(device.linked_to) ? undefined : 'font-mono text-xs') : 'text-muted-foreground'}>
+                  {device.linked_to ? (nameOf(device.linked_to) ?? device.linked_to) : '-'}
                 </TableCell>
                 <TableCell>{new Date(device.created_at).toLocaleString(intlLocale)}</TableCell>
                 <TableCell>
-                  <Badge variant={device.online ? 'default' : 'secondary'}>
-                    {device.online ? m.devices.online : m.devices.offline}
-                  </Badge>
+                  <OnlineBadge online={!!device.online} label={device.online ? m.devices.online : m.devices.offline} />
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="size-8" disabled={removingId === device.terminal_id} aria-label={m.devices.deviceActions(device.name || device.terminal_id)}>
-                        <MoreHorizontal />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {/* A kassa's own second window has no pairing of its own. */}
-                      {!device.terminal_id.startsWith('display-of-') && <DropdownMenuItem onClick={() => setRepairing(device)}>{m.devices.repair}</DropdownMenuItem>}
-                      <DropdownMenuItem variant="destructive" onClick={() => handleRemove(device)}>
-                        {m.remove}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <RowActions
+                    name={device.name || device.terminal_id}
+                    disabled={removingId === device.terminal_id}
+                    actions={[
+                      // A kassa's own second window has no pairing of its own.
+                      !device.terminal_id.startsWith('display-of-') && { label: m.devices.repair, onSelect: () => setRepairing(device) },
+                      { label: m.remove, destructive: true, onSelect: () => handleRemove(device) },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

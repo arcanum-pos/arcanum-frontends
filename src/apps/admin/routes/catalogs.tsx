@@ -4,17 +4,20 @@ import { BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useMessages } from '@/shared/i18n'
-import { MenuExportButton } from '../components/menu-export-button'
+import { downloadCatalogFile } from '../components/menu-export-button'
 import { MenuImportDialog } from '../components/menu-import-dialog'
 import { PromptDialog } from '../components/prompt-dialog'
+import { RowActions } from '../components/row-actions'
 import {
   archiveCatalog,
   createCatalog,
   duplicateCatalog,
   listCatalogs,
   renameCatalog,
+  restoreCatalog,
   setDefaultCatalog,
   type CatalogSummary,
 } from '../lib/catalog-api'
@@ -33,7 +36,9 @@ export default function CatalogsPage() {
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
   const navigate = useNavigate()
-  const { data: catalogs, loading, error, reload } = useAsync(() => (orgId ? listCatalogs(orgId) : Promise.resolve([])), [orgId])
+  // Archived ones only on "Toon gearchiveerd" — archiving is never for good.
+  const [showArchived, setShowArchived] = useState(false)
+  const { data: catalogs, loading, error, reload } = useAsync(() => (orgId ? listCatalogs(orgId, showArchived) : Promise.resolve([])), [orgId, showArchived])
   const [prompt, setPrompt] = useState<Prompt | null>(null)
   const [actionError, setActionError] = useState<CatalogNotice | null>(null)
 
@@ -47,6 +52,16 @@ export default function CatalogsPage() {
     }
   }
 
+  async function runExport(catalogId: string, format: 'xlsx' | 'csv') {
+    if (!orgId) return
+    setActionError(null)
+    try {
+      await downloadCatalogFile(orgId, catalogId, format)
+    } catch (err) {
+      setActionError({ kind: 'exportFailed', error: err instanceof Error ? err.message : String(err) })
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -54,7 +69,11 @@ export default function CatalogsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{m.catalogsTitle}</h1>
           <p className="text-muted-foreground">{m.catalogsIntro}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="mr-2 flex items-center gap-2 text-sm">
+            <Switch checked={showArchived} onCheckedChange={setShowArchived} aria-label={m.showArchived} />
+            {m.showArchived}
+          </label>
           <Button variant="ghost" onClick={() => run(async () => (await import('../lib/menu-files')).downloadTemplate())}>
             {m.downloadTemplate}
           </Button>
@@ -74,7 +93,7 @@ export default function CatalogsPage() {
           <TableRow>
             <TableHead>{m.name}</TableHead>
             <TableHead>{m.productsColumn}</TableHead>
-            <TableHead className="text-right">{m.actions}</TableHead>
+            <TableHead className="w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -97,35 +116,38 @@ export default function CatalogsPage() {
           )}
           {!loading &&
             catalogs?.map((catalog) => (
-              <TableRow key={catalog.id} data-testid={`catalog-${catalog.name}`}>
+              <TableRow key={catalog.id} data-testid={`catalog-${catalog.name}`} className={catalog.archived ? 'text-muted-foreground' : ''}>
                 <TableCell className="font-medium">
                   <Link to="/catalogs/$catalogId" params={{ catalogId: catalog.id }} className="underline-offset-4 hover:underline">
                     {catalog.name}
                   </Link>
                   {catalog.isDefault && <Badge className="ml-2">{m.defaultBadge}</Badge>}
+                  {catalog.archived && (
+                    <Badge variant="outline" className="ml-2">
+                      {m.archivedBadge}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>{catalog.entryCount}</TableCell>
-                <TableCell className="text-right whitespace-nowrap">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link to="/catalogs/$catalogId" params={{ catalogId: catalog.id }}>
-                      {m.edit}
-                    </Link>
-                  </Button>
-                  {orgId && <MenuExportButton orgId={orgId} catalogId={catalog.id} variant="ghost" size="sm" onError={setActionError} />}
-                  <Button variant="ghost" size="sm" onClick={() => setPrompt({ kind: 'rename', catalog })}>
-                    {m.rename}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setPrompt({ kind: 'duplicate', catalog })}>
-                    {m.duplicate}
-                  </Button>
-                  {!catalog.isDefault && (
-                    <Button variant="ghost" size="sm" onClick={() => orgId && run(() => setDefaultCatalog(orgId, catalog.id))}>
-                      {m.makeDefault}
-                    </Button>
+                <TableCell className="text-right">
+                  {orgId && (
+                    <RowActions
+                      name={catalog.name}
+                      actions={
+                        catalog.archived
+                          ? [{ label: m.restore, onSelect: () => run(() => restoreCatalog(orgId, catalog.id)) }]
+                          : [
+                              { label: m.edit, onSelect: () => navigate({ to: '/catalogs/$catalogId', params: { catalogId: catalog.id } }) },
+                              { label: m.rename, onSelect: () => setPrompt({ kind: 'rename', catalog }) },
+                              { label: m.duplicate, onSelect: () => setPrompt({ kind: 'duplicate', catalog }) },
+                              !catalog.isDefault && { label: m.makeDefault, onSelect: () => run(() => setDefaultCatalog(orgId, catalog.id)) },
+                              { label: m.exportAs('Excel'), onSelect: () => runExport(catalog.id, 'xlsx') },
+                              { label: m.exportAs('CSV'), onSelect: () => runExport(catalog.id, 'csv') },
+                              !catalog.isDefault && { label: m.archive, destructive: true, onSelect: () => run(() => archiveCatalog(orgId, catalog.id)) },
+                            ]
+                      }
+                    />
                   )}
-                  <Button variant="ghost" size="sm" onClick={() => orgId && run(() => archiveCatalog(orgId, catalog.id))}>
-                    {m.archive}
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}

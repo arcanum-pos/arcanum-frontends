@@ -18,7 +18,7 @@ test('nobody chosen: selling works as before, recorded without a person', async 
   expect(backend.recordedStaff).toEqual([{ what: 'tab', staff: null }, { what: 'charge', staff: null }])
 })
 
-test('a person chosen: every sale carries them — and they stay chosen', async ({ kassa, backend }) => {
+test('a person chosen: every sale carries them - and they stay chosen', async ({ kassa, backend }) => {
   await kassa.getByTestId('staff-button').click()
   await kassa.getByTestId('staff-picker').getByRole('button', { name: 'An', exact: true }).click()
   await expect(kassa.getByTestId('staff-button')).toHaveText('An')

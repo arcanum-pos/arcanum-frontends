@@ -60,7 +60,7 @@ describe('display messages', () => {
   })
 
   it('builds the failed text from a status label', () => {
-    expect(DISPLAY_MESSAGES.nl.failed(STATUS_MESSAGES.nl.CANCELLED)).toBe('Betaling geannuleerd — vraag het aan de toog')
-    expect(DISPLAY_MESSAGES.en.failed(STATUS_MESSAGES.en.EXPIRED)).toBe('Payment expired — please ask at the counter')
+    expect(DISPLAY_MESSAGES.nl.failed(STATUS_MESSAGES.nl.CANCELLED)).toBe('Betaling geannuleerd - vraag het aan de toog')
+    expect(DISPLAY_MESSAGES.en.failed(STATUS_MESSAGES.en.EXPIRED)).toBe('Payment expired - please ask at the counter')
   })
 })

@@ -10,5 +10,5 @@ function formatDay(iso: string, intlLocale: string): string {
 // An event's days: one, or the first to the last.
 export function formatEventDays(event: { date: string; endDate?: string }, intlLocale: string): string {
   const first = formatDay(event.date, intlLocale)
-  return event.endDate && event.endDate !== event.date ? `${first} – ${formatDay(event.endDate, intlLocale)}` : first
+  return event.endDate && event.endDate !== event.date ? `${first} - ${formatDay(event.endDate, intlLocale)}` : first
 }

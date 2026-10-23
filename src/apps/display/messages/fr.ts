@@ -19,7 +19,7 @@ export default {
   items: (count: number) => (count === 1 ? '1 article' : `${count} articles`),
   qrAlt: 'Code QR pour le paiement',
   waiting: 'En attente de votre paiement',
-  failed: (status: string) => `Paiement : ${status.toLowerCase()} — adressez-vous au comptoir`,
+  failed: (status: string) => `Paiement : ${status.toLowerCase()} - adressez-vous au comptoir`,
   failedFallback: 'Échoué',
   expiresIn: (seconds: number) => `Expire dans ${seconds} s`,
   expired: 'Expiré',
@@ -33,11 +33,15 @@ export default {
   },
   instructions: {
     bancontact: 'Ouvrez votre app bancaire, scannez le code et confirmez. L’écran passe automatiquement à la suite.',
-    cash: 'Payez au comptoir — l’écran continue dès que la réception est confirmée.',
+    cash: 'Payez au comptoir - l’écran continue dès que la réception est confirmée.',
     sumup: 'Payez par carte ou smartphone sur le terminal de paiement.',
     tap: 'Approchez votre carte ou smartphone du téléphone du caissier.',
   },
 
+  // Above the amount once it's paid.
+  paidLabel: 'Payé',
+  // Items whose product has no category, beside those that have one.
+  otherCategory: 'Autres',
   thanks: 'Merci !',
   yourNumber: (n: number) => `Votre numéro : ${n}`,
   followHint: 'Scannez pour savoir quand votre commande est prête.',

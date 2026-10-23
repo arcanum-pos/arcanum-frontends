@@ -165,7 +165,7 @@ export function PaymentsChart({
           >
             <p className="mb-1 font-medium">
               {timeLabel(shown.start)}
-              {step !== 'day' && ` – ${clock(shown.end)}`}
+              {step !== 'day' && ` - ${clock(shown.end)}`}
             </p>
             {methods
               .filter((m) => shown.byMethod[m]?.[measure])

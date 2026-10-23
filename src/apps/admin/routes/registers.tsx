@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { MoreHorizontal, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatEuro } from '@/shared/format'
@@ -11,6 +10,7 @@ import { peopleLine } from '@/shared/register'
 import { PromptDialog } from '../components/prompt-dialog'
 import { createRegister, listRegistersAdmin, listShifts, setBlindCount, updateRegister, type RegisterRecord } from '../lib/api'
 import { useAsync } from '../lib/use-async'
+import { RowActions } from '../components/row-actions'
 import { useOrg } from '../lib/org-context'
 
 // Kassalades (DOMAIN_MODEL.md "Registers, shifts and kasopmaak", release
@@ -173,17 +173,13 @@ export default function RegistersPage() {
                 <TableCell className="font-medium">{r.name}</TableCell>
                 <TableCell>{r.archived ? <Badge variant="outline">{t.archived}</Badge> : r.open ? <Badge>{t.open}</Badge> : <span className="text-muted-foreground">{t.closed}</span>}</TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label={r.name}>
-                        <MoreHorizontal />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => setRenaming(r)}>{t.rename}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => act(() => updateRegister(orgId, r.id, { archived: !r.archived }))}>{r.archived ? t.restore : t.archive}</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <RowActions
+                    name={r.name}
+                    actions={[
+                      { label: t.rename, onSelect: () => setRenaming(r) },
+                      { label: r.archived ? t.restore : t.archive, destructive: !r.archived, onSelect: () => act(() => updateRegister(orgId, r.id, { archived: !r.archived })) },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

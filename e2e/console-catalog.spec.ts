@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { expect, test } from './console-fixtures'
+import { expect, test, rowAction } from './console-fixtures'
 import { ORG_ID, type FakeCatalogAdmin } from './fake-catalog-admin'
 
 const API = `/api/organizations/${ORG_ID}`
@@ -47,16 +47,16 @@ test.describe('Producten', () => {
     await page.getByLabel('Nieuwe categorie').fill('Etn')
     await card.getByRole('button', { name: 'Toevoegen', exact: true }).click()
 
-    await page.getByTestId('category-Etn').getByRole('button', { name: 'Hernoemen' }).click()
+    await rowAction(page.getByTestId('category-Etn'), 'Hernoemen')
     await page.getByLabel('Naam').fill('Eten')
     await page.getByRole('button', { name: 'Opslaan' }).click()
     await expect(page.getByTestId('category-Eten')).toBeVisible()
 
     call(catalogAdmin, 'POST', '/catalog/products', { name: 'Pils', categoryId: catalogAdmin.categories[0].id })
-    await page.getByTestId('category-Drank').getByRole('button', { name: 'Verwijderen' }).click()
+    await rowAction(page.getByTestId('category-Drank'), 'Verwijderen')
     await expect(page.getByText('Deze categorie wordt nog gebruikt door producten')).toBeVisible()
 
-    await page.getByTestId('category-Eten').getByRole('button', { name: 'Verwijderen' }).click()
+    await rowAction(page.getByTestId('category-Eten'), 'Verwijderen')
     await expect(page.getByTestId('category-Eten')).toHaveCount(0)
     expect(catalogAdmin.categories.map((c) => c.name)).toEqual(['Drank'])
   })
@@ -72,7 +72,7 @@ test.describe('Producten', () => {
     await card.getByRole('button', { name: 'Toevoegen', exact: true }).click()
     await expect(page.getByTestId('station-Kitchen')).toBeVisible()
 
-    await page.getByTestId('station-Kitchen').getByRole('button', { name: 'Hernoemen' }).click()
+    await rowAction(page.getByTestId('station-Kitchen'), 'Hernoemen')
     await expect(page.getByRole('dialog')).toContainText('Station hernoemen')
     await page.getByLabel('Naam').fill('Keuken')
     await page.getByRole('button', { name: 'Opslaan' }).click()
@@ -84,9 +84,9 @@ test.describe('Producten', () => {
     await expect(card.getByText('Er bestaat al een station met deze naam')).toBeVisible()
 
     call(catalogAdmin, 'POST', '/catalog/products', { name: 'Pils', prepStationId: catalogAdmin.stations[0].id })
-    await page.getByTestId('station-Bar').getByRole('button', { name: 'Verwijderen' }).click()
+    await rowAction(page.getByTestId('station-Bar'), 'Verwijderen')
     await expect(card.getByText('Dit station wordt nog gebruikt door producten')).toBeVisible()
-    await page.getByTestId('station-Keuken').getByRole('button', { name: 'Verwijderen' }).click()
+    await rowAction(page.getByTestId('station-Keuken'), 'Verwijderen')
     await expect(page.getByTestId('station-Keuken')).toHaveCount(0)
     expect(catalogAdmin.stations.map((c) => c.name)).toEqual(['Bar'])
   })
@@ -109,7 +109,7 @@ test.describe('Producten', () => {
     expect(koffie.prepStationId).toBe(catalogAdmin.stations[0].id)
 
     // Back to "geen": nothing to prepare.
-    await row.getByRole('button', { name: 'Bewerken' }).click()
+    await rowAction(row, 'Bewerken')
     await pick(page, 'Station', 'Geen')
     await page.getByRole('button', { name: 'Opslaan' }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -156,7 +156,7 @@ test.describe('Producten', () => {
   test('edits variants: add one, refuse archiving the last active one', async ({ console: open, catalogAdmin }) => {
     call(catalogAdmin, 'POST', '/catalog/products', { name: 'Steak', variants: [{ name: 'volwassene' }] })
     const page = await open('/products')
-    await page.getByTestId('product-Steak').getByRole('button', { name: 'Bewerken' }).click()
+    await rowAction(page.getByTestId('product-Steak'), 'Bewerken')
     const dialog = page.getByRole('dialog')
 
     await dialog.getByRole('button', { name: 'Archiveren' }).click()
@@ -178,11 +178,11 @@ test.describe('Producten', () => {
   test('archives a product and shows it again with "toon gearchiveerd"', async ({ console: open, catalogAdmin }) => {
     call(catalogAdmin, 'POST', '/catalog/products', { name: 'Oud bier' })
     const page = await open('/products')
-    await page.getByTestId('product-Oud bier').getByRole('button', { name: 'Archiveren' }).click()
+    await rowAction(page.getByTestId('product-Oud bier'), 'Archiveren')
     await expect(page.getByTestId('product-Oud bier')).toHaveCount(0)
     await page.getByLabel('Toon gearchiveerd').click()
     await expect(page.getByTestId('product-Oud bier')).toContainText('gearchiveerd')
-    await page.getByTestId('product-Oud bier').getByRole('button', { name: 'Terugzetten' }).click()
+    await rowAction(page.getByTestId('product-Oud bier'), 'Terugzetten')
     await expect(page.getByTestId('product-Oud bier')).not.toContainText('gearchiveerd')
   })
 })
@@ -252,19 +252,19 @@ test.describe('Menukaarten', () => {
     await expect.poll(() => sectionNames(page)).toEqual(['Drank', 'Eten'])
     catalogAdmin.failNextLayout = true
     await page.getByRole('button', { name: 'Eten omhoog' }).click()
-    await expect(page.getByText('De indeling is intussen gewijzigd — herlaad en probeer opnieuw')).toBeVisible()
+    await expect(page.getByText('De indeling is intussen gewijzigd - herlaad en probeer opnieuw')).toBeVisible()
     await expect.poll(() => sectionNames(page)).toEqual(['Drank', 'Eten'])
   })
 
   test('deletes a group after confirmation, and removes a line', async ({ console: open, catalogAdmin }) => {
     const { catalog } = seedCatalog(catalogAdmin)
     const page = await open(`/catalogs/${catalog.id}`)
-    await page.getByTestId('section-Eten').getByRole('button', { name: 'Verwijderen', exact: true }).first().click()
+    await rowAction(page.getByTestId('section-Eten'), 'Verwijderen')
     await expect(page.getByRole('dialog')).toContainText('Het product in deze groep verdwijnt')
     await page.getByRole('dialog').getByRole('button', { name: 'Verwijderen' }).click()
     await expect.poll(() => sectionNames(page)).toEqual(['Drank'])
 
-    await page.getByTestId('entry-Cola').getByRole('button', { name: 'Verwijderen' }).click()
+    await rowAction(page.getByTestId('entry-Cola'), 'Verwijderen')
     await expect.poll(() => entryNames(page, 'Drank')).toEqual(['Pils'])
     expect(catalogAdmin.entries).toHaveLength(1)
   })
@@ -273,11 +273,11 @@ test.describe('Menukaarten', () => {
     const { catalog, cola } = seedCatalog(catalogAdmin)
     call(catalogAdmin, 'PATCH', `/catalog/products/${cola.id}`, { archived: true })
     const page = await open(`/catalogs/${catalog.id}`)
-    await expect(page.getByTestId('entry-Cola')).toContainText('Gearchiveerd product — niet op de kassa')
+    await expect(page.getByTestId('entry-Cola')).toContainText('Gearchiveerd product - niet op de kassa')
     await expect(page.getByTestId('entry-Pils')).not.toContainText('Gearchiveerd')
   })
 
-  test('lists catalogs: default badge, set default, refuse archiving the default, duplicate', async ({ console: open, catalogAdmin }) => {
+  test('lists catalogs: default badge, set default, the default not archivable, duplicate, archive and restore', async ({ console: open, catalogAdmin }) => {
     seedCatalog(catalogAdmin)
     call(catalogAdmin, 'POST', '/catalogs', { name: 'Zomer' })
     const page = await open('/catalogs')
@@ -286,21 +286,31 @@ test.describe('Menukaarten', () => {
     await expect(defaultBadge(page, 'Kaas & wijn')).toHaveText('Standaard')
     await expect(kaas.getByRole('cell').nth(1)).toHaveText('3')
 
-    await kaas.getByRole('button', { name: 'Archiveren' }).click()
-    await expect(page.getByText('De standaardmenukaart kan niet gearchiveerd worden')).toBeVisible()
+    // The default can't be archived: not in its menu.
+    await kaas.getByRole('button', { name: 'Acties voor Kaas & wijn' }).click()
+    await expect(page.getByRole('menuitem', { name: 'Bewerken' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Archiveren' })).toHaveCount(0)
+    await page.keyboard.press('Escape')
 
-    await page.getByTestId('catalog-Zomer').getByRole('button', { name: 'Standaard maken' }).click()
+    await rowAction(page.getByTestId('catalog-Zomer'), 'Standaard maken')
     await expect(defaultBadge(page, 'Zomer')).toHaveText('Standaard')
     await expect(defaultBadge(page, 'Kaas & wijn')).toHaveCount(0)
 
-    await page.getByTestId('catalog-Kaas & wijn').getByRole('button', { name: 'Dupliceren' }).click()
+    await rowAction(page.getByTestId('catalog-Kaas & wijn'), 'Dupliceren')
     await expect(page.getByLabel('Naam van de kopie')).toHaveValue('Kaas & wijn (kopie)')
     await page.getByLabel('Naam van de kopie').fill('Kaas & wijn 2027')
     await page.getByRole('dialog').getByRole('button', { name: 'Dupliceren' }).click()
     await expect(page.getByTestId('catalog-Kaas & wijn 2027').getByRole('cell').nth(1)).toHaveText('3')
 
-    await page.getByTestId('catalog-Kaas & wijn').getByRole('button', { name: 'Archiveren' }).click()
+    await rowAction(page.getByTestId('catalog-Kaas & wijn'), 'Archiveren')
     await expect(page.getByTestId('catalog-Kaas & wijn')).toHaveCount(0)
+
+    // Never gone for good: shown again with "Toon gearchiveerd", and put back.
+    await page.getByLabel('Toon gearchiveerd').click()
+    await expect(page.getByTestId('catalog-Kaas & wijn')).toContainText('gearchiveerd')
+    await rowAction(page.getByTestId('catalog-Kaas & wijn'), 'Terugzetten')
+    await page.getByLabel('Toon gearchiveerd').click()
+    await expect(page.getByTestId('catalog-Kaas & wijn')).not.toContainText('gearchiveerd')
   })
 
   test('the editor fits a phone screen without sideways scrolling', async ({ console: open, catalogAdmin, page }) => {

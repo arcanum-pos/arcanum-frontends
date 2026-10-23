@@ -221,7 +221,7 @@ test.describe('table management (release D)', () => {
     await expect(page.locator('[data-testid="table"][data-state="clearing"]').getByTestId('promised-badge')).toHaveText('Beloofd')
   })
 
-  test('the entrance screen, opened from the waiter screen: waiting, then ready — live', async ({ waiter: page, fake, push }) => {
+  test('the entrance screen, opened from the waiter screen: waiting, then ready - live', async ({ waiter: page, fake, push }) => {
     fake.promised = [{ name: '2', zone: 'Zaal', ready: false, promisedAt: '' }]
     const [entrance] = await Promise.all([page.waitForEvent('popup'), page.getByTestId('open-entrance').click()])
     await expect(entrance).toHaveURL(/\/bediening\?view=ingang$/)
@@ -233,7 +233,7 @@ test.describe('table management (release D)', () => {
     fake.promised = [{ name: '2', zone: 'Zaal', ready: true, promisedAt: '' }]
     push()
     await expect(row).toHaveAttribute('data-ready', 'true')
-    await expect(row).toContainText('klaar — welkom!')
+    await expect(row).toContainText('klaar - welkom!')
   })
 })
 

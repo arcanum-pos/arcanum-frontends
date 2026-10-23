@@ -27,7 +27,7 @@ const fr: WaiterMessages = {
   onReader: (reader) => `Le montant est sur ${reader}. Faites payer le client.`,
   tapToPay: 'Tap to Pay (app SumUp)',
   tapPaid: 'Payé par Tap to Pay.',
-  tapChecking: 'Pas encore confirmé par SumUp — la table se mettra à jour dès réception.',
+  tapChecking: 'Pas encore confirmé par SumUp - la table se mettra à jour dès réception.',
   tapFailed: (detail: string | null) => (detail ? `Pas payé: ${detail}` : 'Pas payé'),
   cashAtTill: (label) => `En espèces ? Les clients paient à la caisse : addition « ${label} ».`,
   openEntrance: 'Écran d’accueil',

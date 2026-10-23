@@ -162,8 +162,8 @@ export function updateVariant(
 
 // --- Catalogs ---
 
-export function listCatalogs(orgId: string): Promise<CatalogSummary[]> {
-  return request(`${org(orgId)}/catalogs`)
+export function listCatalogs(orgId: string, includeArchived = false): Promise<CatalogSummary[]> {
+  return request(`${org(orgId)}/catalogs${includeArchived ? '?includeArchived=1' : ''}`)
 }
 
 export function getCatalog(orgId: string, catalogId: string): Promise<CatalogDetail> {
@@ -188,6 +188,10 @@ export function setDefaultCatalog(orgId: string, catalogId: string): Promise<Cat
 
 export function archiveCatalog(orgId: string, catalogId: string): Promise<{ ok: true }> {
   return request(`${org(orgId)}/catalogs/${id(catalogId)}/archive`, { method: 'POST' })
+}
+
+export function restoreCatalog(orgId: string, catalogId: string): Promise<CatalogDetail> {
+  return request(`${org(orgId)}/catalogs/${id(catalogId)}/restore`, { method: 'POST' })
 }
 
 export interface LayoutPayload {

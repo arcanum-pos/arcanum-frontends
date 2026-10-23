@@ -12,9 +12,9 @@ import { useMessages, type Messages } from './i18n'
 // socket, or the waiter screen's live channel).
 
 const TEXTS: Messages<{ title: string; waiting: string; ready: string; table: (name: string) => string; none: string; soundOn: string; soundOff: string; soundTap: string }> = {
-  nl: { title: 'Je tafel', waiting: 'even geduld', ready: 'klaar — welkom!', table: (n) => `Tafel ${n}`, none: 'Welkom! Er komt zo iemand bij je.', soundOn: 'Geluid aanzetten', soundOff: 'Geluid uitzetten', soundTap: 'Tik om het geluid aan te zetten' },
-  fr: { title: 'Votre table', waiting: 'un instant', ready: 'prête — bienvenue !', table: (n) => `Table ${n}`, none: 'Bienvenue ! Quelqu’un arrive tout de suite.', soundOn: 'Activer le son', soundOff: 'Couper le son', soundTap: 'Touchez pour activer le son' },
-  en: { title: 'Your table', waiting: 'just a moment', ready: 'ready — welcome!', table: (n) => `Table ${n}`, none: 'Welcome! Someone will be with you shortly.', soundOn: 'Turn sound on', soundOff: 'Turn sound off', soundTap: 'Tap to turn the sound on' },
+  nl: { title: 'Je tafel', waiting: 'even geduld', ready: 'klaar - welkom!', table: (n) => `Tafel ${n}`, none: 'Welkom! Er komt zo iemand bij je.', soundOn: 'Geluid aanzetten', soundOff: 'Geluid uitzetten', soundTap: 'Tik om het geluid aan te zetten' },
+  fr: { title: 'Votre table', waiting: 'un instant', ready: 'prête - bienvenue !', table: (n) => `Table ${n}`, none: 'Bienvenue ! Quelqu’un arrive tout de suite.', soundOn: 'Activer le son', soundOff: 'Couper le son', soundTap: 'Touchez pour activer le son' },
+  en: { title: 'Your table', waiting: 'just a moment', ready: 'ready - welcome!', table: (n) => `Table ${n}`, none: 'Welcome! Someone will be with you shortly.', soundOn: 'Turn sound on', soundOff: 'Turn sound off', soundTap: 'Tap to turn the sound on' },
 }
 
 interface Promised {

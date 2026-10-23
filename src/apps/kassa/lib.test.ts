@@ -84,7 +84,7 @@ describe('entryToPickerItem', () => {
   it('carries the variant id and uses the variant code as item code', () => {
     // The code becomes order_lines.item_code — for the seeded legacy items
     // the transactions.items key every report still reads.
-    expect(entryToPickerItem(fietsLid)).toEqual({ itemCode: 'fietstochtMember', name: 'Fietstocht (lid)', unitPriceCents: 500, variantId: 'v-fiets-lid' })
+    expect(entryToPickerItem(fietsLid)).toEqual({ itemCode: 'fietstochtMember', name: 'Fietstocht (lid)', unitPriceCents: 500, variantId: 'v-fiets-lid', category: null })
   })
 })
 
@@ -196,7 +196,7 @@ describe('reconcileDrafts', () => {
 })
 
 describe('toLineInputs', () => {
-  it('sends only variant + quantity — the server prices every line', () => {
+  it('sends only variant + quantity - the server prices every line', () => {
     expect(toLineInputs([{ ...entryToPickerItem(fiets), quantity: 2 }, { ...bon, quantity: 1 }])).toEqual([
       { variantId: 'v-fiets', quantity: 2 },
       { variantId: 'v-bon', quantity: 1 },
@@ -334,7 +334,7 @@ describe('product search and group filter', () => {
     expect(filterSections(sections, 'duvel', null).map((s) => s.id)).toEqual(['s-drank'])
   })
 
-  it('Enter picks an exact code, or the only match — never a guess', () => {
+  it('Enter picks an exact code, or the only match - never a guess', () => {
     expect(searchPick(sections, 'P1')?.name).toBe('Pintje')
     expect(searchPick(sections, 'duvel')?.name).toBe('Duvel')
     expect(searchPick(sections, 'steak kind')?.name).toBe('Steak (kind)')
@@ -386,13 +386,18 @@ describe('split per item', () => {
 describe('customerViewOrder: the customer display while the order is entered', () => {
   const draft = (quantity: number): DraftLine[] => [{ ...bon, quantity }]
   it('the Toog sale being entered: its lines, no title', () => {
-    expect(customerViewOrder(m, draft(3), null, 'Fuif', 'ev-1')).toEqual({ label: '', number: null, eventName: 'Fuif', eventId: 'ev-1', paidCents: 0, followUrl: null, lines: [{ name: 'Bon', quantity: 3, unitPriceCents: 100 }] })
+    expect(customerViewOrder(m, draft(3), null, 'Fuif', 'ev-1')).toEqual({ label: '', number: null, eventName: 'Fuif', eventId: 'ev-1', paidCents: 0, followUrl: null, lines: [{ name: 'Bon', quantity: 3, unitPriceCents: 100, category: null }] })
+  })
+  it('carries each line\'s category, from the tab and from the catalog entry tapped in', () => {
+    const open = tab([line({ id: 'a', quantity: 2, category: 'Drank' })])
+    const tapped = addToDraft([], entryToPickerItem({ ...fietsLid, categoryName: 'Inschrijvingen' }), 1)
+    expect(customerViewOrder(m, tapped, open, null)!.lines.map((l) => l.category)).toEqual(['Drank', 'Inschrijvingen'])
   })
   it("an open tab: what's on it (net of voids) and what's tapped in but not sent yet", () => {
     const open = { ...tab([line({ id: 'a', quantity: 2 }), line({ id: 'b', name: 'Cola', unitPriceCents: 220, quantity: 1, voidedQuantity: 1 })]), paidCents: 100, followUrl: '/volg/x' }
     const order = customerViewOrder(m, draft(1), open, null)!
     expect(order).toMatchObject({ label: 'Tafel 4', paidCents: 100, followUrl: null })
-    expect(order.lines).toEqual([{ name: 'Bon', quantity: 2, unitPriceCents: 100 }, { name: 'Bon', quantity: 1, unitPriceCents: 100 }])
+    expect(order.lines).toEqual([{ name: 'Bon', quantity: 2, unitPriceCents: 100, category: null }, { name: 'Bon', quantity: 1, unitPriceCents: 100, category: null }])
   })
   it('nothing on it: nothing to show', () => {
     expect(customerViewOrder(m, [], null, null)).toBeNull()

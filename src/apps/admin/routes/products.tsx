@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { RowActions } from '../components/row-actions'
 import { useMessages } from '@/shared/i18n'
 import { PromptDialog } from '../components/prompt-dialog'
 import {
@@ -70,8 +71,8 @@ export default function ProductsPage() {
     }
   }
 
-  const categoryName = (id: string | null) => categories.data?.find((c) => c.id === id)?.name ?? '—'
-  const stationName = (id: string | null) => stations.data?.find((c) => c.id === id)?.name ?? '—'
+  const categoryName = (id: string | null) => categories.data?.find((c) => c.id === id)?.name ?? '-'
+  const stationName = (id: string | null) => stations.data?.find((c) => c.id === id)?.name ?? '-'
 
   return (
     <div className="flex flex-col gap-6">
@@ -141,7 +142,7 @@ export default function ProductsPage() {
               <TableHead>{m.stationColumn}</TableHead>
               <TableHead>{m.vatColumn}</TableHead>
               <TableHead>{m.variantsColumn}</TableHead>
-              <TableHead className="text-right">{m.actions}</TableHead>
+              <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -188,19 +189,18 @@ export default function ProductsPage() {
                         ))}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    {!product.archived && (
-                      <Button variant="ghost" size="sm" onClick={() => setEditing(product)}>
-                        {m.edit}
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => orgId && run(() => updateProduct(orgId, product.id, { archived: !product.archived }))}
-                    >
-                      {product.archived ? m.restore : m.archive}
-                    </Button>
+                  <TableCell className="text-right">
+                    <RowActions
+                      name={product.name}
+                      actions={[
+                        !product.archived && { label: m.edit, onSelect: () => setEditing(product) },
+                        {
+                          label: product.archived ? m.restore : m.archive,
+                          destructive: !product.archived,
+                          onSelect: () => orgId && run(() => updateProduct(orgId, product.id, { archived: !product.archived })),
+                        },
+                      ]}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
@@ -275,14 +275,13 @@ function NamedListCard({
           {items?.map((item) => (
             <div key={item.id} data-testid={`${kind}-${item.name}`} className="flex items-center justify-between gap-2 border-b py-2 last:border-b-0">
               <span className="font-medium">{item.name}</span>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => setRenaming(item)}>
-                  {all.rename}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => run(() => onDelete(item.id))}>
-                  {all.remove}
-                </Button>
-              </div>
+              <RowActions
+                name={item.name}
+                actions={[
+                  { label: all.rename, onSelect: () => setRenaming(item) },
+                  { label: all.remove, destructive: true, onSelect: () => run(() => onDelete(item.id)) },
+                ]}
+              />
             </div>
           ))}
         </div>

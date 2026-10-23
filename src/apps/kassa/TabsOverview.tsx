@@ -116,9 +116,9 @@ export function TabsOverview({ orgId, refreshSignal, onOpenTab }: { orgId: strin
               >
                 <span className="font-mono text-muted-foreground tabular-nums">{time(tab.openedAt)}</span>
                 <span className="truncate font-medium">{tabTitle(m, tab)}</span>
-                <span className="truncate text-foreground/75">{[tab.openedDeviceName, tab.openedByStaff].filter(Boolean).join(' · ') || '—'}</span>
+                <span className="truncate text-foreground/75">{[tab.openedDeviceName, tab.openedByStaff].filter(Boolean).join(' · ') || '-'}</span>
                 <span className="text-foreground/75">{m.items(tab.itemCount ?? 0)}</span>
-                <span className="truncate text-foreground/75">{(tab.methods ?? []).map((x) => m.methods[x as keyof typeof m.methods] ?? x).join(' + ') || '—'}</span>
+                <span className="truncate text-foreground/75">{(tab.methods ?? []).map((x) => m.methods[x as keyof typeof m.methods] ?? x).join(' + ') || '-'}</span>
                 <span>
                   <span className={cn('inline-flex rounded-md px-2 py-0.5 text-[12px] font-semibold', BADGE[kind])}>{m.overviewStatus[kind]}</span>
                 </span>

@@ -663,7 +663,7 @@ export default function App() {
       : tabBreakdownLines(m, tab, tipCents)
     const order = {
       ...customerOrderFromTab(m, tab),
-      paying: picked ? picked.map((x) => ({ name: x.line.name, quantity: x.quantity, unitPriceCents: x.line.unitPriceCents })) : null,
+      paying: picked ? picked.map((x) => ({ name: x.line.name, quantity: x.quantity, unitPriceCents: x.line.unitPriceCents, category: x.line.category ?? null })) : null,
     }
     const common = {
       amount: amountCents,

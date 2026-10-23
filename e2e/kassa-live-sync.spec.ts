@@ -32,5 +32,5 @@ test('the selected rekening follows along: a line added elsewhere shows, a close
   backend.resolveCharge(charge.id, true)
   push({ event: 'tabs_changed', tab_id: tab.id })
   await expect(kassa.getByText('Deze rekening is intussen afgesloten, mogelijk op een andere kassa.')).toBeVisible()
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
 })

@@ -27,7 +27,7 @@ const nl = {
   onReader: (reader: string) => `Het bedrag staat op ${reader}. Laat de gast betalen.`,
   tapToPay: 'Tap to Pay (SumUp-app)',
   tapPaid: 'Betaald met Tap to Pay.',
-  tapChecking: 'Nog niet bevestigd door SumUp — de tafel wordt bijgewerkt zodra het binnen is.',
+  tapChecking: 'Nog niet bevestigd door SumUp - de tafel wordt bijgewerkt zodra het binnen is.',
   tapFailed: (detail: string | null) => (detail ? `Niet betaald: ${detail}` : 'Niet betaald'),
   cashAtTill: (label: string) => `Contant? De gasten betalen aan de kassa: rekening "${label}".`,
   openEntrance: 'Ingangsscherm',

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TicketCheck, Trash2 } from 'lucide-react'
+import { TicketCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,7 @@ import {
 import { createEvent, deleteEvent, listEvents, type Event } from '../lib/api'
 import { listCatalogs } from '../lib/catalog-api'
 import { EventSettingsDialog } from '../components/event-settings-dialog'
+import { RowActions } from '../components/row-actions'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { formatEventDays } from '../lib/format'
@@ -164,17 +165,17 @@ export default function EventsPage() {
               <TableRow key={event.id}>
                 <TableCell className="font-medium">{event.name}</TableCell>
                 <TableCell>{formatEventDays(event, intlLocale)}</TableCell>
-                <TableCell className="hidden sm:table-cell">{event.modes?.length ? event.modes.map((mode) => mode.name).join(', ') : '—'}</TableCell>
+                <TableCell className="hidden sm:table-cell">{event.modes?.length ? event.modes.map((mode) => mode.name).join(', ') : '-'}</TableCell>
                 <TableCell>{event.selfOrder?.enabled ? m.events.on : m.events.off}</TableCell>
-                <TableCell>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setSettingsFor(event)}>
-                      {m.events.settings}
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={deleting === event.id} onClick={() => handleDelete(event)} aria-label={m.events.deleteEvent(event.name)}>
-                      <Trash2 />
-                    </Button>
-                  </div>
+                <TableCell className="text-right">
+                  <RowActions
+                    name={event.name}
+                    disabled={deleting === event.id}
+                    actions={[
+                      { label: m.events.settings, onSelect: () => setSettingsFor(event) },
+                      { label: m.remove, destructive: true, onSelect: () => handleDelete(event) },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

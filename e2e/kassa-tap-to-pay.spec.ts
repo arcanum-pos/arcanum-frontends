@@ -57,7 +57,7 @@ test.describe('set up', () => {
     await expect(kassa.getByTestId('tap-qr')).toHaveAttribute('data-link', `${origin}/tap?charge=${id}&t=tok-${id}`)
   })
 
-  test('cancelled at the kassa: nothing at SumUp — back to the tab', async ({ kassa, backend }) => {
+  test('cancelled at the kassa: nothing at SumUp - back to the tab', async ({ kassa, backend }) => {
     await kassa.getByRole('button', { name: '10 × Bon', exact: true }).click()
     await kassa.getByLabel('Tap to Pay').check()
     await kassa.getByRole('button', { name: /^Afrekenen/ }).click()

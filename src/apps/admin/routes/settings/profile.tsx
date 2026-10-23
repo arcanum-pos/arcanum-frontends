@@ -45,7 +45,7 @@ export default function ProfilePage() {
               <dl className="grid gap-1 text-sm">
                 <div className="flex gap-2">
                   <dt className="w-20 text-muted-foreground">{m.name}</dt>
-                  <dd className="font-medium">{user.name || '—'}</dd>
+                  <dd className="font-medium">{user.name || '-'}</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="w-20 text-muted-foreground">{m.email}</dt>

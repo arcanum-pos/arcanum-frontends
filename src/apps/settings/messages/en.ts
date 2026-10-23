@@ -44,15 +44,15 @@ export default {
   refresh: 'Refresh',
 
   catalogsLoading: 'Loading menus...',
-  catalogsNone: 'No menu yet — an administrator creates one in the console.',
+  catalogsNone: 'No menu yet - an administrator creates one in the console.',
   catalogsFailed: 'Could not fetch the menus.',
   catalogOrgDefaultActive: 'Active: the organisation’s default menu.',
   catalogOrgDefault: (name: string | null) => `Organisation default${name ? ` (${name})` : ''}`,
 
   eventsLoading: 'Loading events...',
-  eventsNone: 'No events yet — an administrator creates them in the console (Events).',
+  eventsNone: 'No events yet - an administrator creates them in the console (Events).',
   eventsFailed: 'Could not fetch the events.',
-  eventNoneActive: 'No event — sales are not linked to an event.',
+  eventNoneActive: 'No event - sales are not linked to an event.',
   noEvent: 'No event',
   chooseNoEvent: 'Choose no event',
   noEventActive: 'No event active',
@@ -61,7 +61,7 @@ export default {
   readersNotConfigured: 'SumUp cloud API not configured for this organisation (see the organisation settings).',
   readersFailed: 'Could not fetch the readers.',
   readersFailedWith: (error: string) => `Could not fetch the readers: ${error}`,
-  readerNoneSelected: 'No reader selected — you confirm SumUp payments yourself on the till.',
+  readerNoneSelected: 'No reader selected - you confirm SumUp payments yourself on the till.',
   noReader: 'No reader (confirm yourself)',
 
   linkedLoading: 'Linked: loading...',

@@ -71,7 +71,7 @@ test('an archived device catalog falls back to the default, with a notice', asyn
   await kassa.evaluate(() => localStorage.setItem('arcanum-catalog', JSON.stringify({ id: 'cat-fuif', name: 'Fuif' })))
   await kassa.reload()
 
-  await expect(kassa.getByText('De gekozen menukaart "Fuif" is niet meer beschikbaar — de standaardmenukaart wordt gebruikt.')).toBeVisible()
+  await expect(kassa.getByText('De gekozen menukaart "Fuif" is niet meer beschikbaar - de standaardmenukaart wordt gebruikt.')).toBeVisible()
   await expect(kassa.getByRole('heading', { name: 'Tochten' })).toBeVisible()
   expect(await kassa.evaluate(() => localStorage.getItem('arcanum-catalog'))).toBeNull()
 })
@@ -80,7 +80,7 @@ test('no catalog at all: a clear empty state and nothing to sell', async ({ kass
   backend.catalogs = []
   await kassa.reload()
 
-  await expect(kassa.getByText('Nog geen menukaart — een beheerder maakt er een in de console.')).toBeVisible()
+  await expect(kassa.getByText('Nog geen menukaart - een beheerder maakt er een in de console.')).toBeVisible()
   // Fooi is no longer something you can sell on its own (since 3d it's a
   // tip on a payment), so there's nothing to pay and no tip to give.
   await expect(kassa.getByRole('button', button('Afrekenen'))).toBeDisabled()
@@ -93,7 +93,7 @@ test('an entry removed since loading: refused, draft kept, catalog reloaded', as
   await kassa.getByLabel('Contant').check()
   await kassa.getByRole('button', button('Afrekenen € 5,00')).click()
 
-  await expect(kassa.getByText('Dit product staat niet (meer) op de menukaart — herlaad de kassa')).toBeVisible()
+  await expect(kassa.getByText('Dit product staat niet (meer) op de menukaart - herlaad de kassa')).toBeVisible()
   expect(backend.tabs).toHaveLength(0)
   // The draft is kept so the cashier sees what was refused …
   await expect(panel(kassa).getByText('Fietstocht (lid)')).toBeVisible()
@@ -112,7 +112,7 @@ test('switching to another catalog drops draft lines that are not on it', async 
     window.dispatchEvent(new Event('focus'))
   })
 
-  await expect(kassa.getByText('Andere menukaart geladen — 1 lijn die er niet op staat, is uit de bestelling gehaald.')).toBeVisible()
+  await expect(kassa.getByText('Andere menukaart geladen - 1 lijn die er niet op staat, is uit de bestelling gehaald.')).toBeVisible()
   await expect(panel(kassa).getByText('Wandeltocht')).toHaveCount(0)
   await expect(kassa.getByRole('button', button('Afrekenen € 5,00'))).toBeVisible()
 })

@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { useMessages } from '@/shared/i18n'
 import { MenuExportButton } from '../components/menu-export-button'
+import { RowActions } from '../components/row-actions'
 import { MenuImportDialog } from '../components/menu-import-dialog'
 import { ConfirmDialog, PromptDialog } from '../components/prompt-dialog'
 import {
@@ -133,12 +134,13 @@ export default function CatalogEditorPage() {
                 >
                   <ArrowDown />
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => setPrompt({ kind: 'rename-section', section })}>
-                  {m.rename}
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setPrompt({ kind: 'delete-section', section })}>
-                  {m.remove}
-                </Button>
+                <RowActions
+                  name={section.name}
+                  actions={[
+                    { label: m.rename, onSelect: () => setPrompt({ kind: 'rename-section', section }) },
+                    { label: m.remove, destructive: true, onSelect: () => setPrompt({ kind: 'delete-section', section }) },
+                  ]}
+                />
               </div>
             </CardHeader>
             <CardContent className="flex flex-col gap-2">
@@ -312,9 +314,7 @@ function EntryRow({
         <Button variant="ghost" size="icon-sm" aria-label={m.moveDown(entry.displayName)} disabled={last} onClick={() => onMove(1)}>
           <ArrowDown />
         </Button>
-        <Button variant="ghost" size="sm" onClick={onRemove}>
-          {m.remove}
-        </Button>
+        <RowActions name={entry.displayName} actions={[{ label: m.remove, destructive: true, onSelect: onRemove }]} />
       </div>
     </div>
   )

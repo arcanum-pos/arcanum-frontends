@@ -12,10 +12,12 @@ export interface PickerItem {
   name: string
   unitPriceCents: number
   variantId: string
+  // The product's category (the customer display counts items per category).
+  category?: string | null
 }
 
 export function entryToPickerItem(entry: KassaEntry): PickerItem {
-  return { itemCode: entry.code, name: entry.name, unitPriceCents: entry.priceCents, variantId: entry.variantId }
+  return { itemCode: entry.code, name: entry.name, unitPriceCents: entry.priceCents, variantId: entry.variantId, category: entry.categoryName }
 }
 
 // Fooi used to be an order line (until step 3d); it's now a tip on the
@@ -84,7 +86,7 @@ export function reconcileDrafts(
     for (const line of lines) {
       const entry = entries.get(line.variantId)
       if (entry) {
-        kept.push({ ...line, name: entry.name, unitPriceCents: entry.priceCents, itemCode: entry.code })
+        kept.push({ ...line, name: entry.name, unitPriceCents: entry.priceCents, itemCode: entry.code, category: entry.categoryName })
       } else if (dropMissing) {
         dropped++
       } else {
@@ -130,7 +132,7 @@ export function customerOrderFromTab(m: Pick<KassaMessages, 'tip'>, tab: TabDeta
     paidCents: tab.paidCents,
     lines: tab.lines
       .filter((l) => !l.voidsLineId && netQuantity(l) > 0)
-      .map((l) => ({ name: l.itemCode === FOOI_CODE ? m.tip : l.name, quantity: netQuantity(l), unitPriceCents: l.unitPriceCents })),
+      .map((l) => ({ name: l.itemCode === FOOI_CODE ? m.tip : l.name, quantity: netQuantity(l), unitPriceCents: l.unitPriceCents, category: l.category ?? null })),
   }
 }
 
@@ -145,7 +147,7 @@ export function customerViewOrder(
   eventName: string | null,
   eventId: string | null = null
 ): CustomerOrder | null {
-  const drafted = draft.filter((l) => l.quantity > 0).map((l) => ({ name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents }))
+  const drafted = draft.filter((l) => l.quantity > 0).map((l) => ({ name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents, category: l.category ?? null }))
   const base: CustomerOrder = tab ? customerOrderFromTab(m, tab) : { label: '', number: null, eventName, eventId, paidCents: 0, lines: [] }
   const lines = [...base.lines, ...drafted]
   if (lines.length === 0) return null

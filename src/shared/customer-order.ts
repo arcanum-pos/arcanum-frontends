@@ -6,6 +6,10 @@ export interface CustomerOrderLine {
   name: string
   quantity: number
   unitPriceCents: number
+  // The product's category at sale time (Drank, Eten, …; what the reports
+  // use too, not the kassa's button groups): the display counts the items
+  // per category. Null when the product has none.
+  category?: string | null
 }
 
 export interface CustomerOrder {
@@ -45,6 +49,8 @@ export interface CustomerBill {
   title: string | null
   lines: { name: string; quantity: number; totalCents: number }[]
   itemCount: number
+  // How many items per category, in first-seen order (empty: no line has one).
+  categories: CategoryCount[]
   itemsCents: number
   // Paid earlier on this tab (split payments).
   alreadyPaidCents: number
@@ -69,10 +75,32 @@ export function mergeCustomerLines(lines: CustomerOrderLine[]): CustomerOrderLin
   return [...merged.values()]
 }
 
+export interface CategoryCount {
+  // Null: the items without a category ("Andere"), only listed beside named ones.
+  name: string | null
+  count: number
+}
+
+// How many items per category. Nothing when no line has one — the item
+// count says it all then.
+export function itemsPerCategory(lines: CustomerOrderLine[]): CategoryCount[] {
+  const counts = new Map<string | null, number>()
+  for (const l of lines) {
+    if (l.quantity <= 0) continue
+    const name = l.category?.trim() || null
+    counts.set(name, (counts.get(name) || 0) + l.quantity)
+  }
+  if (![...counts.keys()].some((name) => name !== null)) return []
+  const named = [...counts].filter(([name]) => name !== null).map(([name, count]) => ({ name, count }))
+  const other = counts.get(null)
+  return other ? [...named, { name: null, count: other }] : named
+}
+
 // From the order and the charge (amount = what's still open + tip), what
 // the customer reads: lines with totals, earlier payments, the tip, the total.
 export function customerBill(order: CustomerOrder | null | undefined, amountCents: number, tipCents = 0): CustomerBill {
-  const lines = mergeCustomerLines(order?.lines ?? []).map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents }))
+  const merged = mergeCustomerLines(order?.lines ?? [])
+  const lines = merged.map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents }))
   const itemsCents = lines.reduce((sum, l) => sum + l.totalCents, 0)
   const label = order?.label?.trim() || ''
   // Known from the order when it says so; else inferred (the amount pays the rest).
@@ -85,12 +113,17 @@ export function customerBill(order: CustomerOrder | null | undefined, amountCent
     title: label && !UNNAMED.has(label.toLowerCase()) ? label : null,
     lines,
     itemCount: lines.reduce((n, l) => n + l.quantity, 0),
+    categories: itemsPerCategory(merged),
     itemsCents,
     alreadyPaidCents,
     openCents: Math.max(0, itemsCents - alreadyPaidCents),
     tipCents,
     amountCents,
   }
+}
+
+function readCategory(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim().slice(0, 60) : null
 }
 
 // Only what the CFD can safely show — anything else from the wire is dropped.
@@ -101,7 +134,7 @@ export function readCustomerOrder(value: unknown): CustomerOrder | null {
   const readLines = (list: unknown[]) =>
     list
       .filter((l): l is CustomerOrderLine => !!l && typeof (l as CustomerOrderLine).name === 'string' && Number.isInteger((l as CustomerOrderLine).quantity) && Number.isInteger((l as CustomerOrderLine).unitPriceCents))
-      .map((l) => ({ name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents }))
+      .map((l) => ({ name: l.name, quantity: l.quantity, unitPriceCents: l.unitPriceCents, category: readCategory((l as { category?: unknown }).category) }))
   const lines = readLines(v.lines)
   const paying = Array.isArray(v.paying) && v.paying.length ? readLines(v.paying) : null
   return {

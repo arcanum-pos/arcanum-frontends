@@ -21,7 +21,7 @@ const nl = {
   qrAlt: 'QR-code voor betaling',
   waiting: 'Wachten op je betaling',
   // `status` is a STATUS_MESSAGES label, e.g. "Mislukt".
-  failed: (status: string) => `Betaling ${status.toLowerCase()} — vraag het aan de toog`,
+  failed: (status: string) => `Betaling ${status.toLowerCase()} - vraag het aan de toog`,
   failedFallback: 'Mislukt',
   expiresIn: (seconds: number) => `Vervalt over ${seconds}s`,
   expired: 'Verlopen',
@@ -36,11 +36,15 @@ const nl = {
   // What the customer is told while the payment runs, per method.
   instructions: {
     bancontact: 'Open je bankapp, scan de code en bevestig. Het scherm springt automatisch verder.',
-    cash: 'Betaal aan de toog — het scherm springt verder zodra de ontvangst bevestigd is.',
+    cash: 'Betaal aan de toog - het scherm springt verder zodra de ontvangst bevestigd is.',
     sumup: 'Betaal met je kaart of gsm op de betaalterminal.',
     tap: 'Houd je kaart of gsm tegen de telefoon van de kassier.',
   } as Record<string, string>,
 
+  // Above the amount once it's paid.
+  paidLabel: 'Betaald',
+  // Items whose product has no category, beside those that have one.
+  otherCategory: 'Andere',
   thanks: 'Bedankt!',
   yourNumber: (n: number) => `Je nummer: ${n}`,
   followHint: 'Scan om te volgen wanneer je bestelling klaar is.',

@@ -134,9 +134,11 @@ function tx(id: string, method: string, amountCents: number, eventId: string, at
 }
 
 test('the event filter sits next to the period and narrows the report, the charts and the payments', async ({ console, catalogAdmin }) => {
-  const event = (id: string, name: string) => ({ id, name, date: '2026-10-23', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 })
-  catalogAdmin.events = [event('ev1', 'Fuif'), event('ev2', 'Quiz')]
+  // The events are today (choosing one sets the period to its days).
   const today = new Date()
+  const day = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  const event = (id: string, name: string) => ({ id, name, date: day, createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 })
+  catalogAdmin.events = [event('ev1', 'Fuif'), event('ev2', 'Quiz')]
   const at = (h: number, min: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, min)
   catalogAdmin.transactions = [
     tx('a', 'cash', 500, 'ev1', at(20, 5)),
@@ -195,7 +197,7 @@ test('choosing an event sets its days as the period; a day of it, or a part, can
   const page = await console('/reports')
 
   await page.getByTestId('report-event').click()
-  await page.getByRole('option', { name: /Kamp — 12\/09\/2026 – 13\/09\/2026/ }).click()
+  await page.getByRole('option', { name: /Kamp - 12\/09\/2026 - 13\/09\/2026/ }).click()
   await expect
     .poll(() => catalogAdmin.reportQueries.at(-1))
     .toEqual({ from: new Date(2026, 8, 12).toISOString(), to: new Date(2026, 8, 14).toISOString(), event: 'ev1' })

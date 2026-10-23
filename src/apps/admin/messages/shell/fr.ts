@@ -9,6 +9,8 @@ export default {
   loading: 'Chargement...',
   custom: 'Personnalisé',
   platformDefault: 'Par défaut (plateforme)',
+  // The "…" button at the end of a line (row-actions.tsx).
+  rowActions: (name: string) => `Actions pour ${name}`,
   thisOrg: 'cette organisation',
 
   // Footer
@@ -46,14 +48,14 @@ export default {
   orgNamePlaceholder: 'p. ex. Scouts Elewijt',
   importInstead: 'ou importez depuis un fichier d’export',
   firstOrgTitle: 'Bienvenue dans votre Arcanum',
-  firstOrgText: 'Donnez un nom à votre organisation pour commencer — votre association, mouvement de jeunesse ou événement. Vous en devenez l’administrateur.',
+  firstOrgText: 'Donnez un nom à votre organisation pour commencer - votre association, mouvement de jeunesse ou événement. Vous en devenez l’administrateur.',
   firstOrgCreate: 'Créer l’organisation',
   firstOrgImport: 'ou importez une organisation depuis un fichier d’export (p. ex. votre démo)',
   noMembershipTitle: 'Vous n’êtes membre d’aucune organisation',
   noMembershipText: (email: string) => `Vous êtes connecté en tant que ${email}, mais cette adresse n’appartient à aucune organisation sur cet Arcanum.`,
-  noMembershipInvite: 'Demandez à un administrateur de votre organisation de vous inviter à cette adresse. Déjà invité ? Connectez-vous alors avec exactement l’adresse qui a reçu l’invitation — et de la même façon (code par e-mail, Google ou passkey).',
+  noMembershipInvite: 'Demandez à un administrateur de votre organisation de vous inviter à cette adresse. Déjà invité ? Connectez-vous alors avec exactement l’adresse qui a reçu l’invitation - et de la même façon (code par e-mail, Google ou passkey).',
   noMembershipSignOut: 'Se déconnecter et utiliser un autre compte',
-  demoTitle: (when: string) => `Ceci est une démo — elle disparaît d’elle-même à ${when}.`,
+  demoTitle: (when: string) => `Ceci est une démo - elle disparaît d’elle-même à ${when}.`,
   demoHint: 'Essayez tout librement. Vous voulez continuer ? Emportez votre démo en fichier d’export, ou créez votre propre installation.',
   demoTakeAlong: 'Emporter ma démo',
   demoOwnInstall: 'Ma propre installation',
@@ -75,7 +77,7 @@ export default {
     activeEvent: 'Événement actif',
   },
   salesOverTime: 'Ventes dans le temps',
-  notImplemented: 'Pas encore implémenté — espace réservé.',
+  notImplemented: 'Pas encore implémenté - espace réservé.',
   chartComing: 'Graphique à venir',
 
   // Settings: the side menu, also each page's heading
@@ -94,7 +96,7 @@ export default {
   themes: { light: 'Clair', dark: 'Sombre', system: 'Système' },
   appIcons: {
     title: 'Icônes d’app',
-    hint: 'L’icône de chaque page installée comme app (écran d’accueil, Dock, menu Démarrer) et dans l’onglet — pour cette organisation. Sans icône propre : l’icône par défaut. Un appareil la reçoit s’il est installé via son lien de couplage.',
+    hint: 'L’icône de chaque page installée comme app (écran d’accueil, Dock, menu Démarrer) et dans l’onglet - pour cette organisation. Sans icône propre : l’icône par défaut. Un appareil la reçoit s’il est installé via son lien de couplage.',
     pages: { kassa: 'Caisse', display: 'Écran client', waiter: 'Service', tap: 'Téléphone Tap to Pay', selforder: 'Commander (clients)', station: 'Écran de poste (par défaut)', pickup: 'Écran de retrait', entrance: 'Écran des tables (entrée)', console: 'Console (gestion)' },
     prepStation: 'Écran de poste',
     own: 'Icône propre',
@@ -108,9 +110,9 @@ export default {
   },
   displayBranding: {
     title: "Écran client",
-    hint: "Le logo et les couleurs de l’écran client : une couleur principale pour la barre du haut et le total, et une couleur d’accent pour la bande en dessous et les quantités — p. ex. le vert de votre unité scoute et la couleur du foulard, ou les couleurs du club. Seul l’écran client les utilise ; la caisse et la console restent comme elles sont.",
+    hint: "Le logo et les couleurs de l’écran client : une couleur principale pour la barre du haut et le total, et une couleur d’accent pour la bande en dessous et les quantités - p. ex. le vert de votre unité scoute et la couleur du foulard, ou les couleurs du club. Seul l’écran client les utilise ; la caisse et la console restent comme elles sont.",
     logo: "Logo",
-    logoHint: "PNG, JPEG, WebP ou SVG — enregistré en PNG de 512 px maximum. Un logo sur fond transparent rend le mieux.",
+    logoHint: "PNG, JPEG, WebP ou SVG - enregistré en PNG de 512 px maximum. Un logo sur fond transparent rend le mieux.",
     noLogo: "Pas de logo",
     upload: "Téléverser",
     replace: "Remplacer",
@@ -119,7 +121,7 @@ export default {
     unreadable: "Ce logo n’a pas pu être lu. Choisissez un PNG, JPEG, WebP ou SVG.",
     primary: "Couleur principale",
     accent: "Couleur d’accent",
-    noColor: "Aucune — les couleurs par défaut de l’écran client",
+    noColor: "Aucune - les couleurs par défaut de l’écran client",
     clear: "Effacer",
     perEvent: "Un événement peut avoir ses propres couleurs : Événements → Régler.",
     adminsOnly: "Seuls les administrateurs peuvent modifier l’écran client.",
@@ -145,7 +147,7 @@ export default {
   profileSubtitle: 'Votre identité, telle que confirmée par votre fournisseur d’identité.',
   profileLoadFailed: (error: string) => `Impossible de charger le profil : ${error}`,
   whoAmI: 'Qui suis-je',
-  profileReadOnly: 'Lecture seule — modifiez ces données auprès de votre fournisseur d’identité.',
+  profileReadOnly: 'Lecture seule - modifiez ces données auprès de votre fournisseur d’identité.',
   email: 'E-mail',
 
   // Settings → Payment Providers
@@ -181,7 +183,7 @@ export default {
   bancontactConfirmHint: (merchantId: string) => `Est-ce correct ? Si ce n’est pas votre organisation ou votre compte, n’enregistrez pas la clé et contactez Bancontact. (Merchant ID ${merchantId})`,
   bancontactYesSave: 'Oui, enregistrer',
   bancontactNotMine: 'Non, ne pas enregistrer',
-  keysTitle: (provider: string) => `${provider} — clés`,
+  keysTitle: (provider: string) => `${provider} - clés`,
   keysEncrypted: 'Enregistrées de manière chiffrée (envelope encryption par organisation).',
   merchantCode: 'Code marchand (merchant code)',
   apiKey: 'Clé API',
@@ -195,14 +197,14 @@ export default {
   moreInfo: 'En savoir plus',
 
   // Settings → Gegevens
-  dataSubtitle: 'Emportez toutes vos données — par exemple vers votre propre installation Arcanum sur votre propre compte Cloudflare.',
+  dataSubtitle: 'Emportez toutes vos données - par exemple vers votre propre installation Arcanum sur votre propre compte Cloudflare.',
   exportTitle: 'Exporter',
   exportDescription: (org: string) =>
     `Un fichier JSON lisible avec toutes les données de ${org} : membres, événements, produits, cartes, additions, commandes, paiements et transactions.`,
   notInExport: 'Pas dans l’export',
   notInExportKey: 'la clé de chiffrement de l’organisation (un import en crée une nouvelle)',
-  notInExportDomain: 'le domaine personnalisé et le fournisseur d’identité — ils appartiennent à une installation',
-  notInExportDevices: 'les appareils (caisses, écrans clients) — ils s’enregistrent à nouveau',
+  notInExportDomain: 'le domaine personnalisé et le fournisseur d’identité - ils appartiennent à une installation',
+  notInExportDevices: 'les appareils (caisses, écrans clients) - ils s’enregistrent à nouveau',
   notInExportMembers: 'lors d’un import, les membres reviennent sous forme d’invitation et deviennent actifs à leur première connexion',
   includeSecrets: 'Y compris les secrets (paramètres de paiement, non chiffrés)',
   secretsWarning:
@@ -212,6 +214,6 @@ export default {
   exportFailed: (error: string) => `Échec de l’export : ${error}`,
   importTitle: 'Importer',
   importDescription:
-    'Crée une nouvelle organisation avec toutes les données d’un fichier d’export — de cette installation Arcanum ou d’une autre. L’organisation actuelle reste inchangée.',
+    'Crée une nouvelle organisation avec toutes les données d’un fichier d’export - de cette installation Arcanum ou d’une autre. L’organisation actuelle reste inchangée.',
   importFromFile: 'Importer une organisation depuis un fichier d’export',
 } satisfies AdminShellMessages

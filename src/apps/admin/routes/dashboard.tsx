@@ -21,7 +21,7 @@ export default function DashboardPage() {
           <Card key={key}>
             <CardHeader className="pb-2">
               <CardDescription>{label}</CardDescription>
-              <CardTitle className="text-2xl">—</CardTitle>
+              <CardTitle className="text-2xl">-</CardTitle>
             </CardHeader>
           </Card>
         ))}

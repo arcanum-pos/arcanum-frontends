@@ -52,7 +52,7 @@ test('a kassa removed in the console: to the start page, and the browser forgets
   expect(await page.evaluate(() => localStorage.getItem('arcanum-terminal'))).toBeNull()
 })
 
-test("display.html?terminal=… (the kassa's own second window) is used as is — no pairing needed", async ({ page }) => {
+test("display.html?terminal=… (the kassa's own second window) is used as is - no pairing needed", async ({ page }) => {
   await signedIn(page)
   await page.goto('/display.html?terminal=display-of-pos-1')
   await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()

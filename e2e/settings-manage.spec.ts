@@ -50,7 +50,7 @@ test('linking a customer display: by name, not by id', async ({ kassa, backend }
   expect(backend.devices.get('cfd-7')!.linked_to).toBe('pos-e2e')
 })
 
-test('"Klantscherm openen": a window with the kassa\'s own display — the same one the next time', async ({ kassa, backend }) => {
+test('"Klantscherm openen": a window with the kassa\'s own display - the same one the next time', async ({ kassa, backend }) => {
   const opened: string[] = []
   for (let i = 0; i < 2; i++) {
     const [popup] = await Promise.all([kassa.waitForEvent('popup'), kassa.getByRole('button', { name: 'Klantscherm openen' }).click()])
@@ -62,7 +62,7 @@ test('"Klantscherm openen": a window with the kassa\'s own display — the same 
   expect(backend.devices.get('display-of-pos-e2e')).toMatchObject({ linked_to: 'pos-e2e', name: 'Kassa 1 · klantscherm' })
 })
 
-test('Kassalade: chosen here (or none); with one, the local tijdvak goes — the kassa then opens and closes the drawer', async ({ kassa }) => {
+test('Kassalade: chosen here (or none); with one, the local tijdvak goes - the kassa then opens and closes the drawer', async ({ kassa }) => {
   await openSettings(kassa)
   const panel = kassa.getByTestId('register-panel')
   await expect(panel).toContainText('Geen kassalade: deze kassa verkoopt zonder kasopmaak.')
@@ -72,5 +72,5 @@ test('Kassalade: chosen here (or none); with one, the local tijdvak goes — the
   await expect(kassa.getByRole('button', { name: 'Nieuw tijdvak starten' })).toHaveCount(0)
   expect(await kassa.evaluate(() => JSON.parse(localStorage.getItem('arcanum-register') || 'null'))).toEqual({ orgId: 'org-e2e', id: 'toog', name: 'Toog' })
   await kassa.goto('/kassa.html')
-  await expect(kassa.getByTestId('open-register')).toContainText('Kassa openen — Toog')
+  await expect(kassa.getByTestId('open-register')).toContainText('Kassa openen - Toog')
 })

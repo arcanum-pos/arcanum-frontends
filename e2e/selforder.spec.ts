@@ -283,7 +283,7 @@ test('step 4 asks nothing about its link where the browser remembers the order',
   await expect(page.getByTestId('keep-link')).toHaveCount(0)
 })
 
-test('storage blocked: step 4 offers to keep its link — copied to the clipboard', async ({ phone: page, fake, hub }) => {
+test('storage blocked: step 4 offers to keep its link - copied to the clipboard', async ({ phone: page, fake, hub }) => {
   await page.addInitScript(blockStorage)
   // The clipboard, stubbed (the same in every browser engine).
   await page.addInitScript(() => {
@@ -380,7 +380,7 @@ test('cancelled (not paid in time): says so, and offers a new order', async ({ p
 const DELIVERED: Station[] = [{ name: 'Bar', status: 'delivered' }, { name: 'Keuken', status: 'delivered' }]
 const remember = (page: Page, token: string) => page.evaluate(([code, t]) => localStorage.setItem(`arcanum-selforder:${code}`, JSON.stringify({ cart: {}, token: t, modeId: null })), [CODE, token])
 
-test('opened on a finished order (collected, paid): straight to the menu — from its own link and from the event\'s', async ({ phone: page, fake }) => {
+test('opened on a finished order (collected, paid): straight to the menu - from its own link and from the event\'s', async ({ phone: page, fake }) => {
   fake.state = 'delivered'
   fake.stations = DELIVERED
   await page.goto(`/volg/${TOKEN}`)
@@ -455,7 +455,7 @@ test('pay with Bancontact: the order is placed, then off to Bancontact; back on 
   fake.followPayment = { counter: true, bancontact: true, pending: true, failed: false }
   await page.goto(`/volg/${TOKEN}`)
   const again = page.getByTestId('pay-again')
-  await expect(again).toContainText('Je betaling loopt — bevestig ze in je Bancontact-app.')
+  await expect(again).toContainText('Je betaling loopt - bevestig ze in je Bancontact-app.')
   await expect(again.getByRole('button', { name: 'Open Bancontact' })).toBeVisible()
   await expect(again).toContainText('Of betaal aan de toog met nummer 7.')
   await noSidewaysScroll(page)
@@ -478,7 +478,7 @@ test('Bancontact only: no counter option', async ({ phone: page, fake }) => {
   await expect(page.getByTestId('pay-counter')).toHaveCount(0)
 })
 
-test('on a tab: order, order more on the same tab, settle at the end — on a phone', async ({ phone: page, fake, hub }) => {
+test('on a tab: order, order more on the same tab, settle at the end - on a phone', async ({ phone: page, fake, hub }) => {
   fake.payment = { counter: true, bancontact: true, tab: true }
   fake.state = 'preparing'
   fake.tabOpen = true
@@ -528,7 +528,7 @@ test('on a tab: order, order more on the same tab, settle at the end — on a ph
   await expect(page.getByRole('button', { name: 'Pils toevoegen' })).toBeVisible()
 })
 
-test('an SMS when it\'s ready: a number on the order page, shown back masked; per station whether it went — on a small phone', async ({ phone: page, fake, hub }) => {
+test('an SMS when it\'s ready: a number on the order page, shown back masked; per station whether it went - on a small phone', async ({ phone: page, fake, hub }) => {
   fake.state = 'preparing'
   fake.sms = { available: true, phone: null, stations: [] }
   await page.goto(`/volg/${TOKEN}`)
@@ -635,7 +635,7 @@ test('a new order from the order page itself: the choice again too', async ({ ph
   await expect(page).toHaveURL(new RegExp(`/bestel/${CODE}$`))
 })
 
-test('on a tab whose mode asks it: a name and a mobile number or e-mail first — on a small phone', async ({ phone: page, fake }) => {
+test('on a tab whose mode asks it: a name and a mobile number or e-mail first - on a small phone', async ({ phone: page, fake }) => {
   fake.payment = { counter: true, bancontact: false, tab: true }
   fake.contact = true
   fake.state = 'preparing'
@@ -742,7 +742,7 @@ test.describe("a notification when it's ready (Web Push, release G')", () => {
     await noSidewaysScroll(page)
   })
 
-  test('a browser that took notifications for an earlier order: this one gets them too, without a tap — not after turning them off', async ({ phone: page, fake }) => {
+  test('a browser that took notifications for an earlier order: this one gets them too, without a tap - not after turning them off', async ({ phone: page, fake }) => {
     await page.addInitScript(pushBrowser, { permission: 'granted', already: 'granted' })
     await page.addInitScript(() => {
       if (!sessionStorage.getItem('off')) (window as any).__subscribed = true

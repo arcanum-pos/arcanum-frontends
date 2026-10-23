@@ -19,7 +19,7 @@ const nl = {
   leaveText: 'Doe je eerst de kasopmaak, of laat je de kassa open voor wie na jou komt?',
   leaveOpen: 'Openlaten en afmelden',
   close: 'Sluiten',
-  demoBar: (when: string) => `Dit is een demo — ze verdwijnt vanzelf om ${when}.`,
+  demoBar: (when: string) => `Dit is een demo - ze verdwijnt vanzelf om ${when}.`,
   demoConsole: 'Beheer in de console (menukaart, toestellen, rapporten) →',
 
   // Tab strip and ticket header. A Toog tab is stored as "Toog" whatever
@@ -27,7 +27,7 @@ const nl = {
   // how it's shown.
   quickSale: 'Toog',
   payDirectly: 'Direct afrekenen',
-  quickTitle: 'Toog — direct afrekenen',
+  quickTitle: 'Toog - direct afrekenen',
   quickSubtitle: 'Nieuwe rekening bij afrekenen',
   openTab: 'Open rekening',
   tabNumber: (n: number) => `Rekening #${n}`,
@@ -55,12 +55,12 @@ const nl = {
   voided: (n: number) => `${n} geannuleerd`,
   unitsPaid: (n: number) => `✓ ${n} betaald`,
   voidLine: 'Annuleren',
-  draftOnTab: 'Nieuw — wordt zo doorgestuurd',
+  draftOnTab: 'Nieuw - wordt zo doorgestuurd',
   onTheTab: 'Op de rekening',
   orderingFor: 'Bestellen voor',
   newItems: (n: number) => `${n} nieuw`,
   onTabCount: (n: number) => `${n} op de rekening`,
-  panelDivider: 'Breedte van de rekening — sleep, of pijltjes links en rechts; dubbelklik zet terug',
+  panelDivider: 'Breedte van de rekening - sleep, of pijltjes links en rechts; dubbelklik zet terug',
   arrange: "Indeling aanpassen",
   arrangeHint: "Sleep een groep aan zijn greep naar een andere plaats of kolom. Deze indeling geldt voor deze kassa, bij Alles.",
   addColumn: "+ Kolom",
@@ -95,7 +95,7 @@ const nl = {
 
   // Product picker
   catalogLoading: 'Menukaart laden…',
-  noCatalog: 'Nog geen menukaart — een beheerder maakt er een in de console.',
+  noCatalog: 'Nog geen menukaart - een beheerder maakt er een in de console.',
   searchPlaceholder: 'Zoek product of typ een code…',
   searchLabel: 'Zoek product',
   group: 'Groep',
@@ -115,7 +115,7 @@ const nl = {
   save: 'Opslaan',
   openTabButton: 'Rekening openen',
   voidTitle: 'Lijn annuleren',
-  voidDescription: (n: number, name: string) => `${n} × ${name} — de lijn blijft zichtbaar in de geschiedenis, met reden.`,
+  voidDescription: (n: number, name: string) => `${n} × ${name} - de lijn blijft zichtbaar in de geschiedenis, met reden.`,
   voidQuantity: 'Aantal annuleren',
   reason: 'Reden',
   // Stored with the void as typed, so in the kassa's language.
@@ -167,7 +167,7 @@ const nl = {
   overviewSearch: 'Zoek op naam, #nummer of bedrag…',
   overviewFilters: { all: 'Alle', open: 'Open', paid: 'Betaald', cancelled: 'Geannuleerd' },
   overviewStatus: { open: 'Open', paying: 'Betaling loopt', paid: 'Betaald', cancelled: 'Geannuleerd' },
-  overviewTotals: (paidCount: number, paid: string, openCount: number, open: string) => `${paidCount} betaald · ${paid} — ${openCount} open · ${open}`,
+  overviewTotals: (paidCount: number, paid: string, openCount: number, open: string) => `${paidCount} betaald · ${paid} - ${openCount} open · ${open}`,
   overviewColumns: { time: 'Tijd', tab: 'Rekening', kassa: 'Kassa', items: 'Artikelen', method: 'Methode', status: 'Status', amount: 'Bedrag' },
   overviewEmpty: 'Nog geen rekeningen vandaag.',
   overviewNoMatches: 'Geen rekeningen gevonden.',
@@ -183,13 +183,13 @@ const nl = {
   detailFailed: 'Kon de rekening niet laden.',
 
   // Notices and errors of the kassa's own (the server's come as they are)
-  catalogGone: (name: string) => `De gekozen menukaart "${name}" is niet meer beschikbaar — de standaardmenukaart wordt gebruikt.`,
+  catalogGone: (name: string) => `De gekozen menukaart "${name}" is niet meer beschikbaar - de standaardmenukaart wordt gebruikt.`,
   linesDropped: (n: number) =>
     n === 1
-      ? 'Andere menukaart geladen — 1 lijn die er niet op staat, is uit de bestelling gehaald.'
-      : `Andere menukaart geladen — ${n} lijnen die er niet op staan, zijn uit de bestelling gehaald.`,
+      ? 'Andere menukaart geladen - 1 lijn die er niet op staat, is uit de bestelling gehaald.'
+      : `Andere menukaart geladen - ${n} lijnen die er niet op staan, zijn uit de bestelling gehaald.`,
   catalogFailed: 'Kon de menukaart niet laden. Probeer opnieuw.',
-  eventGone: (name: string) => `Het gekozen evenement "${name}" bestaat niet meer — verkopen worden niet meer aan een evenement gekoppeld.`,
+  eventGone: (name: string) => `Het gekozen evenement "${name}" bestaat niet meer - verkopen worden niet meer aan een evenement gekoppeld.`,
   tabClosedElsewhere: 'Deze rekening is intussen afgesloten, mogelijk op een andere kassa.',
   orgUnknown: 'Organisatie van dit toestel nog niet bekend.',
   pickFirst: 'Kies eerst wat deze persoon betaalt.',

@@ -44,15 +44,15 @@ const nl = {
   refresh: 'Vernieuwen',
 
   catalogsLoading: 'Menukaarten laden...',
-  catalogsNone: 'Nog geen menukaart — een beheerder maakt er een in de console.',
+  catalogsNone: 'Nog geen menukaart - een beheerder maakt er een in de console.',
   catalogsFailed: 'Kon menukaarten niet ophalen.',
   catalogOrgDefaultActive: 'Actief: standaardmenukaart van de organisatie.',
   catalogOrgDefault: (name: string | null) => `Standaard van de organisatie${name ? ` (${name})` : ''}`,
 
   eventsLoading: 'Evenementen laden...',
-  eventsNone: 'Nog geen evenementen — een beheerder maakt ze aan in de console (Evenementen).',
+  eventsNone: 'Nog geen evenementen - een beheerder maakt ze aan in de console (Evenementen).',
   eventsFailed: 'Kon evenementen niet ophalen.',
-  eventNoneActive: 'Geen evenement — verkopen worden niet aan een evenement gekoppeld.',
+  eventNoneActive: 'Geen evenement - verkopen worden niet aan een evenement gekoppeld.',
   noEvent: 'Geen evenement',
   chooseNoEvent: 'Kies geen evenement',
   noEventActive: 'Geen evenement actief',
@@ -61,7 +61,7 @@ const nl = {
   readersNotConfigured: 'SumUp cloud-API niet geconfigureerd voor deze organisatie (zie organisatie-instellingen).',
   readersFailed: 'Kon readers niet ophalen.',
   readersFailedWith: (error: string) => `Kon readers niet ophalen: ${error}`,
-  readerNoneSelected: 'Geen reader geselecteerd — je bevestigt SumUp-betalingen zelf op de kassa.',
+  readerNoneSelected: 'Geen reader geselecteerd - je bevestigt SumUp-betalingen zelf op de kassa.',
   noReader: 'Geen reader (zelf bevestigen)',
 
   linkedLoading: 'Gekoppeld: laden...',

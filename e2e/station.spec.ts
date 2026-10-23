@@ -114,7 +114,7 @@ const test = base.extend<{ fake: FakeStation; push: (msg: Record<string, unknown
 
 const column = (page: Page, status: Status) => page.getByTestId(`column-${status}`)
 
-test('shows its station; only paid orders by default — saying how many unpaid ones are hidden', async ({ station: page }) => {
+test('shows its station; only paid orders by default - saying how many unpaid ones are hidden', async ({ station: page }) => {
   await expect(page.getByTestId('station-name')).toHaveText('Keuken')
   const ordered = column(page, 'ordered')
   await expect(ordered.getByTestId('ticket')).toHaveCount(3)
@@ -161,7 +161,7 @@ test('a tap moves a ticket on: start → ready → delivered; delivered ones onl
   await expect(column(page, 'ready').locator('[data-number="5"]')).toBeVisible()
 })
 
-test('live: a push makes it fetch its tickets again — no polling in between', async ({ station: page, fake, push }) => {
+test('live: a push makes it fetch its tickets again - no polling in between', async ({ station: page, fake, push }) => {
   await expect(column(page, 'ordered').getByTestId('ticket')).toHaveCount(3)
   await page.waitForTimeout(1500)
   const before = fake.listCalls.length
@@ -224,7 +224,7 @@ test("who's working: chosen in the header (with a PIN), recorded on Start, passe
 
 // Just paired in Chrome, Edge or Android (their apps share the browser's
 // storage, shared/install): the screen offers to install itself, once.
-test('just paired: "Installeer als app" when the browser can install it — once', async ({ station: page }) => {
+test('just paired: "Installeer als app" when the browser can install it - once', async ({ station: page }) => {
   const offer = () =>
     page.evaluate(() => {
       const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt: async () => void ((window as any).__prompted = true) })

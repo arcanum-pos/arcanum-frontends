@@ -52,7 +52,7 @@ test('signed in on the phone: the page opens itself again, now signed in', async
   expect(new URL(page.url()).pathname).toBe('/login-prompt.html')
 })
 
-test('a code renews itself before it expires — no error, no button', async ({ page }) => {
+test('a code renews itself before it expires - no error, no button', async ({ page }) => {
   await page.clock.install()
   const fake = await fakeDeviceGrant(page, 60)
   await page.goto('/login-prompt.html')

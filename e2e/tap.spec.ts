@@ -140,7 +140,7 @@ test.describe('pairing', () => {
   })
 })
 
-test("can't see its kassa's payments: says so — never a reload loop — and offers a new code", async ({ phone: page, fake }) => {
+test("can't see its kassa's payments: says so - never a reload loop - and offers a new code", async ({ phone: page, fake }) => {
   await paired(page)
   fake.tapStatus = 403
   let loads = 0
@@ -175,7 +175,7 @@ test.describe('a payment from its kassa', () => {
     await noSidewaysScroll(page)
   })
 
-  test("back from the SumUp app: the backend asks SumUp; paid — then back to waiting", async ({ phone: page, fake }) => {
+  test("back from the SumUp app: the backend asks SumUp; paid - then back to waiting", async ({ phone: page, fake }) => {
     await paired(page)
     fake.charge = pending()
     await page.goto('/tap?charge=c1&t=tok1&smp-status=success&smp-tx-code=TX1')

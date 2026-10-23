@@ -131,7 +131,7 @@ export default function ReportsPage() {
                 <SelectItem value={ALL_EVENTS}>{m.reports.allEvents}</SelectItem>
                 {events.map((event) => (
                   <SelectItem key={event.id} value={event.id}>
-                    {event.name} — {formatEventDays(event, intlLocale)}
+                    {event.name} - {formatEventDays(event, intlLocale)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -344,7 +344,7 @@ function SalesReportView({ report, loading, error, charts }: { report: SalesRepo
                 <TableBody>
                   {r.sales.byCategory.length === 0 && <EmptyRow cols={3} />}
                   {r.sales.byCategory.map((c) => (
-                    <TableRow key={c.category ?? '—'}>
+                    <TableRow key={c.category ?? '-'}>
                       <TableCell>{c.category ?? m.reports.noCategory}</TableCell>
                       <TableCell className="text-right">{c.quantity}</TableCell>
                       <TableCell className="text-right">{formatEuro(c.revenueCents)}</TableCell>
@@ -374,7 +374,7 @@ function SalesReportView({ report, loading, error, charts }: { report: SalesRepo
                   {r.sales.byProduct.map((p) => (
                     <TableRow key={`${p.name}|${p.category ?? ''}`}>
                       <TableCell>{p.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell">{p.category ?? '—'}</TableCell>
+                      <TableCell className="hidden sm:table-cell">{p.category ?? '-'}</TableCell>
                       <TableCell className="text-right">{p.quantity}</TableCell>
                       <TableCell className="text-right">{formatEuro(p.revenueCents)}</TableCell>
                     </TableRow>
@@ -404,7 +404,7 @@ function SalesReportView({ report, loading, error, charts }: { report: SalesRepo
                     <TableRow key={String(v.vatRateBp)}>
                       <TableCell>{vatLabel(m, v.vatRateBp)}</TableCell>
                       <TableCell className="text-right">{formatEuro(v.revenueCents)}</TableCell>
-                      <TableCell className="text-right">{v.vatRateBp === null ? '—' : formatEuro(v.vatCents)}</TableCell>
+                      <TableCell className="text-right">{v.vatRateBp === null ? '-' : formatEuro(v.vatCents)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -494,11 +494,11 @@ function TransactionList({ transactions, loading, error }: { transactions: Trans
             sorted.map((tx) => (
               <TableRow key={tx.id}>
                 <TableCell>{formatTime(tx.completedAt, intlLocale)}</TableCell>
-                <TableCell>{tx.description || '—'}</TableCell>
+                <TableCell>{tx.description || '-'}</TableCell>
                 <TableCell>{methodLabel(m, tx.method)}</TableCell>
-                <TableCell>{tx.deviceName || '—'}</TableCell>
-                <TableCell>{tx.userName || tx.userEmail || '—'}</TableCell>
-                <TableCell className="text-right">{tx.tipCents ? formatEuro(tx.tipCents) : '—'}</TableCell>
+                <TableCell>{tx.deviceName || '-'}</TableCell>
+                <TableCell>{tx.userName || tx.userEmail || '-'}</TableCell>
+                <TableCell className="text-right">{tx.tipCents ? formatEuro(tx.tipCents) : '-'}</TableCell>
                 <TableCell className="text-right">{formatEuro(tx.amountCents)}</TableCell>
               </TableRow>
             ))}

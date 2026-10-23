@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Copy, MoreHorizontal, UserPlus } from 'lucide-react'
+import { Copy, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -20,17 +20,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { inviteMember, listMembers, removeMember, whoami, type Member } from '../lib/api'
 import { inviteText, loginUrl } from '../lib/invite-text'
 import { useAsync } from '../lib/use-async'
+import { RowActions } from '../components/row-actions'
 import { useOrg } from '../lib/org-context'
 import { useMessages } from '@/shared/i18n'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
@@ -190,24 +185,14 @@ export default function UsersPage() {
                   {member.userSub && member.userSub === currentUserSub ? (
                     <span className="text-sm text-muted-foreground">{m.users.you}</span>
                   ) : (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-8" disabled={removingId === member.id}>
-                          <MoreHorizontal />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {member.status === 'pending' && (
-                          <DropdownMenuItem onClick={() => openShare(member, false)}>
-                            <Copy />
-                            {m.users.copyInvite}
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem variant="destructive" onClick={() => handleRemove(member.id, member.invitedEmail)}>
-                          {m.remove}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <RowActions
+                      name={member.invitedEmail ?? member.id}
+                      disabled={removingId === member.id}
+                      actions={[
+                        member.status === 'pending' && { label: m.users.copyInvite, onSelect: () => openShare(member, false) },
+                        { label: m.remove, destructive: true, onSelect: () => handleRemove(member.id, member.invitedEmail) },
+                      ]}
+                    />
                   )}
                 </TableCell>
               </TableRow>

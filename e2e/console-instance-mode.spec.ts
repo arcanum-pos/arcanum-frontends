@@ -33,7 +33,7 @@ test('a demo org shows when it disappears, and how to keep going', async ({ cons
   const banner = page.getByTestId('demo-banner')
   const hhmm = expiresAt.toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' })
   // After midnight (another day) the banner names the weekday too ("di 01:17").
-  await expect(banner).toContainText(new RegExp(`Dit is een demo — ze verdwijnt vanzelf om (\\S+ )?${hhmm}\\.`))
+  await expect(banner).toContainText(new RegExp(`Dit is een demo - ze verdwijnt vanzelf om (\\S+ )?${hhmm}\\.`))
   await expect(banner.getByRole('link', { name: 'Eigen installatie' })).toHaveAttribute('href', 'https://start.kaboutersoft.be')
   await banner.getByRole('link', { name: 'Neem je demo mee' }).click()
   await expect(page).toHaveURL(/\/console\/settings\/data$/)
@@ -68,7 +68,7 @@ test('without an organisation and without the right to make one: no welcome form
   await expect(page.getByTestId('first-organization')).toHaveCount(0)
 })
 
-test('a member of nothing, who may not create an organisation, is told so — not shown an empty console', async ({ console: open, page, orgTransfer }) => {
+test('a member of nothing, who may not create an organisation, is told so - not shown an empty console', async ({ console: open, page, orgTransfer }) => {
   orgTransfer.orgs = []
   orgTransfer.capabilities = { orgCreation: 'internal', canCreateOrganization: false, canImportOrganization: false, instanceAdmin: false }
   await open('/dashboard')

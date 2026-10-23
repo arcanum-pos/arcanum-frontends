@@ -100,7 +100,7 @@ describe('parseSheetRows: header mapping', () => {
     ])
   })
 
-  it('keeps cell values raw — interpretation is the backend’s job', () => {
+  it('keeps cell values raw - interpretation is the backend’s job', () => {
     const [row] = parseSheetRows([
       ['Groep', 'Product', 'Prijs', 'BTW', 'Zichtbaar'],
       ['Drank', 'Pils', '€ 2,50', 0.21, true],

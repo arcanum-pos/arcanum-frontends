@@ -31,7 +31,7 @@ test('lists today of every kassa, filters and searches, and opens a rekening', a
   await expect(rows.filter({ hasText: 'Tafel 3' })).toContainText('Bancontact')
   await expect(rows.filter({ hasText: 'Tafel 3' })).toContainText('Betaald')
   await expect(rows.filter({ hasText: 'Tafel 2' })).toContainText('Open')
-  await expect(overview.getByTestId('overview-totals')).toHaveText('1 betaald · € 5,00 — 2 open · € 4,00')
+  await expect(overview.getByTestId('overview-totals')).toHaveText('1 betaald · € 5,00 - 2 open · € 4,00')
 
   await overview.getByRole('button', { name: 'Geannuleerd', exact: true }).click()
   await expect(rows).toHaveCount(1)
@@ -65,5 +65,5 @@ test('a new rekening elsewhere shows up in the overview live', async ({ kassa, b
   await expect(kassa.getByTestId('overview-row')).toContainText('Tafel 8')
   // And back to the kassa.
   await kassa.getByRole('button', { name: '← Terug naar de kassa' }).click()
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
 })

@@ -54,7 +54,7 @@ test('same device: the kassa shows the order and the QR on the CFD, then "Bedank
   await expect(paid.getByText('Bedankt!')).toBeVisible()
   await expect(paid).toContainText('€ 27,00 betaald · Bancontact')
   await paid.click()
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
   await expect(display.getByText('Klaar voor de volgende bestelling')).toBeVisible()
   expect(cfd.errors).toEqual([])
 })
@@ -94,6 +94,38 @@ test('another device: the order comes with the charge status (tab name, lines ne
 
   cfd.push({ event: 'reset' })
   await expect(page.getByText('Klaar voor de volgende bestelling')).toBeVisible()
+  expect(cfd.errors).toEqual([])
+})
+
+// The items per category (the categories the reports use), and once paid the
+// confirmation on the same screen: the order stays, a drawn check, a green light.
+test('another device: items per category, and "paid" on the same screen as the bill', async ({ page, backend }) => {
+  const cfd = await openDisplay(page, backend)
+  const tab = backend.openTab('Tafel 7', [
+    { name: 'Pintje', unitPriceCents: 250, quantity: 3, category: 'Drank' },
+    { name: 'Cola', unitPriceCents: 250, quantity: 2, category: 'Drank' },
+    { name: 'Frieten', unitPriceCents: 400, quantity: 1, category: 'Eten' },
+    { name: 'Bon', unitPriceCents: 100, quantity: 2 },
+  ])
+  const charge = backend.startCharge(tab.id, 'cash')
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'cash' })
+
+  const waiting = page.getByTestId('cfd-waiting')
+  await expect(waiting).toContainText('8 items · Contant')
+  await expect(waiting.getByTestId('cfd-categories')).toHaveText(/^5 Drank\s*1 Eten\s*2 Andere$/)
+
+  backend.resolveCharge(charge.id, true)
+  cfd.push({ event: 'payment_updated', payment_id: charge.id, method: 'cash' })
+  const paid = page.getByTestId('cfd-paid')
+  await expect(paid.getByText('Bedankt!')).toBeVisible()
+  // The bill stays where it was, beside the confirmation.
+  await expect(paid.getByRole('listitem')).toHaveCount(4)
+  await expect(paid.getByRole('heading', { name: 'Tafel 7' })).toBeVisible()
+  await expect(paid.getByTestId('cfd-categories')).toHaveText(/^5 Drank\s*1 Eten\s*2 Andere$/)
+  await expect(paid.getByTestId('cfd-paid-mark').locator('svg path')).toHaveCount(1)
+  await expect(paid.getByTestId('cfd-status')).toHaveText('€ 18,50 betaald · Contant')
+  await expect(paid.getByTestId('cfd-light').locator('.bg-green-500')).toHaveCount(1)
+  await expect(paid.getByAltText('QR-code voor betaling')).toHaveCount(0)
   expect(cfd.errors).toEqual([])
 })
 
@@ -172,7 +204,7 @@ test('the customer can switch the language, and the next customer starts in Dutc
   expect(cfd.errors).toEqual([])
 })
 
-test('same device, SumUp on a reader: the display turns to "Bedankt!" — also when its own status check comes in after the kassa\'s message', async ({ kassa, backend, push }) => {
+test('same device, SumUp on a reader: the display turns to "Bedankt!" - also when its own status check comes in after the kassa\'s message', async ({ kassa, backend, push }) => {
   // A Solo (or the Virtual Solo) chosen in Instellingen: the charge goes to the reader.
   await kassa.evaluate(() => localStorage.setItem('arcanum-sumup-reader', JSON.stringify({ id: 'rdr_1', name: 'Toog' })))
   await kassa.reload()
@@ -224,7 +256,7 @@ test('the device language picked on the chooser is the CFD\'s home language, not
 
 // While the cashier enters the order (2026-10-18): the customer sees it and
 // says whether it's right, before the cashier asks for the payment.
-test('same device: the order shows as the cashier taps it in — then the payment takes over, and after it the screen rests', async ({ kassa, backend, push }) => {
+test('same device: the order shows as the cashier taps it in - then the payment takes over, and after it the screen rests', async ({ kassa, backend, push }) => {
   const display = await kassa.context().newPage()
   await openDisplay(display, backend)
 
@@ -253,7 +285,7 @@ test('same device: the order shows as the cashier taps it in — then the paymen
 
 test('the kassa sends the order on its screen to the backend, for a display on another device; emptied, nothing', async ({ kassa, backend }) => {
   await kassa.getByRole('button', { name: '5 × Bon', exact: true }).click()
-  await expect.poll(() => backend.customerViewPuts.at(-1)?.order?.lines).toEqual([{ name: 'Bon', quantity: 5, unitPriceCents: 100 }])
+  await expect.poll(() => backend.customerViewPuts.at(-1)?.order?.lines).toEqual([{ name: 'Bon', quantity: 5, unitPriceCents: 100, category: null }])
   expect(backend.customerViewPuts.at(-1)?.terminal).toBe('pos-e2e')
   await kassa.getByRole('button', { name: 'Leegmaken' }).click()
   await expect.poll(() => backend.customerViewPuts.at(-1)?.order).toBeNull()
@@ -262,7 +294,7 @@ test('the kassa sends the order on its screen to the backend, for a display on a
   expect([...seqs].sort((a, b) => a - b)).toEqual(seqs)
 })
 
-test('another device: the order being entered comes after the push — the newest wins', async ({ page, backend }) => {
+test('another device: the order being entered comes after the push - the newest wins', async ({ page, backend }) => {
   await page.addInitScript(() => localStorage.setItem('arcanum-terminal', JSON.stringify({ terminalId: 'cfd-2', role: 'cfd', orgId: 'org-e2e', orgName: 'E2E' })))
   backend.devices.set('cfd-2', { terminal_id: 'cfd-2', org_id: 'org-e2e', role: 'cfd', linked_to: 'pos-e2e', name: 'Scherm' })
   const sockets: WebSocketRoute[] = []
@@ -300,7 +332,7 @@ test('another device: the order being entered comes after the push — the newes
 
 // "Bestelling tonen" on the kassa (per kassa, remembered): off, the display
 // rests while the cashier taps or checks tabs — the payment always shows it.
-test('"Bestelling tonen" off: the display rests while the order is entered — the payment still shows it all', async ({ kassa, backend }) => {
+test('"Bestelling tonen" off: the display rests while the order is entered - the payment still shows it all', async ({ kassa, backend }) => {
   const display = await kassa.context().newPage()
   await openDisplay(display, backend)
   const toggle = kassa.getByTestId('show-order')

@@ -1,7 +1,7 @@
 // Weergave → Klantscherm: the customer display's logo and two colours, and
 // an event's own colours (Evenementen → Instellen). Only the customer
 // display uses them (kassa-event.spec.ts shows it there).
-import { expect, test } from './console-fixtures'
+import { expect, test, rowAction } from './console-fixtures'
 
 // A 2×1 red PNG: what an upload is turned into (drawn again on a canvas).
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAAEUlEQVR4nGP4z8DwHwQZYAwAMUcD/WcahHgAAAAASUVORK5CYII=', 'base64')
@@ -37,7 +37,7 @@ test('an admin sets the colours (typed or picked), uploads a logo and removes it
 test("an event's own colours, or as the organisation", async ({ console: open, catalogAdmin, page }) => {
   catalogAdmin.events = [{ id: 'ev1', name: 'Tornooi', date: '2026-11-01', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 }]
   await open('/events')
-  await page.getByRole('row').filter({ hasText: 'Tornooi' }).getByRole('button', { name: 'Instellen' }).click()
+  await rowAction(page.getByRole('row').filter({ hasText: 'Tornooi' }), 'Instellen')
   const section = page.getByRole('dialog').getByTestId('event-brand')
   await expect(section.getByText('Zoals de organisatie').first()).toBeVisible()
   await section.getByLabel('Hoofdkleur', { exact: true }).last().fill('#c8102e')

@@ -11,6 +11,11 @@ import { ADMIN_CATALOG_MESSAGES } from '../messages/catalog'
 // Uitleg sheet) or CSV (;-separated with decimal comma, for Belgian Excel).
 // The spreadsheet code is only loaded when one of the two is clicked.
 // A failure goes to the caller as an exportFailed notice (catalog-helpers).
+export async function downloadCatalogFile(orgId: string, catalogId: string, format: 'xlsx' | 'csv') {
+  const [data, files] = await Promise.all([exportCatalog(orgId, catalogId), import('../lib/menu-files')])
+  await files.downloadMenu(data.catalog.name, data.rows, format)
+}
+
 export function MenuExportButton({
   orgId,
   catalogId,
@@ -30,8 +35,7 @@ export function MenuExportButton({
   async function run(format: 'xlsx' | 'csv') {
     setBusy(true)
     try {
-      const [data, files] = await Promise.all([exportCatalog(orgId, catalogId), import('../lib/menu-files')])
-      await files.downloadMenu(data.catalog.name, data.rows, format)
+      await downloadCatalogFile(orgId, catalogId, format)
     } catch (err) {
       onError({ kind: 'exportFailed', error: err instanceof Error ? err.message : String(err) })
     } finally {

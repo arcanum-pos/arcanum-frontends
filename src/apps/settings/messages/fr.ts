@@ -44,15 +44,15 @@ export default {
   refresh: 'Actualiser',
 
   catalogsLoading: 'Chargement des cartes...',
-  catalogsNone: 'Pas encore de carte — un administrateur en crée une dans la console.',
+  catalogsNone: 'Pas encore de carte - un administrateur en crée une dans la console.',
   catalogsFailed: 'Impossible de récupérer les cartes.',
   catalogOrgDefaultActive: 'Actif : carte par défaut de l’organisation.',
   catalogOrgDefault: (name: string | null) => `Par défaut de l’organisation${name ? ` (${name})` : ''}`,
 
   eventsLoading: 'Chargement des événements...',
-  eventsNone: 'Pas encore d’événements — un administrateur les crée dans la console (Événements).',
+  eventsNone: 'Pas encore d’événements - un administrateur les crée dans la console (Événements).',
   eventsFailed: 'Impossible de récupérer les événements.',
-  eventNoneActive: 'Aucun événement — les ventes ne sont pas liées à un événement.',
+  eventNoneActive: 'Aucun événement - les ventes ne sont pas liées à un événement.',
   noEvent: 'Aucun événement',
   chooseNoEvent: 'Choisir aucun événement',
   noEventActive: 'Aucun événement actif',
@@ -61,7 +61,7 @@ export default {
   readersNotConfigured: 'API cloud SumUp non configurée pour cette organisation (voir les paramètres de l’organisation).',
   readersFailed: 'Impossible de récupérer les lecteurs.',
   readersFailedWith: (error: string) => `Impossible de récupérer les lecteurs : ${error}`,
-  readerNoneSelected: 'Aucun lecteur sélectionné — vous confirmez vous-même les paiements SumUp à la caisse.',
+  readerNoneSelected: 'Aucun lecteur sélectionné - vous confirmez vous-même les paiements SumUp à la caisse.',
   noReader: 'Aucun lecteur (confirmer soi-même)',
 
   linkedLoading: 'Lié : chargement...',

@@ -20,7 +20,7 @@ export default {
 
   // Notices of the screens' own
   exportFailed: (error: string) => `Export failed: ${error}`,
-  invalidPrice: (name: string) => `Invalid price for ${name} — use e.g. 2.50`,
+  invalidPrice: (name: string) => `Invalid price for ${name} - use e.g. 2.50`,
   invalidQuickQuantities: 'Quick buttons: at most 10 whole numbers between 1 and 999, separated by commas',
 
   // Menus (list)
@@ -36,7 +36,7 @@ export default {
   newCatalogDescription: 'E.g. per season or per event. You then add groups and products to it.',
   renameCatalog: 'Rename menu',
   duplicateCatalog: 'Duplicate menu',
-  duplicateDescription: 'An independent copy with the same groups and prices — e.g. for a new season.',
+  duplicateDescription: 'An independent copy with the same groups and prices - e.g. for a new season.',
   copyName: 'Name of the copy',
   copyOf: (name: string) => `${name} (copy)`,
 
@@ -55,28 +55,29 @@ export default {
       ? 'The product in this group disappears from this menu. The product itself stays.'
       : `The ${count} products in this group disappear from this menu. The products themselves stay.`,
   noCategory: 'No category',
-  archivedEntry: 'Archived product — not on the till',
+  archivedEntry: 'Archived product - not on the till',
   priceOf: (name: string) => `Price ${name}`,
   quickQuantitiesOf: (name: string) => `Quick buttons ${name}`,
   quickQuantitiesPlaceholder: 'quick buttons, e.g. 5, 10',
   visible: 'Visible',
   visibleOf: (name: string) => `Visible ${name}`,
-  allOnCatalog: 'Every product is already on this menu — create new ones under Products.',
+  allOnCatalog: 'Every product is already on this menu - create new ones under Products.',
   addProductTo: (section: string) => `Add product to ${section}`,
   addProductPlaceholder: 'Add product…',
   newEntryPrice: (section: string) => `Price of new product ${section}`,
 
   // Export / import
   export: 'Export',
+  exportAs: (format: string) => `Export (${format})`,
   importInto: (name: string) => `Import into ${name}`,
   importCatalog: 'Import menu',
   importReplaceDescription:
-    'The file replaces this menu’s groups, order and prices. Products are never deleted — they may be on other menus — and an empty Category, Station, VAT or Code leaves an existing product unchanged.',
+    'The file replaces this menu’s groups, order and prices. Products are never deleted - they may be on other menus - and an empty Category, Station, VAT or Code leaves an existing product unchanged.',
   importNewDescription: 'Creates a new menu from the file. Existing products are recognised by code or name and reused.',
   importFile: 'File (.xlsx or .csv)',
   importName: 'Name of the new menu',
   ignoredColumns: (headers: string) => `Ignored columns: ${headers}`,
-  importHasErrors: 'The file contains errors — nothing has been changed. Correct the file and try again.',
+  importHasErrors: 'The file contains errors - nothing has been changed. Correct the file and try again.',
   previewCounts: (rows: number, groups: number) => `${rows === 1 ? '1 row' : `${rows} rows`} in ${groups === 1 ? '1 group' : `${groups} groups`}.`,
   noChanges: ' No changes.',
   unchangedLines: (count: number) => (count === 1 ? '1 line unchanged.' : `${count} lines unchanged.`),
@@ -107,13 +108,13 @@ export default {
   productsIntro: (org: string | null) => `What ${org ?? 'this organisation'} sells. Prices are set per menu.`,
   conceptsCategory: ' = what it is, for reports (Drinks, Food). ',
   conceptsStation: ' = who prepares it (Bar, Kitchen). ',
-  conceptsSection: ' = where the button sits on the till — that’s set per menu.',
+  conceptsSection: ' = where the button sits on the till - that’s set per menu.',
   categoryTerm: 'Category',
   stationTerm: 'Station',
   sectionTerm: 'Group',
   categories: {
     title: 'Categories',
-    description: 'What a product is (Drinks, Food, Registrations) — for reports.',
+    description: 'What a product is (Drinks, Food, Registrations) - for reports.',
     placeholder: 'New category, e.g. Drinks',
     newLabel: 'New category',
     renameTitle: 'Rename category',
@@ -139,7 +140,7 @@ export default {
   noProducts: 'No products yet.',
   archivedBadge: 'archived',
   defaultVariant: 'default',
-  vatProvisional: 'VAT rates are provisional — still to be confirmed with the accountant.',
+  vatProvisional: 'VAT rates are provisional - still to be confirmed with the accountant.',
   vatNone: 'None',
 
   // Product dialog

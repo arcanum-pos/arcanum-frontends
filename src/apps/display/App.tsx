@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from 'cn'
 import { QRCodeSVG } from 'qrcode.react'
-import { customerBill, mergeCustomerLines, readCustomerOrder, type CustomerOrder } from '@/shared/customer-order'
+import { customerBill, itemsPerCategory, mergeCustomerLines, readCustomerOrder, type CategoryCount, type CustomerOrder } from '@/shared/customer-order'
 import { formatEuro } from '@/shared/format'
 import { useLocale, useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
@@ -19,7 +19,8 @@ const BRANDING_REFRESH_MS = 5 * 60_000
 // Customer-facing display, four states: rust (idle), the order while the
 // cashier enters it (the customer checks it before paying, 2026-10-18),
 // waiting for the payment (the order, the total and — for Bancontact — the
-// QR), and paid. A payment always goes before the order being entered.
+// QR), and paid (the same screen, the confirmation where the QR was). A
+// payment always goes before the order being entered.
 // Styled after design_files/ (Kassa + CFD voorstel); no platform branding.
 // Follows the device's theme (light/dark, see shared/theme.ts): rust, the
 // order list and "Bedankt!" in the theme itself, the payment panel beside
@@ -103,20 +104,27 @@ export default function App() {
 
   // A newer message about the same payment keeps what it doesn't repeat
   // (e.g. a status-only update keeps the order and the QR).
+  // Once paid, the bill stays as it was while it was being paid: the
+  // backend's order then counts this payment as "paid earlier" already.
   function showPayment(next: Partial<Payment> & { method: string }) {
     if (next.order?.eventName) setEventName(next.order.eventName)
     if (next.order?.eventId) setBrandEvent(next.order.eventId)
-    setPayment((prev) => ({
-      method: next.method,
-      amountCents: next.amountCents ?? prev?.amountCents ?? 0,
-      tipCents: next.tipCents ?? prev?.tipCents ?? 0,
-      order: next.order ?? prev?.order ?? null,
-      qrCodeUrl: next.qrCodeUrl ?? prev?.qrCodeUrl,
-      expiresAt: next.expiresAt ?? prev?.expiresAt,
-      status: next.status ?? prev?.status ?? 'PENDING',
-      errorMessage: next.errorMessage,
-      part: next.part !== undefined ? next.part : prev?.part,
-    }))
+    setPayment((prev) => {
+      const amountCents = next.amountCents ?? prev?.amountCents ?? 0
+      const tipCents = next.tipCents ?? prev?.tipCents ?? 0
+      const paid = payPhase(next.status ?? prev?.status) === 'paid'
+      return {
+        method: next.method,
+        amountCents,
+        tipCents,
+        order: paid ? (prev?.order ?? beforePayment(next.order ?? null, amountCents - tipCents)) : (next.order ?? prev?.order ?? null),
+        qrCodeUrl: next.qrCodeUrl ?? prev?.qrCodeUrl,
+        expiresAt: next.expiresAt ?? prev?.expiresAt,
+        status: next.status ?? prev?.status ?? 'PENDING',
+        errorMessage: next.errorMessage,
+        part: next.part !== undefined ? next.part : prev?.part,
+      }
+    })
   }
 
   function setStatus(status: string) {
@@ -282,9 +290,9 @@ export default function App() {
       {/* Rust: the same screen as while the order is entered — no lines yet, € 0,00. */}
       {!payment && !entering && <EnteringView order={null} eventName={eventName} branded={branded} />}
 
-      {payment && phase !== 'paid' && <WaitingView payment={payment} eventName={eventName} failed={phase === 'failed'} countdownText={countdownText} branded={branded} />}
-
-      {payment && phase === 'paid' && <PaidView payment={payment} eventName={eventName} branded={branded} onTap={() => channelRef.current?.postMessage({ type: 'reset-requested' })} />}
+      {payment && phase && (
+        <PayView payment={payment} eventName={eventName} phase={phase} countdownText={countdownText} branded={branded} onTap={() => channelRef.current?.postMessage({ type: 'reset-requested' })} />
+      )}
 
       <div className="fixed right-4 bottom-4 flex items-center gap-3">
         <ThemePicker />
@@ -300,7 +308,7 @@ export default function App() {
 
       <p className="fixed bottom-2 left-2 text-xs text-muted-foreground">
         {terminalHint}
-        {linkedHint && ` — ${linkedHint}`}
+        {linkedHint && ` · ${linkedHint}`}
       </p>
     </div>
   )
@@ -335,29 +343,46 @@ const PANEL_MUTED_BRANDED = 'text-[var(--brand-fg)]/70'
 const QTY = 'bg-muted text-foreground/75'
 const QTY_BRANDED = 'bg-[var(--brand-accent)] text-[var(--brand-accent-fg)]'
 
+// An order fetched once it's paid (the display missed the waiting part):
+// what was paid before this payment.
+function beforePayment(order: CustomerOrder | null, paidNowCents: number): CustomerOrder | null {
+  if (!order || !Number.isInteger(order.paidCents)) return order
+  return { ...order, paidCents: Math.max(0, (order.paidCents as number) - paidNowCents) }
+}
+
 function readPart(index: unknown, of: unknown): Payment['part'] {
   return Number.isInteger(index) && Number.isInteger(of) && (index as number) >= 1 && (of as number) >= (index as number) ? { index: index as number, of: of as number } : null
 }
 
-// Waiting for the payment: the order on the left ("Jouw bestelling"), the
-// total and how to pay on the right — for Bancontact with the QR.
-function WaitingView({ payment, eventName, failed, countdownText, branded }: { payment: Payment; eventName: string | null; failed: boolean; countdownText: string; branded: boolean }) {
+// The payment, from asking for it to "Bedankt!", on one screen: the order
+// on the left ("Jouw bestelling"), the total and how to pay on the right
+// (for Bancontact with the QR). Once paid, the right side turns into the
+// confirmation (a check that draws itself, a green light where the orange
+// one was) and the order stays where it was. A tap then tells a same-device
+// kassa the customer is done (it moves on to the next).
+function PayView({ payment, eventName, phase, countdownText, branded, onTap }: { payment: Payment; eventName: string | null; phase: PayPhase; countdownText: string; branded: boolean; onTap: () => void }) {
   const m = useMessages(DISPLAY_MESSAGES)
   const statusLabels = useMessages(STATUS_MESSAGES)
+  const paid = phase === 'paid'
+  const failed = phase === 'failed'
   const bill = customerBill(payment.order, payment.amountCents, payment.tipCents)
   // Per item: the list is what this payment covers, not the whole rekening.
   const paying = payment.order?.paying ?? null
-  const shownLines = paying ? mergeCustomerLines(paying).map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents })) : bill.lines
+  const payingLines = paying ? mergeCustomerLines(paying) : null
+  const shownLines = payingLines ? payingLines.map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents })) : bill.lines
+  const categories = payingLines ? itemsPerCategory(payingLines) : bill.categories
   const partial = !!payment.part || !!paying
   const method = m.methods[payment.method] || payment.method
-  const showQr = payment.method === 'bancontact' && !!payment.qrCodeUrl && !failed
-  const statusText = failed
-    ? payment.errorMessage || m.failed(statusLabels[payment.status.toUpperCase()] || m.failedFallback)
-    : payment.method === 'bancontact'
-      ? payment.status.toUpperCase() === 'PENDING'
-        ? `${m.waiting}…`
-        : `${statusLabels[payment.status.toUpperCase()] || m.waiting}…`
-      : m.payWith[payment.method] || `${m.waiting}…`
+  const showQr = !paid && payment.method === 'bancontact' && !!payment.qrCodeUrl && !failed
+  const statusText = paid
+    ? m.paid(formatEuro(payment.amountCents), method)
+    : failed
+      ? payment.errorMessage || m.failed(statusLabels[payment.status.toUpperCase()] || m.failedFallback)
+      : payment.method === 'bancontact'
+        ? payment.status.toUpperCase() === 'PENDING'
+          ? `${m.waiting}…`
+          : `${statusLabels[payment.status.toUpperCase()] || m.waiting}…`
+        : m.payWith[payment.method] || `${m.waiting}…`
 
   // Beside the order list, the payment panel takes the opposite of the theme
   // (dark on a light screen, white on a dark one); alone, it's the theme.
@@ -365,7 +390,11 @@ function WaitingView({ payment, eventName, failed, countdownText, branded }: { p
   const muted = paired ? (branded ? PANEL_MUTED_BRANDED : PANEL_MUTED) : 'text-muted-foreground'
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-background md:flex-row" data-testid="cfd-waiting">
+    <div
+      className={cn('flex min-h-0 flex-1 flex-col bg-background md:flex-row', paid && 'cursor-pointer')}
+      onClick={paid ? onTap : undefined}
+      data-testid={paid ? 'cfd-paid' : 'cfd-waiting'}
+    >
       {paired && (
         <section className="flex min-w-0 flex-col bg-background text-foreground md:flex-[1.25]" data-testid="cfd-order">
           <div className="border-b px-8 pt-7 pb-4">
@@ -383,7 +412,7 @@ function WaitingView({ payment, eventName, failed, countdownText, branded }: { p
             {!paying && bill.alreadyPaidCents > 0 && (
               <li className="flex items-center justify-between py-3 text-muted-foreground">
                 <span className="text-base">{m.alreadyPaid}</span>
-                <span className="font-mono text-base tabular-nums">− {formatEuro(bill.alreadyPaidCents)}</span>
+                <span className="font-mono text-base tabular-nums">- {formatEuro(bill.alreadyPaidCents)}</span>
               </li>
             )}
             {bill.tipCents > 0 && (
@@ -396,8 +425,9 @@ function WaitingView({ payment, eventName, failed, countdownText, branded }: { p
         </section>
       )}
 
-      {/* The amount at the top; the QR and the status in the middle, clear of
-          the corner controls (language, theme, full screen) at the bottom. */}
+      {/* The amount at the top; the QR (or the confirmation) and the status
+          in the middle, clear of the corner controls (language, theme, full
+          screen) at the bottom. */}
       <section
         className={cn(
           'flex flex-col gap-8 px-8 pt-8 pb-20',
@@ -412,7 +442,7 @@ function WaitingView({ payment, eventName, failed, countdownText, branded }: { p
             </p>
           )}
           <p className={cn('text-xs font-semibold tracking-[0.1em] uppercase', muted)}>
-            {payment.part ? m.partDue(payment.part.index, payment.part.of) : m.totalDue}
+            {paid ? m.paidLabel : payment.part ? m.partDue(payment.part.index, payment.part.of) : m.totalDue}
           </p>
           <p className="mt-2 font-mono text-[56px] leading-none font-semibold tracking-tight tabular-nums">{formatEuro(bill.amountCents)}</p>
           <p className={cn('mt-3 text-[13.5px]', muted)} data-testid="cfd-summary">
@@ -420,6 +450,7 @@ function WaitingView({ payment, eventName, failed, countdownText, branded }: { p
               ? `${m.stillOpen(formatEuro(bill.openCents))} · ${method}`
               : `${bill.itemCount > 0 ? `${m.items(bill.itemCount)} · ` : ''}${method}`}
           </p>
+          <CategoryCounts categories={categories} paired={paired} branded={branded} />
         </div>
 
         <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
@@ -428,19 +459,72 @@ function WaitingView({ payment, eventName, failed, countdownText, branded }: { p
               <img src={payment.qrCodeUrl} alt={m.qrAlt} className="size-[min(70vw,300px)]" />
             </div>
           )}
+          {paid && (
+            <>
+              <PaidMark />
+              <p className="text-[42px] font-semibold tracking-tight">{m.thanks}</p>
+            </>
+          )}
           <div className="flex items-center justify-center gap-3">
-            <span className="relative inline-flex size-3 shrink-0" aria-hidden="true">
-              <span className={cn('absolute inset-0 rounded-full', failed ? 'bg-red-500' : 'bg-amber-400')} />
-              {!failed && <span className="absolute -inset-1.5 animate-ping rounded-full bg-amber-400/60" />}
+            <span className="relative inline-flex size-3 shrink-0" aria-hidden="true" data-testid="cfd-light">
+              <span className={cn('absolute inset-0 rounded-full', paid ? 'bg-green-500' : failed ? 'bg-red-500' : 'bg-amber-400')} />
+              {!failed && <span className={cn('absolute -inset-1.5 animate-ping rounded-full', paid ? 'bg-green-500/60' : 'bg-amber-400/60')} />}
             </span>
             <span className={cn('text-lg', paired ? (branded ? 'text-[var(--brand-fg)]' : 'text-neutral-200 dark:text-neutral-800') : 'text-foreground/85')} data-testid="cfd-status">
               {statusText}
             </span>
           </div>
-          {!failed && <p className={cn('max-w-[340px] text-[13.5px]', muted)}>{m.instructions[payment.method] || ''}</p>}
-          {countdownText && <p className={cn('font-mono text-xs', muted)}>{countdownText}</p>}
+          {!failed && !paid && <p className={cn('max-w-[340px] text-[13.5px]', muted)}>{m.instructions[payment.method] || ''}</p>}
+          {countdownText && !paid && <p className={cn('font-mono text-xs', muted)}>{countdownText}</p>}
+          {paid && payment.part && (
+            <p className={cn('text-base', muted)} data-testid="cfd-part">
+              {m.part(payment.part.index, payment.part.of)}
+            </p>
+          )}
+          {paid && payment.order?.followUrl && (
+            <div className="mt-2 flex flex-col items-center gap-2" data-testid="cfd-follow">
+              <div className="rounded-xl bg-white p-3">
+                <QRCodeSVG value={payment.order.followUrl} size={180} marginSize={1} title={m.followQrAlt} />
+              </div>
+              {payment.order.number !== null && <p className="text-2xl font-bold">{m.yourNumber(payment.order.number)}</p>}
+              <p className={cn('max-w-sm text-base', muted)}>{m.followHint}</p>
+            </div>
+          )}
         </div>
       </section>
+    </div>
+  )
+}
+
+// Paid: a green disc that pops in, a ring that ripples out twice, and a check
+// drawn stroke by stroke (globals.css, .cfd-paid-*). An SVG, not the check
+// character, which many fonts draw slanted.
+function PaidMark() {
+  return (
+    <span className="relative flex size-24 items-center justify-center" aria-hidden="true" data-testid="cfd-paid-mark">
+      <span className="cfd-paid-ripple absolute inset-0 rounded-full bg-green-500/40" />
+      <span className="cfd-paid-pop relative flex size-24 items-center justify-center rounded-full bg-green-600 text-white shadow-lg shadow-green-600/30">
+        <svg viewBox="0 0 24 24" className="cfd-paid-check size-12" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12.5 10 17.5 19 7" pathLength={1} />
+        </svg>
+      </span>
+    </span>
+  )
+}
+
+// How many items per category (Drank, Eten, …, the categories the reports
+// use), under the item count. Nothing when the products have no categories.
+function CategoryCounts({ categories, paired, branded }: { categories: CategoryCount[]; paired: boolean; branded: boolean }) {
+  const m = useMessages(DISPLAY_MESSAGES)
+  if (categories.length === 0) return null
+  const chip = paired ? (branded ? 'bg-[var(--brand-fg)]/15' : 'bg-white/10 dark:bg-black/[0.06]') : 'bg-muted'
+  return (
+    <div className={cn('mt-3 flex flex-wrap gap-2', !paired && 'justify-center')} data-testid="cfd-categories">
+      {categories.map((c) => (
+        <span key={c.name ?? ''} className={cn('rounded-lg px-2.5 py-1 text-sm font-medium', chip)}>
+          <span className="font-mono font-semibold tabular-nums">{c.count}</span> {c.name ?? m.otherCategory}
+        </span>
+      ))}
     </div>
   )
 }
@@ -471,7 +555,7 @@ function EnteringView({ order, eventName, branded }: { order: CustomerOrder | nu
           {bill.alreadyPaidCents > 0 && (
             <li className="flex items-center justify-between py-3 text-muted-foreground">
               <span className="text-base">{m.alreadyPaid}</span>
-              <span className="font-mono text-base tabular-nums">− {formatEuro(bill.alreadyPaidCents)}</span>
+              <span className="font-mono text-base tabular-nums">- {formatEuro(bill.alreadyPaidCents)}</span>
             </li>
           )}
         </ul>
@@ -488,50 +572,10 @@ function EnteringView({ order, eventName, branded }: { order: CustomerOrder | nu
             {formatEuro(bill.openCents)}
           </p>
           <p className={cn('mt-3 text-[13.5px]', branded ? PANEL_MUTED_BRANDED : PANEL_MUTED)}>{m.items(bill.itemCount)}</p>
+          <CategoryCounts categories={bill.categories} paired branded={branded} />
         </div>
         <p className={cn('flex flex-1 items-center justify-center text-center text-lg', branded ? 'text-[var(--brand-fg)]' : 'text-neutral-200 dark:text-neutral-800')}>{order ? m.checkOrder : m.idle}</p>
       </section>
-    </div>
-  )
-}
-
-// Paid: a calm confirmation (design_files' "Bedankt!"), not a pop-up. A tap
-// tells a same-device kassa the customer is done (it moves on to the next).
-function PaidView({ payment, eventName, branded, onTap }: { payment: Payment; eventName: string | null; branded: boolean; onTap: () => void }) {
-  const m = useMessages(DISPLAY_MESSAGES)
-  const method = m.methods[payment.method] || payment.method
-  return (
-    <div
-      className="flex min-h-0 flex-1 cursor-pointer flex-col items-center justify-center gap-4 bg-background p-8 text-center text-foreground animate-in fade-in duration-300"
-      onClick={onTap}
-      data-testid="cfd-paid"
-    >
-      <div className="flex size-20 items-center justify-center rounded-full bg-green-600 text-4xl text-white animate-in zoom-in-50 duration-300" aria-hidden="true">
-        ✓
-      </div>
-      <p className="text-[42px] font-semibold tracking-tight">{m.thanks}</p>
-      <p className="font-mono text-xl text-foreground/80">
-        {m.paid(formatEuro(payment.amountCents), method)}
-      </p>
-      {payment.part && (
-        <p className="text-base text-muted-foreground" data-testid="cfd-part">
-          {m.part(payment.part.index, payment.part.of)}
-        </p>
-      )}
-      {!branded && (payment.order?.eventName || eventName) && (
-        <p className="mt-2 text-sm text-muted-foreground" data-testid="cfd-event">
-          {payment.order?.eventName || eventName}
-        </p>
-      )}
-      {payment.order?.followUrl && (
-        <div className="mt-4 flex flex-col items-center gap-2" data-testid="cfd-follow">
-          <div className="rounded-xl bg-white p-3">
-            <QRCodeSVG value={payment.order.followUrl} size={180} marginSize={1} title={m.followQrAlt} />
-          </div>
-          {payment.order.number !== null && <p className="text-2xl font-bold">{m.yourNumber(payment.order.number)}</p>}
-          <p className="max-w-sm text-base text-muted-foreground">{m.followHint}</p>
-        </div>
-      )}
     </div>
   )
 }

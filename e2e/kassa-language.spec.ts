@@ -32,7 +32,7 @@ test('Instellingen → Taal: the settings switch right away, the kassa once reop
   await expect(settings.locator('html')).toHaveAttribute('lang', 'fr')
 
   await kassa.reload()
-  await expect(kassa.getByText('Comptoir — payer directement')).toBeVisible()
+  await expect(kassa.getByText('Comptoir - payer directement')).toBeVisible()
   await expect(kassa.locator('html')).toHaveAttribute('lang', 'fr')
   await expect(kassa.getByRole('link', { name: 'Paramètres' })).toBeVisible()
 })
@@ -56,7 +56,7 @@ test('a French kassa: a cash sale end to end, and the Toog tab is still stored a
   await kassa.getByRole('button', { name: 'Confirmer la réception des espèces' }).click()
   await expect(kassa.getByText('Payé (espèces)')).toBeVisible()
   await kassa.getByRole('button', { name: 'Client suivant' }).click()
-  await expect(kassa.getByText('Comptoir — payer directement')).toBeVisible()
+  await expect(kassa.getByText('Comptoir - payer directement')).toBeVisible()
 })
 
 // Pairing a device on the start page (root `/`, chooser.html) with a code

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { guardCsp } from './csp-guard'
-import { test as base, expect, type Page } from '@playwright/test'
+import { test as base, expect, type Page, type Locator } from '@playwright/test'
 import { FakeCatalogAdmin, type FakeResponse } from './fake-catalog-admin'
 import { FakeOrgTransfer } from './fake-org-transfer'
 
@@ -66,3 +66,10 @@ export const test = base.extend<Fixtures>({
 })
 
 export { expect }
+
+// A line's action in the console: its "…" button, then the action in the menu.
+export async function rowAction(row: Locator, action: string) {
+  // The first one: a group's own, before those of its lines.
+  await row.getByRole('button', { name: /^Acties voor / }).first().click()
+  await row.page().getByRole('menuitem', { name: action, exact: true }).click()
+}

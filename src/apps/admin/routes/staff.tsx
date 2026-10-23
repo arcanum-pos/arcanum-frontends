@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { KeyRound, MoreHorizontal, UserPlus } from 'lucide-react'
+import { KeyRound, UserPlus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -13,6 +12,7 @@ import { useMessages, type Messages } from '@/shared/i18n'
 import { PromptDialog } from '../components/prompt-dialog'
 import { createStaff, listAllStaff, setStaffRequired, updateStaff, type StaffRecord } from '../lib/api'
 import { useAsync } from '../lib/use-async'
+import { RowActions } from '../components/row-actions'
 import { useOrg } from '../lib/org-context'
 
 // Medewerkers (DOMAIN_MODEL.md "Staff on shared devices", release B1): the
@@ -49,7 +49,7 @@ const TEXTS: Messages<{
 }> = {
   nl: {
     title: 'Medewerkers',
-    intro: 'Wie er op de gedeelde kassa’s en stationschermen werkt: een naam en eventueel een pincode — geen account nodig. Wat iemand doet, staat dan op zijn of haar naam.',
+    intro: 'Wie er op de gedeelde kassa’s en stationschermen werkt: een naam en eventueel een pincode - geen account nodig. Wat iemand doet, staat dan op zijn of haar naam.',
     add: 'Medewerker toevoegen',
     name: 'Naam',
     pin: 'Pincode (optioneel)',
@@ -76,7 +76,7 @@ const TEXTS: Messages<{
   },
   fr: {
     title: 'Personnel',
-    intro: 'Qui travaille sur les caisses et écrans de poste partagés : un nom et éventuellement un code PIN — sans compte. Ce que fait une personne est alors à son nom.',
+    intro: 'Qui travaille sur les caisses et écrans de poste partagés : un nom et éventuellement un code PIN - sans compte. Ce que fait une personne est alors à son nom.',
     add: 'Ajouter',
     name: 'Nom',
     pin: 'Code PIN (facultatif)',
@@ -103,7 +103,7 @@ const TEXTS: Messages<{
   },
   en: {
     title: 'Staff',
-    intro: 'Who works on the shared tills and station screens: a name and optionally a PIN — no account needed. What someone does is then recorded under their name.',
+    intro: 'Who works on the shared tills and station screens: a name and optionally a PIN - no account needed. What someone does is then recorded under their name.',
     add: 'Add staff member',
     name: 'Name',
     pin: 'PIN (optional)',
@@ -215,19 +215,15 @@ export default function StaffPage() {
                 <TableCell>{s.hasPin ? <Badge variant="secondary"><KeyRound className="size-3" /> {t.withPin}</Badge> : <span className="text-muted-foreground">{t.noPin}</span>}</TableCell>
                 <TableCell>{s.archived ? <Badge variant="outline">{t.archived}</Badge> : t.active}</TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label={s.name}>
-                        <MoreHorizontal />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onSelect={() => setRenaming(s)}>{t.rename}</DropdownMenuItem>
-                      <DropdownMenuItem onSelect={() => setPinFor(s)}>{t.setPin}</DropdownMenuItem>
-                      {s.hasPin && <DropdownMenuItem onSelect={() => act(() => updateStaff(orgId, s.id, { pin: null }))}>{t.removePin}</DropdownMenuItem>}
-                      <DropdownMenuItem onSelect={() => act(() => updateStaff(orgId, s.id, { archived: !s.archived }))}>{s.archived ? t.restore : t.archive}</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <RowActions
+                    name={s.name}
+                    actions={[
+                      { label: t.rename, onSelect: () => setRenaming(s) },
+                      { label: t.setPin, onSelect: () => setPinFor(s) },
+                      s.hasPin && { label: t.removePin, onSelect: () => act(() => updateStaff(orgId, s.id, { pin: null })) },
+                      { label: s.archived ? t.restore : t.archive, destructive: !s.archived, onSelect: () => act(() => updateStaff(orgId, s.id, { archived: !s.archived })) },
+                    ]}
+                  />
                 </TableCell>
               </TableRow>
             ))}

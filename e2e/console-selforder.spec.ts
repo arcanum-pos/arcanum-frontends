@@ -1,7 +1,7 @@
 // Console: an event's ordering modes (each its menu), self-ordering (its
 // link and QR code) and order numbers; a station screen as a device —
 // DOMAIN_MODEL.md "Self-ordering and station screens". Answered by fake-catalog-admin.ts.
-import { expect, test } from './console-fixtures'
+import { expect, test, rowAction } from './console-fixtures'
 
 function call(admin: any, method: string, path: string, body?: unknown) {
   return admin.handle(method, `/api/organizations/org-e2e${path}`, body)
@@ -13,9 +13,9 @@ test('an event: add an ordering mode with a menu, switch self-ordering on, and g
   await open('/events')
   const row = page.getByRole('row').filter({ hasText: 'Fuif' })
   await expect(row).toContainText('Uit')
-  await row.getByRole('button', { name: 'Instellen' }).click()
+  await rowAction(row, 'Instellen')
   const dialog = page.getByRole('dialog')
-  await expect(dialog.getByRole('heading', { name: 'Fuif — instellen' })).toBeVisible()
+  await expect(dialog.getByRole('heading', { name: 'Fuif - instellen' })).toBeVisible()
   // No ordering mode yet: the switch still works — it says it will make one.
   await expect(dialog.getByText('Nog geen bestelwijzen.')).toBeVisible()
   await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeEnabled()
@@ -27,7 +27,7 @@ test('an event: add an ordering mode with a menu, switch self-ordering on, and g
   const mode = dialog.locator('[data-testid="order-mode"][data-name="Ter plaatse"]')
   await expect(mode).toBeVisible()
   await expect(mode.getByRole('switch', { name: /^Met de QR-code/ })).toBeDisabled()
-  await mode.getByRole('combobox', { name: 'Menukaart — Ter plaatse' }).click()
+  await mode.getByRole('combobox', { name: 'Menukaart - Ter plaatse' }).click()
   await page.getByRole('option', { name: 'Fuifkaart' }).click()
   await expect(mode.getByRole('switch', { name: /^Met de QR-code/ })).toBeChecked()
   // The kassa picking a mode: one switch for the event, off by default.
@@ -85,26 +85,26 @@ test('self-ordering switched on for an event without modes: a mode is made ready
   call(catalogAdmin, 'POST', '/catalogs', { name: 'Fuifkaart' })
   catalogAdmin.events = [{ id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 }]
   await open('/events')
-  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
+  await rowAction(page.getByRole('row').filter({ hasText: 'Fuif' }), 'Instellen')
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('switch', { name: 'Zelfbestellen' }).click()
   await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeChecked()
   const card = dialog.getByTestId('order-mode')
   await expect(card).toHaveAttribute('data-name', 'Ter plaatse')
-  await expect(card.getByRole('combobox', { name: 'Menukaart — Ter plaatse' })).toHaveText('Fuifkaart')
+  await expect(card.getByRole('combobox', { name: 'Menukaart - Ter plaatse' })).toHaveText('Fuifkaart')
   await expect(dialog.getByTestId('self-order-link')).toBeVisible()
 })
 
 test('no menu at all: self-ordering says to make one first', async ({ console: open, page, catalogAdmin }) => {
   catalogAdmin.events = [{ id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 }]
   await open('/events')
-  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
+  await rowAction(page.getByRole('row').filter({ hasText: 'Fuif' }), 'Instellen')
   const dialog = page.getByRole('dialog')
   await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).toBeDisabled()
   await expect(dialog).toContainText('Maak eerst een menukaart (Menukaarten)')
 })
 
-test('several ordering modes: renamed, moved, a direct link each, removed — the last QR mode gone switches self-ordering off', async ({ console: open, page, catalogAdmin }) => {
+test('several ordering modes: renamed, moved, a direct link each, removed - the last QR mode gone switches self-ordering off', async ({ console: open, page, catalogAdmin }) => {
   const menu = call(catalogAdmin, 'POST', '/catalogs', { name: 'Fuifkaart' }).body
   const takeAwayMenu = call(catalogAdmin, 'POST', '/catalogs', { name: 'Take away' }).body
   const qrMode = (id: string, name: string, catalogId: string) => ({ id, name, catalogId, selfOrder: true, payAtCounter: true, payBancontact: false, tabs: false })
@@ -120,7 +120,7 @@ test('several ordering modes: renamed, moved, a direct link each, removed — th
     },
   ]
   await open('/events')
-  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
+  await rowAction(page.getByRole('row').filter({ hasText: 'Fuif' }), 'Instellen')
   const dialog = page.getByRole('dialog')
   const card = dialog.getByTestId('order-mode')
   const choose = dialog.getByRole('combobox', { name: 'Bestelwijze om in te stellen' })
@@ -163,7 +163,7 @@ test('several ordering modes: renamed, moved, a direct link each, removed — th
   // Both QR modes off the QR (one removed, one switched off): self-ordering goes off.
   await pick('Take away')
   page.once('dialog', (d) => d.accept())
-  await card.getByRole('button', { name: 'Verwijderen' }).click()
+  await rowAction(card, 'Verwijderen')
   await expect(card).toHaveAttribute('data-name', 'Ter plaatse')
   await card.getByRole('switch', { name: /^Met de QR-code/ }).click()
   await expect(dialog.getByRole('switch', { name: 'Zelfbestellen' })).not.toBeChecked()
@@ -177,18 +177,18 @@ test('an SMS per ordering mode: only when the installation sends SMS', async ({ 
   const mode = { id: 'm1', name: 'Take away', catalogId: menu.id, selfOrder: true, payAtCounter: true, payBancontact: false, tabs: false, notifySms: false }
   catalogAdmin.events = [{ id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: true, code: 'c1' }, modes: [mode], sms: false, lastOrderNumber: 0 }]
   await open('/events')
-  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
+  await rowAction(page.getByRole('row').filter({ hasText: 'Fuif' }), 'Instellen')
   const card = page.getByRole('dialog').getByTestId('order-mode')
   // Not set up in the installer: off, and says where.
-  await expect(card.getByRole('switch', { name: 'Sms als het klaar is — Take away' })).toBeDisabled()
+  await expect(card.getByRole('switch', { name: 'Sms als het klaar is - Take away' })).toBeDisabled()
   await expect(card).toContainText('dat gebeurt in de installer (Geavanceerd → Sms)')
   await page.keyboard.press('Escape')
 
   catalogAdmin.events[0].sms = true
   await page.reload()
-  await page.getByRole('row').filter({ hasText: 'Fuif' }).getByRole('button', { name: 'Instellen' }).click()
-  await card.getByRole('switch', { name: 'Sms als het klaar is — Take away' }).click()
-  await expect(card.getByRole('switch', { name: 'Sms als het klaar is — Take away' })).toBeChecked()
+  await rowAction(page.getByRole('row').filter({ hasText: 'Fuif' }), 'Instellen')
+  await card.getByRole('switch', { name: 'Sms als het klaar is - Take away' }).click()
+  await expect(card.getByRole('switch', { name: 'Sms als het klaar is - Take away' })).toBeChecked()
   expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ notifySms: true })
 })
 
@@ -225,11 +225,11 @@ test('"Aan tafel" per ordering mode (release C): waiters order with its menu', a
   const mode = { id: 'm1', name: 'Ter plaatse', catalogId: menu.id, selfOrder: false, payAtCounter: true, payBancontact: false, tabs: false, notifySms: false, atTable: false }
   catalogAdmin.events = [{ id: 'ev1', name: 'Restaurantdag', date: '2026-10-20', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: 'c1' }, modes: [mode], sms: false, lastOrderNumber: 0 }]
   await open('/events')
-  await page.getByRole('row').filter({ hasText: 'Restaurantdag' }).getByRole('button', { name: 'Instellen' }).click()
+  await rowAction(page.getByRole('row').filter({ hasText: 'Restaurantdag' }), 'Instellen')
   const card = page.getByRole('dialog').getByTestId('order-mode')
   await expect(card).toContainText('Obers bestellen met deze menukaart aan tafel')
-  await card.getByRole('switch', { name: 'Aan tafel: de bediening neemt op — Ter plaatse' }).click()
-  await expect(card.getByRole('switch', { name: 'Aan tafel: de bediening neemt op — Ter plaatse' })).toBeChecked()
+  await card.getByRole('switch', { name: 'Aan tafel: de bediening neemt op - Ter plaatse' }).click()
+  await expect(card.getByRole('switch', { name: 'Aan tafel: de bediening neemt op - Ter plaatse' })).toBeChecked()
   expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ atTable: true })
 })
 
@@ -241,9 +241,9 @@ test('an event nothing was sold for can be deleted; one with sales stays, and sa
   catalogAdmin.usedEvents.add('ev1')
   await open('/events')
   page.on('dialog', (d) => d.accept())
-  await page.getByRole('button', { name: 'Test verwijderen' }).click()
+  await rowAction(page.getByRole('row').filter({ hasText: 'Test' }), 'Verwijderen')
   await expect(page.getByRole('row').filter({ hasText: 'Test' })).toHaveCount(0)
-  await page.getByRole('button', { name: 'Fuif verwijderen' }).click()
+  await rowAction(page.getByRole('row').filter({ hasText: 'Fuif' }), 'Verwijderen')
   await expect(page.getByRole('alert')).toContainText('heeft al rekeningen of verkopen')
   await expect(page.getByRole('row').filter({ hasText: 'Fuif' })).toHaveCount(1)
 })

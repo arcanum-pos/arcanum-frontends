@@ -21,7 +21,7 @@ async function addReader(page: import('@playwright/test').Page) {
   return dialog
 }
 
-test('without a SumUp account there is no SumUp reader to add — and one button for every device', async ({ console: open, page }) => {
+test('without a SumUp account there is no SumUp reader to add - and one button for every device', async ({ console: open, page }) => {
   await open('/devices')
   await expect(page.getByRole('heading', { name: 'Toestellen' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reader koppelen' })).toHaveCount(0)
@@ -61,7 +61,7 @@ test("shows SumUp's reason when it refuses the code, and keeps the dialog open",
   await expect(dialog.getByLabel('Koppelcode')).toHaveValue('ZZ99ZZ99')
 })
 
-test('unpairs a reader after confirming', async ({ console: open, page, catalogAdmin }) => {
+test('removes a reader after confirming (it is unpaired at SumUp too)', async ({ console: open, page, catalogAdmin }) => {
   catalogAdmin.sumupReaders = [{ id: 'rdr_9', name: 'Terras', status: 'paired', model: 'solo' }]
   await open('/devices')
   const row = page.getByRole('row').filter({ hasText: 'Terras' })
@@ -69,7 +69,7 @@ test('unpairs a reader after confirming', async ({ console: open, page, catalogA
 
   page.once('dialog', (d) => d.accept())
   await row.getByRole('button', { name: 'Acties voor Terras' }).click()
-  await page.getByRole('menuitem', { name: 'Loskoppelen' }).click()
+  await page.getByRole('menuitem', { name: 'Verwijderen' }).click()
   await expect(page.getByRole('row').filter({ hasText: 'Terras' })).toHaveCount(0)
   expect(catalogAdmin.sumupCalls).toEqual([{ method: 'DELETE', path: '/api/bancontact/sumup/readers/rdr_9', body: null }])
 })
@@ -316,4 +316,25 @@ test('a device that lost its pairing: "Opnieuw koppelen" gives a code for that d
   await expect(dialog.getByTestId('pairing-claimed')).toHaveText('Kassa toog is opnieuw gekoppeld.', { timeout: 10_000 })
   await dialog.getByRole('button', { name: 'Klaar' }).click()
   await expect(page.getByRole('row').filter({ hasText: 'Kassa toog' })).toHaveCount(2)
+})
+
+// The status at a glance: online green, offline orange; a SumUp reader only
+// says it's paired. One "…" menu per line, and "-" where there's nothing.
+test('online is green, offline orange, a reader stays "Gekoppeld"', async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.sumupReaders = [{ id: 'rdr_1', name: 'Terras', status: 'paired', model: 'solo' }]
+  catalogAdmin.orgDevices = [
+    { terminal_id: 'pos-1', role: 'pos', linked_to: null, created_at: '2026-10-01T10:00:00Z', online: true, name: 'Kassa toog' },
+    { terminal_id: 'cfd-1', role: 'cfd', linked_to: 'pos-1', created_at: '2026-10-01T10:00:00Z', online: false, name: 'Klantscherm' },
+  ]
+  await open('/devices')
+  const kassa = page.getByRole('row').filter({ hasText: 'Kassa toog' }).first()
+  await expect(kassa.getByTestId('device-online')).toHaveText('Online')
+  await expect(kassa.getByTestId('device-online')).toHaveClass(/text-green-700/)
+  const display = page.getByRole('row').filter({ hasText: 'Klantscherm' })
+  await expect(display.getByTestId('device-offline')).toHaveText('Offline')
+  await expect(display.getByTestId('device-offline')).toHaveClass(/text-orange-700/)
+  const reader = page.getByRole('row').filter({ hasText: 'Terras' })
+  await expect(reader).toContainText('Gekoppeld')
+  await expect(reader.getByRole('cell').nth(2)).toHaveText('-')
+  await expect(page.getByRole('button', { name: /^Acties voor / })).toHaveCount(3)
 })

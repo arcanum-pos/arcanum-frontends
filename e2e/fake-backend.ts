@@ -17,6 +17,8 @@ export interface FakeLineInput {
   name: string
   unitPriceCents: number
   quantity: number
+  // The product's category at sale time (the customer display counts per category).
+  category?: string | null
 }
 
 // A line as the kassa sends it: variantId + quantity (any name/price is
@@ -71,7 +73,7 @@ function standardCatalog(): FakeCatalog {
   }
 }
 
-const MENUKAART_REFUSAL = 'Dit product staat niet (meer) op de menukaart — herlaad de kassa'
+const MENUKAART_REFUSAL = 'Dit product staat niet (meer) op de menukaart - herlaad de kassa'
 const UNKNOWN_CATALOG = 'Onbekende of gearchiveerde menukaart'
 // arcanum-backend's error codes (src/errors.ts) for the refusals above.
 const REFUSAL_CODES: Record<string, string> = { [MENUKAART_REFUSAL]: 'product_not_on_catalog', [UNKNOWN_CATALOG]: 'unknown_catalog' }
@@ -80,6 +82,7 @@ interface Line {
   id: string
   orderId: string
   itemCode: string | null
+  category?: string | null
   variantId: string | null
   name: string
   unitPriceCents: number
@@ -394,7 +397,7 @@ export class FakeBackend {
   private claim(code: string): FakeResponse {
     const key = code.toUpperCase().replace(/[\s-]/g, '')
     const entry = [...this.pairingCodes].find(([c]) => c.replace('-', '') === key)
-    if (!entry) return { status: 400, body: { error: 'Deze koppelcode klopt niet, is al gebruikt of is verlopen — vraag een beheerder om een nieuwe', code: 'pairing_code_invalid' } }
+    if (!entry) return { status: 400, body: { error: 'Deze koppelcode klopt niet, is al gebruikt of is verlopen - vraag een beheerder om een nieuwe', code: 'pairing_code_invalid' } }
     this.pairingCodes.delete(entry[0])
     const terminalId = nextId('dev-')
     this.devices.set(terminalId, { terminal_id: terminalId, org_id: 'org-e2e', role: entry[1].role, linked_to: null, name: entry[1].name })
@@ -462,7 +465,7 @@ export class FakeBackend {
     if (p === '/api/public/pair' && method === 'POST') {
       const key = String(body?.code ?? '').toUpperCase().replace(/[\s-]/g, '')
       const entry = [...this.pairingCodes].find(([c]) => c.replace('-', '') === key)
-      if (entry && entry[1].role === 'pos') return { status: 401, body: { error: 'Een kassa koppel je terwijl je aangemeld bent — meld je eerst aan', code: 'pairing_needs_login', role: 'pos' } }
+      if (entry && entry[1].role === 'pos') return { status: 401, body: { error: 'Een kassa koppel je terwijl je aangemeld bent - meld je eerst aan', code: 'pairing_needs_login', role: 'pos' } }
       return this.claim(key)
     }
     // The order being entered (customer-view.ts): the kassa sends it, a display fetches its kassa's.
@@ -604,11 +607,11 @@ export class FakeBackend {
       }
       if (method === 'POST') {
         if (this.staffRequired && !this.currentStaff) return { status: 409, body: { error: 'Kies eerst wie er werkt (bovenaan het scherm)', code: 'staff_required' } }
-        if (body.registerId && !this.shift) return { status: 409, body: { error: 'Deze kassa is niet open — doe eerst "Kassa openen"', code: 'register_closed' } }
+        if (body.registerId && !this.shift) return { status: 409, body: { error: 'Deze kassa is niet open - doe eerst "Kassa openen"', code: 'register_closed' } }
         this.registerIdsSent.push(body.registerId ?? null)
         this.recordedStaff.push({ what: 'tab', staff: this.currentStaff })
         if (body.eventId != null && !this.events.some((e) => e.id === body.eventId)) {
-          return { status: 400, body: { error: 'Onbekend evenement — kies het opnieuw in de instellingen van de kassa', code: 'unknown_event' } }
+          return { status: 400, body: { error: 'Onbekend evenement - kies het opnieuw in de instellingen van de kassa', code: 'unknown_event' } }
         }
         const priced = body.lines?.length ? this.priceLines(body.lines, body.catalogId) : []
         if (typeof priced === 'string') return { status: 400, body: { error: priced, code: REFUSAL_CODES[priced] } }
@@ -616,7 +619,7 @@ export class FakeBackend {
         const ev = this.events.find((e) => e.id === body.eventId)
         const kassaModes = ev?.kassaModes ? (ev.modes ?? []) : []
         const mode = body.orderModeId ? kassaModes.find((x) => x.id === body.orderModeId) : kassaModes.length === 1 ? kassaModes[0] : undefined
-        if (body.orderModeId && !mode) return { status: 400, body: { error: 'Onbekende bestelwijze — kies ze opnieuw', code: 'unknown_order_mode' } }
+        if (body.orderModeId && !mode) return { status: 400, body: { error: 'Onbekende bestelwijze - kies ze opnieuw', code: 'unknown_order_mode' } }
         const tab = this.openTab(body.label || '')
         tab.eventId = body.eventId ?? null
         tab.orderModeId = mode?.id ?? null
@@ -646,7 +649,7 @@ export class FakeBackend {
     }
     if (action === 'split' && method === 'POST') {
       const parts = body.parts
-      if (parts !== null && (!Number.isInteger(parts) || parts < 2 || parts > 50)) return { status: 400, body: { error: 'parts must be an integer 2–50, or null' } }
+      if (parts !== null && (!Number.isInteger(parts) || parts < 2 || parts > 50)) return { status: 400, body: { error: 'parts must be an integer 2-50, or null' } }
       if (!this.writable(tab.id)) return this.refusal(tab.id)
       if (parts !== null && this.summary(tab).outstandingCents < parts) return { status: 409, body: { error: 'Te weinig open om zo te verdelen', code: 'split_too_small', tab: this.summary(tab) } }
       tab.splitParts = parts
@@ -681,11 +684,11 @@ export class FakeBackend {
       const quantity = body.quantity ?? remaining
       if (!this.writable(tab.id) || quantity < 1 || quantity > remaining) return this.refusal(tab.id)
       if (quantity > remaining - this.paidUnits(lineId)) {
-        return { status: 409, body: { error: 'Deze stuks zijn al betaald — ze kunnen niet meer geannuleerd worden', code: 'void_units_paid', tab: this.summary(tab) } }
+        return { status: 409, body: { error: 'Deze stuks zijn al betaald - ze kunnen niet meer geannuleerd worden', code: 'void_units_paid', tab: this.summary(tab) } }
       }
       const s = this.summary(tab)
       if (s.totalCents - quantity * original.unitPriceCents < s.paidCents) {
-        return { status: 409, body: { error: 'Er is al een deel betaald — annuleren zou meer terugbetalen dan er open staat', code: 'void_exceeds_outstanding', tab: s } }
+        return { status: 409, body: { error: 'Er is al een deel betaald - annuleren zou meer terugbetalen dan er open staat', code: 'void_exceeds_outstanding', tab: s } }
       }
       const orderId = nextId('order')
       this.lineTab.set(orderId, tab.id)
@@ -707,6 +710,7 @@ export class FakeBackend {
         name: l.name,
         unitPriceCents: l.unitPriceCents,
         quantity: l.quantity,
+        category: l.category ?? null,
         voidsLineId: null,
         voidReason: null,
         createdAt: new Date().toISOString(),
@@ -729,13 +733,13 @@ export class FakeBackend {
       paidCents: detail.paidCents,
       lines: detail.lines
         .filter((l: any) => !l.voidsLineId && l.quantity - l.voidedQuantity > 0)
-        .map((l: any) => ({ name: l.name, quantity: l.quantity - l.voidedQuantity, unitPriceCents: l.unitPriceCents })),
+        .map((l: any) => ({ name: l.name, quantity: l.quantity - l.voidedQuantity, unitPriceCents: l.unitPriceCents, category: l.category ?? null })),
     }
   }
 
   private createCharge(method: string, body: any): FakeResponse {
     if (this.staffRequired && !this.currentStaff) return { status: 409, body: { error: 'Kies eerst wie er werkt (bovenaan het scherm)', code: 'staff_required' } }
-    if (body.registerId && !this.shift) return { status: 409, body: { error: 'Deze kassa is niet open — doe eerst "Kassa openen"', code: 'register_closed' } }
+    if (body.registerId && !this.shift) return { status: 409, body: { error: 'Deze kassa is niet open - doe eerst "Kassa openen"', code: 'register_closed' } }
     this.registerIdsSent.push(body.registerId ?? null)
     if (body.registerId && method === 'cash') this.shiftCash += body.amount
     this.recordedStaff.push({ what: 'charge', staff: this.currentStaff })

@@ -16,7 +16,7 @@ test('Toog quick sale: build a draft, pay cash, back to Toog for the next custom
   await kassa.getByRole('button', button('Bevestig ontvangst contant geld')).click()
   await kassa.getByRole('button', button('Volgende klant')).click()
 
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
   await expect(kassa.getByRole('button', button(/^#\d/))).toHaveCount(0)
   // A Toog sale is still a real tab — new, closed, with a receipt number.
   expect(backend.tabs).toHaveLength(1)
@@ -31,14 +31,14 @@ test('named tab: open, add an order, void part of a line with a reason', async (
 
   await kassa.getByRole('button', button(/^Wandeltocht \(niet-lid\)/)).click()
   await kassa.getByRole('button', button(/^Wandeltocht \(niet-lid\)/)).click()
-  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toBeVisible()
+  await expect(panel(kassa).getByText('Nieuw - wordt zo doorgestuurd')).toBeVisible()
   await expect(kassa.getByTestId('order-target')).toContainText('Bestellen voor#1 Tafel 4')
   // No add button: leaving the tab sends the round, as one order.
   await expect(kassa.getByRole('button', { name: /toevoegen aan rekening/ })).toHaveCount(0)
   await kassa.getByRole('button', button(/^Toog/)).click()
   await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
   await expect(panel(kassa).getByText('2 × Wandeltocht')).toBeVisible()
-  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toHaveCount(0)
+  await expect(panel(kassa).getByText('Nieuw - wordt zo doorgestuurd')).toHaveCount(0)
 
   await panel(kassa).getByRole('button', button('Annuleren')).click()
   const dialog = kassa.getByRole('dialog')
@@ -81,12 +81,12 @@ test('switching to another tab sends the round of the one left, as one order', a
   await kassa.getByRole('button', button(/^#2 Jan/)).click()
   await expect(kassa.getByTestId('order-target')).toContainText('#2 Jan')
   await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
-  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toHaveCount(0)
+  await expect(panel(kassa).getByText('Nieuw - wordt zo doorgestuurd')).toHaveCount(0)
   await expect.poll(() => backend.tabLines(tafel4.id).length).toBe(2)
 
   await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
   await expect(panel(kassa).getByText('15 × Bon')).toBeVisible()
-  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toHaveCount(0)
+  await expect(panel(kassa).getByText('Nieuw - wordt zo doorgestuurd')).toHaveCount(0)
   await expect(kassa.getByRole('button', button('Afrekenen € 21,00'))).toBeVisible()
 })
 
@@ -104,7 +104,7 @@ test('a round left on screen is sent after a pause without taps', async ({ kassa
   await kassa.clock.runFor(11_000)
   await expect(panel(kassa).getByText('15 × Bon')).toBeVisible()
   expect(backend.tabLines(tab.id)).toHaveLength(1)
-  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toHaveCount(0)
+  await expect(panel(kassa).getByText('Nieuw - wordt zo doorgestuurd')).toHaveCount(0)
 })
 
 test('paying a tab submits the pending draft first, then closes the tab', async ({ kassa, backend }) => {
@@ -154,7 +154,7 @@ test('Bancontact: shows the QR and completes on the devicehub push', async ({ ka
 
   await expect(kassa.getByText('Betaald')).toBeVisible()
   await kassa.getByRole('button', button('Volgende klant')).click()
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
 })
 
 // "Ticket annuleren": Afrekenen tapped by mistake — the payment cancelled, then
@@ -176,7 +176,7 @@ test('Afrekenen by mistake: back, then "Ticket annuleren" cancels the whole tick
   await dialog.getByRole('button', button('Verkeerd aangeslagen')).click()
   await dialog.getByRole('button', button('Ticket annuleren')).click()
 
-  await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
   const tab = backend.tabs.at(-1)!
   expect(tab.status).toBe('cancelled')
   expect(backend.cancelAllRequests).toEqual([{ tabId: tab.id, reason: 'Verkeerd aangeslagen' }])
@@ -200,7 +200,7 @@ test('no "Ticket annuleren" while a payment runs, or once something is paid', as
   expect(tab.status).toBe('open')
 })
 
-test('the menu shows what the open tab has, the new round apart — the same as the ticket on the right', async ({ kassa, backend }) => {
+test('the menu shows what the open tab has, the new round apart - the same as the ticket on the right', async ({ kassa, backend }) => {
   backend.openTab('Tafel 4', [{ itemCode: 'wandeltocht', variantId: 'v-wandel', name: 'Wandeltocht', unitPriceCents: 600, quantity: 2 }])
   await kassa.reload()
   await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()

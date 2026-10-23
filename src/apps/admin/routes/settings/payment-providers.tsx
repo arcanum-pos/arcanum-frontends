@@ -233,7 +233,7 @@ export default function PaymentProvidersPage() {
               <div className="grid gap-1 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="account-confirm">
                 <p className="font-medium">{editing === 'bancontact' ? m.bancontactConfirmTitle : m.sumupConfirmTitle}</p>
                 <p>
-                  <strong>{confirming.name ?? (editing === 'sumup' ? m.sumupNoName : '—')}</strong>
+                  <strong>{confirming.name ?? (editing === 'sumup' ? m.sumupNoName : '-')}</strong>
                   {confirming.iban ? ` · ${confirming.iban}` : ''}
                 </p>
                 <p className="text-xs text-muted-foreground">{editing === 'bancontact' ? m.bancontactConfirmHint(confirming.merchantId) : m.sumupConfirmHint(confirming.merchantId)}</p>
