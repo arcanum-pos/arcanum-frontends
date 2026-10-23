@@ -398,6 +398,11 @@ export interface Event {
   brand?: { primary: string | null; accent: string | null }
 }
 
+// Only while nothing was sold for it (409 event_in_use otherwise).
+export async function deleteEvent(orgId: string, eventId: string): Promise<void> {
+  await request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}`, { method: 'DELETE' })
+}
+
 export function updateEvent(
   orgId: string,
   eventId: string,

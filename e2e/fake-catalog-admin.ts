@@ -103,6 +103,7 @@ export class FakeCatalogAdmin {
   reportQueries: { from: string; to: string }[] = []
   transactions: any[] = []
   events: any[] = []
+  usedEvents = new Set<string>()
   eventCalls: { path: string; body: any }[] = []
   // Every import call (dry run or apply) as received — tests assert on the
   // raw rows the browser sent.
@@ -239,6 +240,13 @@ export class FakeCatalogAdmin {
     }
     if (path.startsWith('/api/bancontact/sumup/readers')) return this.sumupRoute(method, path, body)
     if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'GET') return ok(this.events)
+    // Deleting one: only while nothing was sold for it (usedEvents: has tabs or sales).
+    const oneEvent = path.match(/^\/api\/organizations\/[^/]+\/events\/([^/]+)$/)
+    if (oneEvent && method === 'DELETE') {
+      if (this.usedEvents.has(oneEvent[1])) return { status: 409, body: { error: 'Dit evenement heeft al rekeningen of verkopen — het blijft bewaard', code: 'event_in_use' } }
+      this.events = this.events.filter((e) => e.id !== oneEvent[1])
+      return ok({ ok: true })
+    }
     // An event's ordering modes, self-ordering and numbers (arcanum-backend events.ts).
     const modeRoute = path.match(/^\/api\/organizations\/[^/]+\/events\/([^/]+)\/modes(?:\/([^/]+))?$/)
     if (modeRoute) {

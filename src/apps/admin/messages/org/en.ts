@@ -90,6 +90,8 @@ export default {
     on: 'On',
     off: 'Off',
     settings: 'Set up',
+    deleteEvent: (name: string) => `Delete ${name}`,
+    confirmDelete: (name: string) => `Delete ${name}? Only possible while nothing was sold for it yet.`,
     settingsTitle: (name: string) => `${name} — settings`,
     settingsHint: 'The event’s ordering modes (each with a menu), self-ordering with a QR code, and the order numbers.',
     selfOrderSwitch: 'Guests order themselves with their phone',
@@ -221,6 +223,7 @@ export default {
     offline: 'Offline',
     confirmRemove: (id: string) => `Remove device ${id}? This can’t be undone.`,
     pairReader: 'Pair reader',
+    sumupReaderType: 'SumUp card reader',
     pairHint:
       'On the SumUp Solo, choose pairing via API (in its connection settings): it shows a code of 8 or 9 characters. ' +
       'The Virtual Solo (virtual-solo.sumup.com, for testing with a sandbox account) shows that code right away.',

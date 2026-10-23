@@ -12,17 +12,29 @@ async function copiedLink(page: import('@playwright/test').Page): Promise<string
   return (await page.evaluate(() => (window as any).__copied))[0]
 }
 
-test('without a SumUp account there is nothing to pair', async ({ console: open, page }) => {
+// One button for every device: a SumUp reader is one of its types.
+async function addReader(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Type' }).click()
+  await page.getByRole('option', { name: 'SumUp-kaartlezer' }).click()
+  return dialog
+}
+
+test('without a SumUp account there is no SumUp reader to add — and one button for every device', async ({ console: open, page }) => {
   await open('/devices')
   await expect(page.getByRole('heading', { name: 'Toestellen' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reader koppelen' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Toestel toevoegen' }).click()
+  await page.getByRole('dialog').getByRole('combobox', { name: 'Type' }).click()
+  await expect(page.getByRole('option', { name: 'SumUp-kaartlezer' })).toHaveCount(0)
 })
 
 test('pairs a reader by its code, which then shows in the list', async ({ console: open, page, catalogAdmin }) => {
   catalogAdmin.sumupReaders = []
   await open('/devices')
-  await page.getByRole('button', { name: 'Reader koppelen' }).click()
-  const dialog = page.getByRole('dialog')
+  await expect(page.getByRole('button', { name: 'Reader koppelen' })).toHaveCount(0)
+  const dialog = await addReader(page)
   await expect(dialog.getByRole('button', { name: 'Koppelen' })).toBeDisabled()
   await dialog.getByLabel('Koppelcode').fill('ab12cd34')
   await dialog.getByLabel('Naam').fill('Toog')
@@ -42,8 +54,7 @@ test("shows SumUp's reason when it refuses the code, and keeps the dialog open",
   catalogAdmin.sumupReaders = []
   catalogAdmin.pairError = 'Pairing code not found'
   await open('/devices')
-  await page.getByRole('button', { name: 'Reader koppelen' }).click()
-  const dialog = page.getByRole('dialog')
+  const dialog = await addReader(page)
   await dialog.getByLabel('Koppelcode').fill('ZZ99ZZ99')
   await dialog.getByRole('button', { name: 'Koppelen' }).click()
   await expect(dialog.getByText('Pairing code not found')).toBeVisible()
@@ -66,8 +77,8 @@ test('unpairs a reader after confirming', async ({ console: open, page, catalogA
 test('the pairing dialog links to the SumUp guide on the website', async ({ console: open, page, catalogAdmin }) => {
   catalogAdmin.sumupReaders = []
   await open('/devices')
-  await page.getByRole('button', { name: 'Reader koppelen' }).click()
-  await expect(page.getByRole('dialog').getByRole('link', { name: 'Meer uitleg' })).toHaveAttribute('href', 'https://arcanum.kaboutersoft.be/docs/sumup')
+  const dialog = await addReader(page)
+  await expect(dialog.getByRole('link', { name: 'Meer uitleg' })).toHaveAttribute('href', 'https://arcanum.kaboutersoft.be/docs/sumup')
 })
 
 test('Toestel toevoegen: a pairing code with its QR, until a device claims it', async ({ console: open, page, catalogAdmin }) => {

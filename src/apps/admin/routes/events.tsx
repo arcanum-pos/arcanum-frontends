@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { TicketCheck } from 'lucide-react'
+import { TicketCheck, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { createEvent, listEvents, type Event } from '../lib/api'
+import { createEvent, deleteEvent, listEvents, type Event } from '../lib/api'
 import { listCatalogs } from '../lib/catalog-api'
 import { EventSettingsDialog } from '../components/event-settings-dialog'
 import { useAsync } from '../lib/use-async'
@@ -45,6 +45,23 @@ export default function EventsPage() {
   const [date, setDate] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  // Only an event nothing was sold for — the backend says so otherwise (event_in_use).
+  async function handleDelete(event: Event) {
+    if (!orgId || !window.confirm(m.events.confirmDelete(event.name))) return
+    setDeleting(event.id)
+    setDeleteError(null)
+    try {
+      await deleteEvent(orgId, event.id)
+      reload()
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   async function handleCreate() {
     if (!orgId) return
@@ -101,6 +118,11 @@ export default function EventsPage() {
       </div>
 
       {error && <p className="text-sm text-destructive">{m.events.loadError(error)}</p>}
+      {deleteError && (
+        <p className="text-sm text-destructive" role="alert">
+          {deleteError}
+        </p>
+      )}
 
       <Table>
         <TableHeader>
@@ -139,9 +161,14 @@ export default function EventsPage() {
                 <TableCell className="hidden sm:table-cell">{event.modes?.length ? event.modes.map((mode) => mode.name).join(', ') : '—'}</TableCell>
                 <TableCell>{event.selfOrder?.enabled ? m.events.on : m.events.off}</TableCell>
                 <TableCell>
-                  <Button variant="outline" size="sm" onClick={() => setSettingsFor(event)}>
-                    {m.events.settings}
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setSettingsFor(event)}>
+                      {m.events.settings}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={deleting === event.id} onClick={() => handleDelete(event)} aria-label={m.events.deleteEvent(event.name)}>
+                      <Trash2 />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

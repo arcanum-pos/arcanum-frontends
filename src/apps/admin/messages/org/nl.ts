@@ -103,6 +103,8 @@ const nl = {
     on: 'Aan',
     off: 'Uit',
     settings: 'Instellen',
+    deleteEvent: (name: string) => `${name} verwijderen`,
+    confirmDelete: (name: string) => `${name} verwijderen? Dat kan alleen als er nog niets voor verkocht werd.`,
     settingsTitle: (name: string) => `${name} — instellen`,
     settingsHint: 'De bestelwijzen van het evenement (elk met een menukaart), zelfbestellen met een QR-code, en de bestelnummers.',
     selfOrderSwitch: 'Gasten bestellen zelf met hun telefoon',
@@ -235,6 +237,7 @@ const nl = {
     offline: 'Offline',
     confirmRemove: (id: string) => `Toestel ${id} verwijderen? Dit kan niet ongedaan worden gemaakt.`,
     pairReader: 'Reader koppelen',
+    sumupReaderType: 'SumUp-kaartlezer',
     pairHint:
       'Kies op de SumUp Solo voor koppelen via API (in de verbindingsinstellingen): hij toont een code van 8 of 9 tekens. ' +
       'De Virtual Solo (virtual-solo.sumup.com, om te testen met een sandbox-account) toont die code meteen.',

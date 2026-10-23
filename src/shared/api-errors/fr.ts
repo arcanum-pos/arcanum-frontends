@@ -148,6 +148,7 @@ export default {
   icon_slot_unknown: 'Impossible de définir une icône pour cette page',
   icon_invalid: 'Cette icône n’a pas pu être enregistrée ({size} px) : choisissez une autre image',
   payment_cancel_unconfirmed: 'Le paiement n’a pas encore pu être annulé chez le fournisseur — réessayez (sinon il expire de lui-même)',
+  event_in_use: 'Cet événement a déjà des additions ou des ventes — il est conservé',
   branding_color_invalid: 'Choisissez une couleur au format #rrggbb',
   branding_logo_invalid: 'Ce logo n’a pas pu être enregistré : choisissez une autre image',
 } satisfies ApiErrorMessages

@@ -90,6 +90,8 @@ export default {
     on: 'Activée',
     off: 'Désactivée',
     settings: 'Régler',
+    deleteEvent: (name: string) => `Supprimer ${name}`,
+    confirmDelete: (name: string) => `Supprimer ${name} ? Possible seulement si rien n’a encore été vendu pour cet événement.`,
     settingsTitle: (name: string) => `${name} — réglages`,
     settingsHint: 'Les modes de commande de l’événement (chacun avec une carte), la commande en ligne par code QR, et les numéros de commande.',
     selfOrderSwitch: 'Les invités commandent eux-mêmes avec leur téléphone',
@@ -221,6 +223,7 @@ export default {
     offline: 'Hors ligne',
     confirmRemove: (id: string) => `Supprimer l’appareil ${id} ? Cette action est irréversible.`,
     pairReader: 'Coupler un lecteur',
+    sumupReaderType: 'Lecteur de cartes SumUp',
     pairHint:
       'Sur la SumUp Solo, choisissez le couplage via API (dans ses paramètres de connexion) : elle affiche un code de 8 ou 9 caractères. ' +
       'La Virtual Solo (virtual-solo.sumup.com, pour tester avec un compte sandbox) affiche ce code tout de suite.',

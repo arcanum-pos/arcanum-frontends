@@ -149,6 +149,7 @@ const nl = {
   icon_slot_unknown: 'Voor deze pagina kan je geen icoon instellen',
   icon_invalid: 'Dit icoon kon niet bewaard worden ({size} px): kies een andere afbeelding',
   payment_cancel_unconfirmed: 'De betaling kon nog niet geannuleerd worden bij de provider — probeer opnieuw (anders vervalt ze vanzelf)',
+  event_in_use: 'Dit evenement heeft al rekeningen of verkopen — het blijft bewaard',
   branding_color_invalid: 'Kies een kleur als #rrggbb',
   branding_logo_invalid: 'Dit logo kon niet bewaard worden: kies een andere afbeelding',
 }

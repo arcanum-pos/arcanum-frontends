@@ -1,18 +1,7 @@
 import { useState } from 'react'
-import { Link2, MoreHorizontal } from 'lucide-react'
+import { MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,14 +10,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
-import { listDevicePairings, listOrgDevices, listSumupReaders, pairSumupReader, removeDevice, removeSumupReader, revokeDevicePairing, type OrgDevice, type SumupReader } from '../lib/api'
+import { listDevicePairings, listOrgDevices, listSumupReaders, removeDevice, removeSumupReader, revokeDevicePairing, type OrgDevice, type SumupReader } from '../lib/api'
 import { AddDeviceDialog } from '../components/add-device-dialog'
 import { RepairDeviceDialog } from '../components/repair-device-dialog'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
-import { docsUrl } from '@/shared/docs-url'
 
 const READER_MODEL_LABELS: Record<string, string> = {
   solo: 'SumUp Solo',
@@ -80,30 +68,7 @@ export default function DevicesPage() {
   const [removingId, setRemovingId] = useState<string | null>(null)
   // "Opnieuw koppelen": the device a re-pair code is shown for.
   const [repairing, setRepairing] = useState<OrgDevice | null>(null)
-  const [pairOpen, setPairOpen] = useState(false)
-  const [pairingCode, setPairingCode] = useState('')
-  const [readerName, setReaderName] = useState('')
-  const [pairing, setPairing] = useState(false)
-  const [pairError, setPairError] = useState<string | null>(null)
   const [readerNotice, setReaderNotice] = useState<string | null>(null)
-
-  async function handlePair() {
-    if (!orgId || !pairingCode.trim()) return
-    setPairing(true)
-    setPairError(null)
-    try {
-      const reader = await pairSumupReader(orgId, pairingCode, readerName)
-      setPairingCode('')
-      setReaderName('')
-      setPairOpen(false)
-      setReaderNotice(m.devices.paired(reader.name))
-      reloadReaders()
-    } catch (err) {
-      setPairError(err instanceof Error ? err.message : String(err))
-    } finally {
-      setPairing(false)
-    }
-  }
 
   async function handleUnpair(reader: SumupReader) {
     if (!orgId) return
@@ -152,54 +117,16 @@ export default function DevicesPage() {
             <AddDeviceDialog
               orgId={orgId}
               kassas={(devices ?? []).filter((d) => d.role === 'pos')}
+              sumup={!!sumupReaders?.configured}
               onPaired={() => {
                 reload()
                 reloadPairings()
               }}
+              onReaderPaired={(reader) => {
+                setReaderNotice(m.devices.paired(reader.name))
+                reloadReaders()
+              }}
             />
-          )}
-          {sumupReaders?.configured && (
-            <Dialog open={pairOpen} onOpenChange={setPairOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Link2 />
-                  {m.devices.pairReader}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{m.devices.pairReader}</DialogTitle>
-                  <DialogDescription>
-                    {m.devices.pairHint}{' '}
-                    <a href={docsUrl('sumup')} target="_blank" rel="noopener" className="underline underline-offset-4">
-                      {m.devices.moreInfo}
-                    </a>
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="pairing-code">{m.devices.pairingCode}</Label>
-                    <Input
-                      id="pairing-code"
-                      value={pairingCode}
-                      onChange={(e) => setPairingCode(e.target.value)}
-                      autoComplete="off"
-                      className="font-mono uppercase"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="reader-name">{m.devices.readerName}</Label>
-                    <Input id="reader-name" value={readerName} onChange={(e) => setReaderName(e.target.value)} placeholder="Solo" autoComplete="off" />
-                  </div>
-                  {pairError && <p className="text-sm text-destructive">{pairError}</p>}
-                </div>
-                <DialogFooter>
-                  <Button onClick={handlePair} disabled={pairing || !pairingCode.trim()}>
-                    {pairing ? m.busy : m.devices.pair}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
           )}
         </div>
       </div>

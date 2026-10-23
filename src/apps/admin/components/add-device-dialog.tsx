@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMessages } from '@/shared/i18n'
-import { createDevicePairing, type OrgDevice } from '../lib/api'
+import { docsUrl } from '@/shared/docs-url'
+import { createDevicePairing, pairSumupReader, type OrgDevice, type SumupReader } from '../lib/api'
 import { listStations, type Station } from '../lib/catalog-api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import { PairingClaimed, PairingCode, usePairingStatus, type ShownPairing } from './pairing-code'
@@ -19,15 +20,35 @@ import { PairingClaimed, PairingCode, usePairingStatus, type ShownPairing } from
 // linked to it as soon as it's paired. A Tap to Pay phone always is, and
 // its QR opens the phone's own page (/tap), where it's paired.
 // The code itself, its QR and link: PairingCode.
+// A SumUp card reader is one more type (when the org has a SumUp account):
+// the other way round — the reader shows a code, typed in here, and SumUp
+// pairs it (arcanum-backend sumup.ts). One button for every device.
 const LATER = 'later'
 
-export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; kassas: OrgDevice[]; onPaired: () => void }) {
+type Kind = 'pos' | 'cfd' | 'station' | 'pickup' | 'entrance' | 'tap' | 'sumup'
+
+export function AddDeviceDialog({
+  orgId,
+  kassas,
+  sumup = false,
+  onPaired,
+  onReaderPaired,
+}: {
+  orgId: string
+  kassas: OrgDevice[]
+  // The org has a SumUp account: readers can be paired here too.
+  sumup?: boolean
+  onPaired: () => void
+  onReaderPaired?: (reader: SumupReader) => void
+}) {
   const m = useMessages(ADMIN_ORG_MESSAGES).devices
   const [open, setOpen] = useState(false)
   // 'pickup': a station screen for guests (role 'station', view 'pickup').
   // 'entrance': the entrance screen (role 'station', view 'tables', no station — release D).
   // 'tap': a kassa's Tap to Pay phone (always for one kassa).
-  const [role, setRole] = useState<'pos' | 'cfd' | 'station' | 'pickup' | 'entrance' | 'tap'>('pos')
+  const [role, setRole] = useState<Kind>('pos')
+  // A SumUp reader: the code it shows.
+  const [readerCode, setReaderCode] = useState('')
   const forStation = role === 'station' || role === 'pickup'
   // A station screen shows one prep station.
   const [stations, setStations] = useState<Station[] | null>(null)
@@ -54,8 +75,25 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
     setStationId('')
     setName('')
     setLinkTo(LATER)
+    setReaderCode('')
     setError(null)
     setPairing(null)
+  }
+
+  async function pairReader() {
+    if (!readerCode.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const reader = await pairSumupReader(orgId, readerCode, name)
+      setOpen(false)
+      reset()
+      onReaderPaired?.(reader)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function create() {
@@ -89,7 +127,20 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{m.addDevice}</DialogTitle>
-          <DialogDescription>{pairing ? m.codeHint(window.location.host) : m.addDeviceHint}</DialogDescription>
+          <DialogDescription>
+            {pairing ? (
+              m.codeHint(window.location.host)
+            ) : role === 'sumup' ? (
+              <>
+                {m.pairHint}{' '}
+                <a href={docsUrl('sumup')} target="_blank" rel="noopener" className="underline underline-offset-4">
+                  {m.moreInfo}
+                </a>
+              </>
+            ) : (
+              m.addDeviceHint
+            )}
+          </DialogDescription>
         </DialogHeader>
 
         {!pairing && (
@@ -99,7 +150,7 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
               <Select
                 value={role}
                 onValueChange={(v) => {
-                  setRole(v as 'pos' | 'cfd' | 'station' | 'pickup' | 'entrance' | 'tap')
+                  setRole(v as Kind)
                   // A Tap to Pay phone is always for a kassa: the first one, to start with.
                   if (v === 'tap' && linkTo === LATER && kassas[0]) setLinkTo(kassas[0].terminal_id)
                 }}
@@ -114,12 +165,25 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
                   <SelectItem value="pickup">{m.pickupScreen}</SelectItem>
                   <SelectItem value="entrance">{m.entranceScreen}</SelectItem>
                   <SelectItem value="tap">{m.roles.tap}</SelectItem>
+                  {sumup && <SelectItem value="sumup">{m.sumupReaderType}</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
+            {role === 'sumup' && (
+              <div className="grid gap-2">
+                <Label htmlFor="pairing-code">{m.pairingCode}</Label>
+                <Input id="pairing-code" value={readerCode} onChange={(e) => setReaderCode(e.target.value)} autoComplete="off" className="font-mono uppercase" />
+              </div>
+            )}
             <div className="grid gap-2">
-              <Label htmlFor="device-name">{m.deviceName}</Label>
-              <Input id="device-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={role === 'pos' ? m.namePlaceholderPos : role === 'station' ? m.namePlaceholderStation : role === 'pickup' ? m.namePlaceholderPickup : role === 'entrance' ? m.namePlaceholderEntrance : role === 'tap' ? m.namePlaceholderTap : m.namePlaceholderCfd} autoComplete="off" />
+              <Label htmlFor="device-name">{role === 'sumup' ? m.readerName : m.deviceName}</Label>
+              <Input
+                id="device-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={role === 'sumup' ? 'Solo' : role === 'pos' ? m.namePlaceholderPos : role === 'station' ? m.namePlaceholderStation : role === 'pickup' ? m.namePlaceholderPickup : role === 'entrance' ? m.namePlaceholderEntrance : role === 'tap' ? m.namePlaceholderTap : m.namePlaceholderCfd}
+                autoComplete="off"
+              />
             </div>
             {(role === 'cfd' || role === 'tap') && (
               <div className="grid gap-2">
@@ -174,7 +238,12 @@ export function AddDeviceDialog({ orgId, kassas, onPaired }: { orgId: string; ka
         {pairing && (shownStatus === 'expired' || shownStatus === 'revoked') && <p className="text-sm text-muted-foreground">{m.codeExpired}</p>}
 
         <DialogFooter>
-          {!pairing && (
+          {!pairing && role === 'sumup' && (
+            <Button onClick={pairReader} disabled={busy || !readerCode.trim()}>
+              {busy ? m.busy : m.pair}
+            </Button>
+          )}
+          {!pairing && role !== 'sumup' && (
             <Button onClick={create} disabled={busy || !name.trim() || (forStation && !stationId) || (role === 'tap' && linkTo === LATER)}>
               {busy ? m.busy : m.makeCode}
             </Button>

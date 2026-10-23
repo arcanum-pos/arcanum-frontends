@@ -232,3 +232,18 @@ test('"Aan tafel" per ordering mode (release C): waiters order with its menu', a
   await expect(card.getByRole('switch', { name: 'Aan tafel: de bediening neemt op — Ter plaatse' })).toBeChecked()
   expect(catalogAdmin.eventCalls.at(-1)!.body).toEqual({ atTable: true })
 })
+
+test('an event nothing was sold for can be deleted; one with sales stays, and says why', async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.events = [
+    { id: 'ev1', name: 'Fuif', date: '2026-10-11', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 },
+    { id: 'ev2', name: 'Test', date: '2026-10-12', createdAt: '2026-10-02T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 },
+  ]
+  catalogAdmin.usedEvents.add('ev1')
+  await open('/events')
+  page.on('dialog', (d) => d.accept())
+  await page.getByRole('button', { name: 'Test verwijderen' }).click()
+  await expect(page.getByRole('row').filter({ hasText: 'Test' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Fuif verwijderen' }).click()
+  await expect(page.getByRole('alert')).toContainText('heeft al rekeningen of verkopen')
+  await expect(page.getByRole('row').filter({ hasText: 'Fuif' })).toHaveCount(1)
+})
