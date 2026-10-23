@@ -33,4 +33,11 @@ test('the selected rekening follows along: a line added elsewhere shows, a close
   push({ event: 'tabs_changed', tab_id: tab.id })
   await expect(kassa.getByText('Deze rekening is intussen afgesloten, mogelijk op een andere kassa.')).toBeVisible()
   await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
+
+  // Said once: switching to another rekening takes the message away.
+  const other = backend.openTab('Tafel 6', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 1 }])
+  push({ event: 'tabs_changed', tab_id: other.id })
+  await kassa.getByRole('button', { name: /^#2 Tafel 6/ }).click()
+  await expect(panel(kassa).getByText('1 × Bon')).toBeVisible()
+  await expect(kassa.getByText('Deze rekening is intussen afgesloten, mogelijk op een andere kassa.')).toHaveCount(0)
 })

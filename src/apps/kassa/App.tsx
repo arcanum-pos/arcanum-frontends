@@ -456,9 +456,10 @@ export default function App() {
     const list = await refreshTabs()
     const key = activeRef.current
     if (list && key !== 'quick' && !list.some((t) => t.id === key) && !currentRef.current) {
-      setError(m.tabClosedElsewhere)
       setDraftFor(key, [])
       selectTab('quick')
+      // After the switch (which clears what was shown): said once, gone at the next one.
+      setError(m.tabClosedElsewhere)
       return
     }
     await loadTab(key)
@@ -475,7 +476,9 @@ export default function App() {
     }, 250)
   }
 
+  // A message about the tab that was on screen doesn't follow to the next one.
   function selectTab(key: ActiveKey) {
+    setError('')
     setActive(key)
     activeRef.current = key
     setActiveTab(null)
