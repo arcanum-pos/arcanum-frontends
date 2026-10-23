@@ -58,6 +58,7 @@ export default {
   defaultLayout: "Disposition par défaut",
   done: "Terminé",
   moveGroup: (name: string) => `Déplacer ${name}`,
+  dropHere: 'Déposer ici',
   draftQuick: 'Commande',
   clear: 'Vider',
   less: (name: string) => `moins de ${name}`,

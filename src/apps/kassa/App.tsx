@@ -1281,13 +1281,14 @@ export default function App() {
             <div className="flex w-full min-w-0 flex-col gap-3 lg:flex-1 lg:pr-2">
               {/* Which tab this order is for — the same tab as the strip's
                   selected one and the panel on the right. */}
-              <div className="flex min-h-11 items-center gap-2.5 rounded-xl border border-foreground/15 bg-card px-3.5 py-2" data-testid="order-target">
+              <div className="flex h-12 items-center gap-2.5 overflow-hidden rounded-xl border border-foreground/15 bg-card px-3.5" data-testid="order-target">
                 <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{m.orderingFor}</span>
                 <span className="min-w-0 truncate rounded-md bg-foreground px-2 py-0.5 text-[13.5px] font-semibold tracking-tight text-background">{active === 'quick' ? m.quickSale : panelTitle}</span>
                 {/* The same as the ticket on the right: its items and what's to pay, new ones included. */}
-                <span className="ml-auto shrink-0 text-right font-mono text-[12.5px] text-muted-foreground tabular-nums" data-testid="order-target-summary">
+                <span className="ml-auto truncate text-right font-mono text-[12.5px] whitespace-nowrap text-muted-foreground tabular-nums" data-testid="order-target-summary">
                   {m.items(itemCount)} · <span className="font-semibold text-foreground">{formatEuro(targetCents)}</span>
-                  {draftCount > 0 && <span className="block text-[11.5px]">{m.newItems(draftCount)}</span>}
+                  {/* On the same line: the header never grows and pushes the menu down. */}
+                  {draftCount > 0 && <span> · {m.newItems(draftCount)}</span>}
                 </span>
               </div>
               <ItemPicker catalogState={catalogState} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />

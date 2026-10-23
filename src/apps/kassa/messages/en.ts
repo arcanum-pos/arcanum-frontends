@@ -58,6 +58,7 @@ export default {
   defaultLayout: "Default layout",
   done: "Done",
   moveGroup: (name: string) => `Move ${name}`,
+  dropHere: 'Drop here',
   draftQuick: 'Order',
   clear: 'Clear',
   less: (name: string) => `fewer ${name}`,

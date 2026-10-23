@@ -67,6 +67,7 @@ const nl = {
   defaultLayout: "Standaardindeling",
   done: "Klaar",
   moveGroup: (name: string) => `${name} verplaatsen`,
+  dropHere: 'Hier neerzetten',
   draftQuick: 'Bestelling',
   clear: 'Leegmaken',
   less: (name: string) => `minder ${name}`,

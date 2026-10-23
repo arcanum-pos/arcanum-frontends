@@ -1,81 +1,170 @@
 import { useState, type ReactNode } from 'react'
-import { closestCorners, DndContext, KeyboardSensor, PointerSensor, useDroppable, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  pointerWithin,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type CollisionDetection,
+  type DragEndEvent,
+  type DragOverEvent,
+} from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { GripVertical } from 'lucide-react'
 import { cn } from 'cn'
 import { moveSection } from './layout'
 
 // The menu's groups in this till's own columns (layout.ts). While arranging
 // (Indeling aanpassen), each group is dragged by its grip — a finger, a mouse,
-// or the keyboard (space, the arrows, space) — to another place in its column
-// or into another one; otherwise nothing moves and the products are tapped as
-// always. `renderSection` draws a group, `grip` the handle to put in its header.
+// or the keyboard (space, the arrows, space). What's dragged follows the
+// pointer as a card; where it will land is always shown: its column lit up
+// and a line at the place — above or below the group under the pointer, or at
+// the bottom of the column. The whole height of a column takes it, and a drop
+// in a gap goes to the nearest column — never back by surprise. Nothing moves
+// until it's dropped. Otherwise nothing moves at all and the products are
+// tapped as always. `renderSection` draws a group, `grip` the handle to put
+// in its header.
 export type Grip = { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined } | null
 
 const COLUMN = 'col:'
+
+interface Target {
+  column: number
+  index: number
+}
+
+// The column (or a group in it) under the pointer; else the nearest one.
+const collision: CollisionDetection = (args) => {
+  const within = pointerWithin(args)
+  return within.length ? within : closestCenter({ ...args, droppableContainers: args.droppableContainers.filter((c) => String(c.id).startsWith(COLUMN)) })
+}
 
 export function GroupColumns({
   columns,
   arranging,
   onChange,
   renderSection,
+  nameOf,
+  dropHere,
 }: {
   columns: string[][]
   arranging: boolean
   onChange: (columns: string[][]) => void
   renderSection: (id: string, grip: Grip) => ReactNode
+  nameOf: (id: string) => string
+  // "Hier neerzetten": said in the column it will land in.
+  dropHere: string
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
   const [dragging, setDragging] = useState<string | null>(null)
+  const [target, setTarget] = useState<Target | null>(null)
   const columnOf = (id: string) => (id.startsWith(COLUMN) ? Number(id.slice(COLUMN.length)) : columns.findIndex((c) => c.includes(id)))
 
-  // Moved once, where it's dropped: in place of the group it's over (that
-  // one makes room), or at the end of the column when over the column itself.
-  // While dragging, only the target column lights up — nothing jumps between columns.
-  function onDragEnd({ active, over }: DragEndEvent) {
-    setDragging(null)
-    if (!over || over.id === active.id) return
-    const to = columnOf(String(over.id))
-    if (to < 0) return
+  // Where it would land now: over a group, before or after it (which half
+  // the dragged card's middle is in); over a column, at its end.
+  function targetOf({ active, over }: Pick<DragOverEvent, 'active' | 'over'>): Target | null {
+    if (!over) return null
     const overId = String(over.id)
-    const next = moveSection(columns, String(active.id), to, overId.startsWith(COLUMN) ? columns[to].length : columns[to].indexOf(overId))
+    const column = columnOf(overId)
+    if (column < 0) return null
+    const list = columns[column].filter((id) => id !== active.id)
+    if (overId.startsWith(COLUMN) || overId === active.id) {
+      if (overId === active.id) return { column, index: columns[column].indexOf(overId) }
+      return { column, index: list.length }
+    }
+    const dragged = active.rect.current.translated
+    const below = dragged ? dragged.top + dragged.height / 2 > over.rect.top + over.rect.height / 2 : false
+    return { column, index: list.indexOf(overId) + (below ? 1 : 0) }
+  }
+
+  function onDragEnd(event: DragEndEvent) {
+    const at = targetOf(event)
+    setDragging(null)
+    setTarget(null)
+    if (!at) return
+    const next = moveSection(columns, String(event.active.id), at.column, at.index)
     if (JSON.stringify(next) !== JSON.stringify(columns)) onChange(next)
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={({ active }) => setDragging(String(active.id))} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-      <div className="grid items-start gap-3 sm:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]" style={{ '--cols': columns.length } as React.CSSProperties} data-testid="group-columns">
-        {columns.map((ids, i) => (
-          <Column key={i} index={i} arranging={arranging}>
-            <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-              {ids.map((id) => (
-                <SortableGroup key={id} id={id} arranging={arranging} dragging={dragging === id} renderSection={renderSection} />
-              ))}
-            </SortableContext>
-          </Column>
-        ))}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={collision}
+      onDragStart={({ active }) => setDragging(String(active.id))}
+      onDragOver={(event) => setTarget(targetOf(event))}
+      onDragMove={(event) => setTarget(targetOf(event))}
+      onDragEnd={onDragEnd}
+      onDragCancel={() => {
+        setDragging(null)
+        setTarget(null)
+      }}
+    >
+      <div className="grid items-stretch gap-3 sm:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]" style={{ '--cols': columns.length } as React.CSSProperties} data-testid="group-columns">
+        {columns.map((ids, i) => {
+          // The place it would land, counted without the dragged group itself.
+          const shown = ids.filter((id) => id !== dragging)
+          const line = target?.column === i ? target.index : -1
+          return (
+            <Column key={i} index={i} arranging={arranging} active={target?.column === i} label={dropHere}>
+              <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+                {ids.map((id) => (
+                  <div key={id} className="flex flex-col gap-3">
+                    {dragging !== id && line === shown.indexOf(id) && <DropLine />}
+                    <SortableGroup id={id} arranging={arranging} dragging={dragging === id} renderSection={renderSection} />
+                  </div>
+                ))}
+                {line === shown.length && <DropLine />}
+              </SortableContext>
+            </Column>
+          )
+        })}
       </div>
+      {/* What's dragged, following the pointer. */}
+      <DragOverlay dropAnimation={null}>
+        {dragging && (
+          <div className="flex items-center gap-2 rounded-xl border-2 border-foreground bg-card px-3.5 py-3 text-[12px] font-semibold tracking-[0.08em] uppercase shadow-xl" data-testid="drag-card">
+            <GripVertical className="size-5" aria-hidden="true" />
+            {nameOf(dragging)}
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   )
 }
 
-function Column({ index, arranging, children }: { index: number; arranging: boolean; children: ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `${COLUMN}${index}`, disabled: !arranging })
+// Where it will land: a thick line.
+function DropLine() {
+  return <div className="h-1.5 rounded-full bg-foreground" aria-hidden="true" data-testid="drop-line" />
+}
+
+function Column({ index, arranging, active, label, children }: { index: number; arranging: boolean; active: boolean; label: string; children: ReactNode }) {
+  const { setNodeRef } = useDroppable({ id: `${COLUMN}${index}`, disabled: !arranging })
   return (
     <div
       ref={setNodeRef}
       data-testid="group-column"
-      className={cn('flex min-w-0 flex-col gap-3', arranging && 'min-h-32 rounded-xl border-2 border-dashed border-foreground/15 p-1.5', isOver && 'border-foreground/40 bg-muted/40')}
+      data-target={active || undefined}
+      className={cn(
+        'flex min-w-0 flex-col gap-3',
+        arranging && 'min-h-40 rounded-xl border-2 border-dashed border-foreground/15 p-1.5 transition-colors',
+        active && 'border-solid border-foreground bg-foreground/[0.04]'
+      )}
     >
       {children}
+      {active && <p className="mt-auto py-1 text-center text-[12px] font-semibold text-foreground/70">{label}</p>}
     </div>
   )
 }
 
 function SortableGroup({ id, arranging, dragging, renderSection }: { id: string; arranging: boolean; dragging: boolean; renderSection: (id: string, grip: Grip) => ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, disabled: !arranging })
+  // Nothing moves until it's dropped: no transforms, only the line says where.
+  const { attributes, listeners, setNodeRef } = useSortable({ id, disabled: !arranging })
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cn(dragging && 'relative z-10 opacity-80 shadow-lg')} data-group-id={id}>
+    <div ref={setNodeRef} className={cn(dragging && 'opacity-35')} data-group-id={id}>
       {renderSection(id, arranging ? { attributes: attributes as unknown as Record<string, unknown>, listeners } : null)}
     </div>
   )

@@ -149,12 +149,20 @@ function Catalog({
             ))}
           </div>
         )}
-        {canArrange && !arranging && (
-          <button type="button" className={cn(chip(false), 'ml-auto flex items-center gap-1.5')} onClick={() => setArranging(true)} data-testid="arrange">
-            <LayoutGrid className="size-4" aria-hidden="true" />
-            {m.arrange}
-          </button>
-        )}
+        {/* Always in its place — only invisible when there's nothing to arrange
+            (a group chosen, a search): the search field keeps its width. */}
+        <button
+          type="button"
+          className={cn(chip(false), 'ml-auto flex items-center gap-1.5', (!canArrange || arranging) && 'invisible')}
+          aria-hidden={!canArrange || arranging || undefined}
+          tabIndex={!canArrange || arranging ? -1 : undefined}
+          onClick={() => setArranging(true)}
+          data-testid="arrange"
+          data-shown={canArrange && !arranging ? true : undefined}
+        >
+          <LayoutGrid className="size-4" aria-hidden="true" />
+          {m.arrange}
+        </button>
       </div>
       {arranging && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-foreground/20 bg-card px-3.5 py-2.5" role="status" data-testid="arrange-bar">
@@ -193,6 +201,8 @@ function Catalog({
                 columns={columns}
                 arranging={arranging}
                 onChange={saveColumns}
+                nameOf={(id) => sections.find((s) => s.id === id)?.name ?? ''}
+                dropHere={m.dropHere}
                 renderSection={(id, grip) => {
                   const section = sections.find((s) => s.id === id)!
                   return <SectionCard section={section} quantities={quantities} onTab={onTab} disabled={locked} onAdd={onAdd} onRemove={onRemove} grip={grip} gripLabel={m.moveGroup(section.name)} />
@@ -295,22 +305,25 @@ function EntryRow({ entry, drafted, sent, disabled, onAdd, onRemove }: { entry: 
     >
       {/* On the tab, all told: "3×" — dark while some of it is new, grey when
           it's all sent; the new part beside it ("+1"). Decorative: the ticket lists it too. */}
+      {/* Fixed sizes, whatever the counts say: a tap never moves the rows. */}
       <span
         aria-hidden="true"
         data-testid="entry-count"
         className={cn(
-          'flex h-[22px] min-w-[26px] items-center justify-center rounded-md px-1.5 font-mono text-[11.5px] font-semibold',
+          'flex h-[22px] w-9 shrink-0 items-center justify-center rounded-md font-mono text-[11.5px] leading-none font-semibold tabular-nums',
           drafted ? 'bg-foreground text-background' : sent ? 'bg-foreground/15 text-foreground' : 'bg-muted'
         )}
       >
         {total ? `${total}×` : ''}
       </span>
-      <span className="flex-1 text-[13.5px] font-medium tracking-tight">{entry.name}</span>
-      {drafted > 0 && sent > 0 && (
-        <span aria-hidden="true" className="rounded-md border border-foreground/30 px-1.5 font-mono text-[11px] font-semibold" data-testid="entry-new">
-          +{drafted}
-        </span>
-      )}
+      <span className="min-w-0 flex-1 truncate text-[13.5px] leading-5 font-medium tracking-tight">{entry.name}</span>
+      <span aria-hidden="true" className="flex h-[22px] w-9 shrink-0 items-center justify-center font-mono text-[11px] leading-none font-semibold tabular-nums">
+        {drafted > 0 && sent > 0 && (
+          <span className="rounded-md border border-foreground/30 px-1 py-0.5" data-testid="entry-new">
+            +{drafted}
+          </span>
+        )}
+      </span>
       <span className="font-mono text-[13px] text-foreground/70 tabular-nums">{formatEuro(entry.priceCents)}</span>
     </button>
   )
@@ -321,7 +334,7 @@ function QuickEntry({ entry, drafted, sent, disabled, onAdd, onRemove }: { entry
   const item = entryToPickerItem(entry)
   return (
     <div className="flex flex-col gap-3 p-3.5">
-      <p className="text-xs text-muted-foreground">
+      <p className="truncate text-xs leading-5 text-muted-foreground">
         <span className="font-medium text-foreground">{entry.name}</span> · {m.perPiece(formatEuro(entry.priceCents))}
         {drafted + sent > 0 && (
           <span className="ml-1.5 font-mono font-semibold text-foreground" data-testid="entry-count">
