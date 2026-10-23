@@ -135,7 +135,7 @@ export default {
   tap_payment_not_manual: 'A Tap to Pay payment is confirmed by SumUp, not at the till',
   sumup_app_not_configured: 'Tap to Pay isn’t set up: enter the SumUp affiliate key in the console',
   sumup_affiliate_key_invalid: 'That doesn’t look like a SumUp affiliate key or app id — check them',
-  sumup_pairing_code_invalid: 'A pairing code is 8 or 9 letters and digits',
+  sumup_pairing_code_invalid: 'A pairing code is letters and digits (as on the device or in SumUp)',
   sumup_pair_failed: 'Pairing the reader failed',
   sumup_remove_failed: 'Unpairing the reader failed',
   device_name_required: 'Give the device a name',
@@ -147,6 +147,7 @@ export default {
   devicehub_failed: 'Devices are briefly unreachable — try again',
   icon_slot_unknown: 'This page can’t have an icon of its own',
   icon_invalid: 'This icon couldn’t be saved ({size} px): choose another image',
+  payment_cancel_unconfirmed: 'The payment couldn’t be cancelled at the provider yet — try again (otherwise it expires by itself)',
   branding_color_invalid: 'Choose a colour as #rrggbb',
   branding_logo_invalid: 'This logo couldn’t be saved: choose another image',
 } satisfies ApiErrorMessages

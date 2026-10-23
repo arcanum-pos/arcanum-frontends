@@ -136,7 +136,7 @@ const nl = {
   tap_payment_not_manual: 'Een Tap to Pay-betaling wordt bevestigd door SumUp, niet aan de kassa',
   sumup_app_not_configured: 'Tap to Pay is niet ingesteld: vul in de console de affiliate key van SumUp in',
   sumup_affiliate_key_invalid: 'Dat lijkt geen affiliate key of app-id van SumUp — kijk ze na',
-  sumup_pairing_code_invalid: 'Een koppelcode bestaat uit 8 of 9 letters en cijfers',
+  sumup_pairing_code_invalid: 'Een koppelcode bestaat uit letters en cijfers (zoals op het toestel of in SumUp)',
   sumup_pair_failed: 'Koppelen van de reader mislukt',
   sumup_remove_failed: 'Loskoppelen van de reader mislukt',
   device_name_required: 'Geef het toestel een naam',
@@ -148,6 +148,7 @@ const nl = {
   devicehub_failed: 'Toestellen zijn even niet bereikbaar — probeer opnieuw',
   icon_slot_unknown: 'Voor deze pagina kan je geen icoon instellen',
   icon_invalid: 'Dit icoon kon niet bewaard worden ({size} px): kies een andere afbeelding',
+  payment_cancel_unconfirmed: 'De betaling kon nog niet geannuleerd worden bij de provider — probeer opnieuw (anders vervalt ze vanzelf)',
   branding_color_invalid: 'Kies een kleur als #rrggbb',
   branding_logo_invalid: 'Dit logo kon niet bewaard worden: kies een andere afbeelding',
 }

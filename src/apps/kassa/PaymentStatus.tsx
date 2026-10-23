@@ -117,7 +117,7 @@ export function PaymentStatus({
           </Button>
         ) : (
           <Button variant="outline" className="h-10 w-full rounded-[10px]" onClick={onCancel}>
-            {m.backToTab}
+            {m.cancelPayment}
           </Button>
         )}
       </div>

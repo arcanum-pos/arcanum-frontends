@@ -130,7 +130,7 @@ test('cancelling a cash payment fails it, so the tab can be paid again right awa
 
   await kassa.getByLabel('Contant').check()
   await kassa.getByRole('button', button('Afrekenen € 5,00')).click()
-  await kassa.getByRole('button', button('Terug naar rekening')).click()
+  await kassa.getByRole('button', button('Betaling annuleren')).click()
 
   await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
   await expect(kassa.getByText('Er loopt een betaling')).toHaveCount(0)
@@ -157,18 +157,6 @@ test('Bancontact: shows the QR and completes on the devicehub push', async ({ ka
   await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()
 })
 
-test('Bancontact: going back leaves the charge pending and the tab locked', async ({ kassa, backend }) => {
-  await kassa.getByRole('button', button('10 × Bon')).click()
-  await kassa.getByRole('button', button(/^Afrekenen/)).click()
-  await kassa.getByRole('button', button('Terug naar rekening')).click()
-
-  // The customer could still scan the QR — failing it here could lose a
-  // real payment, so it stays pending until it resolves or times out.
-  expect(backend.charges.map((c) => c.status)).toEqual(['pending'])
-  await expect(kassa.getByText('Er loopt een betaling voor deze rekening')).toBeVisible()
-  await expect(kassa.getByRole('button', button(/^Afrekenen/))).toBeDisabled()
-})
-
 // "Ticket annuleren": Afrekenen tapped by mistake — the payment cancelled, then
 // the whole ticket at once instead of line by line. Every line voided with the
 // one reason, the ticket closed as cancelled; nothing deleted.
@@ -177,7 +165,7 @@ test('Afrekenen by mistake: back, then "Ticket annuleren" cancels the whole tick
   await kassa.getByRole('button', button(/^Fietstocht \(niet-lid\)/)).click()
   await kassa.getByLabel('Contant').check()
   await kassa.getByRole('button', button(/^Afrekenen/)).click()
-  await kassa.getByRole('button', button('Terug naar rekening')).click()
+  await kassa.getByRole('button', button('Betaling annuleren')).click()
   // The sale is a ticket on the server now: no "Leegmaken" — one void per line, or the whole ticket.
   await expect(kassa.getByRole('button', button('Leegmaken'))).toHaveCount(0)
 
@@ -205,9 +193,9 @@ test('no "Ticket annuleren" while a payment runs, or once something is paid', as
   await kassa.reload()
   await kassa.getByRole('button', button(/^#1 Jan/)).click()
   await expect(kassa.getByRole('button', button('Ticket annuleren'))).toBeEnabled()
-  // Bancontact going back: the payment still runs — locked.
-  await kassa.getByRole('button', button(/^Afrekenen/)).click()
-  await kassa.getByRole('button', button('Terug naar rekening')).click()
+  // A payment running for it (e.g. on another kassa): locked.
+  backend.startCharge(tab.id, 'bancontact')
+  await kassa.getByRole('button', { name: 'Vernieuwen' }).first().click()
   await expect(kassa.getByRole('button', button('Ticket annuleren'))).toBeDisabled()
   expect(tab.status).toBe('open')
 })
@@ -231,4 +219,35 @@ test('the menu shows what the open tab has, the new round apart — the same as 
   await row.click({ button: 'right' })
   await row.click({ button: 'right' })
   await expect(row.getByTestId('entry-count')).toHaveText('2×')
+})
+
+test('cancelling a Bancontact payment stops it (no "payment running" left on the tab), and the CFD rests again', async ({ kassa, backend }) => {
+  const tab = backend.openTab('Jan', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 5 }])
+  await kassa.reload()
+  await kassa.getByRole('button', button(/^#1 Jan/)).click()
+  await kassa.getByLabel('Bancontact').check()
+  await kassa.getByRole('button', button('Afrekenen € 5,00')).click()
+  await kassa.getByRole('button', button('Betaling annuleren')).click()
+
+  await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
+  await expect(kassa.getByText('Er loopt een betaling')).toHaveCount(0)
+  await expect(kassa.getByRole('button', button('Afrekenen € 5,00'))).toBeEnabled()
+  expect(tab.status).toBe('open')
+  expect(backend.charges.map((c) => c.status)).toEqual(['failed'])
+})
+
+test("Bancontact can't be reached to cancel: the kassa stays on the payment and says to try again", async ({ kassa, backend }) => {
+  backend.openTab('Jan', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 5 }])
+  backend.cancelUnreachable = true
+  await kassa.reload()
+  await kassa.getByRole('button', button(/^#1 Jan/)).click()
+  await kassa.getByLabel('Bancontact').check()
+  await kassa.getByRole('button', button('Afrekenen € 5,00')).click()
+  await kassa.getByRole('button', button('Betaling annuleren')).click()
+  await expect(kassa.getByText('kon nog niet geannuleerd worden bij de provider')).toBeVisible()
+  await expect(kassa.getByRole('button', button('Betaling annuleren'))).toBeVisible()
+  backend.cancelUnreachable = false
+  await kassa.getByRole('button', button('Betaling annuleren')).click()
+  await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
+  expect(backend.charges.map((c) => c.status)).toEqual(['failed'])
 })

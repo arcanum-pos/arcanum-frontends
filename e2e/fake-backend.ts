@@ -315,6 +315,8 @@ export class FakeBackend {
   branding: { primary: string | null; accent: string | null; logoUrl: string | null } = { primary: null, accent: null, logoUrl: null }
   eventBranding = new Map<string, { primary: string | null; accent: string | null }>()
   brandingRequests: { orgId: string; eventId: string | null }[] = []
+  // A cancelled Bancontact payment: the provider can't be reached.
+  cancelUnreachable = false
   devices = new Map<string, { terminal_id: string; org_id: string; role: string; linked_to: string | null; name: string | null }>([
     ['pos-e2e', { terminal_id: 'pos-e2e', org_id: 'org-e2e', role: 'pos', linked_to: null, name: 'Kassa 1' }],
   ])
@@ -503,6 +505,14 @@ export class FakeBackend {
         if (body.success !== false) return { status: 409, body: { error: 'x', code: 'tap_payment_not_manual' } }
         this.resolveCharge(app.id, this.tapPaidAtSumup)
         return { status: 200, body: { ok: true, chargeId: app.id, status: app.status } }
+      }
+      // A Bancontact QR or a SumUp reader cancelled: the provider is asked first
+      // (arcanum-backend) — unreachable (cancelUnreachable), it stays pending.
+      const charge = this.charges.find((c) => c.id === body.chargeId)
+      if (body.success === false && charge && charge.status === 'pending' && charge.method === 'bancontact') {
+        if (this.cancelUnreachable) return { status: 409, body: { error: 'x', code: 'payment_cancel_unconfirmed' } }
+        this.resolveCharge(charge.id, false)
+        return { status: 200, body: { ok: true, chargeId: charge.id, status: charge.status } }
       }
       this.resolveCharge(body.chargeId, body.success !== false)
       return { status: 200, body: { ok: true, chargeId: body.chargeId } }

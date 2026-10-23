@@ -12,6 +12,7 @@ import { getCatalogSelection, getDeviceId, getDeviceName, getEventSelection, get
 import { connectNotifications, getRegisteredTerminal, getStoredTerminalInfo, openCompanionDisplay, resetKassa } from '@/shared/terminal'
 import { DemoBar } from './DemoBar'
 import { getCurrentSlotId } from '@/shared/slots'
+import { apiErrorMessage } from '@/shared/api-errors'
 import { formatEuro } from '@/shared/format'
 import type { ApiErrorCode } from '@/shared/api-errors'
 import { useMessages } from '@/shared/i18n'
@@ -876,6 +877,25 @@ export default function App() {
     if (cur && !isPaymentResolved(cur) && (cur.method === 'cash' || (cur.method === 'sumup' && !cur.dispatchedToReader))) {
       await resolveTrackedCharge(cur.chargeId, false)
     }
+    // A Bancontact QR or a SumUp reader waiting: stopped at the provider
+    // (arcanum-backend asks it first — just paid, it stays paid). Not
+    // reachable: it stays here, with a word to try again.
+    if (cur && !isPaymentResolved(cur) && (cur.method === 'bancontact' || (cur.method === 'sumup' && cur.dispatchedToReader))) {
+      const res = await fetch(`${WORKER_URL}/sumup/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chargeId: cur.chargeId, success: false }),
+      }).catch(() => null)
+      const data = res ? await res.json().catch(() => null) : null
+      if (!res || !res.ok) {
+        setError(data ? apiErrorMessage(data, m.cancelFailed) : m.cancelFailed)
+        return
+      }
+      if (data?.status === 'succeeded') {
+        await (cur.method === 'bancontact' ? checkBancontactStatus(cur.chargeId) : checkSumupStatus(cur.chargeId))
+        return
+      }
+    }
     clearPaymentView()
     selectTab(cur?.tabId || 'quick')
   }
@@ -946,6 +966,12 @@ export default function App() {
       posTerminalIdRef.current = terminal.terminalId
       posOrgIdRef.current = terminal.orgId
       setOrgId(terminal.orgId)
+      // Just started (or reloaded): no payment on this kassa, so its customer
+      // display rests too — never left showing an old QR.
+      if (!currentRef.current) {
+        broadcastCurrent()
+        resetKassa(terminal.orgId, terminal.terminalId).catch(() => {})
+      }
       showOrgIcons(terminal.orgId, 'kassa')
       loadTapToPay(terminal.orgId)
       setTerminalIdLabel(terminal.terminalId)

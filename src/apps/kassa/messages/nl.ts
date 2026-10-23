@@ -154,7 +154,8 @@ const nl = {
   nextPart: 'Volgend deel',
   nextPerson: 'Volgende persoon',
   nextCustomer: 'Volgende klant',
-  backToTab: 'Terug naar rekening',
+  cancelPayment: 'Betaling annuleren',
+  cancelFailed: 'De betaling kon niet geannuleerd worden. Probeer opnieuw.',
   breakdownLine: (quantity: number, name: string, unitPrice: string, total: string) => `${quantity} × ${name} à ${unitPrice} = ${total}`,
   breakdownTip: (amount: string) => `Fooi = ${amount}`,
 

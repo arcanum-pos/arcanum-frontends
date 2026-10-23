@@ -137,7 +137,8 @@ export default {
   nextPart: 'Next part',
   nextPerson: 'Next person',
   nextCustomer: 'Next customer',
-  backToTab: 'Back to bill',
+  cancelPayment: 'Cancel payment',
+  cancelFailed: 'The payment couldn’t be cancelled. Try again.',
   breakdownLine: (quantity: number, name: string, unitPrice: string, total: string) => `${quantity} × ${name} at ${unitPrice} = ${total}`,
   breakdownTip: (amount: string) => `Tip = ${amount}`,
 

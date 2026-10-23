@@ -40,7 +40,12 @@ export const test = base.extend<Fixtures>({
   kassa: async ({ page, backend, push }, provide) => {
     void push // make sure the socket route is installed before navigation
     const pageErrors: string[] = []
-    page.on('pageerror', (err) => pageErrors.push(err.message))
+    // WebKit reports a request cut off by a reload or navigation as a page
+    // error ("… due to access control checks"), even when the app catches
+    // it — not an error of the app's; anything else still fails the test.
+    page.on('pageerror', (err) => {
+      if (!/due to access control checks\.?$/.test(err.message)) pageErrors.push(err.message)
+    })
 
     await page.addInitScript(() => {
       localStorage.setItem('arcanum-terminal', JSON.stringify({ terminalId: 'pos-e2e', role: 'pos', orgId: 'org-e2e', orgName: 'E2E' }))

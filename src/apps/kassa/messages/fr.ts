@@ -137,7 +137,8 @@ export default {
   nextPart: 'Partie suivante',
   nextPerson: 'Personne suivante',
   nextCustomer: 'Client suivant',
-  backToTab: 'Retour à l’addition',
+  cancelPayment: 'Annuler le paiement',
+  cancelFailed: 'Le paiement n’a pas pu être annulé. Réessayez.',
   breakdownLine: (quantity: number, name: string, unitPrice: string, total: string) => `${quantity} × ${name} à ${unitPrice} = ${total}`,
   breakdownTip: (amount: string) => `Pourboire = ${amount}`,
 

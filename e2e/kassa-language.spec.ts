@@ -48,7 +48,7 @@ test('a French kassa: a cash sale end to end, and the Toog tab is still stored a
   await expect(kassa.getByText('En attente du paiement en espèces')).toBeVisible()
 
   // Back without paying: the Toog sale stays open as a rekening, shown in French.
-  await kassa.getByRole('button', { name: 'Retour à l’addition' }).click()
+  await kassa.getByRole('button', { name: 'Annuler le paiement' }).click()
   await expect(panel(kassa).getByRole('heading', { name: '#1 Comptoir' })).toBeVisible()
   expect(backend.tabs[0].label).toBe('Toog')
 

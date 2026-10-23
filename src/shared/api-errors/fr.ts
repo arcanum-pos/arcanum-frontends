@@ -135,7 +135,7 @@ export default {
   tap_payment_not_manual: 'Un paiement Tap to Pay est confirmé par SumUp, pas à la caisse',
   sumup_app_not_configured: 'Tap to Pay n’est pas configuré : indiquez l’affiliate key SumUp dans la console',
   sumup_affiliate_key_invalid: 'Ceci ne ressemble pas à une affiliate key ou un app-id SumUp — vérifiez-les',
-  sumup_pairing_code_invalid: 'Un code de couplage compte 8 ou 9 lettres et chiffres',
+  sumup_pairing_code_invalid: 'Un code de couplage se compose de lettres et de chiffres (comme sur l’appareil ou dans SumUp)',
   sumup_pair_failed: 'Le couplage du lecteur a échoué',
   sumup_remove_failed: 'Le découplage du lecteur a échoué',
   device_name_required: 'Donnez un nom à l’appareil',
@@ -147,6 +147,7 @@ export default {
   devicehub_failed: 'Les appareils sont momentanément injoignables — réessayez',
   icon_slot_unknown: 'Impossible de définir une icône pour cette page',
   icon_invalid: 'Cette icône n’a pas pu être enregistrée ({size} px) : choisissez une autre image',
+  payment_cancel_unconfirmed: 'Le paiement n’a pas encore pu être annulé chez le fournisseur — réessayez (sinon il expire de lui-même)',
   branding_color_invalid: 'Choisissez une couleur au format #rrggbb',
   branding_logo_invalid: 'Ce logo n’a pas pu être enregistré : choisissez une autre image',
 } satisfies ApiErrorMessages
