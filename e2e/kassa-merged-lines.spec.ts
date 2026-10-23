@@ -44,3 +44,19 @@ test('two rounds of the same item: one row on the till and one line on the CFD; 
   const voided = (id: string) => -backend.lines.filter((l) => l.voidsLineId === id).reduce((n, l) => n + l.quantity, 0)
   expect([voided(first.id), voided(latest.id)]).toEqual([1, 3])
 })
+
+test('waiting for the payment, the till lists the same item from several rounds as one line', async ({ kassa, backend }) => {
+  const tab = backend.openTab('Tafel 8', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 2 }])
+  backend.addLines(tab.id, [
+    { name: 'Water', unitPriceCents: 200, quantity: 1 },
+    { itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 3 },
+  ])
+  await kassa.reload()
+  await kassa.getByRole('button', { name: /^#1 Tafel 8/ }).click()
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', { name: /^Afrekenen/ }).click()
+  await expect(kassa.getByTestId('payment-breakdown').getByRole('paragraph')).toHaveText(['5 × Bon à € 1,00 = € 5,00', '1 × Water à € 2,00 = € 2,00'])
+
+  await kassa.getByRole('button', { name: 'Bevestig ontvangst contant geld' }).click()
+  await expect(kassa.getByTestId('payment-paid-mark').locator('svg')).toHaveCount(1)
+})

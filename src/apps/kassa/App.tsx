@@ -32,6 +32,7 @@ import {
   readAmountCents,
   reconcileDrafts,
   tabBreakdownLines,
+  pickedBreakdownLines,
   spreadUnits,
   type CurrentPayment,
   type MergedLine,
@@ -661,9 +662,7 @@ export default function App() {
     const amountCents = (picked ? selectionCents(tab, items!) : split ? split.nextCents : tab.outstandingCents) + tipCents
     const part = split ? { index: Math.min(split.paid + 1, split.parts), of: split.parts } : undefined
     const remainsOpen = amountCents - tipCents < tab.outstandingCents
-    const breakdown = picked
-      ? [...picked.map((x) => `${x.quantity} × ${x.line.name}`), ...(tipCents > 0 ? [m.breakdownTip(formatEuro(tipCents))] : [])]
-      : tabBreakdownLines(m, tab, tipCents)
+    const breakdown = picked ? pickedBreakdownLines(m, picked, tipCents) : tabBreakdownLines(m, tab, tipCents)
     const order = {
       ...customerOrderFromTab(m, tab),
       paying: picked ? picked.map((x) => ({ name: x.line.name, quantity: x.quantity, unitPriceCents: x.line.unitPriceCents, category: x.line.category ?? null })) : null,

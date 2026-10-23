@@ -27,7 +27,8 @@ import { moveSection } from './layout'
 // in a gap goes to the nearest column — never back by surprise. Nothing moves
 // until it's dropped. Otherwise nothing moves at all and the products are
 // tapped as always. `renderSection` draws a group, `grip` the handle to put
-// in its header.
+// in its header. Above the columns, a row over the whole width (`top`) takes
+// groups the same way (list 0 here; the columns are 1…).
 export type Grip = { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined } | null
 
 const COLUMN = 'col:'
@@ -44,21 +45,27 @@ const collision: CollisionDetection = (args) => {
 }
 
 export function GroupColumns({
-  columns,
+  top,
+  columns: columnLists,
   arranging,
   onChange,
   renderSection,
   nameOf,
   dropHere,
+  fullWidth,
 }: {
+  top: string[]
   columns: string[][]
   arranging: boolean
-  onChange: (columns: string[][]) => void
+  onChange: (top: string[], columns: string[][]) => void
   renderSection: (id: string, grip: Grip) => ReactNode
   nameOf: (id: string) => string
   // "Hier neerzetten": said in the column it will land in.
   dropHere: string
+  // "Over de hele breedte": the empty full-width row while arranging.
+  fullWidth: string
 }) {
+  const columns = [top, ...columnLists]
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
   const [dragging, setDragging] = useState<string | null>(null)
   const [target, setTarget] = useState<Target | null>(null)
@@ -87,7 +94,27 @@ export function GroupColumns({
     setTarget(null)
     if (!at) return
     const next = moveSection(columns, String(event.active.id), at.column, at.index)
-    if (JSON.stringify(next) !== JSON.stringify(columns)) onChange(next)
+    if (JSON.stringify(next) !== JSON.stringify(columns)) onChange(next[0], next.slice(1))
+  }
+
+  function list(i: number, wide: boolean) {
+    const ids = columns[i]
+    // The place it would land, counted without the dragged group itself.
+    const shown = ids.filter((id) => id !== dragging)
+    const line = target?.column === i ? target.index : -1
+    return (
+      <Column key={i} index={i} arranging={arranging} active={target?.column === i} label={dropHere} wide={wide} emptyLabel={wide && ids.length === 0 ? fullWidth : null}>
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          {ids.map((id) => (
+            <div key={id} className="flex flex-col gap-3">
+              {dragging !== id && line === shown.indexOf(id) && <DropLine />}
+              <SortableGroup id={id} arranging={arranging} dragging={dragging === id} renderSection={renderSection} />
+            </div>
+          ))}
+          {line === shown.length && <DropLine />}
+        </SortableContext>
+      </Column>
+    )
   }
 
   return (
@@ -103,25 +130,9 @@ export function GroupColumns({
         setTarget(null)
       }}
     >
-      <div className="grid items-stretch gap-3 sm:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]" style={{ '--cols': columns.length } as React.CSSProperties} data-testid="group-columns">
-        {columns.map((ids, i) => {
-          // The place it would land, counted without the dragged group itself.
-          const shown = ids.filter((id) => id !== dragging)
-          const line = target?.column === i ? target.index : -1
-          return (
-            <Column key={i} index={i} arranging={arranging} active={target?.column === i} label={dropHere}>
-              <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-                {ids.map((id) => (
-                  <div key={id} className="flex flex-col gap-3">
-                    {dragging !== id && line === shown.indexOf(id) && <DropLine />}
-                    <SortableGroup id={id} arranging={arranging} dragging={dragging === id} renderSection={renderSection} />
-                  </div>
-                ))}
-                {line === shown.length && <DropLine />}
-              </SortableContext>
-            </Column>
-          )
-        })}
+      {(arranging || top.length > 0) && list(0, true)}
+      <div className="grid items-stretch gap-3 sm:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]" style={{ '--cols': columnLists.length } as React.CSSProperties} data-testid="group-columns">
+        {columnLists.map((_, i) => list(i + 1, false))}
       </div>
       {/* What's dragged, following the pointer. */}
       <DragOverlay dropAnimation={null}>
@@ -141,19 +152,21 @@ function DropLine() {
   return <div className="h-1.5 rounded-full bg-foreground" aria-hidden="true" data-testid="drop-line" />
 }
 
-function Column({ index, arranging, active, label, children }: { index: number; arranging: boolean; active: boolean; label: string; children: ReactNode }) {
+function Column({ index, arranging, active, label, wide, emptyLabel, children }: { index: number; arranging: boolean; active: boolean; label: string; wide: boolean; emptyLabel: string | null; children: ReactNode }) {
   const { setNodeRef } = useDroppable({ id: `${COLUMN}${index}`, disabled: !arranging })
   return (
     <div
       ref={setNodeRef}
-      data-testid="group-column"
+      data-testid={wide ? 'group-row' : 'group-column'}
       data-target={active || undefined}
       className={cn(
         'flex min-w-0 flex-col gap-3',
-        arranging && 'min-h-40 rounded-xl border-2 border-dashed border-foreground/15 p-1.5 transition-colors',
+        arranging && 'rounded-xl border-2 border-dashed border-foreground/15 p-1.5 transition-colors',
+        arranging && (wide ? 'min-h-16' : 'min-h-40'),
         active && 'border-solid border-foreground bg-foreground/[0.04]'
       )}
     >
+      {emptyLabel && !active && <p className="my-auto py-2 text-center text-[12px] font-medium text-foreground/50">{emptyLabel}</p>}
       {children}
       {active && <p className="mt-auto py-1 text-center text-[12px] font-semibold text-foreground/70">{label}</p>}
     </div>

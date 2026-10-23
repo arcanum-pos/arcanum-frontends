@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -301,8 +302,8 @@ function PayCard({ charge, checking = false }: { charge: TapCharge; checking?: b
       </p>
       {charge.status === 'succeeded' ? (
         <div className="flex flex-col items-center gap-1" data-testid="tap-paid">
-          <span className="flex size-[54px] items-center justify-center rounded-full bg-green-100 text-[26px] text-green-700 dark:bg-green-950 dark:text-green-300" aria-hidden="true">
-            ✓
+          <span className="flex size-[54px] items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300" aria-hidden="true">
+            <Check className="size-7" strokeWidth={3} />
           </span>
           <p className="font-semibold">{m.paid}</p>
           <p className="text-sm text-muted-foreground">{m.paidHint}</p>

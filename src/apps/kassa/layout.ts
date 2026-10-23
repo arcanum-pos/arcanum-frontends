@@ -4,10 +4,16 @@
 //  - where the menu's groups go when it shows "Alles": in columns, in the
 //    order the cashier dragged them to (Indeling aanpassen). Per menu: another
 //    menu has other groups. Without one, the groups flow as before.
+//  - since 2026-10-24 a row over the whole width above the columns: where a
+//    group with "sell N at once" tiles starts (as before), and where any group
+//    can be dragged to; such a group can go into a column too.
 
 export interface GroupLayout {
   // Section ids per column, top to bottom.
   columns: string[][]
+  // Over the whole width, above the columns, top to bottom. Missing in a
+  // layout saved before it existed.
+  top?: string[]
 }
 
 const LAYOUT_KEY = 'arcanum-kassa-layout'
@@ -49,7 +55,8 @@ export function writePanelWidth(width: number | null) {
 export function readLayout(catalogId: string): GroupLayout | null {
   const all = readJson<Record<string, GroupLayout>>(LAYOUT_KEY)
   const layout = all?.[catalogId]
-  return layout && Array.isArray(layout.columns) && layout.columns.every((c) => Array.isArray(c) && c.every((id) => typeof id === 'string')) ? layout : null
+  const ids = (list: unknown) => Array.isArray(list) && list.every((id) => typeof id === 'string')
+  return layout && Array.isArray(layout.columns) && layout.columns.every(ids) && (layout.top === undefined || ids(layout.top)) ? layout : null
 }
 
 export function writeLayout(catalogId: string, layout: GroupLayout | null) {
@@ -81,6 +88,19 @@ export function placeSections(ids: string[], layout: GroupLayout | null, count: 
     columns[shortest].push(id)
   }
   return columns
+}
+
+// The groups in the full-width row and the columns. `full`: the groups that
+// start in the row (those with tiles) when the layout doesn't place them yet.
+export function placeGroups(ids: string[], full: Set<string>, layout: GroupLayout | null, count: number): { top: string[]; columns: string[][] } {
+  const known = new Set(ids)
+  const top = (layout?.top ?? []).filter((id) => known.has(id))
+  const placed = new Set([...top, ...(layout?.columns.flat() ?? [])].filter((id) => known.has(id)))
+  for (const id of ids) if (!placed.has(id) && full.has(id)) top.push(id)
+  const inTop = new Set(top)
+  const rest = ids.filter((id) => !inTop.has(id))
+  const columns = placeSections(rest, layout ? { columns: layout.columns.map((c) => c.filter((id) => !inTop.has(id))) } : null, count)
+  return { top, columns }
 }
 
 // A group moved: to column `to`, at `index` there (the end when past it).

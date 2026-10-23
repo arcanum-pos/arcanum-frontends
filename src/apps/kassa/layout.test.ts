@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clampPanel, columnsThatFit, moveSection, placeSections, readLayout, readPanelWidth, writeLayout, writePanelWidth } from './layout'
+import { clampPanel, columnsThatFit, moveSection, placeGroups, placeSections, readLayout, readPanelWidth, writeLayout, writePanelWidth } from './layout'
 
 describe('placeSections', () => {
   it('without an arrangement: row by row, like the automatic flow', () => {
@@ -9,6 +9,22 @@ describe('placeSections', () => {
   it('a saved one, kept to the menu: gone groups left out, new ones to the shortest column', () => {
     expect(placeSections(['a', 'b', 'c', 'new'], { columns: [['c', 'gone', 'a'], ['b']] }, 3)).toEqual([['c', 'a'], ['b', 'new']])
     expect(placeSections(['a'], { columns: [] }, 2)).toEqual([['a']])
+  })
+})
+
+describe('placeGroups', () => {
+  const full = new Set(['bon'])
+  it('without a layout: groups with tiles in the full-width row, the rest in columns', () => {
+    expect(placeGroups(['bon', 'a', 'b', 'c'], full, null, 2)).toEqual({ top: ['bon'], columns: [['a', 'c'], ['b']] })
+  })
+  it('a layout from before the row existed: the tile group goes to the row, the columns stay', () => {
+    expect(placeGroups(['bon', 'a', 'b'], full, { columns: [['b'], ['a']] }, 2)).toEqual({ top: ['bon'], columns: [['b'], ['a']] })
+  })
+  it('a tile group dragged into a column stays there; a plain group can be in the row', () => {
+    expect(placeGroups(['bon', 'a', 'b'], full, { top: ['a'], columns: [['b', 'bon'], []] }, 2)).toEqual({ top: ['a'], columns: [['b', 'bon'], []] })
+  })
+  it('a new plain group goes to the shortest column, a new tile group to the row; gone ones are left out', () => {
+    expect(placeGroups(['bon', 'a', 'new'], full, { top: ['gone'], columns: [['a'], []] }, 2)).toEqual({ top: ['bon'], columns: [['a'], ['new']] })
   })
 })
 

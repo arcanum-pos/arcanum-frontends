@@ -112,10 +112,27 @@ function breakdownLine(m: BreakdownMessages, name: string, itemCode: string | nu
 // What the payment view and the customer display list above the amount —
 // the tab's net lines (voids subtracted, fully voided lines left out),
 // plus the tip given with this payment, if any.
+// The same item from several rounds is one line, as on the ticket and the
+// customer display (mergeTabLines).
 export function tabBreakdownLines(m: BreakdownMessages, tab: TabDetail, tipCents = 0): string[] {
-  const lines = tab.lines
-    .filter((l) => !l.voidsLineId && netQuantity(l) > 0)
+  const lines = mergeTabLines(tab.lines)
+    .filter((l) => netQuantity(l) > 0)
     .map((l) => breakdownLine(m, l.name, l.itemCode, netQuantity(l), l.unitPriceCents))
+  if (tipCents > 0) lines.push(m.breakdownTip(formatEuro(tipCents)))
+  return lines
+}
+
+// Per item: the units this payment covers, the same item from several
+// rounds as one line — and the tip of this payment, if any.
+export function pickedBreakdownLines(m: BreakdownMessages, picked: { line: TabLine; quantity: number }[], tipCents = 0): string[] {
+  const merged = new Map<string, { line: TabLine; quantity: number }>()
+  for (const x of picked) {
+    const key = `${x.line.variantId ?? x.line.itemCode ?? ''}|${x.line.name}|${x.line.unitPriceCents}`
+    const seen = merged.get(key)
+    if (seen) seen.quantity += x.quantity
+    else merged.set(key, { line: x.line, quantity: x.quantity })
+  }
+  const lines = [...merged.values()].map((x) => breakdownLine(m, x.line.name, x.line.itemCode, x.quantity, x.line.unitPriceCents))
   if (tipCents > 0) lines.push(m.breakdownTip(formatEuro(tipCents)))
   return lines
 }

@@ -57,6 +57,7 @@ test('arranging the groups: dragged by their grip into another column or place; 
 
   // Dessert to the top of the first column.
   const grip = kassa.locator('[data-group-id="s-dessert"]').getByTestId('group-grip')
+  await grip.scrollIntoViewIfNeeded()
   const target = (await kassa.getByTestId('group-column').first().locator('[data-group-id]').first().boundingBox())!
   const from = (await grip.boundingBox())!
   await kassa.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
@@ -98,6 +99,47 @@ test('arranging the groups: dragged by their grip into another column or place; 
   await kassa.getByRole('button', { name: 'Klaar', exact: true }).click()
   await expect(kassa.getByTestId('group-columns')).toHaveCount(0)
   expect(await kassa.evaluate(() => localStorage.getItem('arcanum-kassa-layout'))).toBeNull()
+})
+
+// A group with "sell N at once" tiles (Bonnen) starts over the whole width,
+// as before, but moves like any other: into a column, and back; a plain group
+// can go up into the full-width row too.
+test('the group with tiles can be moved into a column, and any group into the full-width row', async ({ kassa, backend }) => {
+  await withGroups(kassa, backend)
+  const rowGroups = () => kassa.getByTestId('group-row').evaluateAll((rows) => rows.flatMap((r) => [...r.querySelectorAll('[data-group-id]')].map((g) => (g as HTMLElement).dataset.groupId)))
+  async function drag(id: string, to: import('@playwright/test').Locator) {
+    await kassa.locator(`[data-group-id="${id}"]`).getByTestId('group-grip').scrollIntoViewIfNeeded()
+    const from = (await kassa.locator(`[data-group-id="${id}"]`).getByTestId('group-grip').boundingBox())!
+    const box = (await to.boundingBox())!
+    await kassa.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+    await kassa.mouse.down()
+    await kassa.mouse.move(from.x + from.width / 2, from.y + from.height / 2 + 20, { steps: 4 })
+    await kassa.waitForTimeout(100)
+    await kassa.mouse.move(box.x + 40, box.y + box.height - 12, { steps: 16 })
+    await kassa.waitForTimeout(250)
+    await kassa.mouse.up()
+    await kassa.waitForTimeout(150)
+  }
+
+  await kassa.getByTestId('arrange').click()
+  expect(await rowGroups()).toEqual(['s-bonnen'])
+  await drag('s-bonnen', kassa.getByTestId('group-column').last())
+  expect(await rowGroups()).toEqual([])
+  expect((await columnGroups(kassa)).at(-1)).toContain('s-bonnen')
+  // The empty row says what it's for.
+  await expect(kassa.getByTestId('group-row')).toContainText('Over de hele breedte')
+  await drag('s-drank', kassa.getByTestId('group-row'))
+  expect(await rowGroups()).toEqual(['s-drank'])
+  await kassa.getByRole('button', { name: 'Klaar', exact: true }).click()
+
+  // Kept for this till; the tiles still sell.
+  await kassa.waitForLoadState('networkidle')
+  await kassa.reload()
+  await expect(kassa.getByTestId('group-columns')).toBeVisible()
+  expect(await rowGroups()).toEqual(['s-drank'])
+  expect((await columnGroups(kassa)).flat()).toContain('s-bonnen')
+  await kassa.getByRole('button', { name: '10 × Bon', exact: true }).click()
+  await expect(kassa.getByTestId('tab-side')).toContainText('10 items')
 })
 
 test('arranging with the keyboard: space picks a group up, the arrows move it, space puts it down', async ({ kassa, backend }) => {

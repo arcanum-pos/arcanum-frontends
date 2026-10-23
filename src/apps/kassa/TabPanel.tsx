@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import { formatEuro } from '@/shared/format'
@@ -437,7 +438,7 @@ function ItemRow({ line, selected, disabled, onChange }: { line: TabLine; select
             done ? 'border-transparent bg-muted text-muted-foreground' : selected > 0 ? 'border-foreground bg-foreground text-background' : 'bg-card'
           )}
         >
-          {done || selected > 0 ? '✓' : ''}
+          {(done || selected > 0) && <Check className="size-3.5" strokeWidth={3} />}
         </span>
         <span className="min-w-0">
           <span className={cn('block truncate text-[13.5px] font-medium tracking-tight', done && 'line-through')}>

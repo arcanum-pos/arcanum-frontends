@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
 import { formatEuro } from '@/shared/format'
@@ -55,13 +56,14 @@ export function PaymentStatus({
         </div>
 
         {resolved && (
-          <div className="flex size-[54px] items-center justify-center rounded-full bg-green-100 text-[26px] text-green-700 dark:bg-green-950 dark:text-green-300" aria-hidden="true">
-            ✓
+          <div className="flex size-[54px] items-center justify-center rounded-full bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300" aria-hidden="true" data-testid="payment-paid-mark">
+            {/* An icon, not the check character (slanted in many fonts). */}
+            <Check className="size-7" strokeWidth={3} />
           </div>
         )}
 
         {current.breakdown.length > 0 && (
-          <div className="flex flex-col items-center gap-0.5">
+          <div className="flex flex-col items-center gap-0.5" data-testid="payment-breakdown">
             {current.breakdown.map((line, i) => (
               <p key={i} className="text-[13px] text-muted-foreground">
                 {line}

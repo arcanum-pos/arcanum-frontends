@@ -7,7 +7,7 @@ import type { KassaCatalog, KassaEntry } from './catalog-api'
 import { entryToPickerItem, filterSections, searchPick, type PickerItem } from './lib'
 import { KASSA_MESSAGES } from './messages'
 import { GroupColumns, type Grip } from './GroupColumns'
-import { columnsThatFit, placeSections, readLayout, writeLayout, type GroupLayout } from './layout'
+import { columnsThatFit, placeGroups, readLayout, writeLayout, type GroupLayout } from './layout'
 
 export type CatalogState = { status: 'loading' } | { status: 'none' } | { status: 'error'; message: string } | { status: 'ok'; catalog: KassaCatalog }
 
@@ -90,18 +90,25 @@ function Catalog({
   }, [])
   const everything = group === null && !query.trim()
   const hasQuick = (s: (typeof sections)[number]) => s.entries.some((e) => e.quickQuantities?.length)
-  // Groups with "sell N at once" tiles stay full width, above the columns.
-  const movable = sections.filter((s) => !hasQuick(s))
-  const canArrange = everything && movable.length > 1
+  // Every group can be moved: into a column, or the row over the whole width
+  // above them, where a group with "sell N at once" tiles starts.
+  const canArrange = everything && sections.length > 1
   const ownColumns = canArrange && (layout !== null || arranging)
-  const columns = ownColumns ? placeSections(movable.map((s) => s.id), layout, columnsThatFit(gridWidth)) : []
-  function saveColumns(next: string[][]) {
-    const l = { columns: next }
+  const placed = ownColumns
+    ? placeGroups(
+        sections.map((s) => s.id),
+        new Set(sections.filter(hasQuick).map((s) => s.id)),
+        layout,
+        columnsThatFit(gridWidth)
+      )
+    : { top: [], columns: [] }
+  function saveColumns(top: string[], next: string[][]) {
+    const l = { top, columns: next }
     setLayout(l)
     writeLayout(catalog.id, l)
   }
   function finishArranging() {
-    if (layout) saveColumns(layout.columns.filter((c) => c.length > 0))
+    if (layout) saveColumns(placed.top, placed.columns.filter((c) => c.length > 0))
     setArranging(false)
   }
   const locked = disabled || arranging
@@ -167,7 +174,7 @@ function Catalog({
       {arranging && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-foreground/20 bg-card px-3.5 py-2.5" role="status" data-testid="arrange-bar">
           <p className="min-w-0 flex-[1_1_240px] text-[13px]">{m.arrangeHint}</p>
-          <button type="button" className={chip(false)} onClick={() => saveColumns([...columns, []])}>
+          <button type="button" className={chip(false)} onClick={() => saveColumns(placed.top, [...placed.columns, []])}>
             {m.addColumn}
           </button>
           <button
@@ -194,15 +201,14 @@ function Catalog({
         <div ref={gridRef} className="flex flex-col gap-3">
           {ownColumns ? (
             <>
-              {sections.filter(hasQuick).map((section) => (
-                <SectionCard key={section.id} section={section} quantities={quantities} onTab={onTab} disabled={locked} onAdd={onAdd} onRemove={onRemove} />
-              ))}
               <GroupColumns
-                columns={columns}
+                top={placed.top}
+                columns={placed.columns}
                 arranging={arranging}
                 onChange={saveColumns}
                 nameOf={(id) => sections.find((s) => s.id === id)?.name ?? ''}
                 dropHere={m.dropHere}
+                fullWidth={m.fullWidthRow}
                 renderSection={(id, grip) => {
                   const section = sections.find((s) => s.id === id)!
                   return <SectionCard section={section} quantities={quantities} onTab={onTab} disabled={locked} onAdd={onAdd} onRemove={onRemove} grip={grip} gripLabel={m.moveGroup(section.name)} />

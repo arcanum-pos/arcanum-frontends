@@ -28,6 +28,7 @@ import {
   reconcileDrafts,
   roundUpTipCents,
   tabBreakdownLines,
+  pickedBreakdownLines,
   type CurrentPayment,
 } from './lib'
 import { netQuantity, QUICK_SALE_LABEL, tabTitle, toLineInputs, type DraftLine, type TabDetail, type TabLine } from './tabs-api'
@@ -213,6 +214,22 @@ describe('tabBreakdownLines', () => {
 
   it('lists net quantities and leaves out void lines and fully voided lines', () => {
     expect(tabBreakdownLines(m, tab(lines))).toEqual(['1 × Wandeltocht à € 6,00 = € 6,00'])
+  })
+
+  it('the same item from several rounds: one line', () => {
+    const rounds = [
+      line({ id: 'r1', orderId: 'o1', name: 'Bon', itemCode: 'bon', variantId: 'v-bon', quantity: 2 }),
+      line({ id: 'r2', orderId: 'o2', name: 'Cola', itemCode: 'cola', variantId: 'v-cola', unitPriceCents: 250, quantity: 1 }),
+      line({ id: 'r3', orderId: 'o3', name: 'Bon', itemCode: 'bon', variantId: 'v-bon', quantity: 3, voidedQuantity: 1 }),
+      line({ id: 'r4', orderId: 'o3', name: 'Bon', itemCode: 'bon', variantId: 'v-bon', quantity: -1, voidsLineId: 'r3', voidReason: 'x' }),
+    ]
+    expect(tabBreakdownLines(m, tab(rounds))).toEqual(['4 × Bon à € 1,00 = € 4,00', '1 × Cola à € 2,50 = € 2,50'])
+  })
+
+  it('per item: the units picked, one line per item, then the tip', () => {
+    const a = line({ id: 'r1', name: 'Bon', itemCode: 'bon', variantId: 'v-bon', quantity: 2 })
+    const b = line({ id: 'r3', name: 'Bon', itemCode: 'bon', variantId: 'v-bon', quantity: 3 })
+    expect(pickedBreakdownLines(m, [{ line: a, quantity: 2 }, { line: b, quantity: 1 }], 50)).toEqual(['3 × Bon à € 1,00 = € 3,00', 'Fooi = € 0,50'])
   })
 
   it('adds the tip of this payment as a last line', () => {
