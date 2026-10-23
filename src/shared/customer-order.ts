@@ -54,10 +54,25 @@ export interface CustomerBill {
   amountCents: number
 }
 
+// The same item at the same price, from however many rounds (or an order
+// still being tapped in on an open tab): one line — the customer doesn't
+// care how it was ordered, only what's on the bill. In first-seen order.
+export function mergeCustomerLines(lines: CustomerOrderLine[]): CustomerOrderLine[] {
+  const merged = new Map<string, CustomerOrderLine>()
+  for (const l of lines) {
+    if (l.quantity <= 0) continue
+    const key = `${l.name}|${l.unitPriceCents}`
+    const seen = merged.get(key)
+    if (seen) seen.quantity += l.quantity
+    else merged.set(key, { ...l })
+  }
+  return [...merged.values()]
+}
+
 // From the order and the charge (amount = what's still open + tip), what
 // the customer reads: lines with totals, earlier payments, the tip, the total.
 export function customerBill(order: CustomerOrder | null | undefined, amountCents: number, tipCents = 0): CustomerBill {
-  const lines = (order?.lines ?? []).filter((l) => l.quantity > 0).map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents }))
+  const lines = mergeCustomerLines(order?.lines ?? []).map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents }))
   const itemsCents = lines.reduce((sum, l) => sum + l.totalCents, 0)
   const label = order?.label?.trim() || ''
   // Known from the order when it says so; else inferred (the amount pays the rest).

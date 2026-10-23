@@ -149,6 +149,7 @@ export default {
   icon_invalid: 'This icon couldn’t be saved ({size} px): choose another image',
   payment_cancel_unconfirmed: 'The payment couldn’t be cancelled at the provider yet — try again (otherwise it expires by itself)',
   event_in_use: 'This event already has bills or sales — it is kept',
+  event_end_before_start: 'The last day cannot be before the first day',
   branding_color_invalid: 'Choose a colour as #rrggbb',
   branding_logo_invalid: 'This logo couldn’t be saved: choose another image',
 } satisfies ApiErrorMessages

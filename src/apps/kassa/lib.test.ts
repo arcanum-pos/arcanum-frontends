@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
 import {
+  mergeTabLines,
+  spreadUnits,
   addToDraft,
   subtractDraft,
   changeQuantity,
@@ -395,5 +397,26 @@ describe('customerViewOrder: the customer display while the order is entered', (
   it('nothing on it: nothing to show', () => {
     expect(customerViewOrder(m, [], null, null)).toBeNull()
     expect(customerViewOrder(m, [], tab([]), null)).toBeNull()
+  })
+})
+
+describe('mergeTabLines', () => {
+  const tl = (id: string, name: string, quantity: number, extra: Partial<TabLine> = {}): TabLine => ({ id, orderId: 'o', itemCode: null, variantId: `v-${name}`, name, unitPriceCents: 250, quantity, voidsLineId: null, voidReason: null, voidedQuantity: 0, paidQuantity: 0, createdAt: '2026-10-23T20:00:00Z', ...extra })
+
+  it('one row per item over the rounds, voids and paid units summed; void lines left out', () => {
+    const rows = mergeTabLines([tl('a', 'Pils', 2), tl('b', 'Cola', 1), tl('c', 'Pils', 3, { voidedQuantity: 1, paidQuantity: 1 }), tl('x', 'Pils', -1, { voidsLineId: 'c' })])
+    expect(rows.map((r) => [r.name, r.quantity, r.voidedQuantity, r.paidQuantity, r.parts.map((p) => p.id)])).toEqual([
+      ['Pils', 5, 1, 1, ['a', 'c']],
+      ['Cola', 1, 0, 0, ['b']],
+    ])
+  })
+  it('another price is another row', () => {
+    expect(mergeTabLines([tl('a', 'Pils', 1), tl('b', 'Pils', 1, { unitPriceCents: 200 })])).toHaveLength(2)
+  })
+  it('spreads units over the rounds: a void from the latest, a payment from the earliest, never more than open', () => {
+    const parts = [tl('a', 'Pils', 2), tl('b', 'Pils', 3, { paidQuantity: 1 })]
+    expect(spreadUnits(parts, 3, true).map((x) => [x.line.id, x.quantity])).toEqual([['b', 2], ['a', 1]])
+    expect(spreadUnits(parts, 3).map((x) => [x.line.id, x.quantity])).toEqual([['a', 2], ['b', 1]])
+    expect(spreadUnits(parts, 9).reduce((n, x) => n + x.quantity, 0)).toBe(4)
   })
 })

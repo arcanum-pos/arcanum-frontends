@@ -84,3 +84,14 @@ describe('readCustomerOrder, per item', () => {
     expect(readCustomerOrder({ lines: [], paying: [] })?.paying).toBeNull()
   })
 })
+
+describe('the same item from several rounds', () => {
+  it('is one line on the bill, with the quantities added up', () => {
+    const bill = customerBill({ label: 'Tafel 4', number: null, lines: [{ name: 'Pils', quantity: 2, unitPriceCents: 250 }, { name: 'Cola', quantity: 1, unitPriceCents: 300 }, { name: 'Pils', quantity: 3, unitPriceCents: 250 }] }, 1550)
+    expect(bill.lines).toEqual([
+      { name: 'Pils', quantity: 5, totalCents: 1250 },
+      { name: 'Cola', quantity: 1, totalCents: 300 },
+    ])
+    expect(bill.itemCount).toBe(6)
+  })
+})

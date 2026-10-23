@@ -11,7 +11,7 @@ import { PaymentsChart } from '../components/payments-chart'
 import { bucketize, stepFor } from '../lib/report-buckets'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
-import { formatEuro } from '../lib/format'
+import { formatEuro, formatEventDays } from '../lib/format'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import {
@@ -31,10 +31,6 @@ const PERIODS: Period[] = ['today', 'yesterday', 'week', 'month', 'custom']
 
 function formatTime(iso: string, intlLocale: string): string {
   return new Date(iso).toLocaleString(intlLocale, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-}
-
-function formatDate(iso: string, intlLocale: string): string {
-  return new Date(iso).toLocaleDateString(intlLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
 // Sales report for a period (step 3d) on top, the payments per time slot
@@ -65,6 +61,23 @@ export default function ReportsPage() {
     setSelectedEvent(events.length === 1 ? events[0].id : ALL_EVENTS)
   }, [events, selectedEvent])
   const eventFilter = selectedEvent && selectedEvent !== ALL_EVENTS ? selectedEvent : undefined
+  const chosenEvent = eventFilter ? events?.find((e) => e.id === eventFilter) : undefined
+  const eventFirst = chosenEvent?.date
+  const eventLast = chosenEvent ? (chosenEvent.endDate ?? chosenEvent.date) : undefined
+  // An event chosen: the period becomes its days (a part of them can be chosen after).
+  useEffect(() => {
+    if (!eventFirst || !eventLast) return
+    setPeriod('custom')
+    setCustomFrom(eventFirst)
+    setCustomTo(eventLast)
+  }, [eventFirst, eventLast])
+  const eventDays = eventFirst && eventLast ? daysBetween(eventFirst, eventLast) : []
+
+  function pick(from: string, to: string) {
+    setPeriod('custom')
+    setCustomFrom(from)
+    setCustomTo(to)
+  }
 
   const report = useAsync<SalesReport | null>(
     () => (orgId && bounds && selectedEvent ? fetchSalesReport(orgId, bounds.from, bounds.to, eventFilter) : Promise.resolve(null)),
@@ -87,11 +100,27 @@ export default function ReportsPage() {
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex flex-wrap items-end gap-2" role="group" aria-label={m.reports.period}>
-            {PERIODS.map((p) => (
-              <Button key={p} size="sm" variant={period === p ? 'default' : 'outline'} aria-pressed={period === p} onClick={() => setPeriod(p)}>
-                {m.reports.periods[p]}
-              </Button>
-            ))}
+            {chosenEvent && eventFirst && eventLast ? (
+              <>
+                <PeriodButton active={customFrom === eventFirst && customTo === eventLast} onClick={() => pick(eventFirst, eventLast)}>
+                  {m.reports.wholeEvent}
+                </PeriodButton>
+                {/* One button per day — for an event of a few days. */}
+                {eventDays.length > 1 &&
+                  eventDays.length <= 7 &&
+                  eventDays.map((d) => (
+                    <PeriodButton key={d} active={customFrom === d && customTo === d} onClick={() => pick(d, d)}>
+                      {new Date(`${d}T12:00:00`).toLocaleDateString(intlLocale, { weekday: 'short', day: 'numeric', month: 'numeric' })}
+                    </PeriodButton>
+                  ))}
+              </>
+            ) : (
+              PERIODS.map((p) => (
+                <PeriodButton key={p} active={period === p} onClick={() => setPeriod(p)}>
+                  {m.reports.periods[p]}
+                </PeriodButton>
+              ))
+            )}
           </div>
           {events && events.length > 0 && (
             <Select value={selectedEvent} onValueChange={setSelectedEvent}>
@@ -102,7 +131,7 @@ export default function ReportsPage() {
                 <SelectItem value={ALL_EVENTS}>{m.reports.allEvents}</SelectItem>
                 {events.map((event) => (
                   <SelectItem key={event.id} value={event.id}>
-                    {event.name} — {formatDate(event.date, intlLocale)}
+                    {event.name} — {formatEventDays(event, intlLocale)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -110,13 +139,14 @@ export default function ReportsPage() {
           )}
           {period === 'custom' && (
             <div className="flex flex-wrap items-end gap-2">
+              {/* With an event: only within its days. */}
               <div className="flex flex-col gap-1">
                 <Label htmlFor="report-from">{m.reports.from}</Label>
-                <Input id="report-from" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="w-40" />
+                <Input id="report-from" type="date" value={customFrom} min={eventFirst} max={eventLast} onChange={(e) => setCustomFrom(clampDay(e.target.value, eventFirst, eventLast))} className="w-40" />
               </div>
               <div className="flex flex-col gap-1">
                 <Label htmlFor="report-to">{m.reports.to}</Label>
-                <Input id="report-to" type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="w-40" />
+                <Input id="report-to" type="date" value={customTo} min={eventFirst} max={eventLast} onChange={(e) => setCustomTo(clampDay(e.target.value, eventFirst, eventLast))} className="w-40" />
               </div>
             </div>
           )}
@@ -187,6 +217,29 @@ function ReportCharts({ payments, bounds }: { payments: Transaction[]; bounds: {
       </CardContent>
     </Card>
   )
+}
+
+function PeriodButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <Button size="sm" variant={active ? 'default' : 'outline'} aria-pressed={active} onClick={onClick}>
+      {children}
+    </Button>
+  )
+}
+
+// "YYYY-MM-DD" days from the first to the last, both included.
+function daysBetween(first: string, last: string): string[] {
+  const days: string[] = []
+  const [y, mo, d] = first.split('-').map(Number)
+  for (let day = new Date(y, mo - 1, d); toDateInput(day) <= last && days.length < 400; day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1)) days.push(toDateInput(day))
+  return days
+}
+
+function clampDay(value: string, min?: string, max?: string): string {
+  if (!value) return value
+  if (min && value < min) return min
+  if (max && value > max) return max
+  return value
 }
 
 function Amount({ loading, cents }: { loading: boolean; cents: number | undefined }) {

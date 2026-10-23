@@ -19,14 +19,11 @@ import { listCatalogs } from '../lib/catalog-api'
 import { EventSettingsDialog } from '../components/event-settings-dialog'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
+import { formatEventDays } from '../lib/format'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 
-function formatDate(iso: string, intlLocale: string): string {
-  return new Date(iso).toLocaleDateString(intlLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
-
-// Events: name + date (what tabs and reports are tagged with), and per
+// Events: name + days (what tabs and reports are tagged with), and per
 // event its menu, self-ordering and order numbers (EventSettingsDialog).
 export default function EventsPage() {
   const m = useMessages(ADMIN_ORG_MESSAGES)
@@ -43,6 +40,7 @@ export default function EventsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [name, setName] = useState('')
   const [date, setDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -69,9 +67,10 @@ export default function EventsPage() {
     setCreating(true)
     setCreateError(null)
     try {
-      await createEvent(orgId, { name: name.trim(), date })
+      await createEvent(orgId, { name: name.trim(), date, endDate: endDate || null })
       setName('')
       setDate('')
+      setEndDate('')
       setCreateOpen(false)
       reload()
     } catch (err) {
@@ -102,9 +101,16 @@ export default function EventsPage() {
                 <Label htmlFor="event-name">{m.name}</Label>
                 <Input id="event-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" placeholder={m.events.namePlaceholder} />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="event-date">{m.date}</Label>
-                <Input id="event-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="event-date">{m.events.firstDay}</Label>
+                  <Input id="event-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                </div>
+                <div className="grid content-start gap-2">
+                  <Label htmlFor="event-end-date">{m.events.lastDay}</Label>
+                  <Input id="event-end-date" type="date" value={endDate} min={date || undefined} onChange={(e) => setEndDate(e.target.value)} />
+                  <p className="text-xs text-muted-foreground">{m.events.lastDayHint}</p>
+                </div>
               </div>
               {createError && <p className="text-sm text-destructive">{createError}</p>}
             </div>
@@ -128,7 +134,7 @@ export default function EventsPage() {
         <TableHeader>
           <TableRow>
             <TableHead>{m.name}</TableHead>
-            <TableHead>{m.date}</TableHead>
+            <TableHead>{m.events.period}</TableHead>
             <TableHead className="hidden sm:table-cell">{m.events.modes}</TableHead>
             <TableHead>{m.events.selfOrder}</TableHead>
             <TableHead className="w-10" />
@@ -157,7 +163,7 @@ export default function EventsPage() {
             events?.map((event) => (
               <TableRow key={event.id}>
                 <TableCell className="font-medium">{event.name}</TableCell>
-                <TableCell>{formatDate(event.date, intlLocale)}</TableCell>
+                <TableCell>{formatEventDays(event, intlLocale)}</TableCell>
                 <TableCell className="hidden sm:table-cell">{event.modes?.length ? event.modes.map((mode) => mode.name).join(', ') : '—'}</TableCell>
                 <TableCell>{event.selfOrder?.enabled ? m.events.on : m.events.off}</TableCell>
                 <TableCell>

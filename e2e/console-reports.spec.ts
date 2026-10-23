@@ -68,7 +68,7 @@ test('shows the sales report for today, then another period', async ({ console, 
 test('custom period: both chosen days in full, and a reversed range is refused', async ({ console, catalogAdmin }) => {
   const page = await console('/reports')
   await page.getByRole('button', { name: 'Aangepast' }).click()
-  await page.getByLabel('Van').fill('2026-09-01')
+  await page.getByLabel('Van', { exact: true }).fill('2026-09-01')
   await page.getByLabel('Tot en met').fill('2026-09-14')
 
   await expect
@@ -76,7 +76,7 @@ test('custom period: both chosen days in full, and a reversed range is refused',
     .toEqual({ from: new Date(2026, 8, 1).toISOString(), to: new Date(2026, 8, 15).toISOString() })
 
   const before = catalogAdmin.reportQueries.length
-  await page.getByLabel('Van').fill('2026-09-20')
+  await page.getByLabel('Van', { exact: true }).fill('2026-09-20')
   await expect(page.getByText('Kies een geldige periode')).toBeVisible()
   expect(catalogAdmin.reportQueries.length).toBe(before)
 })
@@ -186,4 +186,39 @@ test('a month is charted per day, and no payments says so', async ({ console, ca
   const days = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
   await expect(page.getByTestId('chart-count-bar')).toHaveCount(days)
   await expect(page.getByTestId('chart-count-bar').first()).toHaveAttribute('data-total', '1')
+})
+
+test('choosing an event sets its days as the period; a day of it, or a part, can be chosen after', async ({ console, catalogAdmin }) => {
+  const event = (id: string, name: string, date: string, endDate: string) => ({ id, name, date, endDate, createdAt: '2026-09-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 })
+  catalogAdmin.events = [event('ev1', 'Kamp', '2026-09-12', '2026-09-13'), event('ev2', 'Quiz', '2026-10-11', '2026-10-11')]
+  catalogAdmin.transactions = [tx('a', 'cash', 500, 'ev1', new Date(2026, 8, 12, 14, 30)), tx('b', 'sumup', 700, 'ev1', new Date(2026, 8, 13, 1, 10))]
+  const page = await console('/reports')
+
+  await page.getByTestId('report-event').click()
+  await page.getByRole('option', { name: /Kamp — 12\/09\/2026 – 13\/09\/2026/ }).click()
+  await expect
+    .poll(() => catalogAdmin.reportQueries.at(-1))
+    .toEqual({ from: new Date(2026, 8, 12).toISOString(), to: new Date(2026, 8, 14).toISOString(), event: 'ev1' })
+  await expect(page.getByRole('button', { name: 'Hele evenement' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByLabel('Van', { exact: true })).toHaveValue('2026-09-12')
+  await expect(page.getByLabel('Van', { exact: true })).toHaveAttribute('min', '2026-09-12')
+  await expect(page.getByLabel('Tot en met')).toHaveAttribute('max', '2026-09-13')
+  // Two days: per hour, from 14:00 on the first to 02:00 on the second.
+  await expect(page.getByTestId('chart-count-bar')).toHaveCount(12)
+  await expect(page.getByRole('button', { name: 'Vandaag' })).toHaveCount(0)
+
+  // One button per day of the event.
+  const days = page.getByRole('group', { name: 'Periode' }).getByRole('button')
+  await expect(days).toHaveCount(3)
+  await days.nth(1).click()
+  await expect
+    .poll(() => catalogAdmin.reportQueries.at(-1))
+    .toEqual({ from: new Date(2026, 8, 12).toISOString(), to: new Date(2026, 8, 13).toISOString(), event: 'ev1' })
+  await expect(days.nth(1)).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByTestId('chart-count-bar')).toHaveCount(4) // quarters, 14:00 – 15:00
+
+  // Back to all events: the usual periods again.
+  await page.getByTestId('report-event').click()
+  await page.getByRole('option', { name: 'Alle evenementen' }).click()
+  await expect(page.getByRole('button', { name: 'Vandaag' })).toBeVisible()
 })

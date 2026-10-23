@@ -383,7 +383,9 @@ export interface OrderMode {
 export interface Event {
   id: string
   name: string
+  // The first and the last day (included; the same for a one-day event).
   date: string
+  endDate?: string
   createdAt: string
   // code: what goes in the link and QR (readable: <name>-<4 characters>); linkName: its name part.
   selfOrder?: { enabled: boolean; code: string | null; linkName?: string | null }
@@ -406,7 +408,7 @@ export async function deleteEvent(orgId: string, eventId: string): Promise<void>
 export function updateEvent(
   orgId: string,
   eventId: string,
-  fields: { name?: string; date?: string; selfOrderEnabled?: boolean; linkName?: string; kassaModes?: boolean; brandPrimary?: string | null; brandAccent?: string | null }
+  fields: { name?: string; date?: string; endDate?: string | null; selfOrderEnabled?: boolean; linkName?: string; kassaModes?: boolean; brandPrimary?: string | null; brandAccent?: string | null }
 ): Promise<Event> {
   return request(`/${encodeURIComponent(orgId)}/events/${encodeURIComponent(eventId)}`, { method: 'PATCH', body: JSON.stringify(fields) })
 }
@@ -437,7 +439,7 @@ export function listEvents(orgId: string): Promise<Event[]> {
   return request(`/${encodeURIComponent(orgId)}/events`)
 }
 
-export function createEvent(orgId: string, fields: { name: string; date: string }): Promise<Event> {
+export function createEvent(orgId: string, fields: { name: string; date: string; endDate?: string | null }): Promise<Event> {
   return request(`/${encodeURIComponent(orgId)}/events`, { method: 'POST', body: JSON.stringify(fields) })
 }
 

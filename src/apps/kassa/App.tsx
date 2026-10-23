@@ -32,7 +32,9 @@ import {
   readAmountCents,
   reconcileDrafts,
   tabBreakdownLines,
+  spreadUnits,
   type CurrentPayment,
+  type MergedLine,
   type ManualStatus,
   type PaymentMethod,
   type PickerItem,
@@ -534,12 +536,15 @@ export default function App() {
     })
   }
 
-  function confirmVoid(line: TabLine, reason: string, quantity: number) {
+  // A ticket row can stand for the same item from several rounds: the
+  // units go off its latest rounds first, one void per line.
+  function confirmVoid(line: TabLine | MergedLine, reason: string, quantity: number) {
     setVoidTarget(null)
     if (!shownTab) return
     const tabId = shownTab.id
+    const parts = 'parts' in line ? spreadUnits(line.parts, quantity, true) : [{ line, quantity }]
     runTabAction(async (org) => {
-      setActiveTab(await tabsApi.voidLine(org, tabId, line.id, reason, quantity))
+      for (const part of parts) setActiveTab(await tabsApi.voidLine(org, tabId, part.line.id, reason, part.quantity))
       refreshTabs()
     })
   }

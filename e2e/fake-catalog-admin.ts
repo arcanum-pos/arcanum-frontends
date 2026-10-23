@@ -243,6 +243,13 @@ export class FakeCatalogAdmin {
     }
     if (path.startsWith('/api/bancontact/sumup/readers')) return this.sumupRoute(method, path, body)
     if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'GET') return ok(this.events)
+    if (/^\/api\/organizations\/[^/]+\/events$/.test(path) && method === 'POST') {
+      if (body.endDate && body.endDate < body.date) return { status: 400, body: { error: 'De laatste dag kan niet voor de eerste dag liggen', code: 'event_end_before_start' } }
+      const e = { id: this.id('ev'), name: body.name, date: body.date, endDate: body.endDate || body.date, createdAt: new Date().toISOString(), selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 }
+      this.events.unshift(e)
+      this.eventCalls.push({ path, body })
+      return { status: 201, body: e }
+    }
     // Deleting one: only while nothing was sold for it (usedEvents: has tabs or sales).
     const oneEvent = path.match(/^\/api\/organizations\/[^/]+\/events\/([^/]+)$/)
     if (oneEvent && method === 'DELETE') {
@@ -296,6 +303,12 @@ export class FakeCatalogAdmin {
           else e.modes.push({ id: this.id('mode'), name: 'Ter plaatse', catalogId: menu.id, selfOrder: true, payAtCounter: true, payBancontact: false, tabs: false })
         }
         if (body.selfOrderEnabled !== undefined) e.selfOrder.enabled = body.selfOrderEnabled
+        // Its name and days, like the backend (endDate null: one day).
+        const date = body.date ?? e.date
+        const endDate = body.endDate === undefined ? (e.endDate ?? e.date) : (body.endDate ?? date)
+        if (endDate < date) return { status: 400, body: { error: 'De laatste dag kan niet voor de eerste dag liggen', code: 'event_end_before_start' } }
+        if (body.name !== undefined) e.name = body.name
+        Object.assign(e, { date, endDate })
         if (body.kassaModes !== undefined) e.kassaModes = body.kassaModes
         e.brand ??= { primary: null, accent: null }
         if (body.brandPrimary !== undefined) e.brand.primary = body.brandPrimary

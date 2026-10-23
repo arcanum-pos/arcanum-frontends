@@ -207,6 +207,7 @@ export function EventSettingsDialog({
               </div>
 
               <div className="grid content-start divide-y">
+                <NameAndDays m={m} event={current} busy={busy} onSave={(fields) => run(() => updateEvent(orgId, current.id, fields))} />
                 <Section
                   title={m.selfOrderSwitch}
                   // Switching it on makes a mode ready when there's none (the backend); only
@@ -460,6 +461,44 @@ function ModeCard({
 }
 
 // The name part of the readable link (/bestel/<name>-<4 characters>).
+// The event's name and its days (the last one empty: one day).
+function NameAndDays({ m, event, busy, onSave }: { m: Messages; event: Event; busy: boolean; onSave: (fields: { name: string; date: string; endDate: string | null }) => void }) {
+  const initial = { name: event.name, date: event.date, endDate: event.endDate && event.endDate !== event.date ? event.endDate : '' }
+  const [form, setForm] = useState(initial)
+  useEffect(() => setForm({ name: event.name, date: event.date, endDate: event.endDate && event.endDate !== event.date ? event.endDate : '' }), [event.name, event.date, event.endDate])
+  const changed = form.name.trim() !== initial.name || form.date !== initial.date || form.endDate !== initial.endDate
+  const valid = !!form.name.trim() && !!form.date && (!form.endDate || form.endDate >= form.date)
+  return (
+    <Section title={m.datesTitle} hint={m.datesHint} testId="event-days">
+      <form
+        className="grid gap-3"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (changed && valid) onSave({ name: form.name.trim(), date: form.date, endDate: form.endDate || null })
+        }}
+      >
+        <Input aria-label={m.datesTitle} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={80} autoComplete="off" />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor="event-first-day" className="text-sm font-normal">{m.firstDay}</Label>
+            <Input id="event-first-day" type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="event-last-day" className="text-sm font-normal">{m.lastDay}</Label>
+            <Input id="event-last-day" type="date" value={form.endDate} min={form.date || undefined} onChange={(e) => setForm({ ...form, endDate: e.target.value })} />
+          </div>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">{m.lastDayHint}</p>
+          <Button type="submit" variant="outline" disabled={busy || !changed || !valid}>
+            {m.datesSave}
+          </Button>
+        </div>
+      </form>
+    </Section>
+  )
+}
+
 function LinkName({ m, current, busy, onSave }: { m: Messages; current: string; busy: boolean; onSave: (name: string) => void }) {
   const [name, setName] = useState(current)
   useEffect(() => setName(current), [current])

@@ -7,11 +7,13 @@ import {
   clampTip,
   draftTotalCents,
   FOOI_CODE,
+  mergeTabLines,
   paymentMethodsFor,
   payableUnits,
   readAmountCents,
   roundUpTipCents,
   selectionCents,
+  spreadUnits,
   type ItemSelection,
   type PaymentMethod,
 } from './lib'
@@ -85,6 +87,8 @@ export function TabPanel({
 }) {
   const m = useMessages(KASSA_MESSAGES)
   const submitted = (tab?.lines || []).filter((l) => !l.voidsLineId)
+  // The same item from several rounds: one row (lib.ts mergeTabLines).
+  const rows = mergeTabLines(submitted)
   const draftTotal = draftTotalCents(draft)
   const toPay = (tab?.outstandingCents || 0) + draftTotal
   // Split into equal parts: this payment is the next part — what's open ÷
@@ -216,17 +220,23 @@ export function TabPanel({
             </>
           )}
           {byItems &&
-            submitted.map((line) => (
+            rows.map((line) => (
               <ItemRow
                 key={line.id}
                 line={line}
-                selected={Math.min(itemSelection![line.id] || 0, payableUnits(line))}
+                selected={line.parts.reduce((n, part) => n + Math.min(itemSelection![part.id] || 0, payableUnits(part)), 0)}
                 disabled={locked}
-                onChange={(n) => onItemSelection({ ...itemSelection!, [line.id]: n })}
+                onChange={(n) =>
+                  onItemSelection({
+                    ...itemSelection!,
+                    ...Object.fromEntries(line.parts.map((part) => [part.id, 0])),
+                    ...Object.fromEntries(spreadUnits(line.parts, n).map((x) => [x.line.id, x.quantity])),
+                  })
+                }
               />
             ))}
 
-          {!byItems && submitted.map((line) => {
+          {!byItems && rows.map((line) => {
             const qty = netQuantity(line)
             return (
               <div key={line.id} className="flex items-center gap-2.5 border-b border-border/60 px-3.5 py-2">

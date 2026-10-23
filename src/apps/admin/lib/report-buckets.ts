@@ -1,7 +1,8 @@
 // Rapporten's charts: the payments of the period (already narrowed to one
 // event, when chosen) per time slot and per payment method — how many, and
-// how much. A single day in slots of 15 minutes, trimmed to the hours that
-// had payments; a week, a month or any longer period per (local) day.
+// how much. A single day in slots of 15 minutes, two or three days (an
+// event's weekend) per hour — both trimmed to the hours that had payments;
+// a week, a month or any longer period per (local) day.
 
 export interface ChartPayment {
   completedAt: string
@@ -15,14 +16,17 @@ export interface Bucket {
   byMethod: Record<string, { count: number; amountCents: number }>
 }
 
-export type Step = 'quarter' | 'day'
+export type Step = 'quarter' | 'hour' | 'day'
 
 const QUARTER = 15 * 60_000
+const HOUR = 60 * 60_000
 const DAY_MS = 86_400_000
 
-// A day (or a little more, a clock change) in quarters; anything longer per day.
+// A day in quarters, up to three days per hour, anything longer per day
+// (an hour's leeway for a clock change).
 export function stepFor(from: Date, to: Date): Step {
-  return to.getTime() - from.getTime() <= DAY_MS + 3_600_000 ? 'quarter' : 'day'
+  const span = to.getTime() - from.getTime()
+  return span <= DAY_MS + HOUR ? 'quarter' : span <= 3 * DAY_MS + HOUR ? 'hour' : 'day'
 }
 
 function startOfDay(d: Date): Date {
@@ -49,7 +53,8 @@ export function bucketize(payments: ChartPayment[], from: Date, to: Date, step =
     const last = new Date(Math.max(...times))
     const start = new Date(first.getFullYear(), first.getMonth(), first.getDate(), first.getHours())
     const end = new Date(last.getFullYear(), last.getMonth(), last.getDate(), last.getHours() + 1)
-    for (let t = start.getTime(); t < end.getTime(); t += QUARTER) buckets.push({ start: new Date(t), end: new Date(t + QUARTER), byMethod: {} })
+    const size = step === 'quarter' ? QUARTER : HOUR
+    for (let t = start.getTime(); t < end.getTime(); t += size) buckets.push({ start: new Date(t), end: new Date(t + size), byMethod: {} })
   }
   for (const p of inRange) {
     const t = Date.parse(p.completedAt)

@@ -52,14 +52,27 @@ export function PaymentsChart({
   const ticks = niceTicks(Math.max(0, ...buckets.map(total)))
   const top = ticks[ticks.length - 1]
   const plotW = width - PAD.left - PAD.right
-  const plotH = HEIGHT - PAD.top - PAD.bottom
+  // Per hour the axis has a second line (the day).
+  const height = HEIGHT + (step === 'hour' ? 14 : 0)
+  const plotH = height - PAD.top - PAD.bottom
+  const plotBottom = PAD.top + plotH
   const slot = plotW / Math.max(1, buckets.length)
   const barW = Math.max(2, Math.min(36, slot * 0.72))
   const y = (v: number) => PAD.top + plotH - (v / top) * plotH
-  const timeLabel = (d: Date) =>
-    step === 'quarter' ? d.toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' }) : d.toLocaleDateString(intlLocale, { day: 'numeric', month: 'short' })
   // A label every so many slots, so they never run into each other.
-  const every = Math.max(1, Math.ceil(56 / slot))
+  const every = Math.max(1, Math.ceil(48 / slot))
+  const clock = (d: Date) => d.toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' })
+  const day = (d: Date) => d.toLocaleDateString(intlLocale, { weekday: 'short', day: 'numeric', month: 'short' })
+  // Per hour (several days): the day where a new one starts, else the hour.
+  const timeLabel = (d: Date) =>
+    step === 'quarter' ? clock(d) : step === 'hour' ? `${day(d)} ${clock(d)}` : d.toLocaleDateString(intlLocale, { day: 'numeric', month: 'short' })
+  // On the axis per hour: the hour, and under the first one of each day its day.
+  const axisLabels = buckets.flatMap((b, i) => (i % every === 0 ? [{ i, b }] : [])).map(({ i, b }, k, all) => ({
+    i,
+    text: step === 'hour' ? clock(b.start) : timeLabel(b.start),
+    under: step === 'hour' && (k === 0 || all[k - 1].b.start.toDateString() !== b.start.toDateString()) ? day(b.start) : null,
+  }))
+
   const shown = hover !== null ? buckets[hover] : null
 
   return (
@@ -80,7 +93,7 @@ export function PaymentsChart({
         </span>
       </figcaption>
       <div ref={wrap} className="relative w-full">
-        <svg width={width} height={HEIGHT} role="img" aria-label={title} className="block overflow-visible" onMouseLeave={() => setHover(null)}>
+        <svg width={width} height={height} role="img" aria-label={title} className="block overflow-visible" onMouseLeave={() => setHover(null)}>
           {/* Recessive grid and its values. */}
           {ticks.map((t) => (
             <g key={t}>
@@ -132,13 +145,16 @@ export function PaymentsChart({
             )
           })}
           <line x1={PAD.left} x2={width - PAD.right} y1={y(0)} y2={y(0)} className="stroke-foreground/30" strokeWidth={1} />
-          {buckets.map((b, i) =>
-            i % every === 0 ? (
-              <text key={i} x={PAD.left + i * slot + slot / 2} y={HEIGHT - 8} textAnchor="middle" className="fill-muted-foreground text-[11px]">
-                {timeLabel(b.start)}
-              </text>
-            ) : null
-          )}
+          {axisLabels.map(({ i, text, under }) => (
+            <text key={i} x={PAD.left + i * slot + slot / 2} y={plotBottom + 18} textAnchor="middle" className="fill-muted-foreground text-[11px]">
+              {text}
+              {under && (
+                <tspan x={PAD.left + i * slot + slot / 2} dy="1.3em" className="font-medium">
+                  {under}
+                </tspan>
+              )}
+            </text>
+          ))}
         </svg>
         {shown && hover !== null && total(shown) > 0 && (
           <div
@@ -149,7 +165,7 @@ export function PaymentsChart({
           >
             <p className="mb-1 font-medium">
               {timeLabel(shown.start)}
-              {step === 'quarter' && ` – ${timeLabel(shown.end)}`}
+              {step !== 'day' && ` – ${clock(shown.end)}`}
             </p>
             {methods
               .filter((m) => shown.byMethod[m]?.[measure])

@@ -25,7 +25,8 @@ test('the selected rekening follows along: a line added elsewhere shows, a close
 
   backend.addLines(tab.id, [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 3 }])
   push({ event: 'tabs_changed', tab_id: tab.id })
-  await expect(panel(kassa).getByText('3 × Bon')).toBeVisible()
+  // The same item from another round: one row on the ticket.
+  await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
 
   const charge = backend.startCharge(tab.id, 'cash')
   backend.resolveCharge(charge.id, true)

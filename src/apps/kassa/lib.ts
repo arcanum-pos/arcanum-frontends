@@ -323,3 +323,44 @@ export function selectionCents(tab: TabDetail, selection: ItemSelection): number
 export function selectAllPayable(tab: TabDetail): ItemSelection {
   return Object.fromEntries(tab.lines.filter((l) => payableUnits(l) > 0).map((l) => [l.id, payableUnits(l)]))
 }
+
+// One row on the ticket per item, however many rounds it came in (the same
+// product at the same price): what the customer sees on the display too. A
+// void or an item payment on the row is spread over its rounds' lines
+// (spreadUnits) — the backend keeps them apart.
+export interface MergedLine extends TabLine {
+  parts: TabLine[]
+}
+
+export function mergeTabLines(lines: TabLine[]): MergedLine[] {
+  const groups = new Map<string, MergedLine>()
+  for (const line of lines) {
+    if (line.voidsLineId) continue
+    const key = `${line.variantId ?? line.itemCode ?? ''}|${line.name}|${line.unitPriceCents}`
+    const group = groups.get(key)
+    if (!group) {
+      groups.set(key, { ...line, paidQuantity: line.paidQuantity || 0, parts: [line] })
+      continue
+    }
+    group.quantity += line.quantity
+    group.voidedQuantity += line.voidedQuantity
+    group.paidQuantity = (group.paidQuantity || 0) + (line.paidQuantity || 0)
+    group.parts.push(line)
+  }
+  return [...groups.values()]
+}
+
+// n units over a row's lines, each at most what it still has open: a void
+// takes the latest rounds first, a payment the earliest.
+export function spreadUnits(parts: TabLine[], n: number, latestFirst = false): { line: TabLine; quantity: number }[] {
+  const order = latestFirst ? [...parts].reverse() : parts
+  const out: { line: TabLine; quantity: number }[] = []
+  let left = n
+  for (const line of order) {
+    const quantity = Math.min(left, payableUnits(line))
+    if (quantity > 0) out.push({ line, quantity })
+    left -= quantity
+    if (left <= 0) break
+  }
+  return out
+}

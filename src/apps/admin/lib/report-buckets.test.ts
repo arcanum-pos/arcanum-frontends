@@ -5,8 +5,11 @@ const at = (y: number, mo: number, d: number, h = 0, mi = 0) => new Date(y, mo -
 const pay = (date: Date, method: string, amountCents: number) => ({ completedAt: date.toISOString(), method, amountCents })
 
 describe('stepFor', () => {
-  it('a day in quarters, longer per day', () => {
+  it('a day in quarters, two or three days per hour, longer per day', () => {
     expect(stepFor(at(2026, 10, 24), at(2026, 10, 25))).toBe('quarter')
+    expect(stepFor(at(2026, 9, 12), at(2026, 9, 14))).toBe('hour')
+    expect(stepFor(at(2026, 9, 11), at(2026, 9, 14))).toBe('hour')
+    expect(stepFor(at(2026, 9, 10), at(2026, 9, 14))).toBe('day')
     expect(stepFor(at(2026, 10, 20), at(2026, 10, 27))).toBe('day')
   })
 })
@@ -19,6 +22,13 @@ describe('bucketize', () => {
     expect(buckets[0].byMethod).toEqual({ cash: { count: 1, amountCents: 500 }, bancontact: { count: 1, amountCents: 1200 } })
     expect(buckets[6].byMethod).toEqual({ cash: { count: 1, amountCents: 300 } })
     expect(buckets[7].byMethod).toEqual({})
+  })
+  it('two days: hours from the first payment\'s to the end of the last one\'s', () => {
+    const buckets = bucketize([pay(at(2026, 9, 12, 14, 30), 'cash', 500), pay(at(2026, 9, 13, 1, 10), 'sumup', 700)], at(2026, 9, 12), at(2026, 9, 14))
+    expect(buckets).toHaveLength(12) // 14:00 – 02:00
+    expect(buckets[0].byMethod).toEqual({ cash: { count: 1, amountCents: 500 } })
+    expect(buckets[11].start).toEqual(at(2026, 9, 13, 1))
+    expect(buckets[11].byMethod).toEqual({ sumup: { count: 1, amountCents: 700 } })
   })
   it('a day without payments: nothing to draw', () => {
     expect(bucketize([], at(2026, 10, 24), at(2026, 10, 25))).toEqual([])

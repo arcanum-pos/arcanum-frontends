@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { cn } from 'cn'
 import { QRCodeSVG } from 'qrcode.react'
-import { customerBill, readCustomerOrder, type CustomerOrder } from '@/shared/customer-order'
+import { customerBill, mergeCustomerLines, readCustomerOrder, type CustomerOrder } from '@/shared/customer-order'
 import { formatEuro } from '@/shared/format'
 import { useLocale, useMessages } from '@/shared/i18n'
 import { LanguagePicker } from '@/shared/i18n/language-picker'
@@ -347,7 +347,7 @@ function WaitingView({ payment, eventName, failed, countdownText, branded }: { p
   const bill = customerBill(payment.order, payment.amountCents, payment.tipCents)
   // Per item: the list is what this payment covers, not the whole rekening.
   const paying = payment.order?.paying ?? null
-  const shownLines = paying ? paying.map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents })) : bill.lines
+  const shownLines = paying ? mergeCustomerLines(paying).map((l) => ({ name: l.name, quantity: l.quantity, totalCents: l.quantity * l.unitPriceCents })) : bill.lines
   const partial = !!payment.part || !!paying
   const method = m.methods[payment.method] || payment.method
   const showQr = payment.method === 'bancontact' && !!payment.qrCodeUrl && !failed
