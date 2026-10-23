@@ -234,16 +234,8 @@ export default function App() {
     <div className="relative flex min-h-svh flex-col bg-background text-foreground">
       {!payment && entering && <EnteringView order={entering} eventName={eventName} />}
 
-      {!payment && !entering && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
-          {eventName && (
-            <h1 className="text-[38px] font-semibold tracking-tight" data-testid="cfd-event">
-              {eventName}
-            </h1>
-          )}
-          <p className="max-w-md text-xl text-muted-foreground">{m.idle}</p>
-        </div>
-      )}
+      {/* Rust: the same screen as while the order is entered — no lines yet, € 0,00. */}
+      {!payment && !entering && <EnteringView order={null} eventName={eventName} />}
 
       {payment && phase !== 'paid' && <WaitingView payment={payment} eventName={eventName} failed={phase === 'failed'} countdownText={countdownText} />}
 
@@ -381,11 +373,14 @@ function WaitingView({ payment, eventName, failed, countdownText }: { payment: P
 
 // While the cashier enters the order: the lines as they come, and the
 // total — the customer checks it (and says so at the kassa) before paying.
-function EnteringView({ order, eventName }: { order: CustomerOrder; eventName: string | null }) {
+// Without an order (rust): the same screen, empty, at € 0,00, ready for
+// the next one — so the display doesn't change shape when an order starts.
+function EnteringView({ order, eventName }: { order: CustomerOrder | null; eventName: string | null }) {
   const m = useMessages(DISPLAY_MESSAGES)
   const bill = customerBill(order, 0)
+  const event = order?.eventName || eventName
   return (
-    <div className="flex min-h-svh flex-1 flex-col bg-background md:flex-row" data-testid="cfd-entering">
+    <div className="flex min-h-svh flex-1 flex-col bg-background md:flex-row" data-testid={order ? 'cfd-entering' : 'cfd-idle'}>
       <section className="flex min-w-0 flex-col bg-background text-foreground md:flex-[1.25]" data-testid="cfd-order">
         <div className="border-b px-8 pt-7 pb-4">
           <p className="text-xs font-semibold tracking-[0.1em] text-muted-foreground uppercase">{m.yourOrder}</p>
@@ -409,14 +404,18 @@ function EnteringView({ order, eventName }: { order: CustomerOrder; eventName: s
       </section>
       <section className="flex flex-col gap-8 bg-neutral-950 px-8 pt-8 pb-20 text-neutral-50 md:max-w-[520px] md:min-w-[360px] md:flex-[0_0_38%] dark:bg-white dark:text-neutral-950" data-testid="cfd-total">
         <div>
-          {(order.eventName || eventName) && <p className="mb-6 truncate text-sm font-medium text-neutral-400 dark:text-neutral-500">{order.eventName || eventName}</p>}
+          {event && (
+            <p className="mb-6 truncate text-sm font-medium text-neutral-400 dark:text-neutral-500" data-testid="cfd-event">
+              {event}
+            </p>
+          )}
           <p className="text-xs font-semibold tracking-[0.1em] text-neutral-400 uppercase dark:text-neutral-500">{m.total}</p>
           <p className="mt-2 font-mono text-[56px] leading-none font-semibold tracking-tight tabular-nums" data-testid="cfd-entering-total">
             {formatEuro(bill.openCents)}
           </p>
           <p className="mt-3 text-[13.5px] text-neutral-400 dark:text-neutral-500">{m.items(bill.itemCount)}</p>
         </div>
-        <p className="flex flex-1 items-center justify-center text-center text-lg text-neutral-200 dark:text-neutral-800">{m.checkOrder}</p>
+        <p className="flex flex-1 items-center justify-center text-center text-lg text-neutral-200 dark:text-neutral-800">{order ? m.checkOrder : m.idle}</p>
       </section>
     </div>
   )

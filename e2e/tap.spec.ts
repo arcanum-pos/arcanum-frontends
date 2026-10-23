@@ -8,6 +8,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test as base, expect, type Page, type WebSocketRoute } from '@playwright/test'
 import { guardCsp } from './csp-guard'
+import { overflowingButtons } from './button-fit'
 
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.7 Mobile/15E148 Safari/604.1'
@@ -104,6 +105,7 @@ const paired = (page: Page) =>
 
 async function noSidewaysScroll(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'horizontal overflow').toBeLessThanOrEqual(0)
+  expect(await overflowingButtons(page), 'button text running over').toEqual([])
 }
 
 test.describe('pairing', () => {

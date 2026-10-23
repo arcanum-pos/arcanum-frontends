@@ -31,6 +31,28 @@ export function addToDraft(draft: DraftLine[], item: PickerItem, quantity: numbe
   return next
 }
 
+// One variant's quantity on a draft changed (0 or less: gone).
+export function changeQuantity(draft: DraftLine[], variantId: string, change: (quantity: number) => number): DraftLine[] {
+  return draft.flatMap((l) => {
+    if (l.variantId !== variantId) return [l]
+    const quantity = change(l.quantity)
+    return quantity > 0 ? [{ ...l, quantity }] : []
+  })
+}
+
+// What's left of a draft once `sent` went to the server: taps made while it
+// was on its way stay (for the next round) — never the sent units twice.
+export function subtractDraft(draft: DraftLine[], sent: DraftLine[]): DraftLine[] {
+  const left = new Map(sent.map((l) => [l.variantId, l.quantity]))
+  return draft
+    .map((l) => {
+      const gone = Math.min(left.get(l.variantId) ?? 0, l.quantity)
+      left.set(l.variantId, (left.get(l.variantId) ?? 0) - gone)
+      return { ...l, quantity: l.quantity - gone }
+    })
+    .filter((l) => l.quantity > 0)
+}
+
 // Lines every draft up with a (re)loaded catalog: catalog lines take the
 // catalog's current name/price (display only — the server prices them
 // anyway). With `dropMissing` (the kassa switched to a different catalog),

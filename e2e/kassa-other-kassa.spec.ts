@@ -35,14 +35,16 @@ test('a payment running on another kassa locks the tab here', async ({ kassa, ba
 test('a tab closed on another kassa: adding to it is refused and the kassa falls back to Toog', async ({ kassa, backend }) => {
   const tab = backend.openTab('Jan', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 5 }])
   await kassa.reload()
+  await kassa.clock.install()
   await kassa.getByRole('button', { name: /^#1 Jan/ }).click()
   await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
 
   const charge = backend.startCharge(tab.id)
   backend.resolveCharge(charge.id, true)
 
+  // The round goes by itself after a pause — and is refused.
   await kassa.getByRole('button', { name: '10 × Bon', exact: true }).click()
-  await kassa.getByRole('button', { name: 'Bestelling toevoegen aan rekening' }).click()
+  await kassa.clock.runFor(31_000)
 
   await expect(kassa.getByText('Deze rekening is intussen afgesloten, mogelijk op een andere kassa.')).toBeVisible()
   await expect(kassa.getByText('Toog — direct afrekenen')).toBeVisible()

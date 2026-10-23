@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
 import {
   addToDraft,
+  subtractDraft,
+  changeQuantity,
   centsToInput,
   clampTip,
   customerViewOrder,
@@ -80,6 +82,27 @@ describe('entryToPickerItem', () => {
     // The code becomes order_lines.item_code — for the seeded legacy items
     // the transactions.items key every report still reads.
     expect(entryToPickerItem(fietsLid)).toEqual({ itemCode: 'fietstochtMember', name: 'Fietstocht (lid)', unitPriceCents: 500, variantId: 'v-fiets-lid' })
+  })
+})
+
+describe('changeQuantity', () => {
+  const line = (variantId: string, quantity: number) => ({ itemCode: null, name: variantId, unitPriceCents: 100, quantity, variantId })
+  it('changes one variant, drops it at zero, leaves the rest', () => {
+    expect(changeQuantity([line('a', 2), line('b', 1)], 'a', (q) => q + 1)).toEqual([line('a', 3), line('b', 1)])
+    expect(changeQuantity([line('a', 2), line('b', 1)], 'a', (q) => q - 5)).toEqual([line('b', 1)])
+    expect(changeQuantity([line('b', 1)], 'x', () => 4)).toEqual([line('b', 1)])
+  })
+})
+
+describe('subtractDraft', () => {
+  const line = (variantId: string, quantity: number) => ({ itemCode: null, name: variantId, unitPriceCents: 100, quantity, variantId })
+  it('removes what was sent, keeps taps made meanwhile', () => {
+    expect(subtractDraft([line('a', 3), line('b', 1)], [line('a', 2), line('b', 1)])).toEqual([line('a', 1)])
+    expect(subtractDraft([line('a', 1), line('c', 2)], [line('a', 1)])).toEqual([line('c', 2)])
+  })
+  it('never goes below nothing (lowered meanwhile)', () => {
+    expect(subtractDraft([line('a', 1)], [line('a', 3)])).toEqual([])
+    expect(subtractDraft([], [line('a', 1)])).toEqual([])
   })
 })
 

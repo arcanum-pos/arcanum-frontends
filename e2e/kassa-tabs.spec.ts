@@ -31,9 +31,14 @@ test('named tab: open, add an order, void part of a line with a reason', async (
 
   await kassa.getByRole('button', button(/^Wandeltocht \(niet-lid\)/)).click()
   await kassa.getByRole('button', button(/^Wandeltocht \(niet-lid\)/)).click()
-  await expect(panel(kassa).getByText('Nieuw — nog niet toegevoegd')).toBeVisible()
-  await kassa.getByRole('button', button('Bestelling toevoegen aan rekening')).click()
+  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toBeVisible()
+  await expect(kassa.getByTestId('order-target')).toContainText('Bestellen voor#1 Tafel 4')
+  // No add button: leaving the tab sends the round, as one order.
+  await expect(kassa.getByRole('button', { name: /toevoegen aan rekening/ })).toHaveCount(0)
+  await kassa.getByRole('button', button(/^Toog/)).click()
+  await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
   await expect(panel(kassa).getByText('2 × Wandeltocht')).toBeVisible()
+  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toHaveCount(0)
 
   await panel(kassa).getByRole('button', button('Annuleren')).click()
   const dialog = kassa.getByRole('dialog')
@@ -63,22 +68,43 @@ test('park a Toog draft on a new named tab', async ({ kassa, backend }) => {
   await expect(panel(kassa).getByText('Nog niets aangeslagen')).toBeVisible()
 })
 
-test('drafts are kept per tab while switching, and marked in the strip', async ({ kassa, backend }) => {
-  backend.openTab('Tafel 4', [{ itemCode: 'wandeltocht', name: 'Wandeltocht', unitPriceCents: 600, quantity: 1 }])
+test('switching to another tab sends the round of the one left, as one order', async ({ kassa, backend }) => {
+  const tafel4 = backend.openTab('Tafel 4', [{ itemCode: 'wandeltocht', name: 'Wandeltocht', unitPriceCents: 600, quantity: 1 }])
   backend.openTab('Jan', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 5 }])
   await kassa.reload()
 
   await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
   await expect(panel(kassa).getByText('1 × Wandeltocht')).toBeVisible()
   await kassa.getByRole('button', button('15 × Bon')).click()
+  await expect(kassa.getByRole('button', button(/^#1 Tafel 4 •/))).toBeVisible()
 
   await kassa.getByRole('button', button(/^#2 Jan/)).click()
+  await expect(kassa.getByTestId('order-target')).toContainText('#2 Jan')
   await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
-  await expect(panel(kassa).getByText('Nieuw — nog niet toegevoegd')).toHaveCount(0)
+  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toHaveCount(0)
+  await expect.poll(() => backend.tabLines(tafel4.id).length).toBe(2)
 
-  await kassa.getByRole('button', button(/^#1 Tafel 4 •/)).click()
-  await expect(panel(kassa).getByText('Nieuw — nog niet toegevoegd')).toBeVisible()
+  await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
+  await expect(panel(kassa).getByText('15 × Bon')).toBeVisible()
+  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toHaveCount(0)
   await expect(kassa.getByRole('button', button('Afrekenen € 21,00'))).toBeVisible()
+})
+
+test('a round left on screen is sent after a pause without taps', async ({ kassa, backend }) => {
+  const tab = backend.openTab('Tafel 4')
+  await kassa.clock.install()
+  await kassa.reload()
+  await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
+  await kassa.getByRole('button', button('5 × Bon')).click()
+  await kassa.clock.runFor(20_000)
+  // Another tap restarts the wait.
+  await kassa.getByRole('button', button('10 × Bon')).click()
+  await kassa.clock.runFor(20_000)
+  expect(backend.tabLines(tab.id)).toHaveLength(0)
+  await kassa.clock.runFor(11_000)
+  await expect(panel(kassa).getByText('15 × Bon')).toBeVisible()
+  expect(backend.tabLines(tab.id)).toHaveLength(1)
+  await expect(panel(kassa).getByText('Nieuw — wordt zo doorgestuurd')).toHaveCount(0)
 })
 
 test('paying a tab submits the pending draft first, then closes the tab', async ({ kassa, backend }) => {

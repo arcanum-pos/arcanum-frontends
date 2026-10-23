@@ -4,6 +4,7 @@
 // screen's own second window (station.html?view=pickup).
 import { test as base, expect, type BrowserContext, type WebSocketRoute } from '@playwright/test'
 import { guardCsp } from './csp-guard'
+import { overflowingButtons } from './button-fit'
 
 interface Order {
   number: number
@@ -74,6 +75,7 @@ test('a device paired as pickup screen: the numbers in three columns, nothing el
   await expect(page.getByRole('button')).toHaveCount(1)
   await expect(page.getByTestId('pickup-sound')).toHaveAttribute('data-state', 'off')
   await expect(page.getByRole('switch')).toHaveCount(0)
+  expect(await overflowingButtons(page), 'button text running over').toEqual([])
   expect(fake.ticketCalls).toBe(0)
 })
 

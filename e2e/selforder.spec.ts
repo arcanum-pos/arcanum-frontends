@@ -7,6 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test as base, expect, type Page, type WebSocketRoute } from '@playwright/test'
 import { guardCsp } from './csp-guard'
+import { overflowingButtons } from './button-fit'
 
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 const CODE = 'abcdefghijklmnopqrstuvwxyz012345'
@@ -180,6 +181,7 @@ const test = base.extend<{ fake: FakeSelfOrder; hub: { sockets: WebSocketRoute[]
 
 async function noSidewaysScroll(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 'horizontal overflow').toBeLessThanOrEqual(0)
+  expect(await overflowingButtons(page), 'button text running over').toEqual([])
 }
 
 test('order on a phone: menu → cart → pay at the toog → your number, followed live until delivered', async ({ phone: page, fake, hub }) => {

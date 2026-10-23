@@ -23,7 +23,9 @@ import { netQuantity, type DraftLine, type TabDetail, type TabLine } from './tab
 // be done with it. Styled after design_files/ (Kassa + CFD voorstel).
 //
 // Submitted lines are read-only — the only correction is a void with a
-// reason. Draft lines (not yet sent) can still be freely changed.
+// reason. Draft lines (the round being tapped, not yet sent) come first,
+// marked new, and can still be freely changed; on an open tab the kassa
+// sends them by itself (App.tsx commitDraft) — there's no add button.
 //
 // Fooi is entered here, at payment time: it's added to the charged amount
 // (tipCents) but isn't a line on the tab, so it stays out of revenue.
@@ -41,7 +43,6 @@ export function TabPanel({
   onDraftQuantity,
   onClearDraft,
   onVoid,
-  onSubmitOrder,
   onPay,
   onPark,
   onRename,
@@ -65,10 +66,9 @@ export function TabPanel({
   busy: boolean
   onPaymentMethodChange: (method: PaymentMethod) => void
   onTipInputChange: (value: string) => void
-  onDraftQuantity: (index: number, quantity: number) => void
+  onDraftQuantity: (variantId: string, quantity: number) => void
   onClearDraft: () => void
   onVoid: (line: TabLine) => void
-  onSubmitOrder: () => void
   onPay: () => void
   onPark: () => void
   onRename: () => void
@@ -104,6 +104,7 @@ export function TabPanel({
       <section className="flex flex-col overflow-hidden rounded-xl border bg-card">
         <div className="flex items-center gap-2 border-b px-3.5 py-3">
           <div className="min-w-0 flex-1">
+            <p className="text-[10.5px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{tab ? m.onTheTab : m.draftQuick}</p>
             <h2 className="truncate text-[15px] font-semibold tracking-tight">{title}</h2>
             <p className="mt-0.5 font-mono text-[11.5px] text-muted-foreground">{subtitle}</p>
             {tab?.contact && (
@@ -158,7 +159,8 @@ export function TabPanel({
           </div>
         )}
 
-        <div className="max-h-[340px] overflow-y-auto">
+        {/* As high as the screen allows, with the payment and Afrekenen still in view. */}
+        <div className="max-h-[max(9rem,calc(100svh-35rem))] overflow-y-auto lg:max-h-[max(9rem,calc(100svh-37rem))]">
           {submitted.length === 0 && draft.length === 0 && (
             <p className="px-3.5 py-8 text-center text-[13px] text-muted-foreground">
               {m.nothingYet}
@@ -167,6 +169,52 @@ export function TabPanel({
             </p>
           )}
 
+          {draft.length > 0 && (
+            <>
+              <div className="flex items-center justify-between gap-2 bg-muted/60 px-3.5 py-1.5">
+                <p className="text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{tab ? m.draftOnTab : m.draftQuick}</p>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  className="text-foreground/70 hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                  disabled={busy}
+                  onClick={onClearDraft}
+                >
+                  {m.clear}
+                </Button>
+              </div>
+              {draft.map((line) => (
+                <div key={line.variantId} className="flex items-center gap-2.5 border-b border-l-[3px] border-border/60 border-l-foreground bg-muted/30 py-2 pr-3.5 pl-[11px]" data-testid="draft-line">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-medium tracking-tight">{line.name}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground">{formatEuro(line.unitPriceCents)}</p>
+                  </div>
+                  <div className="flex h-8 items-center overflow-hidden rounded-lg border">
+                    <button
+                      type="button"
+                      aria-label={m.less(line.name)}
+                      disabled={busy}
+                      onClick={() => onDraftQuantity(line.variantId, line.quantity - 1)}
+                      className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-50"
+                    >
+                      −
+                    </button>
+                    <span className="w-[30px] text-center font-mono text-[13px] font-semibold tabular-nums">{line.quantity}</span>
+                    <button
+                      type="button"
+                      aria-label={m.more(line.name)}
+                      disabled={busy}
+                      onClick={() => onDraftQuantity(line.variantId, line.quantity + 1)}
+                      className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-50"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <span className="w-[72px] text-right font-mono text-[13.5px] font-semibold tabular-nums">{formatEuro(line.unitPriceCents * line.quantity)}</span>
+                </div>
+              ))}
+            </>
+          )}
           {byItems &&
             submitted.map((line) => (
               <ItemRow
@@ -200,52 +248,6 @@ export function TabPanel({
             )
           })}
 
-          {draft.length > 0 && (
-            <>
-              <div className="flex items-center justify-between bg-muted/40 px-3.5 py-1.5">
-                <p className="text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{tab ? m.draftOnTab : m.draftQuick}</p>
-                <Button
-                  variant="outline"
-                  size="xs"
-                  className="text-foreground/70 hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                  disabled={busy}
-                  onClick={onClearDraft}
-                >
-                  {m.clear}
-                </Button>
-              </div>
-              {draft.map((line, i) => (
-                <div key={line.variantId} className="flex items-center gap-2.5 border-b border-border/60 px-3.5 py-2 last:border-b-0">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13.5px] font-medium tracking-tight">{line.name}</p>
-                    <p className="font-mono text-[11px] text-muted-foreground">{formatEuro(line.unitPriceCents)}</p>
-                  </div>
-                  <div className="flex h-8 items-center overflow-hidden rounded-lg border">
-                    <button
-                      type="button"
-                      aria-label={m.less(line.name)}
-                      disabled={busy}
-                      onClick={() => onDraftQuantity(i, line.quantity - 1)}
-                      className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-50"
-                    >
-                      −
-                    </button>
-                    <span className="w-[30px] text-center font-mono text-[13px] font-semibold tabular-nums">{line.quantity}</span>
-                    <button
-                      type="button"
-                      aria-label={m.more(line.name)}
-                      disabled={busy}
-                      onClick={() => onDraftQuantity(i, line.quantity + 1)}
-                      className="flex size-[30px] items-center justify-center text-[15px] text-foreground/70 hover:bg-muted disabled:opacity-50"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <span className="w-[72px] text-right font-mono text-[13.5px] font-semibold tabular-nums">{formatEuro(line.unitPriceCents * line.quantity)}</span>
-                </div>
-              ))}
-            </>
-          )}
         </div>
 
         {paidCents > 0 && (
@@ -328,7 +330,7 @@ export function TabPanel({
           type="button"
           disabled={locked || payCents < 1}
           onClick={onPay}
-          className="h-[52px] rounded-xl bg-foreground text-[15px] font-semibold tracking-tight text-background transition-colors outline-none hover:bg-foreground/85 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+          className="min-h-[52px] rounded-xl bg-foreground px-3 py-2 text-[15px] leading-tight font-semibold tracking-tight text-background transition-colors outline-none hover:bg-foreground/85 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
         >
           {byItems
             ? m.paySelection(payCents > 0 ? formatEuro(payCents + tipCents) : null)
@@ -341,11 +343,6 @@ export function TabPanel({
           {!split && !byItems && toPay >= 2 && (
             <SecondaryButton disabled={locked} onClick={onSplit}>
               {m.split}
-            </SecondaryButton>
-          )}
-          {tab && draft.length > 0 && (
-            <SecondaryButton disabled={locked} onClick={onSubmitOrder}>
-              {m.addOrder}
             </SecondaryButton>
           )}
           {!tab && (
@@ -376,7 +373,7 @@ function TipButton({ disabled, onClick, children }: { disabled: boolean; onClick
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="h-9 rounded-lg border bg-card font-mono text-[12.5px] font-medium transition-colors outline-none hover:border-foreground hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+      className="min-h-9 min-w-0 rounded-lg border bg-card px-1 py-1 font-mono text-[12.5px] leading-tight font-medium [overflow-wrap:anywhere] transition-colors outline-none hover:border-foreground hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
     >
       {children}
     </button>
@@ -389,7 +386,7 @@ function SecondaryButton({ disabled, onClick, children }: { disabled: boolean; o
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="h-[38px] flex-1 rounded-lg border bg-card px-3 text-[12.5px] font-medium text-foreground/80 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
+      className="min-h-[38px] min-w-0 flex-1 rounded-lg border bg-card px-3 py-1.5 text-[12.5px] leading-tight font-medium text-foreground/80 transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50"
     >
       {children}
     </button>

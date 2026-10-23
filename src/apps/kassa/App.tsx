@@ -17,6 +17,8 @@ import type { ApiErrorCode } from '@/shared/api-errors'
 import { useMessages } from '@/shared/i18n'
 import {
   addToDraft,
+  changeQuantity,
+  subtractDraft,
   clampTip,
   customerOrderFromTab,
   customerViewOrder,
@@ -61,6 +63,9 @@ type NameDialogMode = 'new' | 'park' | 'rename'
 // — the open-tab list reloads on focus, on switching and after every
 // action, and the server refuses anything based on a stale view (409).
 // The "Bestelling tonen" switch, remembered on this kassa (on unless switched off).
+// An open tab's round is sent this long after the last tap (or sooner: leaving the tab, paying).
+const ROUND_IDLE_MS = 30_000
+
 const SHOW_ORDER_KEY = 'arcanum-cfd-show-order'
 
 function readShowOrder(): boolean {
@@ -208,13 +213,82 @@ export default function App() {
   // --- Tabs ---
 
   function setDraftFor(key: ActiveKey, lines: DraftLine[]) {
-    setDrafts((prev) => {
+    updateDraft(key, () => lines)
+  }
+
+  // From the latest state, never a render's copy: a round that was just sent
+  // in the background must not come back with the next tap.
+  function updateDraft(key: ActiveKey, change: (lines: DraftLine[]) => DraftLine[]) {
+    const apply = (prev: Record<string, DraftLine[]>) => {
+      const lines = change(prev[key] || [])
       const next = { ...prev }
       if (lines.length > 0) next[key] = lines
       else delete next[key]
       return next
-    })
+    }
+    draftsRef.current = apply(draftsRef.current)
+    setDrafts(apply)
   }
+
+  // An open tab's round goes to the server (and the kitchen/bar, as one
+  // ticket) by itself — when the cashier leaves the tab, pays, or stops
+  // tapping for a while — no button. What's tapped while it's on its way
+  // stays for the next round. One at a time per tab; a payment waits for
+  // it (submitDraftFirst). `rethrow`: the caller shows the error itself.
+  const commitsRef = useRef(new Map<string, Promise<TabDetail | null>>())
+  async function commitDraft(key: ActiveKey, rethrow = false): Promise<TabDetail | null> {
+    if (key === 'quick') return null
+    const pending = commitsRef.current.get(key)
+    if (pending) await pending.catch(() => null)
+    const org = posOrgIdRef.current
+    const lines = draftsRef.current[key]
+    if (!org || !lines?.length) return null
+    const run = tabsApi.addOrder(org, key, lines, catalogRef.current?.id ?? null).then((tab) => {
+      updateDraft(key, (current) => subtractDraft(current, lines))
+      if (activeRef.current === key) setActiveTab(tab)
+      refreshTabs()
+      return tab
+    })
+    commitsRef.current.set(key, run)
+    try {
+      return await run
+    } catch (err) {
+      if (rethrow) throw err
+      showError(err)
+      return null
+    } finally {
+      if (commitsRef.current.get(key) === run) commitsRef.current.delete(key)
+    }
+  }
+  const commitDraftRef = useRef(commitDraft)
+  commitDraftRef.current = commitDraft
+
+  // Leaving a tab (another tab, Toog) or the kassa view (Rekeningen) sends its round.
+  const leftRef = useRef<ActiveKey>(active)
+  useEffect(() => {
+    const left = leftRef.current
+    leftRef.current = active
+    if (left !== active) commitDraftRef.current(left)
+  }, [active])
+  useEffect(() => {
+    if (view !== 'kassa') commitDraftRef.current(activeRef.current)
+  }, [view])
+  // A pause: no tap for ROUND_IDLE_MS on an open tab's round.
+  const activeDraft = drafts[active]
+  useEffect(() => {
+    if (active === 'quick' || !activeDraft?.length) return
+    const timer = setTimeout(() => commitDraftRef.current(active), ROUND_IDLE_MS)
+    return () => clearTimeout(timer)
+  }, [active, activeDraft])
+  // The kassa goes out of sight (another app, the screen off, logging out): every round goes.
+  useEffect(() => {
+    const onHide = () => {
+      if (document.visibilityState !== 'hidden') return
+      for (const key of Object.keys(draftsRef.current)) commitDraftRef.current(key)
+    }
+    document.addEventListener('visibilitychange', onHide)
+    return () => document.removeEventListener('visibilitychange', onHide)
+  }, [])
 
   function showError(err: unknown) {
     setError(err instanceof Error ? err.message : String(err))
@@ -396,23 +470,18 @@ export default function App() {
 
   function addItem(item: PickerItem, quantity: number) {
     setError('')
-    setDraftFor(active, addToDraft(draft, item, quantity))
+    updateDraft(active, (lines) => addToDraft(lines, item, quantity))
   }
 
   // Right-click on a product: one (or a quick quantity) less on the draft.
   // Submitted lines aren't touched — those only go away with a void.
   function removeItem(item: PickerItem, quantity: number) {
-    const i = draft.findIndex((l) => l.variantId === item.variantId)
-    if (i === -1) return
     setError('')
-    setDraftQuantity(i, draft[i].quantity - quantity)
+    updateDraft(active, (lines) => changeQuantity(lines, item.variantId, (q) => q - quantity))
   }
 
-  function setDraftQuantity(index: number, quantity: number) {
-    const next = [...draft]
-    if (quantity <= 0) next.splice(index, 1)
-    else next[index] = { ...next[index], quantity }
-    setDraftFor(active, next)
+  function setDraftQuantity(variantId: string, quantity: number) {
+    updateDraft(active, (lines) => changeQuantity(lines, variantId, () => quantity))
   }
 
   async function runTabAction(action: (org: string) => Promise<void>) {
@@ -430,16 +499,6 @@ export default function App() {
     } finally {
       setBusy(false)
     }
-  }
-
-  function submitOrder() {
-    if (active === 'quick' || draft.length === 0) return
-    const key = active
-    runTabAction(async (org) => {
-      setActiveTab(await tabsApi.addOrder(org, key, draft, catalogRef.current?.id ?? null))
-      setDraftFor(key, [])
-      refreshTabs()
-    })
   }
 
   function confirmNameDialog(name: string) {
@@ -510,11 +569,8 @@ export default function App() {
       // cancelled, it stays open in the strip to retry, void or close.
       setActive(tab.id)
       activeRef.current = tab.id
-    } else if (draft.length > 0) {
-      tab = await tabsApi.addOrder(org, key, draft, catalogRef.current?.id ?? null)
-      setDraftFor(key, [])
     } else {
-      tab = await tabsApi.getTab(org, key)
+      tab = (await commitDraft(key, true)) ?? (await tabsApi.getTab(org, key))
     }
     setActiveTab(tab)
     refreshTabs()
@@ -1009,6 +1065,7 @@ export default function App() {
   // Tap to Pay is never confirmed by hand: SumUp does.
   const showConfirmButton = current !== null && current.status !== 'RESOLVED' && current.method !== 'tap'
   const draftKeys = new Set(Object.keys(drafts))
+  const draftCount = draft.reduce((n, l) => n + l.quantity, 0)
   const panelTitle = active === 'quick' ? m.quickTitle : shownTab ? tabTitle(m, shownTab) : m.loading
   const itemCount = draft.reduce((n, l) => n + l.quantity, 0) + (shownTab?.lines || []).filter((l) => !l.voidsLineId).reduce((n, l) => n + netQuantity(l), 0)
   const panelSubtitle = `${active === 'quick' ? m.quickSubtitle : m.openTab} · ${m.items(itemCount)}`
@@ -1204,7 +1261,14 @@ export default function App() {
           // Flex like the design, not a grid with an fr track: Safari
           // mis-sized the nested product grid's rows inside that.
           <div className="flex flex-col items-start gap-4 lg:flex-row">
-            <div className="w-full min-w-0 lg:flex-1">
+            <div className="flex w-full min-w-0 flex-col gap-3 lg:flex-1">
+              {/* Which tab this order is for — the same tab as the strip's
+                  selected one and the panel on the right. */}
+              <div className="flex min-h-11 items-center gap-2.5 rounded-xl border border-foreground/15 bg-card px-3.5 py-2" data-testid="order-target">
+                <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{m.orderingFor}</span>
+                <span className="min-w-0 truncate rounded-md bg-foreground px-2 py-0.5 text-[13.5px] font-semibold tracking-tight text-background">{active === 'quick' ? m.quickSale : panelTitle}</span>
+                {draftCount > 0 && <span className="ml-auto shrink-0 font-mono text-[12px] text-muted-foreground tabular-nums">{m.newItems(draftCount)}</span>}
+              </div>
               <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
             </div>
             <div className="flex w-full flex-col gap-3 lg:sticky lg:top-4 lg:w-[392px] lg:shrink-0">
@@ -1241,7 +1305,6 @@ export default function App() {
                 onDraftQuantity={setDraftQuantity}
                 onClearDraft={() => setDraftFor(active, [])}
                 onVoid={setVoidTarget}
-                onSubmitOrder={submitOrder}
                 onPay={pay}
                 onPark={() => setNameDialog('park')}
                 onRename={() => setNameDialog('rename')}

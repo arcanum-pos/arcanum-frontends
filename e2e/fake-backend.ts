@@ -228,7 +228,7 @@ export class FakeBackend {
     return this.tabs.find((t) => t.id === id)
   }
 
-  private tabLines(tabId: string) {
+  tabLines(tabId: string) {
     return this.lines.filter((l) => this.lineTab.get(l.orderId) === tabId)
   }
 

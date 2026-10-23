@@ -7,6 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test as base, expect, type Page, type WebSocketRoute } from '@playwright/test'
 import { guardCsp } from './csp-guard'
+import { overflowingButtons } from './button-fit'
 
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 
@@ -125,6 +126,7 @@ test('the tables by zone and status; seat guests, order a round, take payment', 
   await expect(page.getByText('Zaal')).toBeVisible()
   await expect(page.getByText('Terras')).toBeVisible()
   await expect(page.locator('[data-testid="table"][data-state="clearing"]')).toContainText('Af te ruimen')
+  expect(await overflowingButtons(page), 'button text running over').toEqual([])
 
   await page.getByTestId('table').filter({ hasText: /^1/ }).click()
   await expect(page.getByRole('heading', { name: 'Tafel 1' })).toBeVisible()
@@ -138,11 +140,13 @@ test('the tables by zone and status; seat guests, order a round, take payment', 
   expect(fake.rounds[0]).toMatchObject({ catalogId: 'cat1', lines: [{ variantId: 'v1', quantity: 2 }] })
   await expect(page.getByTestId('tab-lines')).toContainText('2× Spaghetti')
   await expect(page.getByTestId('outstanding')).toHaveText('€ 24,00')
+  expect(await overflowingButtons(page), 'button text running over').toEqual([])
 
   await page.getByTestId('pay').click()
   await expect(page.getByTestId('cash-at-till')).toContainText('rekening "Tafel 1"')
   await page.getByRole('button', { name: /Bancontact/ }).click()
   await expect(page.getByTestId('bancontact-qr')).toBeVisible()
+  expect(await overflowingButtons(page), 'button text running over').toEqual([])
   expect(fake.payments[0]).toMatchObject({ orgId: 'org-1', tabId: 'tab1', amount: 2400 })
 })
 

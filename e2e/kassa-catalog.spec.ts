@@ -37,7 +37,8 @@ test('the server price wins over a stale price shown in the draft', async ({ kas
   await kassa.getByRole('button', button(/^Fietstocht \(niet-lid\)/)).click()
   await expect(kassa.getByRole('button', button('Afrekenen € 8,00'))).toBeVisible()
 
-  await kassa.getByRole('button', button('Bestelling toevoegen aan rekening')).click()
+  await kassa.getByRole('button', button(/^Toog/)).click()
+  await kassa.getByRole('button', button(/^#1 Tafel 1/)).click()
   await expect(panel(kassa).getByText('1 × Fietstocht (niet-lid)')).toBeVisible()
   await expect(kassa.getByRole('button', button('Afrekenen € 9,50'))).toBeVisible()
 })

@@ -4,6 +4,7 @@
 // one fetch — never polling). DOMAIN_MODEL.md "Self-ordering and station screens".
 import { test as base, expect, type Page, type WebSocketRoute } from '@playwright/test'
 import { guardCsp } from './csp-guard'
+import { overflowingButtons } from './button-fit'
 
 type Status = 'ordered' | 'in_progress' | 'ready' | 'delivered'
 interface FakeTicket {
@@ -130,6 +131,7 @@ test('shows its station; only paid orders by default — saying how many unpaid 
   await expect(ordered).toContainText('1 geannuleerd')
   await expect(ordered).not.toContainText('#6')
   await expect(page.getByTestId('hidden-unpaid')).toHaveText('1 onbetaalde bestelling verborgen')
+  expect(await overflowingButtons(page), 'button text running over').toEqual([])
 
   // Unpaid ones too, when asked: marked.
   await page.getByRole('switch', { name: 'Alleen betaald' }).click()
