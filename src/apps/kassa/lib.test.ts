@@ -4,6 +4,7 @@ import {
   addToDraft,
   subtractDraft,
   changeQuantity,
+  tabQuantities,
   centsToInput,
   clampTip,
   customerViewOrder,
@@ -82,6 +83,20 @@ describe('entryToPickerItem', () => {
     // The code becomes order_lines.item_code — for the seeded legacy items
     // the transactions.items key every report still reads.
     expect(entryToPickerItem(fietsLid)).toEqual({ itemCode: 'fietstochtMember', name: 'Fietstocht (lid)', unitPriceCents: 500, variantId: 'v-fiets-lid' })
+  })
+})
+
+describe('tabQuantities', () => {
+  it('per variant, net of voids; not the tip, nor lines without a variant', () => {
+    const lines = [
+      line({ id: 'a', variantId: 'v-pils', quantity: 2 }),
+      line({ id: 'b', variantId: 'v-pils', quantity: 3, voidedQuantity: 1 }),
+      line({ id: 'c', variantId: 'v-cola', quantity: 1, voidedQuantity: 1 }),
+      line({ id: 'd', variantId: null, quantity: 4 }),
+      line({ id: 'e', variantId: 'v-tip', itemCode: FOOI_CODE, quantity: 1 }),
+    ]
+    expect(tabQuantities(tab(lines))).toEqual({ 'v-pils': 4 })
+    expect(tabQuantities(null)).toEqual({})
   })
 })
 

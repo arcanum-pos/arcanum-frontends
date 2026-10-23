@@ -12,6 +12,8 @@
 
 export interface FakeLineInput {
   itemCode?: string | null
+  // The catalog variant it was sold as (the kassa's menu counts per variant).
+  variantId?: string | null
   name: string
   unitPriceCents: number
   quantity: number
@@ -78,6 +80,7 @@ interface Line {
   id: string
   orderId: string
   itemCode: string | null
+  variantId: string | null
   name: string
   unitPriceCents: number
   quantity: number
@@ -571,7 +574,7 @@ export class FakeBackend {
       if (!catalog) return UNKNOWN_CATALOG
       const e = catalog.sections.flatMap((s) => s.entries).find((x) => x.variantId === l.variantId && x.visible)
       if (!e) return MENUKAART_REFUSAL
-      priced.push({ itemCode: e.code, name: e.name, unitPriceCents: e.priceCents, quantity: l.quantity })
+      priced.push({ itemCode: e.code, variantId: e.variantId, name: e.name, unitPriceCents: e.priceCents, quantity: l.quantity })
     }
     return priced
   }
@@ -690,6 +693,7 @@ export class FakeBackend {
         id: nextId('line'),
         orderId,
         itemCode: l.itemCode ?? null,
+        variantId: l.variantId ?? null,
         name: l.name,
         unitPriceCents: l.unitPriceCents,
         quantity: l.quantity,

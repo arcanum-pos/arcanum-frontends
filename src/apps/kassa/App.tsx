@@ -26,6 +26,7 @@ import {
   selectionLines,
   type ItemSelection,
   draftTotalCents,
+  tabQuantities,
   isPaymentResolved,
   readAmountCents,
   reconcileDrafts,
@@ -1067,6 +1068,8 @@ export default function App() {
   const showConfirmButton = current !== null && current.status !== 'RESOLVED' && current.method !== 'tap'
   const draftKeys = new Set(Object.keys(drafts))
   const draftCount = draft.reduce((n, l) => n + l.quantity, 0)
+  // What the ticket on the right says is to pay (what's open plus the new round).
+  const targetCents = (shownTab?.outstandingCents || 0) + draftTotalCents(draft)
   const panelTitle = active === 'quick' ? m.quickTitle : shownTab ? tabTitle(m, shownTab) : m.loading
   const itemCount = draft.reduce((n, l) => n + l.quantity, 0) + (shownTab?.lines || []).filter((l) => !l.voidsLineId).reduce((n, l) => n + netQuantity(l), 0)
   const panelSubtitle = `${active === 'quick' ? m.quickSubtitle : m.openTab} · ${m.items(itemCount)}`
@@ -1261,18 +1264,24 @@ export default function App() {
         {!registerClosed && !cashUpOpen && !current && view === 'kassa' && (
           // Flex like the design, not a grid with an fr track: Safari
           // mis-sized the nested product grid's rows inside that.
-          <div className="flex flex-col items-start gap-4 lg:flex-row">
-            <div className="flex w-full min-w-0 flex-col gap-3 lg:flex-1">
+          // Ordering on the left, the tab on the right — apart: a line between them.
+          <div className="flex flex-col items-start gap-4 lg:flex-row lg:gap-0">
+            <div className="flex w-full min-w-0 flex-col gap-3 lg:flex-1 lg:pr-5">
               {/* Which tab this order is for — the same tab as the strip's
                   selected one and the panel on the right. */}
               <div className="flex min-h-11 items-center gap-2.5 rounded-xl border border-foreground/15 bg-card px-3.5 py-2" data-testid="order-target">
                 <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{m.orderingFor}</span>
                 <span className="min-w-0 truncate rounded-md bg-foreground px-2 py-0.5 text-[13.5px] font-semibold tracking-tight text-background">{active === 'quick' ? m.quickSale : panelTitle}</span>
-                {draftCount > 0 && <span className="ml-auto shrink-0 font-mono text-[12px] text-muted-foreground tabular-nums">{m.newItems(draftCount)}</span>}
+                {/* The same as the ticket on the right: its items and what's to pay, new ones included. */}
+                <span className="ml-auto shrink-0 text-right font-mono text-[12.5px] text-muted-foreground tabular-nums" data-testid="order-target-summary">
+                  {m.items(itemCount)} · <span className="font-semibold text-foreground">{formatEuro(targetCents)}</span>
+                  {draftCount > 0 && <span className="block text-[11.5px]">{m.newItems(draftCount)}</span>}
+                </span>
               </div>
-              <ItemPicker catalogState={catalogState} quantities={draftQuantities} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
+              <ItemPicker catalogState={catalogState} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
             </div>
-            <div className="flex w-full flex-col gap-3 lg:sticky lg:top-4 lg:w-[392px] lg:shrink-0">
+            <div className="w-full border-t-2 pt-4 lg:w-[412px] lg:shrink-0 lg:self-stretch lg:border-t-0 lg:border-l-2 lg:border-foreground/15 lg:pt-0 lg:pl-5" data-testid="tab-side">
+            <div className="flex flex-col gap-3 lg:sticky lg:top-4">
               {kassaModes.length > 1 && (
                 <div className="flex flex-col gap-1.5" role="group" aria-label={m.orderMode} data-testid="kassa-modes">
                   <span className="text-[11.5px] font-medium text-muted-foreground">{m.orderMode}</span>
@@ -1318,6 +1327,7 @@ export default function App() {
                 onItemSelection={(selection) => setItemMode((m) => (m ? { ...m, selection } : m))}
                 onStopItems={() => setItemMode(null)}
               />
+            </div>
             </div>
           </div>
         )}

@@ -50,6 +50,7 @@ export default {
   onTheTab: 'On the bill',
   orderingFor: 'Ordering for',
   newItems: (n: number) => `${n} new`,
+  onTabCount: (n: number) => `${n} on the bill`,
   draftQuick: 'Order',
   clear: 'Clear',
   less: (name: string) => `fewer ${name}`,

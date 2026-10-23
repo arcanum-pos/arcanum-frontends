@@ -211,3 +211,24 @@ test('no "Ticket annuleren" while a payment runs, or once something is paid', as
   await expect(kassa.getByRole('button', button('Ticket annuleren'))).toBeDisabled()
   expect(tab.status).toBe('open')
 })
+
+test('the menu shows what the open tab has, the new round apart — the same as the ticket on the right', async ({ kassa, backend }) => {
+  backend.openTab('Tafel 4', [{ itemCode: 'wandeltocht', variantId: 'v-wandel', name: 'Wandeltocht', unitPriceCents: 600, quantity: 2 }])
+  await kassa.reload()
+  await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
+  const row = kassa.getByRole('button', button(/^Wandeltocht \(niet-lid\)/))
+  await expect(row.getByTestId('entry-count')).toHaveText('2×')
+  await expect(row.getByTestId('entry-new')).toHaveCount(0)
+  await expect(kassa.getByTestId('order-target-summary')).toContainText('2 items · € 12,00')
+
+  await row.click()
+  await expect(row.getByTestId('entry-count')).toHaveText('3×')
+  await expect(row.getByTestId('entry-new')).toHaveText('+1')
+  await expect(kassa.getByTestId('order-target-summary')).toContainText('3 items · € 18,00')
+  await expect(kassa.getByTestId('order-target-summary')).toContainText('1 nieuw')
+  await expect(panel(kassa).getByText('Te betalen').locator('..')).toContainText('€ 18,00')
+  // Right-click only takes back the new one; what's sent stays (a void, with a reason).
+  await row.click({ button: 'right' })
+  await row.click({ button: 'right' })
+  await expect(row.getByTestId('entry-count')).toHaveText('2×')
+})

@@ -16,13 +16,16 @@ export type CatalogState = { status: 'loading' } | { status: 'none' } | { status
 export function ItemPicker({
   catalogState,
   quantities,
+  onTab = {},
   disabled,
   onAdd,
   onRemove,
 }: {
   catalogState: CatalogState
-  // Quantity of each variant in the current draft — shown next to the product.
+  // Quantity of each variant in the current draft (the round being tapped).
   quantities: Record<string, number>
+  // …and already on the selected tab — the menu shows both, the same as the ticket on the right.
+  onTab?: Record<string, number>
   disabled: boolean
   onAdd: (item: PickerItem, quantity: number) => void
   // Right-click: take it off the order again (only what's not submitted yet).
@@ -38,7 +41,7 @@ export function ItemPicker({
     )
   }
   if (catalogState.status === 'error') return <p className="text-sm font-medium text-destructive">{catalogState.message}</p>
-  return <Catalog catalog={catalogState.catalog} quantities={quantities} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
+  return <Catalog catalog={catalogState.catalog} quantities={quantities} onTab={onTab} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
 }
 
 // The loaded catalog with its search field and group chips (design_files:
@@ -46,12 +49,14 @@ export function ItemPicker({
 function Catalog({
   catalog,
   quantities,
+  onTab,
   disabled,
   onAdd,
   onRemove,
 }: {
   catalog: KassaCatalog
   quantities: Record<string, number>
+  onTab: Record<string, number>
   disabled: boolean
   onAdd: Change
   onRemove: Change
@@ -128,12 +133,12 @@ function Catalog({
                   </span>
                 </div>
                 {quick.map((entry) => (
-                  <QuickEntry key={entry.entryId} entry={entry} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
+                  <QuickEntry key={entry.entryId} entry={entry} drafted={quantities[entry.variantId] || 0} sent={onTab[entry.variantId] || 0} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
                 ))}
                 {plain.length > 0 && (
                   <div className="flex flex-col">
                     {plain.map((entry) => (
-                      <EntryRow key={entry.entryId} entry={entry} quantity={quantities[entry.variantId] || 0} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
+                      <EntryRow key={entry.entryId} entry={entry} drafted={quantities[entry.variantId] || 0} sent={onTab[entry.variantId] || 0} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
                     ))}
                   </div>
                 )}
@@ -154,8 +159,11 @@ const removeOnRightClick = (disabled: boolean, remove: () => void) => (e: React.
   if (!disabled) remove()
 }
 
-function EntryRow({ entry, quantity, disabled, onAdd, onRemove }: { entry: KassaEntry; quantity: number; disabled: boolean; onAdd: Change; onRemove: Change }) {
+// `sent`: already on the tab; `drafted`: in the round being tapped (the only
+// part right-click can take off again — sent lines need a void with a reason).
+function EntryRow({ entry, drafted, sent, disabled, onAdd, onRemove }: { entry: KassaEntry; drafted: number; sent: number; disabled: boolean; onAdd: Change; onRemove: Change }) {
   const m = useMessages(KASSA_MESSAGES)
+  const total = drafted + sent
   return (
     <button
       type="button"
@@ -165,29 +173,42 @@ function EntryRow({ entry, quantity, disabled, onAdd, onRemove }: { entry: Kassa
       onContextMenu={removeOnRightClick(disabled, () => onRemove(entryToPickerItem(entry), 1))}
       className="flex min-h-12 w-full items-center gap-2.5 border-b border-border/60 px-3.5 py-2.5 text-left transition-colors outline-none last:rounded-b-xl last:border-b-0 hover:bg-muted/60 focus-visible:bg-muted active:bg-muted disabled:opacity-50"
     >
-      {/* Already on the order: "2×" — decorative, the ticket lists it too. */}
+      {/* On the tab, all told: "3×" — dark while some of it is new, grey when
+          it's all sent; the new part beside it ("+1"). Decorative: the ticket lists it too. */}
       <span
         aria-hidden="true"
+        data-testid="entry-count"
         className={cn(
           'flex h-[22px] min-w-[26px] items-center justify-center rounded-md px-1.5 font-mono text-[11.5px] font-semibold',
-          quantity ? 'bg-foreground text-background' : 'bg-muted'
+          drafted ? 'bg-foreground text-background' : sent ? 'bg-foreground/15 text-foreground' : 'bg-muted'
         )}
       >
-        {quantity ? `${quantity}×` : ''}
+        {total ? `${total}×` : ''}
       </span>
       <span className="flex-1 text-[13.5px] font-medium tracking-tight">{entry.name}</span>
+      {drafted > 0 && sent > 0 && (
+        <span aria-hidden="true" className="rounded-md border border-foreground/30 px-1.5 font-mono text-[11px] font-semibold" data-testid="entry-new">
+          +{drafted}
+        </span>
+      )}
       <span className="font-mono text-[13px] text-foreground/70 tabular-nums">{formatEuro(entry.priceCents)}</span>
     </button>
   )
 }
 
-function QuickEntry({ entry, disabled, onAdd, onRemove }: { entry: KassaEntry; disabled: boolean; onAdd: Change; onRemove: Change }) {
+function QuickEntry({ entry, drafted, sent, disabled, onAdd, onRemove }: { entry: KassaEntry; drafted: number; sent: number; disabled: boolean; onAdd: Change; onRemove: Change }) {
   const m = useMessages(KASSA_MESSAGES)
   const item = entryToPickerItem(entry)
   return (
     <div className="flex flex-col gap-3 p-3.5">
       <p className="text-xs text-muted-foreground">
         <span className="font-medium text-foreground">{entry.name}</span> · {m.perPiece(formatEuro(entry.priceCents))}
+        {drafted + sent > 0 && (
+          <span className="ml-1.5 font-mono font-semibold text-foreground" data-testid="entry-count">
+            · {m.onTabCount(drafted + sent)}
+            {drafted > 0 && sent > 0 && ` (+${drafted})`}
+          </span>
+        )}
       </p>
       <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(120px,1fr))]">
         {entry.quickQuantities!.map((n) => (

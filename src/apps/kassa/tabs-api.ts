@@ -66,6 +66,8 @@ export interface TabLine {
   id: string
   orderId: string
   itemCode: string | null
+  // The catalog variant it was sold as (null on lines from before the catalog).
+  variantId?: string | null
   name: string
   unitPriceCents: number
   quantity: number

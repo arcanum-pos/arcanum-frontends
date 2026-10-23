@@ -105,7 +105,7 @@ export function eveningCatalog(lang: Lang): FakeCatalog {
 }
 
 export function line(lang: Lang, key: Item, quantity: number): FakeLineInput {
-  return { itemCode: key, name: NAMES[lang].items[key], unitPriceCents: PRICES[key], quantity }
+  return { itemCode: key, variantId: `v-${key}`, name: NAMES[lang].items[key], unitPriceCents: PRICES[key], quantity }
 }
 
 // The Rapporten page's report, as arcanum-backend would answer it for an evening.

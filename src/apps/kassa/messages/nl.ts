@@ -59,6 +59,7 @@ const nl = {
   onTheTab: 'Op de rekening',
   orderingFor: 'Bestellen voor',
   newItems: (n: number) => `${n} nieuw`,
+  onTabCount: (n: number) => `${n} op de rekening`,
   draftQuick: 'Bestelling',
   clear: 'Leegmaken',
   less: (name: string) => `minder ${name}`,

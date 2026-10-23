@@ -31,6 +31,19 @@ export function addToDraft(draft: DraftLine[], item: PickerItem, quantity: numbe
   return next
 }
 
+// What's on a tab per catalog variant, net of voids (the menu shows it next
+// to each product, beside what's being tapped now). The tip and lines
+// without a variant (from before the catalog) aren't products on the menu.
+export function tabQuantities(tab: TabDetail | null): Record<string, number> {
+  const out: Record<string, number> = {}
+  for (const l of tab?.lines ?? []) {
+    if (l.voidsLineId || !l.variantId || l.itemCode === FOOI_CODE) continue
+    const q = netQuantity(l)
+    if (q > 0) out[l.variantId] = (out[l.variantId] ?? 0) + q
+  }
+  return out
+}
+
 // One variant's quantity on a draft changed (0 or less: gone).
 export function changeQuantity(draft: DraftLine[], variantId: string, change: (quantity: number) => number): DraftLine[] {
   return draft.flatMap((l) => {

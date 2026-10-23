@@ -50,6 +50,7 @@ export default {
   onTheTab: 'Sur l’addition',
   orderingFor: 'Commander pour',
   newItems: (n: number) => `${n} nouveau${n > 1 ? 'x' : ''}`,
+  onTabCount: (n: number) => `${n} sur l’addition`,
   draftQuick: 'Commande',
   clear: 'Vider',
   less: (name: string) => `moins de ${name}`,
