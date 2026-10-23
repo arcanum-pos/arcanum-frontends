@@ -100,7 +100,7 @@ export class FakeCatalogAdmin {
   // backend does for a non-admin; every report query is recorded.
   salesReport: any = emptySalesReport()
   reportStatus = 200
-  reportQueries: { from: string; to: string }[] = []
+  reportQueries: { from: string; to: string; event?: string }[] = []
   transactions: any[] = []
   events: any[] = []
   usedEvents = new Set<string>()
@@ -178,11 +178,14 @@ export class FakeCatalogAdmin {
     if (/^\/api\/organizations\/[^/]+\/reports\/sales$/.test(path) && method === 'GET') {
       const params = new URLSearchParams(query)
       const range = { from: params.get('from') || '', to: params.get('to') || '' }
-      this.reportQueries.push(range)
+      this.reportQueries.push(params.get('event') ? { ...range, event: params.get('event')! } : range)
       if (this.reportStatus === 403) return { status: 403, body: { error: 'Forbidden' } }
       return ok({ ...this.salesReport, ...range })
     }
-    if (path === '/api/bancontact/transactions' && method === 'GET') return ok(this.transactions)
+    if (path === '/api/bancontact/transactions' && method === 'GET') {
+      const eventId = new URLSearchParams(query).get('eventId')
+      return ok(eventId ? this.transactions.filter((t) => t.eventId === eventId) : this.transactions)
+    }
     if (/^\/api\/organizations\/[^/]+\/devices$/.test(path) && method === 'GET') return ok(this.orgDevices)
     const device = path.match(/^\/api\/organizations\/[^/]+\/devices\/([^/]+)$/)
     if (device && method === 'DELETE') {

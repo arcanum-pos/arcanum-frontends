@@ -128,3 +128,55 @@ test('a non-admin gets a friendly message instead of the report, and still sees 
   await expect(row).toContainText('€ 2,50')
   await expect(row).toContainText('€ 12,50')
 })
+
+function tx(id: string, method: string, amountCents: number, eventId: string, at: Date) {
+  return { id, amountCents, tipCents: 0, description: `Rekening ${id}`, method, items: {}, slotId: null, deviceId: null, deviceName: 'Toog', userName: null, userEmail: null, eventId, tabId: id, completedAt: at.toISOString() }
+}
+
+test('the event filter sits next to the period and narrows the report, the charts and the payments', async ({ console, catalogAdmin }) => {
+  const event = (id: string, name: string) => ({ id, name, date: '2026-10-23', createdAt: '2026-10-01T10:00:00Z', selfOrder: { enabled: false, code: null }, modes: [], lastOrderNumber: 0 })
+  catalogAdmin.events = [event('ev1', 'Fuif'), event('ev2', 'Quiz')]
+  const today = new Date()
+  const at = (h: number, min: number) => new Date(today.getFullYear(), today.getMonth(), today.getDate(), h, min)
+  catalogAdmin.transactions = [
+    tx('a', 'cash', 500, 'ev1', at(20, 5)),
+    tx('b', 'bancontact', 1200, 'ev1', at(20, 10)),
+    tx('c', 'sumup', 800, 'ev1', at(21, 40)),
+    tx('d', 'cash', 300, 'ev2', at(20, 12)),
+  ]
+  const page = await console('/reports')
+
+  // All events: one bar per quarter from 20:00 to 22:00, the 20:00 one stacked from three payments.
+  const count = page.getByTestId('chart-count')
+  await expect(count.getByTestId('chart-count-bar')).toHaveCount(8)
+  await expect(count.getByTestId('chart-count-bar').first()).toHaveAttribute('data-total', '3')
+  await expect(page.getByTestId('chart-amount-bar').first()).toHaveAttribute('data-total', '2000')
+  await expect(page.getByTestId('chart-count-legend')).toHaveText(/Bancontact.*Contant.*SumUp/)
+  await expect(page.getByTestId('transactions').getByRole('row')).toHaveCount(5)
+  expect(catalogAdmin.reportQueries.at(-1)!.event).toBeUndefined()
+
+  // Hovering a bar shows its numbers per method and the total.
+  await count.getByTestId('chart-count-bar').first().locator('rect').first().hover()
+  const tooltip = page.getByTestId('chart-count-tooltip')
+  await expect(tooltip).toContainText('Contant')
+  await expect(tooltip).toContainText('Bancontact')
+
+  await page.getByTestId('report-event').click()
+  await page.getByRole('option', { name: /Fuif/ }).click()
+  await expect.poll(() => catalogAdmin.reportQueries.at(-1)!.event).toBe('ev1')
+  await expect(page.getByTestId('transactions').getByRole('row')).toHaveCount(4)
+  await expect(count.getByTestId('chart-count-bar').first()).toHaveAttribute('data-total', '2')
+})
+
+test('a month is charted per day, and no payments says so', async ({ console, catalogAdmin }) => {
+  const today = new Date()
+  catalogAdmin.transactions = [tx('a', 'cash', 500, 'ev1', new Date(today.getFullYear(), today.getMonth(), 1, 12))]
+  const page = await console('/reports')
+  // (On the 1st that payment is today's.)
+  if (today.getDate() !== 1) await expect(page.getByTestId('report-charts')).toContainText('Geen betalingen in deze periode')
+
+  await page.getByRole('button', { name: 'Deze maand' }).click()
+  const days = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate()
+  await expect(page.getByTestId('chart-count-bar')).toHaveCount(days)
+  await expect(page.getByTestId('chart-count-bar').first()).toHaveAttribute('data-total', '1')
+})

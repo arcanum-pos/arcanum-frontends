@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { listEvents, listTransactions } from '../lib/api'
+import { listEvents, listTransactions, type Transaction } from '../lib/api'
+import { PaymentsChart } from '../components/payments-chart'
+import { bucketize, stepFor } from '../lib/report-buckets'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { formatEuro } from '../lib/format'
@@ -35,12 +37,16 @@ function formatDate(iso: string, intlLocale: string): string {
   return new Date(iso).toLocaleDateString(intlLocale, { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-// Sales report for a period (step 3d) on top, the raw payment list below.
-// Revenue = order lines of tabs closed in the period (voids subtracted,
-// tips excluded); payments = everything the ledger recorded, including
-// sales from before tabs existed (shown separately as "oude kassa").
+// Sales report for a period (step 3d) on top, the payments per time slot
+// in two charts, the raw payment list below — all for the same period and,
+// when chosen, one event (a sale carries the event its kassa had chosen
+// when the rekening was opened — Instellingen → Evenement). Revenue = order
+// lines of tabs closed in the period (voids subtracted, tips excluded);
+// payments = everything the ledger recorded, including sales from before
+// tabs existed (shown separately as "oude kassa").
 export default function ReportsPage() {
   const m = useMessages(ADMIN_ORG_MESSAGES)
+  const intlLocale = INTL_LOCALES[useLocale().locale]
   const { currentOrg } = useOrg()
   const orgId = currentOrg?.id ?? null
 
@@ -50,11 +56,27 @@ export default function ReportsPage() {
   const bounds = periodBounds(period, new Date(), { from: customFrom, to: customTo })
   const boundsKey = bounds ? `${bounds.from}|${bounds.to}` : ''
 
+  const { data: events } = useAsync(() => (orgId ? listEvents(orgId) : Promise.resolve([])), [orgId])
+  // '' = no explicit selection yet, ALL_EVENTS = "Alle evenementen" chosen
+  // explicitly. Auto-selects the single event once exactly one exists.
+  const [selectedEvent, setSelectedEvent] = useState<string>('')
+  useEffect(() => {
+    if (!events || selectedEvent) return
+    setSelectedEvent(events.length === 1 ? events[0].id : ALL_EVENTS)
+  }, [events, selectedEvent])
+  const eventFilter = selectedEvent && selectedEvent !== ALL_EVENTS ? selectedEvent : undefined
+
   const report = useAsync<SalesReport | null>(
-    () => (orgId && bounds ? fetchSalesReport(orgId, bounds.from, bounds.to) : Promise.resolve(null)),
-    [orgId, boundsKey]
+    () => (orgId && bounds && selectedEvent ? fetchSalesReport(orgId, bounds.from, bounds.to, eventFilter) : Promise.resolve(null)),
+    [orgId, boundsKey, selectedEvent]
   )
   const forbidden = report.error === REPORT_FORBIDDEN
+
+  const transactions = useAsync(
+    () => (orgId && selectedEvent ? listTransactions(orgId, eventFilter) : Promise.resolve([])),
+    [orgId, selectedEvent]
+  )
+  const inPeriod = (transactions.data ?? []).filter((t) => !bounds || (t.completedAt >= bounds.from && t.completedAt < bounds.to))
 
   return (
     <div className="flex flex-col gap-6">
@@ -63,12 +85,29 @@ export default function ReportsPage() {
           <h1 className="text-2xl font-semibold tracking-tight">{m.reports.title}</h1>
           <p className="text-muted-foreground">{m.reports.subtitle(currentOrg?.name ?? m.thisOrg)}</p>
         </div>
-        <div className="flex flex-wrap items-end gap-2" role="group" aria-label={m.reports.period}>
-          {PERIODS.map((p) => (
-            <Button key={p} size="sm" variant={period === p ? 'default' : 'outline'} aria-pressed={period === p} onClick={() => setPeriod(p)}>
-              {m.reports.periods[p]}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex flex-wrap items-end gap-2" role="group" aria-label={m.reports.period}>
+            {PERIODS.map((p) => (
+              <Button key={p} size="sm" variant={period === p ? 'default' : 'outline'} aria-pressed={period === p} onClick={() => setPeriod(p)}>
+                {m.reports.periods[p]}
+              </Button>
+            ))}
+          </div>
+          {events && events.length > 0 && (
+            <Select value={selectedEvent} onValueChange={setSelectedEvent}>
+              <SelectTrigger size="sm" className="w-[240px]" aria-label={m.reports.event} data-testid="report-event">
+                <SelectValue placeholder={m.reports.event} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_EVENTS}>{m.reports.allEvents}</SelectItem>
+                {events.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>
+                    {event.name} — {formatDate(event.date, intlLocale)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           {period === 'custom' && (
             <div className="flex flex-wrap items-end gap-2">
               <div className="flex flex-col gap-1">
@@ -90,11 +129,63 @@ export default function ReportsPage() {
           <CardContent className="py-6 text-sm text-muted-foreground">{m.reports.forbidden}</CardContent>
         </Card>
       ) : (
-        <SalesReportView report={report.data} loading={report.loading} error={report.error} />
+        <SalesReportView
+          report={report.data}
+          loading={report.loading}
+          error={report.error}
+          charts={bounds && !transactions.loading && !transactions.error ? <ReportCharts payments={inPeriod} bounds={bounds} /> : null}
+        />
       )}
+      {forbidden && bounds && !transactions.loading && !transactions.error && <ReportCharts payments={inPeriod} bounds={bounds} />}
 
-      <TransactionList orgId={orgId} bounds={bounds} />
+      <TransactionList transactions={inPeriod} loading={transactions.loading} error={transactions.error} />
     </div>
+  )
+}
+
+// How many payments, and how much, per 15 minutes (a day) or per day.
+function ReportCharts({ payments, bounds }: { payments: Transaction[]; bounds: { from: string; to: string } }) {
+  const m = useMessages(ADMIN_ORG_MESSAGES)
+  const intlLocale = INTL_LOCALES[useLocale().locale]
+  const from = new Date(bounds.from)
+  const to = new Date(bounds.to)
+  const step = stepFor(from, to)
+  const buckets = bucketize(payments, from, to, step)
+  const label = (method: string) => methodLabel(m, method)
+
+  return (
+    <Card data-testid="report-charts">
+      <CardContent className="pt-6">
+        {payments.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{m.reports.chartsEmpty}</p>
+        ) : (
+          <div className="grid gap-8 lg:grid-cols-2">
+            <PaymentsChart
+              title={m.reports.chartCount}
+              buckets={buckets}
+              step={step}
+              measure="count"
+              methodLabel={label}
+              totalLabel={m.reports.chartTotal}
+              format={(v) => String(v)}
+              intlLocale={intlLocale}
+              testId="chart-count"
+            />
+            <PaymentsChart
+              title={m.reports.chartAmount}
+              buckets={buckets}
+              step={step}
+              measure="amountCents"
+              methodLabel={label}
+              totalLabel={m.reports.chartTotal}
+              format={(v) => formatEuro(v)}
+              intlLocale={intlLocale}
+              testId="chart-amount"
+            />
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -102,7 +193,8 @@ function Amount({ loading, cents }: { loading: boolean; cents: number | undefine
   return loading || cents === undefined ? <Skeleton className="h-8 w-24" /> : <>{formatEuro(cents)}</>
 }
 
-function SalesReportView({ report, loading, error }: { report: SalesReport | null; loading: boolean; error: string | null }) {
+// The charts go right under the totals, before the tables.
+function SalesReportView({ report, loading, error, charts }: { report: SalesReport | null; loading: boolean; error: string | null; charts: ReactNode }) {
   const m = useMessages(ADMIN_ORG_MESSAGES)
   if (error) return <p className="text-sm text-destructive">{m.reports.loadError(error)}</p>
   const r = loading ? null : report
@@ -149,6 +241,8 @@ function SalesReportView({ report, loading, error }: { report: SalesReport | nul
           <CardContent className="text-sm text-muted-foreground">{r ? m.reports.openCount(r.openTabs.count) : ''}</CardContent>
         </Card>
       </div>
+
+      {charts}
 
       {r && (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -302,53 +396,16 @@ function EmptyRow({ cols }: { cols: number }) {
   )
 }
 
-// The raw payment list for the same period, optionally narrowed to one
-// event (a sale carries the event its kassa had chosen when the rekening
-// was opened — Instellingen → Evenement).
-function TransactionList({ orgId, bounds }: { orgId: string | null; bounds: { from: string; to: string } | null }) {
+// The raw payment list for the same period (and event) — also the charts'
+// table view.
+function TransactionList({ transactions, loading, error }: { transactions: Transaction[]; loading: boolean; error: string | null }) {
   const m = useMessages(ADMIN_ORG_MESSAGES)
   const intlLocale = INTL_LOCALES[useLocale().locale]
-  const { data: events } = useAsync(() => (orgId ? listEvents(orgId) : Promise.resolve([])), [orgId])
-  // '' = no explicit selection yet, ALL_EVENTS = "Alle evenementen" chosen
-  // explicitly. Auto-selects the single event once exactly one exists.
-  const [selectedEvent, setSelectedEvent] = useState<string>('')
-
-  useEffect(() => {
-    if (!events) return
-    if (selectedEvent) return
-    if (events.length === 1) setSelectedEvent(events[0].id)
-    else setSelectedEvent(ALL_EVENTS)
-  }, [events, selectedEvent])
-
-  const eventFilter = selectedEvent && selectedEvent !== ALL_EVENTS ? selectedEvent : undefined
-  const { data: transactions, loading, error } = useAsync(
-    () => (orgId && selectedEvent ? listTransactions(orgId, eventFilter) : Promise.resolve([])),
-    [orgId, selectedEvent, eventFilter]
-  )
-
-  const inPeriod = (transactions ?? []).filter((t) => !bounds || (t.completedAt >= bounds.from && t.completedAt < bounds.to))
-  const sorted = [...inPeriod].sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+  const sorted = [...transactions].sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold">{m.reports.paymentsInPeriod}</h2>
-        {events && events.length > 0 && (
-          <Select value={selectedEvent} onValueChange={setSelectedEvent}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue placeholder={m.reports.event} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_EVENTS}>{m.reports.allEvents}</SelectItem>
-              {events.map((event) => (
-                <SelectItem key={event.id} value={event.id}>
-                  {event.name} — {formatDate(event.date, intlLocale)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-      </div>
+      <h2 className="text-lg font-semibold">{m.reports.paymentsInPeriod}</h2>
 
       {error && <p className="text-sm text-destructive">{m.reports.paymentsLoadError(error)}</p>}
 

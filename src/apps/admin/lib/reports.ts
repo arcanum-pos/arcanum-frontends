@@ -33,8 +33,9 @@ export interface SalesReport {
 // error (useAsync keeps only the message).
 export const REPORT_FORBIDDEN = 'reports:forbidden'
 
-export async function fetchSalesReport(orgId: string, from: string, to: string): Promise<SalesReport> {
+export async function fetchSalesReport(orgId: string, from: string, to: string, eventId?: string): Promise<SalesReport> {
   const params = new URLSearchParams({ from, to })
+  if (eventId) params.set('event', eventId)
   const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/reports/sales?${params}`)
   if (res.status === 403) throw new Error(REPORT_FORBIDDEN)
   const data = await res.json().catch(() => null)
