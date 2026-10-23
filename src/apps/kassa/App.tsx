@@ -37,6 +37,8 @@ import {
   type PickerItem,
 } from './lib'
 import { fetchKassaCatalog, listEvents, type KassaCatalog } from './catalog-api'
+import { clampPanel, PANEL_DEFAULT, PANEL_MIN, panelMax, readPanelWidth, writePanelWidth } from './layout'
+import { PanelDivider } from './PanelDivider'
 import { ItemPicker, type CatalogState } from './ItemPicker'
 import { PaymentStatus } from './PaymentStatus'
 import { CancelTicketDialog, NameDialog, VoidDialog } from './TabDialogs'
@@ -148,6 +150,14 @@ export default function App() {
   // switching away and back doesn't lose them. Local to this kassa only.
   const [drafts, setDrafts] = useState<Record<string, DraftLine[]>>({})
   const [nameDialog, setNameDialog] = useState<NameDialogMode | null>(null)
+  // The tab panel's width, this till's (layout.ts) — within what the screen allows.
+  const [panelWidth, setPanelWidth] = useState(() => readPanelWidth() ?? PANEL_DEFAULT)
+  const [viewportWidth, setViewportWidth] = useState(() => window.innerWidth)
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [voidTarget, setVoidTarget] = useState<TabLine | null>(null)
   // "Ticket annuleren" asked for the shown tab.
   const [cancellingTicket, setCancellingTicket] = useState(false)
@@ -1067,6 +1077,7 @@ export default function App() {
   // Tap to Pay is never confirmed by hand: SumUp does.
   const showConfirmButton = current !== null && current.status !== 'RESOLVED' && current.method !== 'tap'
   const draftKeys = new Set(Object.keys(drafts))
+  const shownPanelWidth = clampPanel(panelWidth, viewportWidth)
   const draftCount = draft.reduce((n, l) => n + l.quantity, 0)
   // What the ticket on the right says is to pay (what's open plus the new round).
   const targetCents = (shownTab?.outstandingCents || 0) + draftTotalCents(draft)
@@ -1264,9 +1275,10 @@ export default function App() {
         {!registerClosed && !cashUpOpen && !current && view === 'kassa' && (
           // Flex like the design, not a grid with an fr track: Safari
           // mis-sized the nested product grid's rows inside that.
-          // Ordering on the left, the tab on the right — apart: a line between them.
-          <div className="flex flex-col items-start gap-4 lg:flex-row lg:gap-0">
-            <div className="flex w-full min-w-0 flex-col gap-3 lg:flex-1 lg:pr-5">
+          // Ordering on the left, the tab on the right — apart: a line between
+          // them, dragged to make the tab wider or narrower (this till's).
+          <div className="flex flex-col items-start gap-4 lg:flex-row lg:gap-0" style={{ '--panel': `${shownPanelWidth}px` } as React.CSSProperties}>
+            <div className="flex w-full min-w-0 flex-col gap-3 lg:flex-1 lg:pr-2">
               {/* Which tab this order is for — the same tab as the strip's
                   selected one and the panel on the right. */}
               <div className="flex min-h-11 items-center gap-2.5 rounded-xl border border-foreground/15 bg-card px-3.5 py-2" data-testid="order-target">
@@ -1280,7 +1292,21 @@ export default function App() {
               </div>
               <ItemPicker catalogState={catalogState} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
             </div>
-            <div className="w-full border-t-2 pt-4 lg:w-[412px] lg:shrink-0 lg:self-stretch lg:border-t-0 lg:border-l-2 lg:border-foreground/15 lg:pt-0 lg:pl-5" data-testid="tab-side">
+            <PanelDivider
+              width={shownPanelWidth}
+              min={PANEL_MIN}
+              max={panelMax(viewportWidth)}
+              label={m.panelDivider}
+              onChange={(w) => {
+                setPanelWidth(w)
+                writePanelWidth(w)
+              }}
+              onReset={() => {
+                setPanelWidth(PANEL_DEFAULT)
+                writePanelWidth(null)
+              }}
+            />
+            <div className="w-full border-t-2 pt-4 lg:w-[var(--panel)] lg:shrink-0 lg:self-stretch lg:border-t-0 lg:pt-0 lg:pl-2" data-testid="tab-side">
             <div className="flex flex-col gap-3 lg:sticky lg:top-4">
               {kassaModes.length > 1 && (
                 <div className="flex flex-col gap-1.5" role="group" aria-label={m.orderMode} data-testid="kassa-modes">
