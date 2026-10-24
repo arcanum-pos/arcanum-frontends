@@ -1,8 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_PREFS, groupColor, readPrefs, writePrefs } from './prefs'
 
 describe('kassa prefs', () => {
-  beforeEach(() => localStorage.clear())
+  // A browser's storage and events, enough for these.
+  let stored: Record<string, string>
+  beforeEach(() => {
+    stored = {}
+    vi.stubGlobal('localStorage', { getItem: (k: string) => stored[k] ?? null, setItem: (k: string, v: string) => (stored[k] = v), removeItem: (k: string) => delete stored[k] })
+    vi.stubGlobal('window', { dispatchEvent: () => true })
+  })
+  afterEach(() => vi.unstubAllGlobals())
 
   it('nothing stored: the defaults (compact tiles, ticket right, counts and tip buttons on)', () => {
     expect(readPrefs()).toEqual(DEFAULT_PREFS)
