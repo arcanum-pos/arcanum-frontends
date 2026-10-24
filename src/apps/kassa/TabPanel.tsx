@@ -193,7 +193,7 @@ export function TabPanel({
               {draft.map((line) => (
                 <div key={line.variantId} className="flex items-center gap-2.5 border-b border-l-[3px] border-border/60 border-l-foreground bg-muted/30 py-2 pr-3.5 pl-[11px]" data-testid="draft-line">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13.5px] font-medium tracking-tight">{line.name}</p>
+                    <p className="truncate text-[calc(15px*var(--kassa-text,1))] font-medium tracking-tight">{line.name}</p>
                     <p className="font-mono text-[11px] text-muted-foreground">{formatEuro(line.unitPriceCents)}</p>
                   </div>
                   <div className="flex h-8 items-center overflow-hidden rounded-lg border">
@@ -244,7 +244,7 @@ export function TabPanel({
             return (
               <div key={line.id} className="flex items-center gap-2.5 border-b border-border/60 px-3.5 py-2">
                 <div className={cn('min-w-0 flex-1', qty === 0 && 'text-muted-foreground line-through')}>
-                  <p className="truncate text-[13.5px] font-medium tracking-tight">{line.itemCode === FOOI_CODE ? m.tip : `${qty || line.quantity} × ${line.name}`}</p>
+                  <p className="truncate text-[calc(15px*var(--kassa-text,1))] font-medium tracking-tight">{line.itemCode === FOOI_CODE ? m.tip : `${qty || line.quantity} × ${line.name}`}</p>
                   <p className="font-mono text-[11px] text-muted-foreground">
                     {line.voidedQuantity > 0 && qty > 0 ? m.voided(line.voidedQuantity) : formatEuro(line.unitPriceCents)}
                     {(line.paidQuantity || 0) > 0 && ` · ${m.unitsPaid(line.paidQuantity || 0)}`}

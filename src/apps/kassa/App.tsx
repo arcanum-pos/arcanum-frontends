@@ -1,5 +1,5 @@
 import { useWaiterOnly, WaiterOnly } from '@/shared/waiter-only'
-import { Eye, EyeOff, Monitor, MoreHorizontal } from 'lucide-react'
+import { Eye, EyeOff, Monitor, MoreHorizontal, SlidersHorizontal } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getRegister, registerState, setRegister, type RegisterState } from '@/shared/register'
@@ -47,6 +47,7 @@ import { clampPanel, PANEL_DEFAULT, PANEL_MIN, panelMax, readPanelWidth, writePa
 import { PanelDivider } from './PanelDivider'
 import { GroupTabs, ItemPicker, type CatalogState } from './ItemPicker'
 import { useKassaPrefs } from './prefs'
+import { AdjustSheet } from './AdjustSheet'
 import { PaymentStatus } from './PaymentStatus'
 import { CancelTicketDialog, NameDialog, VoidDialog } from './TabDialogs'
 import { KASSA_MESSAGES } from './messages'
@@ -106,6 +107,7 @@ export default function App() {
   const [menuGroup, setMenuGroup] = useState<string | null>(null)
   // This kassa's own look (Aanpassen): tile size, counts, ticket side, …
   const prefs = useKassaPrefs()
+  const [adjustOpen, setAdjustOpen] = useState(false)
   // The event new rekeningen (and so their sales) are tagged with — optional.
   const [event, setEvent] = useState<EventSelection | null>(() => getEventSelection())
   const eventRef = useRef<EventSelection | null>(event)
@@ -1147,7 +1149,10 @@ export default function App() {
     // On a big screen the kassa fills the screen exactly (header, then the
     // tabs, the menu and the ticket each scrolling on their own); smaller,
     // the page scrolls as one (KASSA_REDESIGN.md, phase 1).
-    <div className="flex min-h-svh flex-col bg-muted/40 lg:h-svh lg:overflow-hidden">
+    <div
+      className="flex min-h-svh flex-col bg-muted/40 lg:h-svh lg:overflow-hidden"
+      style={{ '--kassa-text': { small: 0.92, normal: 1, large: 1.14 }[prefs.text] } as React.CSSProperties}
+    >
       {orgId && <DemoBar orgId={orgId} />}
       {/* Header: where this kassa is, the customer display, the rest under Meer, who's working. */}
       <header className="flex min-h-16 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b bg-card px-4 py-2">
@@ -1177,6 +1182,7 @@ export default function App() {
         </div>
         <div className="flex items-center gap-1">
           <HeaderButton icon={<Monitor />} label={m.display} title={m.openDisplay} aria-label={m.openDisplay} disabled={openingDisplay} onClick={openDisplay} />
+          <HeaderButton icon={<SlidersHorizontal />} label={m.adjust} onClick={() => setAdjustOpen(true)} testId="adjust" />
           <HeaderButton
             icon={showOrder ? <Eye /> : <EyeOff />}
             label={m.showOrder}
@@ -1262,8 +1268,8 @@ export default function App() {
               </div>
             )}
 
-            <div className="flex flex-col items-start gap-4 lg:min-h-0 lg:flex-1 lg:flex-row lg:items-stretch lg:gap-0" style={{ '--panel': `${shownPanelWidth}px` } as React.CSSProperties}>
-              <div className="flex w-full min-w-0 flex-col gap-3 lg:h-full lg:flex-1 lg:overflow-y-auto lg:pr-2 lg:pb-6 [&>*]:shrink-0">
+            <div className={cn('flex flex-col items-start gap-4 lg:min-h-0 lg:flex-1 lg:items-stretch lg:gap-0', prefs.side === 'left' ? 'lg:flex-row-reverse' : 'lg:flex-row')} style={{ '--panel': `${shownPanelWidth}px` } as React.CSSProperties}>
+              <div className={cn('flex w-full min-w-0 flex-col gap-3 lg:h-full lg:flex-1 lg:overflow-y-auto lg:pb-6 [&>*]:shrink-0', prefs.side === 'left' ? 'lg:pl-2' : 'lg:pr-2')}>
                 {/* Which tab this order is for: the same as the selected one
                     on the left and the ticket on the right. */}
                 <div className="z-10 flex items-end gap-3 overflow-hidden bg-[color-mix(in_oklab,var(--muted)_40%,var(--background))] pb-1 lg:sticky lg:top-0" data-testid="order-target">
@@ -1285,6 +1291,7 @@ export default function App() {
                 min={PANEL_MIN}
                 max={panelMax(viewportWidth)}
                 label={m.panelDivider}
+                reversed={prefs.side === 'left'}
                 onChange={(w) => {
                   setPanelWidth(w)
                   writePanelWidth(w)
@@ -1294,7 +1301,7 @@ export default function App() {
                   writePanelWidth(null)
                 }}
               />
-              <div className="w-full border-t-2 pt-4 lg:w-[var(--panel)] lg:shrink-0 lg:self-stretch lg:border-t-0 lg:pt-0 lg:pl-2" data-testid="tab-side">
+              <div className={cn('w-full border-t-2 pt-4 lg:w-[var(--panel)] lg:shrink-0 lg:self-stretch lg:border-t-0 lg:pt-0', prefs.side === 'left' ? 'lg:pr-2' : 'lg:pl-2')} data-testid="tab-side">
               {/* The ticket fills the column (its lines scroll); scrolls as a whole only when even that doesn't fit. */}
               <div className="flex flex-col gap-3 lg:h-full lg:overflow-y-auto lg:pb-4">
                 {kassaModes.length > 1 && (
@@ -1416,6 +1423,8 @@ export default function App() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AdjustSheet open={adjustOpen} onOpenChange={setAdjustOpen} prefs={prefs} unsent={Object.values(drafts).some((lines) => lines.length > 0)} />
 
       {/* A payment in progress: over the kassa, which stays where it was behind it. */}
       {current && (

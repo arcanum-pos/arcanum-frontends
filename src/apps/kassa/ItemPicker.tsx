@@ -401,7 +401,7 @@ function EntryTile({
         tileBase,
         list
           ? 'flex min-h-14 items-center gap-2.5 px-3 py-2'
-          : cn('grid grid-cols-[auto_1fr_auto] grid-rows-[auto_1fr_auto] gap-x-2 px-3 pt-2.5 pb-2.5', tiles === 'large' ? 'h-[128px]' : 'h-[108px]')
+          : cn('grid grid-cols-[auto_1fr_auto] grid-rows-[auto_1fr_auto] gap-x-2 px-3 pt-2.5 pb-2.5', tiles === 'large' ? 'h-[calc(128px*var(--kassa-text,1))]' : 'h-[calc(108px*var(--kassa-text,1))]')
       )}
     >
       {/* On the tab, all told: "3×" — dark while some of it is new, grey when
@@ -422,7 +422,7 @@ function EntryTile({
       <span
         className={cn(
           'min-w-0 font-semibold tracking-tight',
-          list ? 'flex-1 truncate text-[15px]' : cn('col-span-3 row-start-2 line-clamp-2 self-end leading-tight', tiles === 'large' ? 'text-[16.5px]' : 'text-[15px]')
+          list ? 'flex-1 truncate text-[calc(15px*var(--kassa-text,1))]' : cn('col-span-3 row-start-2 line-clamp-2 self-end leading-tight', tiles === 'large' ? 'text-[calc(16.5px*var(--kassa-text,1))]' : 'text-[calc(15px*var(--kassa-text,1))]')
         )}
       >
         {entry.name}
@@ -434,7 +434,7 @@ function EntryTile({
           </span>
         )}
       </span>
-      <span className={cn('font-mono text-[13px] text-muted-foreground tabular-nums', !list && 'col-span-3 row-start-3 mt-0.5')}>{formatEuro(entry.priceCents)}</span>
+      <span className={cn('font-mono text-[calc(13px*var(--kassa-text,1))] text-muted-foreground tabular-nums', !list && 'col-span-3 row-start-3 mt-0.5')}>{formatEuro(entry.priceCents)}</span>
     </button>
   )
 }

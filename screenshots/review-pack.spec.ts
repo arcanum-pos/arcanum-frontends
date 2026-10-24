@@ -122,6 +122,14 @@ test.describe('kassa', () => {
     await shot(page, 'kassa', '17-kassa-settings')
   })
 
+  test('Aanpassen: how this kassa looks', async ({ page }) => {
+    await kassaOn(page, 'nl')
+    await openTab4(page)
+    await page.getByTestId('adjust').click()
+    await expect(page.getByTestId('adjust-sheet')).toBeVisible()
+    await shot(page, 'kassa', '19-adjust')
+  })
+
   test('arranging the menu', async ({ page }) => {
     await kassaOn(page, 'nl')
     await page.getByTestId('arrange').click()

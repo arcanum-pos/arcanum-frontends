@@ -31,6 +31,7 @@ export default {
   noTabsFound: 'Aucune addition ouverte trouvée',
   display: 'Écran client',
   moreMenu: 'Plus',
+  adjust: 'Personnaliser',
   duringService: 'Pendant le service',
   thisKassa: 'Caisse',
   paymentRunning: 'Paiement en cours…',

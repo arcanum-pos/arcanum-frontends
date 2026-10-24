@@ -1,10 +1,10 @@
 import { useRef } from 'react'
 import { cn } from 'cn'
 
-// The line between ordering (left) and the tab (right): dragged with a mouse
-// or a finger to make the tab panel wider or narrower, or with the arrow keys
-// once focused; a double-click (or Home) puts it back. The width is this
-// till's (layout.ts), kept by the caller.
+// The line between ordering and the tab (on the right, or on the left with
+// `reversed`): dragged with a mouse or a finger to make the tab panel wider or
+// narrower, or with the arrow keys once focused; a double-click (or Home) puts
+// it back. The width is this till's (layout.ts), kept by the caller.
 export function PanelDivider({
   width,
   min,
@@ -12,6 +12,7 @@ export function PanelDivider({
   label,
   onChange,
   onReset,
+  reversed = false,
 }: {
   width: number
   min: number
@@ -19,7 +20,10 @@ export function PanelDivider({
   label: string
   onChange: (width: number) => void
   onReset: () => void
+  reversed?: boolean
 }) {
+  // Towards the tab makes it narrower, away from it wider.
+  const sign = reversed ? -1 : 1
   const drag = useRef<{ x: number; width: number } | null>(null)
   const set = (next: number) => onChange(Math.round(Math.min(max, Math.max(min, next))))
   return (
@@ -38,14 +42,14 @@ export function PanelDivider({
         drag.current = { x: e.clientX, width }
       }}
       // The panel is on the right: dragging the line left makes it wider.
-      onPointerMove={(e) => drag.current && set(drag.current.width + (drag.current.x - e.clientX))}
+      onPointerMove={(e) => drag.current && set(drag.current.width + sign * (drag.current.x - e.clientX))}
       onPointerUp={() => (drag.current = null)}
       onPointerCancel={() => (drag.current = null)}
       onDoubleClick={onReset}
       onKeyDown={(e) => {
         const step = e.shiftKey ? 64 : 16
-        if (e.key === 'ArrowLeft') set(width + step)
-        else if (e.key === 'ArrowRight') set(width - step)
+        if (e.key === 'ArrowLeft') set(width + sign * step)
+        else if (e.key === 'ArrowRight') set(width - sign * step)
         else if (e.key === 'Home') onReset()
         else return
         e.preventDefault()

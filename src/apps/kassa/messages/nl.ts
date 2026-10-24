@@ -41,6 +41,7 @@ const nl = {
   // The header: the customer display, and the rest under Meer.
   display: 'Klantscherm',
   moreMenu: 'Meer',
+  adjust: 'Aanpassen',
   duringService: 'Tijdens de dienst',
   thisKassa: 'Kassa',
   paymentRunning: 'Betaling loopt…',

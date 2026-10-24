@@ -31,6 +31,7 @@ export default {
   noTabsFound: 'No open bill found',
   display: 'Customer display',
   moreMenu: 'More',
+  adjust: 'Adjust',
   duringService: 'During service',
   thisKassa: 'Till',
   paymentRunning: 'Payment in progress…',
