@@ -7,7 +7,7 @@ import type { KassaCatalog, KassaEntry } from './catalog-api'
 import { entryToPickerItem, filterSections, searchPick, type PickerItem } from './lib'
 import { KASSA_MESSAGES } from './messages'
 import { GroupColumns, type Grip } from './GroupColumns'
-import { columnsThatFit, placeGroups, readLayout, writeLayout, type GroupLayout } from './layout'
+import { columnsThatFit, placeRows, readLayout, writeLayout, type GroupLayout, type Rows } from './layout'
 
 export type CatalogState = { status: 'loading' } | { status: 'none' } | { status: 'error'; message: string } | { status: 'ok'; catalog: KassaCatalog }
 
@@ -90,25 +90,27 @@ function Catalog({
   }, [])
   const everything = group === null && !query.trim()
   const hasQuick = (s: (typeof sections)[number]) => s.entries.some((e) => e.quickQuantities?.length)
-  // Every group can be moved: into a column, or the row over the whole width
-  // above them, where a group with "sell N at once" tiles starts.
+  // Every group can be moved, into any row and column; a group with "sell N
+  // at once" tiles starts in a full-width row of its own above the others.
   const canArrange = everything && sections.length > 1
   const ownColumns = canArrange && (layout !== null || arranging)
-  const placed = ownColumns
-    ? placeGroups(
+  const rows = ownColumns
+    ? placeRows(
         sections.map((s) => s.id),
         new Set(sections.filter(hasQuick).map((s) => s.id)),
         layout,
         columnsThatFit(gridWidth)
       )
-    : { top: [], columns: [] }
-  function saveColumns(top: string[], next: string[][]) {
-    const l = { top, columns: next }
+    : []
+  function saveRows(next: Rows) {
+    const l = { rows: next }
     setLayout(l)
     writeLayout(catalog.id, l)
   }
+  // Kept as it is: an empty column is room on purpose, until it's removed.
+  // Nothing arranged (or Standaardindeling): the automatic flow stays.
   function finishArranging() {
-    if (layout) saveColumns(placed.top, placed.columns.filter((c) => c.length > 0))
+    if (layout) saveRows(rows)
     setArranging(false)
   }
   const locked = disabled || arranging
@@ -174,8 +176,8 @@ function Catalog({
       {arranging && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-foreground/20 bg-card px-3.5 py-2.5" role="status" data-testid="arrange-bar">
           <p className="min-w-0 flex-[1_1_240px] text-[13px]">{m.arrangeHint}</p>
-          <button type="button" className={chip(false)} onClick={() => saveColumns(placed.top, [...placed.columns, []])}>
-            {m.addColumn}
+          <button type="button" className={chip(false)} onClick={() => saveRows([...rows, [[]]])} data-testid="add-row">
+            {m.addRow}
           </button>
           <button
             type="button"
@@ -202,13 +204,11 @@ function Catalog({
           {ownColumns ? (
             <>
               <GroupColumns
-                top={placed.top}
-                columns={placed.columns}
+                rows={rows}
                 arranging={arranging}
-                onChange={saveColumns}
+                onChange={saveRows}
                 nameOf={(id) => sections.find((s) => s.id === id)?.name ?? ''}
-                dropHere={m.dropHere}
-                fullWidth={m.fullWidthRow}
+                labels={{ dropHere: m.dropHere, addColumn: m.addColumn, removeColumn: m.removeColumn, removeRow: m.removeRow, emptyColumn: m.emptyColumn }}
                 renderSection={(id, grip) => {
                   const section = sections.find((s) => s.id === id)!
                   return <SectionCard section={section} quantities={quantities} onTab={onTab} disabled={locked} onAdd={onAdd} onRemove={onRemove} grip={grip} gripLabel={m.moveGroup(section.name)} />

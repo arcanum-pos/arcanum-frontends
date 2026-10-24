@@ -18,8 +18,14 @@ async function withGroups(kassa: Page, backend: FakeBackend) {
   await kassa.reload()
   await expect(kassa.getByRole('button', { name: /^Pils/ })).toBeVisible()
 }
-const columnGroups = (kassa: Page) =>
-  kassa.getByTestId('group-column').evaluateAll((cols) => cols.map((c) => [...c.querySelectorAll('[data-group-id]')].map((g) => (g as HTMLElement).dataset.groupId)))
+// Every row, its columns, their groups.
+const rowsOf = (kassa: Page) =>
+  kassa.getByTestId('group-row').evaluateAll((rows) =>
+    rows.map((r) => [...r.querySelectorAll('[data-testid="group-column"]')].map((c) => [...c.querySelectorAll('[data-group-id]')].map((g) => (g as HTMLElement).dataset.groupId)))
+  )
+// The columns below the full-width row of the tiles (Bonnen): the last row.
+const columnGroups = async (kassa: Page) => (await rowsOf(kassa)).at(-1)!
+const lastRow = (kassa: Page) => kassa.getByTestId('group-row').last()
 
 test('the divider: dragged, the tab panel wider or narrower - kept for this till; a double-click puts it back', async ({ kassa }) => {
   const divider = kassa.getByTestId('panel-divider')
@@ -58,7 +64,7 @@ test('arranging the groups: dragged by their grip into another column or place; 
   // Dessert to the top of the first column.
   const grip = kassa.locator('[data-group-id="s-dessert"]').getByTestId('group-grip')
   await grip.scrollIntoViewIfNeeded()
-  const target = (await kassa.getByTestId('group-column').first().locator('[data-group-id]').first().boundingBox())!
+  const target = (await lastRow(kassa).getByTestId('group-column').first().locator('[data-group-id]').first().boundingBox())!
   const from = (await grip.boundingBox())!
   await kassa.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
   await kassa.mouse.down()
@@ -68,8 +74,8 @@ test('arranging the groups: dragged by their grip into another column or place; 
   await kassa.waitForTimeout(250)
   // While dragging: a card follows, the target column lights up, a line where it lands.
   await expect(kassa.getByTestId('drag-card')).toHaveText('Dessert')
-  await expect(kassa.getByTestId('group-column').first()).toHaveAttribute('data-target', 'true')
-  await expect(kassa.getByTestId('group-column').first()).toContainText('Hier neerzetten')
+  await expect(lastRow(kassa).getByTestId('group-column').first()).toHaveAttribute('data-target', 'true')
+  await expect(lastRow(kassa).getByTestId('group-column').first()).toContainText('Hier neerzetten')
   await expect(kassa.getByTestId('drop-line')).toHaveCount(1)
   await kassa.mouse.up()
   // dnd-kit swallows the click right after a drop (on the dropped group); a person pauses anyway.
@@ -80,11 +86,11 @@ test('arranging the groups: dragged by their grip into another column or place; 
   await expect(kassa.getByRole('button', { name: /^IJs/ })).toBeEnabled()
 
   await kassa.reload()
-  await expect(kassa.getByTestId('group-columns')).toBeVisible()
+  await expect(kassa.getByTestId('group-rows')).toBeVisible()
   expect((await columnGroups(kassa))[0][0]).toBe('s-dessert')
   // One group chosen: no columns, nothing to arrange.
   await kassa.getByRole('button', { name: 'Drank', exact: true }).click()
-  await expect(kassa.getByTestId('group-columns')).toHaveCount(0)
+  await expect(kassa.getByTestId('group-rows')).toHaveCount(0)
   // Not shown, but keeping its place: the search field doesn't change width.
   await expect(kassa.getByTestId('arrange')).toBeHidden()
   const search = kassa.getByRole('searchbox')
@@ -97,16 +103,15 @@ test('arranging the groups: dragged by their grip into another column or place; 
   await kassa.getByTestId('arrange').click()
   await kassa.getByRole('button', { name: 'Standaardindeling' }).click()
   await kassa.getByRole('button', { name: 'Klaar', exact: true }).click()
-  await expect(kassa.getByTestId('group-columns')).toHaveCount(0)
+  await expect(kassa.getByTestId('group-rows')).toHaveCount(0)
   expect(await kassa.evaluate(() => localStorage.getItem('arcanum-kassa-layout'))).toBeNull()
 })
 
-// A group with "sell N at once" tiles (Bonnen) starts over the whole width,
-// as before, but moves like any other: into a column, and back; a plain group
-// can go up into the full-width row too.
-test('the group with tiles can be moved into a column, and any group into the full-width row', async ({ kassa, backend }) => {
+// Rows of columns: the tiles (Bonnen) start in a full-width row of their own
+// and move like any group - and back. Rows and columns are added and removed
+// by hand; an empty one stays (room on purpose), also after Klaar.
+test('rows and columns: the tile group into a column and back; rows and columns added and removed by hand, empty ones kept', async ({ kassa, backend }) => {
   await withGroups(kassa, backend)
-  const rowGroups = () => kassa.getByTestId('group-row').evaluateAll((rows) => rows.flatMap((r) => [...r.querySelectorAll('[data-group-id]')].map((g) => (g as HTMLElement).dataset.groupId)))
   async function drag(id: string, to: import('@playwright/test').Locator) {
     await kassa.locator(`[data-group-id="${id}"]`).getByTestId('group-grip').scrollIntoViewIfNeeded()
     const from = (await kassa.locator(`[data-group-id="${id}"]`).getByTestId('group-grip').boundingBox())!
@@ -120,24 +125,46 @@ test('the group with tiles can be moved into a column, and any group into the fu
     await kassa.mouse.up()
     await kassa.waitForTimeout(150)
   }
+  const firstRow = kassa.getByTestId('group-row').first()
 
   await kassa.getByTestId('arrange').click()
-  expect(await rowGroups()).toEqual(['s-bonnen'])
-  await drag('s-bonnen', kassa.getByTestId('group-column').last())
-  expect(await rowGroups()).toEqual([])
-  expect((await columnGroups(kassa)).at(-1)).toContain('s-bonnen')
-  // The empty row says what it's for.
-  await expect(kassa.getByTestId('group-row')).toContainText('Over de hele breedte')
-  await drag('s-drank', kassa.getByTestId('group-row'))
-  expect(await rowGroups()).toEqual(['s-drank'])
-  await kassa.getByRole('button', { name: 'Klaar', exact: true }).click()
+  expect((await rowsOf(kassa))[0]).toEqual([['s-bonnen']])
+  // Into a column below: its row stays, empty, and can be removed - or used again.
+  await drag('s-bonnen', lastRow(kassa).getByTestId('group-column').last())
+  expect((await rowsOf(kassa))[0]).toEqual([[]])
+  expect((await columnGroups(kassa)).flat()).toContain('s-bonnen')
+  await expect(firstRow).toContainText('Lege kolom')
+  await expect(firstRow.getByTestId('remove-row')).toBeVisible()
+  // And back where it was.
+  await drag('s-bonnen', firstRow.getByTestId('group-column'))
+  expect((await rowsOf(kassa))[0]).toEqual([['s-bonnen']])
+  await expect(firstRow.getByTestId('remove-row')).toHaveCount(0)
 
-  // Kept for this till; the tiles still sell.
+  // A column added to a row, removed again by hand.
+  await firstRow.getByTestId('add-column').click()
+  expect((await rowsOf(kassa))[0]).toEqual([['s-bonnen'], []])
+  await firstRow.getByTestId('remove-column').click()
+  expect((await rowsOf(kassa))[0]).toEqual([['s-bonnen']])
+
+  // A row added at the bottom; Klaar keeps it, and an empty column keeps its room.
+  await kassa.getByTestId('add-row').click()
+  expect((await rowsOf(kassa)).at(-1)).toEqual([[]])
+  await firstRow.getByTestId('add-column').click()
+  await kassa.getByRole('button', { name: 'Klaar', exact: true }).click()
+  const bonnen = kassa.locator('[data-group-id="s-bonnen"]')
+  const full = (await kassa.getByTestId('group-rows').boundingBox())!.width
+  expect((await bonnen.boundingBox())!.width).toBeLessThan(full * 0.6)
+
   await kassa.waitForLoadState('networkidle')
   await kassa.reload()
-  await expect(kassa.getByTestId('group-columns')).toBeVisible()
-  expect(await rowGroups()).toEqual(['s-drank'])
-  expect((await columnGroups(kassa)).flat()).toContain('s-bonnen')
+  await kassa.getByTestId('arrange').click()
+  const rows = await rowsOf(kassa)
+  expect(rows[0]).toEqual([['s-bonnen'], []])
+  expect(rows.at(-1)).toEqual([[]])
+  await kassa.getByTestId('group-row').last().getByTestId('remove-row').click()
+  expect((await rowsOf(kassa)).length).toBe(rows.length - 1)
+  await kassa.getByRole('button', { name: 'Klaar', exact: true }).click()
+  // The tiles still sell.
   await kassa.getByRole('button', { name: '10 × Bon', exact: true }).click()
   await expect(kassa.getByTestId('tab-side')).toContainText('10 items')
 })
@@ -162,7 +189,7 @@ test('a drop between the columns goes to the nearest one, at its end - never bac
   const before = await columnGroups(kassa)
   const moving = before[0][0]
   const grip = kassa.locator(`[data-group-id="${moving}"]`).getByTestId('group-grip')
-  const second = (await kassa.getByTestId('group-column').nth(1).boundingBox())!
+  const second = (await lastRow(kassa).getByTestId('group-column').nth(1).boundingBox())!
   const from = (await grip.boundingBox())!
   await kassa.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
   await kassa.mouse.down()

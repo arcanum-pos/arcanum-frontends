@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clampPanel, columnsThatFit, moveSection, placeGroups, placeSections, readLayout, readPanelWidth, writeLayout, writePanelWidth } from './layout'
+import { clampPanel, columnsThatFit, flatColumns, moveSection, placeRows, placeSections, unflatColumns, readLayout, readPanelWidth, writeLayout, writePanelWidth } from './layout'
 
 describe('placeSections', () => {
   it('without an arrangement: row by row, like the automatic flow', () => {
@@ -12,19 +12,26 @@ describe('placeSections', () => {
   })
 })
 
-describe('placeGroups', () => {
+describe('placeRows', () => {
   const full = new Set(['bon'])
-  it('without a layout: groups with tiles in the full-width row, the rest in columns', () => {
-    expect(placeGroups(['bon', 'a', 'b', 'c'], full, null, 2)).toEqual({ top: ['bon'], columns: [['a', 'c'], ['b']] })
+  it('without a layout: the groups with tiles in a full-width row, the rest in columns below', () => {
+    expect(placeRows(['bon', 'a', 'b', 'c'], full, null, 2)).toEqual([[['bon']], [['a', 'c'], ['b']]])
+    expect(placeRows(['a', 'b'], full, null, 2)).toEqual([[['a'], ['b']]])
   })
-  it('a layout from before the row existed: the tile group goes to the row, the columns stay', () => {
-    expect(placeGroups(['bon', 'a', 'b'], full, { columns: [['b'], ['a']] }, 2)).toEqual({ top: ['bon'], columns: [['b'], ['a']] })
+  it('a saved one is kept as it is, empty rows and columns included (room on purpose)', () => {
+    expect(placeRows(['bon', 'a', 'b'], full, { rows: [[['a'], []], [['bon', 'b']], [[]]] }, 2)).toEqual([[['a'], []], [['bon', 'b']], [[]]])
   })
-  it('a tile group dragged into a column stays there; a plain group can be in the row', () => {
-    expect(placeGroups(['bon', 'a', 'b'], full, { top: ['a'], columns: [['b', 'bon'], []] }, 2)).toEqual({ top: ['a'], columns: [['b', 'bon'], []] })
+  it('a new tile group at the top of the first column, another in the shortest column of the last row; gone ones left out', () => {
+    expect(placeRows(['bon', 'a', 'new'], full, { rows: [[['a']], [['gone'], []]] }, 2)).toEqual([[['bon', 'a']], [['new'], []]])
   })
-  it('a new plain group goes to the shortest column, a new tile group to the row; gone ones are left out', () => {
-    expect(placeGroups(['bon', 'a', 'new'], full, { top: ['gone'], columns: [['a'], []] }, 2)).toEqual({ top: ['bon'], columns: [['a'], ['new']] })
+  it('never without a row and a column', () => {
+    expect(placeRows(['a'], full, { rows: [] }, 2)).toEqual([[['a']]])
+    expect(placeRows(['a'], full, { rows: [[]] }, 2)).toEqual([[['a']]])
+  })
+  it('the columns of all rows in one list for dragging, and back', () => {
+    const rows = [[['bon']], [['a'], ['b', 'c']]]
+    expect(flatColumns(rows)).toEqual([['bon'], ['a'], ['b', 'c']])
+    expect(unflatColumns(rows, [[], ['a', 'bon'], ['b', 'c']])).toEqual([[[]], [['a', 'bon'], ['b', 'c']]])
   })
 })
 
@@ -60,16 +67,22 @@ describe('kept on the device, per menu', () => {
     })
   })
   it('a layout per menu; the width once; cleared again', () => {
-    writeLayout('cat-1', { columns: [['a'], ['b']] })
-    writeLayout('cat-2', { columns: [['x']] })
-    expect(readLayout('cat-1')).toEqual({ columns: [['a'], ['b']] })
+    writeLayout('cat-1', { rows: [[['a'], ['b']]] })
+    writeLayout('cat-2', { rows: [[['x']]] })
+    expect(readLayout('cat-1')).toEqual({ rows: [[['a'], ['b']]] })
     writeLayout('cat-1', null)
     expect(readLayout('cat-1')).toBeNull()
-    expect(readLayout('cat-2')).toEqual({ columns: [['x']] })
+    expect(readLayout('cat-2')).toEqual({ rows: [[['x']]] })
     writePanelWidth(480)
     expect(readPanelWidth()).toBe(480)
     writePanelWidth(null)
     expect(readPanelWidth()).toBeNull()
+  })
+  it('reads a layout saved before rows existed: its full-width row (if any), then its columns', () => {
+    localStorage.setItem('arcanum-kassa-layout', JSON.stringify({ a: { columns: [['x'], ['y']] }, b: { top: ['bon'], columns: [['x'], []] }, c: { top: [], columns: [['x']] } }))
+    expect(readLayout('a')).toEqual({ rows: [[['x'], ['y']]] })
+    expect(readLayout('b')).toEqual({ rows: [[['bon']], [['x'], []]] })
+    expect(readLayout('c')).toEqual({ rows: [[['x']]] })
   })
   it('ignores what isn\'t a layout', () => {
     localStorage.setItem('arcanum-kassa-layout', JSON.stringify({ 'cat-1': { columns: 'nope' } }))
