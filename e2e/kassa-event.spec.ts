@@ -45,7 +45,7 @@ test('an event chosen in Instellingen: shown in the header, and every new rekeni
   await expect(kassa.getByTestId('kassa-event')).toHaveText('Fietstocht 2026')
 
   await payToog(kassa)
-  await kassa.getByRole('button', { name: '+ Nieuwe rekening', exact: true }).click()
+  await kassa.getByRole('button', { name: 'Nieuwe rekening', exact: true }).click()
   await kassa.getByLabel('Naam of tafel').fill('Tafel 2')
   await kassa.getByRole('button', { name: 'Rekening openen', exact: true }).click()
   await expect(panel(kassa).getByRole('heading', { name: /Tafel 2/ })).toBeVisible()
@@ -151,7 +151,7 @@ test('ordering modes at the kassa, when the event says so: the one chosen marks 
   expect(backend.tabs.map((t) => t.orderModeId)).toEqual(['m-plaatse', 'm-mee', 'm-mee'])
 
   // An open rekening says how it came in.
-  await kassa.getByRole('button', { name: '+ Nieuwe rekening', exact: true }).click()
+  await kassa.getByRole('button', { name: 'Nieuwe rekening', exact: true }).click()
   await kassa.getByLabel('Naam of tafel').fill('Tafel 2')
   await kassa.getByRole('button', { name: 'Rekening openen', exact: true }).click()
   await expect(panel(kassa).getByRole('heading', { name: /Tafel 2 · Take away/ })).toBeVisible()

@@ -34,7 +34,8 @@ test('Instellingen → Taal: the settings switch right away, the kassa once reop
   await kassa.reload()
   await expect(kassa.getByText('Comptoir - payer directement')).toBeVisible()
   await expect(kassa.locator('html')).toHaveAttribute('lang', 'fr')
-  await expect(kassa.getByRole('link', { name: 'Paramètres' })).toBeVisible()
+  await kassa.getByTestId('more-menu').click()
+  await expect(kassa.getByRole('menuitem', { name: 'Paramètres' })).toBeVisible()
 })
 
 test('a French kassa: a cash sale end to end, and the Toog tab is still stored as "Toog"', async ({ kassa, backend }) => {

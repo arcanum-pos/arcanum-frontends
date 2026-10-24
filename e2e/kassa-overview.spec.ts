@@ -21,7 +21,8 @@ test('lists today of every kassa, filters and searches, and opens a rekening', a
   const stillOpen = backend.openTab('Gisteren open')
   stillOpen.openedAt = yesterday()
 
-  await kassa.getByRole('button', { name: 'Rekeningen' }).click()
+  await kassa.getByTestId('more-menu').click()
+  await kassa.getByRole('menuitem', { name: 'Rekeningen' }).click()
   const overview = kassa.getByTestId('tabs-overview')
   await expect(overview.getByRole('heading', { name: 'Rekeningen van vandaag' })).toBeVisible()
   const rows = overview.getByTestId('overview-row')
@@ -58,7 +59,8 @@ test('lists today of every kassa, filters and searches, and opens a rekening', a
 })
 
 test('a new rekening elsewhere shows up in the overview live', async ({ kassa, backend, push }) => {
-  await kassa.getByRole('button', { name: 'Rekeningen' }).click()
+  await kassa.getByTestId('more-menu').click()
+  await kassa.getByRole('menuitem', { name: 'Rekeningen' }).click()
   await expect(kassa.getByText('Nog geen rekeningen vandaag.')).toBeVisible()
   const tab = backend.openTab('Tafel 8')
   push({ event: 'tabs_changed', tab_id: tab.id })

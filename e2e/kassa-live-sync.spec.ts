@@ -13,7 +13,8 @@ test("another kassa's new rekening appears live, without touching this one", asy
 
 test('Vernieuwen pulls the list when no push came', async ({ kassa, backend }) => {
   backend.openTab('Tafel 3')
-  await kassa.getByRole('button', { name: 'Vernieuwen' }).first().click()
+  await kassa.getByTestId('more-menu').click()
+  await kassa.getByRole('menuitem', { name: 'Vernieuwen' }).click()
   await expect(kassa.getByRole('button', { name: /^#1 Tafel 3/ })).toBeVisible()
 })
 

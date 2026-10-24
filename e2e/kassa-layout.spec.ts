@@ -101,7 +101,7 @@ test('click adds a product, right-click takes one off again (never below zero, n
 })
 
 test('right-click leaves lines already on the rekening alone (those need a void)', async ({ kassa }) => {
-  await kassa.getByRole('button', { name: '+ Nieuwe rekening', exact: true }).click()
+  await kassa.getByRole('button', { name: 'Nieuwe rekening', exact: true }).click()
   await kassa.getByLabel('Naam of tafel').fill('Tafel 2')
   await kassa.getByRole('button', { name: 'Rekening openen', exact: true }).click()
   const row = kassa.getByRole('button', { name: /^Fietstocht \(niet-lid\)/ })

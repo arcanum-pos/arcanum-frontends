@@ -34,6 +34,15 @@ const nl = {
   selfOrderTab: (n: number) => `Zelfbestelling #${n}`,
   findOrder: 'Bestelling #',
   findOrderNotFound: (n: string) => `Geen open bestelling #${n}`,
+  // The tab column on the left: search by name or number, the open tabs.
+  searchTabs: 'Rekening of #nummer',
+  openTabs: 'Open rekeningen',
+  noTabsFound: 'Geen open rekening gevonden',
+  // The header: the customer display, and the rest under Meer.
+  display: 'Klantscherm',
+  moreMenu: 'Meer',
+  duringService: 'Tijdens de dienst',
+  thisKassa: 'Kassa',
   paymentRunning: 'Betaling loopt…',
   splitPaid: (paid: number, parts: number) => `${paid}/${parts} betaald`,
   newTab: '+ Nieuwe rekening',

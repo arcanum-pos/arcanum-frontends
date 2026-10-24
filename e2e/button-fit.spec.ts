@@ -72,18 +72,21 @@ for (const [lang, locale, voidLabel] of LANGS) {
         await fits(page, 'kassa, split dialog')
         await page.keyboard.press('Escape')
 
-        await page.locator('button.border-dashed').click()
+        await page.getByTestId('tab-rail').getByRole('button').last().click()
         await expect(page.getByRole('dialog')).toBeVisible()
         await fits(page, 'kassa, new tab dialog')
         await page.keyboard.press('Escape')
 
         await page.getByRole('radio').nth(1).check()
         await page.getByRole('button', { name: new RegExp(`^${names.ui.pay} €`) }).click()
-        await expect(page.getByTestId('tab-panel')).toHaveCount(0)
+        await expect(page.getByTestId('payment-overlay')).toBeVisible()
         await fits(page, 'kassa, paying cash')
 
         await page.goto('/kassa.html')
-        await page.getByRole('button', { name: names.ui.overview }).click()
+        await page.getByTestId('more-menu').click()
+        await expect(page.getByRole('menu')).toBeVisible()
+        await fits(page, 'kassa, Meer menu')
+        await page.getByRole('menuitem', { name: names.ui.overview }).click()
         await expect(page.getByTestId('overview-row').first()).toBeVisible()
         await fits(page, 'kassa, Rekeningen')
 

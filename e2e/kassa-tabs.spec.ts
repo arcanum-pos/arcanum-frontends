@@ -24,7 +24,7 @@ test('Toog quick sale: build a draft, pay cash, back to Toog for the next custom
 })
 
 test('named tab: open, add an order, void part of a line with a reason', async ({ kassa, backend }) => {
-  await kassa.getByRole('button', button('+ Nieuwe rekening')).click()
+  await kassa.getByRole('button', button('Nieuwe rekening')).click()
   await kassa.getByLabel('Naam of tafel').fill('Tafel 4')
   await kassa.getByRole('button', button('Rekening openen')).click()
   await expect(kassa.getByRole('button', button(/^#1 Tafel 4/))).toBeVisible()
@@ -76,7 +76,7 @@ test('switching to another tab sends the round of the one left, as one order', a
   await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
   await expect(panel(kassa).getByText('1 × Wandeltocht')).toBeVisible()
   await kassa.getByRole('button', button('15 × Bon')).click()
-  await expect(kassa.getByRole('button', button(/^#1 Tafel 4 •/))).toBeVisible()
+  await expect(kassa.getByRole('button', button(/^#1 Tafel 4 .* 15 nieuw$/))).toBeVisible()
 
   await kassa.getByRole('button', button(/^#2 Jan/)).click()
   await expect(kassa.getByTestId('order-target')).toContainText('#2 Jan')
@@ -195,7 +195,8 @@ test('no "Ticket annuleren" while a payment runs, or once something is paid', as
   await expect(kassa.getByRole('button', button('Ticket annuleren'))).toBeEnabled()
   // A payment running for it (e.g. on another kassa): locked.
   backend.startCharge(tab.id, 'bancontact')
-  await kassa.getByRole('button', { name: 'Vernieuwen' }).first().click()
+  await kassa.getByTestId('more-menu').click()
+  await kassa.getByRole('menuitem', { name: 'Vernieuwen' }).click()
   await expect(kassa.getByRole('button', button('Ticket annuleren'))).toBeDisabled()
   expect(tab.status).toBe('open')
 })

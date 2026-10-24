@@ -1,11 +1,13 @@
 import { useWaiterOnly, WaiterOnly } from '@/shared/waiter-only'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Monitor, MoreHorizontal } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getRegister, registerState, setRegister, type RegisterState } from '@/shared/register'
 import { CashUp, MovementDialog, OpenRegister, useShiftTexts } from './Shift'
 import { chosenStaff, listStaff, staffHeaders } from '@/shared/staff'
 import { StaffButton } from '@/shared/staff-picker'
 import { useEffect, useRef, useState } from 'react'
+import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import kabouterLogo from '@/shared/assets/kabouter.png'
 import { getCatalogSelection, getDeviceId, getDeviceName, getEventSelection, getSumupReader, setCatalogSelection, setEventSelection, type EventSelection } from '@/shared/device'
@@ -50,7 +52,7 @@ import { KASSA_MESSAGES } from './messages'
 import { SplitDialog } from './SplitDialog'
 import { TabPanel } from './TabPanel'
 import { TabsOverview } from './TabsOverview'
-import { TabStrip, type ActiveKey } from './TabStrip'
+import { TabRail, type ActiveKey } from './TabRail'
 import * as tabsApi from './tabs-api'
 import { netQuantity, QUICK_SALE_LABEL, TabApiError, tabTitle, type DraftLine, type TabDetail, type TabLine, type TabSummary } from './tabs-api'
 import { showOrgIcons } from '@/shared/install'
@@ -1109,7 +1111,6 @@ export default function App() {
 
   // Tap to Pay is never confirmed by hand: SumUp does.
   const showConfirmButton = current !== null && current.status !== 'RESOLVED' && current.method !== 'tap'
-  const draftKeys = new Set(Object.keys(drafts))
   const shownPanelWidth = clampPanel(panelWidth, viewportWidth)
   const draftCount = draft.reduce((n, l) => n + l.quantity, 0)
   // What the ticket on the right says is to pay (what's open plus the new round).
@@ -1134,119 +1135,210 @@ export default function App() {
   // On a register whose drawer isn't open: "Kassa openen" before anything else.
   const registerClosed = !!orgId && !!getRegister(orgId) && !!regState && !regState.shift
 
+  const kassaView = !registerClosed && !cashUpOpen && view === 'kassa'
+  const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
   return (
-    <div className="flex min-h-svh flex-col bg-muted/40">
+    // On a big screen the kassa fills the screen exactly (header, then the
+    // tabs, the menu and the ticket each scrolling on their own); smaller,
+    // the page scrolls as one (KASSA_REDESIGN.md, phase 1).
+    <div className="flex min-h-svh flex-col bg-muted/40 lg:h-svh lg:overflow-hidden">
       {orgId && <DemoBar orgId={orgId} />}
-      {/* Header: where this kassa is (org · device · menukaart), who's on it, and the open tabs. */}
-      <header className="border-b bg-card">
-        <div className="flex flex-wrap items-center gap-3.5 px-5 pt-3 pb-2.5">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <div className="flex size-[34px] shrink-0 items-center justify-center rounded-[9px] bg-foreground text-[11px] font-bold tracking-tight text-background" aria-hidden="true">
-              {initials(orgName) || <img src={kabouterLogo} alt="" className="size-4 invert dark:invert-0" />}
-            </div>
-            <div className="flex min-w-0 flex-col gap-px">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-[14.5px] font-semibold tracking-tight">{orgName || m.kassa}</span>
-                {event && (
-                  <span
-                    className="shrink-0 rounded-md border bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold tracking-[0.01em] text-foreground/80"
-                    title={m.eventHint}
-                    data-testid="kassa-event"
-                  >
-                    {event.name}
-                  </span>
-                )}
-              </div>
-              <span className="truncate text-[11.5px] text-muted-foreground">
-                {[getDeviceName(), catalogName && m.catalogNamed(catalogName), terminalIdLabel && `POS ${terminalIdLabel.slice(0, 8)}`].filter(Boolean).join(' · ')}
-              </span>
-            </div>
+      {/* Header: where this kassa is, the customer display, the rest under Meer, who's working. */}
+      <header className="flex min-h-16 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b bg-card px-4 py-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-foreground text-[12px] font-bold tracking-tight text-background" aria-hidden="true">
+            {initials(orgName) || <img src={kabouterLogo} alt="" className="size-4 invert dark:invert-0" />}
           </div>
-          {orgId && <StaffButton orgId={orgId} required={staffRequired} open={staffOpen} onOpenChange={setStaffOpen} className="h-[34px]" />}
-          {regState?.shift && (
-            <span className="text-[12px] text-muted-foreground" data-testid="shift-label">
-              {st.header(regState.register.name, regState.shift.number, new Date(regState.shift.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}
+          <div className="flex min-w-0 flex-col gap-px">
+            <span className="truncate text-[15px] font-semibold tracking-tight">{orgName || m.kassa}</span>
+            <span className="flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+              <span className="truncate">{[getDeviceName(), catalogName && m.catalogNamed(catalogName), terminalIdLabel && `POS ${terminalIdLabel.slice(0, 8)}`].filter(Boolean).join(' · ')}</span>
+              {event && (
+                <span className="shrink-0 rounded-md border bg-muted px-1.5 py-px text-[11px] font-semibold text-foreground/80" title={m.eventHint} data-testid="kassa-event">
+                  {event.name}
+                </span>
+              )}
+              {regState?.shift && (
+                <span className="shrink-0" data-testid="shift-label">
+                  · {st.header(regState.register.name, regState.shift.number, time(regState.shift.openedAt))}
+                </span>
+              )}
             </span>
-          )}
-          <div className="min-w-5 flex-1" />
-          <div className="flex flex-wrap items-center gap-2">
-            {regState?.shift && (
-              <>
-                <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={current !== null} onClick={() => setMovementOpen(true)}>
-                  {st.movement}
-                </Button>
-                <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={current !== null} onClick={openCashUp} data-testid="open-cash-up">
-                  {st.cashUp}
-                </Button>
-              </>
-            )}
-            <Button
-              variant="outline"
-              className="h-[34px] px-3 text-[13px]"
-              disabled={current !== null}
-              aria-pressed={view === 'overview'}
-              onClick={() => setView(view === 'overview' ? 'kassa' : 'overview')}
-            >
-              {view === 'overview' ? m.backToKassa : m.overviewButton}
-            </Button>
-            <Button variant="outline" className="h-[34px] px-3 text-[13px]" disabled={openingDisplay} onClick={openDisplay}>
-              {m.openDisplay}
-            </Button>
-            <Button
-              variant={showOrder ? 'secondary' : 'outline'}
-              className="h-[34px] px-3 text-[13px]"
-              aria-pressed={showOrder}
-              title={m.showOrderHint}
-              onClick={() => {
-                setShowOrder(!showOrder)
-                storeShowOrder(!showOrder)
-              }}
-              data-testid="show-order"
-            >
-              {showOrder ? <Eye /> : <EyeOff />}
-              {m.showOrder}
-            </Button>
-            <Button variant="outline" className="h-[34px] px-3 text-[13px]" asChild>
-              <a href="/settings.html">{m.settings}</a>
-            </Button>
-            {user && (
-              <div className="flex items-center gap-2 border-l pl-2.5">
-                <div className="flex size-7 items-center justify-center rounded-full border bg-muted text-[10.5px] font-semibold text-foreground/75" aria-hidden="true">
-                  {initials(user.name)}
-                </div>
-                <div className="flex flex-col leading-tight">
-                  <span className="text-xs font-medium">{user.name}</span>
-                  <a href="/logout" onClick={leaveWithOpenDrawer} className="text-[10.5px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-                    {m.logout}
-                  </a>
-                </div>
-              </div>
-            )}
-            {!user && (
-              <a href="/logout" onClick={leaveWithOpenDrawer} className="text-[13px] text-muted-foreground underline-offset-4 hover:underline">
-                {m.logout}
-              </a>
-            )}
           </div>
         </div>
-        <div className="px-5 pb-2.5">
-          <TabStrip
-            tabs={tabs}
-            active={active}
-            draftKeys={draftKeys}
-            quickTotalCents={draftTotalCents(drafts.quick || [])}
-            disabled={busy || current !== null}
-            onSelect={(key) => {
-              setView('kassa')
-              selectTab(key)
+        <div className="min-w-4 flex-1" />
+        <div className="flex items-center gap-1">
+          <HeaderButton icon={<Monitor />} label={m.display} title={m.openDisplay} aria-label={m.openDisplay} disabled={openingDisplay} onClick={openDisplay} />
+          <HeaderButton
+            icon={showOrder ? <Eye /> : <EyeOff />}
+            label={m.showOrder}
+            title={m.showOrderHint}
+            pressed={showOrder}
+            onClick={() => {
+              setShowOrder(!showOrder)
+              storeShowOrder(!showOrder)
             }}
-            onNew={() => setNameDialog('new')}
-            onRefresh={refreshAll}
+            testId="show-order"
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <HeaderButton icon={<MoreHorizontal />} label={m.moreMenu} testId="more-menu" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuLabel className="text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">{m.duringService}</DropdownMenuLabel>
+              <DropdownMenuItem className="h-10" onSelect={() => setView(view === 'overview' ? 'kassa' : 'overview')}>
+                {view === 'overview' ? m.backToKassa : m.overviewButton}
+              </DropdownMenuItem>
+              {regState?.shift && (
+                <DropdownMenuItem className="h-10" onSelect={() => setMovementOpen(true)}>
+                  {st.movement}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="h-10" onSelect={refreshAll}>
+                {m.refresh}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel className="text-[11px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">{m.thisKassa}</DropdownMenuLabel>
+              {regState?.shift && (
+                <DropdownMenuItem className="h-10" onSelect={openCashUp} data-testid="open-cash-up">
+                  {st.cashUp}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="h-10" asChild>
+                <a href="/settings.html">{m.settings}</a>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="h-10" asChild>
+                <a href="/logout" onClick={leaveWithOpenDrawer}>
+                  {m.logout}
+                </a>
+              </DropdownMenuItem>
+              {user && (
+                <>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5 text-[12px] text-muted-foreground">
+                    <p className="font-medium text-foreground">{user.name}</p>
+                    <p className="truncate">{user.email}</p>
+                  </div>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {orgId && (
+            <>
+              <div className="mx-1.5 h-7 w-px bg-border" aria-hidden="true" />
+              <StaffButton orgId={orgId} required={staffRequired} open={staffOpen} onOpenChange={setStaffOpen} className="h-11" />
+            </>
+          )}
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col gap-3 px-5 pt-4 pb-6">
+      {kassaView ? (
+        <main className="flex flex-1 flex-col lg:min-h-0 lg:flex-row">
+          <TabRail
+            tabs={tabs}
+            active={active}
+            draftCounts={Object.fromEntries(Object.entries(drafts).map(([key, lines]) => [key, lines.reduce((n, l) => n + l.quantity, 0)]))}
+            quickTotalCents={draftTotalCents(drafts.quick || [])}
+            disabled={busy || current !== null}
+            onSelect={selectTab}
+            onNew={() => setNameDialog('new')}
+          />
+          <div className="flex min-w-0 flex-1 flex-col gap-3 px-4 pt-4 pb-6 lg:min-h-0 lg:pb-0">
+            {error && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
+            {notice && (
+              <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
+                <p>{notice}</p>
+                <Button variant="ghost" size="sm" onClick={() => setNotice('')}>
+                  {m.close}
+                </Button>
+              </div>
+            )}
+
+            <div className="flex flex-col items-start gap-4 lg:min-h-0 lg:flex-1 lg:flex-row lg:items-stretch lg:gap-0" style={{ '--panel': `${shownPanelWidth}px` } as React.CSSProperties}>
+              <div className="flex w-full min-w-0 flex-col gap-3 lg:h-full lg:flex-1 lg:overflow-y-auto lg:pr-2 lg:pb-6 [&>*]:shrink-0">
+                {/* Which tab this order is for: the same as the selected one
+                    on the left and the ticket on the right. */}
+                <div className="z-10 flex h-12 items-center gap-2.5 overflow-hidden rounded-xl border border-foreground/15 bg-card px-3.5 lg:sticky lg:top-0" data-testid="order-target">
+                  <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{m.orderingFor}</span>
+                  <span className="min-w-0 truncate rounded-md bg-foreground px-2 py-0.5 text-[13.5px] font-semibold tracking-tight text-background">{active === 'quick' ? m.quickSale : panelTitle}</span>
+                  {/* The same as the ticket on the right: its items and what's to pay, new ones included. */}
+                  <span className="ml-auto truncate text-right font-mono text-[12.5px] whitespace-nowrap text-muted-foreground tabular-nums" data-testid="order-target-summary">
+                    {m.items(itemCount)} · <span className="font-semibold text-foreground">{formatEuro(targetCents)}</span>
+                    {/* On the same line: the header never grows and pushes the menu down. */}
+                    {draftCount > 0 && <span> · {m.newItems(draftCount)}</span>}
+                  </span>
+                </div>
+                <ItemPicker catalogState={catalogState} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
+              </div>
+              <PanelDivider
+                width={shownPanelWidth}
+                min={PANEL_MIN}
+                max={panelMax(viewportWidth)}
+                label={m.panelDivider}
+                onChange={(w) => {
+                  setPanelWidth(w)
+                  writePanelWidth(w)
+                }}
+                onReset={() => {
+                  setPanelWidth(PANEL_DEFAULT)
+                  writePanelWidth(null)
+                }}
+              />
+              <div className="w-full border-t-2 pt-4 lg:w-[var(--panel)] lg:shrink-0 lg:self-stretch lg:border-t-0 lg:pt-0 lg:pl-2" data-testid="tab-side">
+              <div className="flex flex-col gap-3 lg:h-full lg:overflow-y-auto lg:pb-6 [&>*]:shrink-0">
+                {kassaModes.length > 1 && (
+                  <div className="flex flex-col gap-1.5" role="group" aria-label={m.orderMode} data-testid="kassa-modes">
+                    <span className="text-[11.5px] font-medium text-muted-foreground">{m.orderMode}</span>
+                    <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(kassaModes.length, 3)}, minmax(0, 1fr))` }}>
+                      {kassaModes.map((mode) => (
+                        <Button
+                          key={mode.id}
+                          variant={mode.id === orderModeId ? 'default' : 'outline'}
+                          className="h-10 truncate"
+                          aria-pressed={mode.id === orderModeId}
+                          disabled={busy || current !== null}
+                          onClick={() => setOrderModeId(mode.id)}
+                        >
+                          {mode.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <TabPanel
+                  title={panelTitle}
+                  subtitle={panelSubtitle}
+                  tab={shownTab}
+                  draft={draft}
+                  paymentMethod={paymentMethod}
+                  tapToPay={tapToPay}
+                  tipInput={tipInput}
+                  onTipInputChange={setTipInput}
+                  busy={busy || tabLoading}
+                  onPaymentMethodChange={setPaymentMethod}
+                  onDraftQuantity={setDraftQuantity}
+                  onClearDraft={() => setDraftFor(active, [])}
+                  onVoid={setVoidTarget}
+                  onPay={pay}
+                  onPark={() => setNameDialog('park')}
+                  onRename={() => setNameDialog('rename')}
+                  onCancelTab={cancelEmptyTab}
+                  onCancelTicket={() => setCancellingTicket(true)}
+                  onRefresh={refreshAll}
+                  onSplit={() => setSplitDialogOpen(true)}
+                  onStopSplit={stopSplit}
+                  itemSelection={itemMode && shownTab && itemMode.tabId === shownTab.id ? itemMode.selection : null}
+                  onItemSelection={(selection) => setItemMode((m) => (m ? { ...m, selection } : m))}
+                  onStopItems={() => setItemMode(null)}
+                />
+              </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      ) : (
+        <main className="flex flex-1 flex-col gap-3 px-5 pt-4 pb-6 lg:overflow-y-auto">
         {error && <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">{error}</p>}
         {notice && (
           <div className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
@@ -1269,32 +1361,12 @@ export default function App() {
             }}
           />
         )}
-        {orgId && regState?.shift && movementOpen && (
-          <MovementDialog orgId={orgId} shift={regState.shift} deviceName={getDeviceName()} onClose={() => setMovementOpen(false)} onSaved={() => loadRegister()} />
+        {!registerClosed && !cashUpOpen && view === 'overview' && orgId && (
+          <Button variant="outline" className="h-11 self-start" onClick={() => setView('kassa')}>
+            {m.backToKassa}
+          </Button>
         )}
-        <Dialog open={leaving} onOpenChange={setLeaving}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{m.leaveTitle}</DialogTitle>
-              <DialogDescription>{m.leaveText}</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" asChild>
-                <a href="/logout">{m.leaveOpen}</a>
-              </Button>
-              <Button
-                onClick={() => {
-                  setLeaving(false)
-                  openCashUp()
-                }}
-              >
-                {st.cashUp}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {!registerClosed && !cashUpOpen && !current && view === 'overview' && orgId && (
+        {!registerClosed && !cashUpOpen && view === 'overview' && orgId && (
           <TabsOverview
             orgId={orgId}
             refreshSignal={tabsSignal}
@@ -1304,108 +1376,47 @@ export default function App() {
             }}
           />
         )}
-
-        {!registerClosed && !cashUpOpen && !current && view === 'kassa' && (
-          // Flex like the design, not a grid with an fr track: Safari
-          // mis-sized the nested product grid's rows inside that.
-          // Ordering on the left, the tab on the right — apart: a line between
-          // them, dragged to make the tab wider or narrower (this till's).
-          <div className="flex flex-col items-start gap-4 lg:flex-row lg:gap-0" style={{ '--panel': `${shownPanelWidth}px` } as React.CSSProperties}>
-            <div className="flex w-full min-w-0 flex-col gap-3 lg:flex-1 lg:pr-2">
-              {/* Which tab this order is for — the same tab as the strip's
-                  selected one and the panel on the right. */}
-              <div className="flex h-12 items-center gap-2.5 overflow-hidden rounded-xl border border-foreground/15 bg-card px-3.5" data-testid="order-target">
-                <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{m.orderingFor}</span>
-                <span className="min-w-0 truncate rounded-md bg-foreground px-2 py-0.5 text-[13.5px] font-semibold tracking-tight text-background">{active === 'quick' ? m.quickSale : panelTitle}</span>
-                {/* The same as the ticket on the right: its items and what's to pay, new ones included. */}
-                <span className="ml-auto truncate text-right font-mono text-[12.5px] whitespace-nowrap text-muted-foreground tabular-nums" data-testid="order-target-summary">
-                  {m.items(itemCount)} · <span className="font-semibold text-foreground">{formatEuro(targetCents)}</span>
-                  {/* On the same line: the header never grows and pushes the menu down. */}
-                  {draftCount > 0 && <span> · {m.newItems(draftCount)}</span>}
-                </span>
-              </div>
-              <ItemPicker catalogState={catalogState} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
-            </div>
-            <PanelDivider
-              width={shownPanelWidth}
-              min={PANEL_MIN}
-              max={panelMax(viewportWidth)}
-              label={m.panelDivider}
-              onChange={(w) => {
-                setPanelWidth(w)
-                writePanelWidth(w)
+        </main>
+      )}
+      {orgId && regState?.shift && movementOpen && (
+        <MovementDialog orgId={orgId} shift={regState.shift} deviceName={getDeviceName()} onClose={() => setMovementOpen(false)} onSaved={() => loadRegister()} />
+      )}
+      <Dialog open={leaving} onOpenChange={setLeaving}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{m.leaveTitle}</DialogTitle>
+            <DialogDescription>{m.leaveText}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" asChild>
+              <a href="/logout">{m.leaveOpen}</a>
+            </Button>
+            <Button
+              onClick={() => {
+                setLeaving(false)
+                openCashUp()
               }}
-              onReset={() => {
-                setPanelWidth(PANEL_DEFAULT)
-                writePanelWidth(null)
-              }}
-            />
-            <div className="w-full border-t-2 pt-4 lg:w-[var(--panel)] lg:shrink-0 lg:self-stretch lg:border-t-0 lg:pt-0 lg:pl-2" data-testid="tab-side">
-            <div className="flex flex-col gap-3 lg:sticky lg:top-4">
-              {kassaModes.length > 1 && (
-                <div className="flex flex-col gap-1.5" role="group" aria-label={m.orderMode} data-testid="kassa-modes">
-                  <span className="text-[11.5px] font-medium text-muted-foreground">{m.orderMode}</span>
-                  <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(kassaModes.length, 3)}, minmax(0, 1fr))` }}>
-                    {kassaModes.map((mode) => (
-                      <Button
-                        key={mode.id}
-                        variant={mode.id === orderModeId ? 'default' : 'outline'}
-                        className="h-10 truncate"
-                        aria-pressed={mode.id === orderModeId}
-                        disabled={busy || current !== null}
-                        onClick={() => setOrderModeId(mode.id)}
-                      >
-                        {mode.name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <TabPanel
-                title={panelTitle}
-                subtitle={panelSubtitle}
-                tab={shownTab}
-                draft={draft}
-                paymentMethod={paymentMethod}
-                tapToPay={tapToPay}
-                tipInput={tipInput}
-                onTipInputChange={setTipInput}
-                busy={busy || tabLoading}
-                onPaymentMethodChange={setPaymentMethod}
-                onDraftQuantity={setDraftQuantity}
-                onClearDraft={() => setDraftFor(active, [])}
-                onVoid={setVoidTarget}
-                onPay={pay}
-                onPark={() => setNameDialog('park')}
-                onRename={() => setNameDialog('rename')}
-                onCancelTab={cancelEmptyTab}
-                onCancelTicket={() => setCancellingTicket(true)}
-                onRefresh={refreshAll}
-                onSplit={() => setSplitDialogOpen(true)}
-                onStopSplit={stopSplit}
-                itemSelection={itemMode && shownTab && itemMode.tabId === shownTab.id ? itemMode.selection : null}
-                onItemSelection={(selection) => setItemMode((m) => (m ? { ...m, selection } : m))}
-                onStopItems={() => setItemMode(null)}
-              />
-            </div>
-            </div>
-          </div>
-        )}
+            >
+              {st.cashUp}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {current && (
-          <div className="flex flex-1 items-start justify-center pt-6">
-            <PaymentStatus
-              current={current}
-              manualStatus={manualStatus}
-              countdownText={countdownText}
-              showConfirmButton={showConfirmButton}
-              onConfirm={confirmManualPayment}
-              onCancel={cancelPayment}
-              onNext={finishPayment}
-            />
-          </div>
-        )}
-      </main>
+      {/* A payment in progress: over the kassa, which stays where it was behind it. */}
+      {current && (
+        <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/25 p-6 pt-12 backdrop-blur-md" data-testid="payment-overlay">
+          <PaymentStatus
+            current={current}
+            manualStatus={manualStatus}
+            countdownText={countdownText}
+            showConfirmButton={showConfirmButton}
+            onConfirm={confirmManualPayment}
+            onCancel={cancelPayment}
+            onNext={finishPayment}
+          />
+        </div>
+      )}
 
       <NameDialog
         key={nameDialog ?? 'closed'}
@@ -1439,6 +1450,45 @@ export default function App() {
 }
 
 // "Scouts Elewijt" → "SE", "Bert Hekman" → "BH" (the design's avatar tiles).
+// A button in the kassa's header: an icon over a short word, a big target.
+function HeaderButton({
+  icon,
+  label,
+  title,
+  pressed,
+  disabled,
+  onClick,
+  testId,
+  ...rest
+}: {
+  icon: React.ReactNode
+  label: string
+  title?: string
+  pressed?: boolean
+  disabled?: boolean
+  onClick?: () => void
+  testId?: string
+} & React.ComponentProps<'button'>) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-pressed={pressed}
+      disabled={disabled}
+      onClick={onClick}
+      data-testid={testId}
+      {...rest}
+      className={cn(
+        'flex h-[52px] min-w-[72px] flex-col items-center justify-center gap-1 rounded-[10px] px-1.5 text-[11px] font-medium text-foreground transition-colors outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 [&_svg]:size-[21px] [&_svg]:stroke-[1.7]',
+        pressed && 'bg-muted'
+      )}
+    >
+      {icon}
+      <span className="max-w-24 truncate">{label}</span>
+    </button>
+  )
+}
+
 function initials(name: string): string {
   return name
     .replace(/@.*/, '')

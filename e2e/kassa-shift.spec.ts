@@ -38,7 +38,8 @@ test('counted per note and coin; a cash movement; the kasopmaak with its differe
   await open.getByRole('button', button('Kassa openen')).click()
   await expect(kassa.getByTestId('shift-label')).toBeVisible()
 
-  await kassa.getByRole('button', button('Kasbeweging')).click()
+  await kassa.getByTestId('more-menu').click()
+  await kassa.getByRole('menuitem', { name: 'Kasbeweging' }).click()
   const dialog = kassa.getByRole('dialog')
   await dialog.getByLabel('Bedrag').fill('5')
   await dialog.getByLabel('Reden').fill('IJs')
@@ -46,6 +47,7 @@ test('counted per note and coin; a cash movement; the kasopmaak with its differe
   await expect(dialog).toBeHidden()
   expect(backend.shift.movements).toMatchObject([{ direction: 'out', amountCents: 500, reason: 'IJs' }])
 
+  await kassa.getByTestId('more-menu').click()
   await kassa.getByTestId('open-cash-up').click()
   const cashUp = kassa.getByTestId('cash-up')
   await expect(cashUp.getByTestId('cash-up-expected')).toHaveText('€ 45,00')
@@ -76,6 +78,7 @@ test("the kasopmaak counts the cash payments made since the kassa last looked (n
     await kassa.getByRole('button', button('Bevestig ontvangst contant geld')).click()
     await kassa.getByRole('button', button('Volgende klant')).click()
   }
+  await kassa.getByTestId('more-menu').click()
   await kassa.getByTestId('open-cash-up').click()
   await expect(kassa.getByTestId('cash-up').getByTestId('cash-up-expected')).toHaveText('€ 70,00')
 })
@@ -86,6 +89,7 @@ test('the kasopmaak shows who worked on the shift, with their payments', async (
   await open.getByRole('button', button('Kassa openen')).click()
   await expect(kassa.getByTestId('shift-label')).toBeVisible()
   backend.shiftPeople = [{ name: 'Bert', payments: 3 }, { name: 'Barbara', payments: 1 }]
+  await kassa.getByTestId('more-menu').click()
   await kassa.getByTestId('open-cash-up').click()
   await expect(kassa.getByTestId('cash-up').getByTestId('cash-up-people')).toHaveText('Wie werkte mee (betalingen): Bert (3) · Barbara (1)')
 })
@@ -93,6 +97,7 @@ test('the kasopmaak shows who worked on the shift, with their payments', async (
 test('blind count: no expected amount while counting', async ({ kassa, backend }) => {
   backend.blindCount = true
   await kassa.getByTestId('open-register').getByRole('button', button('Kassa openen')).click()
+  await kassa.getByTestId('more-menu').click()
   await kassa.getByTestId('open-cash-up').click()
   await expect(kassa.getByTestId('cash-up')).toContainText('Het verwachte bedrag zie je na het afsluiten.')
   await expect(kassa.getByTestId('cash-up-expected')).toHaveCount(0)
@@ -100,7 +105,8 @@ test('blind count: no expected amount while counting', async ({ kassa, backend }
 
 test('logging out with the drawer open asks: kasopmaak, or leave it open', async ({ kassa }) => {
   await kassa.getByTestId('open-register').getByRole('button', button('Kassa openen')).click()
-  await kassa.getByRole('link', { name: 'Uitloggen' }).first().click()
+  await kassa.getByTestId('more-menu').click()
+  await kassa.getByRole('menuitem', { name: 'Uitloggen' }).click()
   const dialog = kassa.getByRole('dialog')
   await expect(dialog).toContainText('De kassa is nog open')
   await dialog.getByRole('button', button('Kasopmaak')).click()

@@ -35,7 +35,8 @@ for (const lang of LANGS) {
       await shot(page, 'kassa-split', lang)
       await page.keyboard.press('Escape')
 
-      await page.getByRole('button', { name: NAMES[lang].ui.overview }).click()
+      await page.getByTestId('more-menu').click()
+      await page.getByRole('menuitem', { name: NAMES[lang].ui.overview }).click()
       await expect(page.getByTestId('overview-row').first()).toBeVisible()
       await shot(page, 'kassa-overview', lang)
     })
