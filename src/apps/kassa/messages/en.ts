@@ -99,6 +99,7 @@ export default {
   searchLabel: 'Search product',
   group: 'Group',
   all: 'All',
+  productCount: (n: number) => (n === 1 ? '1 product' : `${n} products`),
   noMatches: (query: string) => `No products found for “${query}”.`,
   emptyGroup: 'No products in this group.',
   entryHint: 'Click: +1 · right-click: −1',

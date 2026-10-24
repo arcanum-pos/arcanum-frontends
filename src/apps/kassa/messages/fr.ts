@@ -99,6 +99,7 @@ export default {
   searchLabel: 'Chercher un produit',
   group: 'Groupe',
   all: 'Tout',
+  productCount: (n: number) => (n === 1 ? '1 produit' : `${n} produits`),
   noMatches: (query: string) => `Aucun produit trouvé pour « ${query} ».`,
   emptyGroup: 'Aucun produit dans ce groupe.',
   entryHint: 'Clic : +1 · clic droit : −1',

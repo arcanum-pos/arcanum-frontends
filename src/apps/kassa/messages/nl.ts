@@ -113,6 +113,7 @@ const nl = {
   searchLabel: 'Zoek product',
   group: 'Groep',
   all: 'Alles',
+  productCount: (n: number) => (n === 1 ? '1 product' : `${n} producten`),
   noMatches: (query: string) => `Geen producten gevonden voor “${query}”.`,
   emptyGroup: 'Geen producten in deze groep.',
   entryHint: 'Klik: +1 · rechtsklik: −1',

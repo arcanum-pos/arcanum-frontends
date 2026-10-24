@@ -8,6 +8,7 @@ import { entryToPickerItem, filterSections, searchPick, type PickerItem } from '
 import { KASSA_MESSAGES } from './messages'
 import { GroupColumns, type Grip } from './GroupColumns'
 import { columnsThatFit, placeRows, readLayout, writeLayout, type GroupLayout, type Rows } from './layout'
+import { groupColor, type TileSize } from './prefs'
 
 export type CatalogState = { status: 'loading' } | { status: 'none' } | { status: 'error'; message: string } | { status: 'ok'; catalog: KassaCatalog }
 
@@ -21,10 +22,19 @@ export function ItemPicker({
   quantities,
   onTab = {},
   disabled,
+  group,
+  onGroup,
+  tiles = 'compact',
+  counts = true,
   onAdd,
   onRemove,
 }: {
   catalogState: CatalogState
+  // The group shown (null: Alles) - chosen in the header on a big screen, here below.
+  group: string | null
+  onGroup: (group: string | null) => void
+  tiles?: TileSize
+  counts?: boolean
   // Quantity of each variant in the current draft (the round being tapped).
   quantities: Record<string, number>
   // …and already on the selected tab — the menu shows both, the same as the ticket on the right.
@@ -44,16 +54,46 @@ export function ItemPicker({
     )
   }
   if (catalogState.status === 'error') return <p className="text-sm font-medium text-destructive">{catalogState.message}</p>
-  return <Catalog catalog={catalogState.catalog} quantities={quantities} onTab={onTab} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
+  return <Catalog catalog={catalogState.catalog} quantities={quantities} onTab={onTab} disabled={disabled} chosen={group} onGroup={onGroup} tiles={tiles} counts={counts} onAdd={onAdd} onRemove={onRemove} />
 }
 
-// The loaded catalog with its search field and group chips (design_files:
-// "Zoek product of typ een code…" + Alles / one chip per group).
+// The groups as one segmented control, in the kassa's header on a wide
+// screen (from 1280 px) (KASSA_REDESIGN.md, phase 2): Alles, then one per group.
+export function GroupTabs({ catalogState, group, onGroup, className }: { catalogState: CatalogState; group: string | null; onGroup: (group: string | null) => void; className?: string }) {
+  const m = useMessages(KASSA_MESSAGES)
+  if (catalogState.status !== 'ok' || catalogState.catalog.sections.length < 2) return null
+  const sections = catalogState.catalog.sections
+  const shown = group && sections.some((s) => s.id === group) ? group : null
+  const tab = (active: boolean) =>
+    cn(
+      'h-10 min-w-20 shrink-0 rounded-[9px] px-4 text-[14.5px] whitespace-nowrap transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50',
+      active ? 'bg-card font-semibold text-foreground shadow-sm' : 'font-medium text-muted-foreground hover:text-foreground'
+    )
+  return (
+    <div className={cn('flex max-w-full gap-0.5 overflow-x-auto rounded-xl bg-muted p-[3px]', className)} role="group" aria-label={m.group} data-testid="group-tabs">
+      <button type="button" aria-pressed={shown === null} className={tab(shown === null)} onClick={() => onGroup(null)}>
+        {m.all}
+      </button>
+      {sections.map((s) => (
+        <button key={s.id} type="button" aria-pressed={shown === s.id} className={tab(shown === s.id)} onClick={() => onGroup(shown === s.id ? null : s.id)}>
+          {s.name}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// The loaded catalog with its search field, and (on a small screen, where the
+// header has no room) the group chips.
 function Catalog({
   catalog,
   quantities,
   onTab,
   disabled,
+  chosen,
+  onGroup,
+  tiles,
+  counts,
   onAdd,
   onRemove,
 }: {
@@ -61,12 +101,18 @@ function Catalog({
   quantities: Record<string, number>
   onTab: Record<string, number>
   disabled: boolean
+  chosen: string | null
+  onGroup: (group: string | null) => void
+  tiles: TileSize
+  counts: boolean
   onAdd: Change
   onRemove: Change
 }) {
   const m = useMessages(KASSA_MESSAGES)
   const [query, setQuery] = useState('')
-  const [chosen, setChosen] = useState<string | null>(null)
+  const setChosen = onGroup
+  // Each group's colour, by its place in the menu (whatever is filtered).
+  const colorOf = (id: string) => groupColor(catalog.sections.findIndex((s) => s.id === id))
   // A group that's gone after a catalog reload falls back to "Alles".
   const group = chosen && catalog.sections.some((s) => s.id === chosen) ? chosen : null
   const sections = filterSections(catalog.sections, query, group)
@@ -147,7 +193,7 @@ function Catalog({
           className="h-[38px] min-w-[180px] flex-[1_1_220px] rounded-[9px] border bg-card px-3 text-[13.5px] outline-none placeholder:text-muted-foreground focus-visible:border-foreground"
         />
         {catalog.sections.length > 1 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5" role="group" aria-label={m.group}>
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 xl:hidden" role="group" aria-label={m.group}>
             <button type="button" aria-pressed={group === null} className={chip(group === null)} onClick={() => setChosen(null)}>
               {m.all}
             </button>
@@ -211,16 +257,15 @@ function Catalog({
                 labels={{ dropHere: m.dropHere, addColumn: m.addColumn, removeColumn: m.removeColumn, removeRow: m.removeRow, emptyColumn: m.emptyColumn }}
                 renderSection={(id, grip) => {
                   const section = sections.find((s) => s.id === id)!
-                  return <SectionCard section={section} quantities={quantities} onTab={onTab} disabled={locked} onAdd={onAdd} onRemove={onRemove} grip={grip} gripLabel={m.moveGroup(section.name)} />
+                  return <SectionCard section={section} color={colorOf(id)} tiles={tiles} counts={counts} quantities={quantities} onTab={onTab} disabled={locked} onAdd={onAdd} onRemove={onRemove} grip={grip} gripLabel={m.moveGroup(section.name)} />
                 }}
               />
             </>
           ) : (
-            // Plain auto-fill tracks, like the design (no min()/percentages — Safari
-            // mis-sized the cards' height with those, showing one row until hover).
-            <div className="grid items-start gap-3 sm:[grid-template-columns:repeat(auto-fill,minmax(300px,1fr))]">
+            // Not arranged: one group under the other, each the whole width (the design).
+            <div className="flex flex-col gap-4">
               {sections.map((section) => (
-                <SectionCard key={section.id} section={section} quantities={quantities} onTab={onTab} disabled={locked} onAdd={onAdd} onRemove={onRemove} />
+                <SectionCard key={section.id} section={section} color={colorOf(section.id)} tiles={tiles} counts={counts} quantities={quantities} onTab={onTab} disabled={locked} onAdd={onAdd} onRemove={onRemove} />
               ))}
             </div>
           )}
@@ -232,10 +277,15 @@ function Catalog({
 
 type Change = (item: PickerItem, quantity: number) => void
 
-// One group of the menu: its products (or its "sell N at once" tiles, full
-// width). While arranging, a grip in its header drags it (GroupColumns).
+// One group of the menu (KASSA_REDESIGN.md, phase 2): a box in a light tint
+// of its colour, its initial and name on top, its products as tiles (or its
+// "sell N at once" tiles). While arranging, a grip in its header drags it
+// (GroupColumns).
 function SectionCard({
   section,
+  color,
+  tiles,
+  counts,
   quantities,
   onTab,
   disabled,
@@ -245,6 +295,9 @@ function SectionCard({
   gripLabel,
 }: {
   section: KassaCatalog['sections'][number]
+  color: string
+  tiles: TileSize
+  counts: boolean
   quantities: Record<string, number>
   onTab: Record<string, number>
   disabled: boolean
@@ -253,35 +306,45 @@ function SectionCard({
   grip?: Grip
   gripLabel?: string
 }) {
+  const m = useMessages(KASSA_MESSAGES)
   const quick = section.entries.filter((e) => e.quickQuantities?.length)
   const plain = section.entries.filter((e) => !e.quickQuantities?.length)
   return (
-    <section className={cn('rounded-xl border bg-card', quick.length > 0 && 'col-span-full', grip && 'ring-1 ring-foreground/10')} data-testid="menu-group">
-      <div className="flex items-center justify-between gap-2 rounded-t-xl border-b bg-muted/40 px-3.5 py-2.5">
+    <section
+      style={{ '--group': color } as React.CSSProperties}
+      className={cn(
+        'flex flex-col gap-2.5 rounded-2xl bg-[color-mix(in_oklab,var(--group)_9%,var(--card))] p-3 dark:bg-[color-mix(in_oklab,var(--group)_20%,var(--card))]',
+        quick.length > 0 && 'col-span-full',
+        grip && 'ring-1 ring-foreground/10'
+      )}
+      data-testid="menu-group"
+    >
+      <div className="flex items-center gap-2.5 px-1">
         {grip && (
           <button
             type="button"
             aria-label={gripLabel}
             {...grip.attributes}
             {...grip.listeners}
-            className="-my-2 -ml-2 flex size-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-foreground/60 outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing"
+            className="-my-1.5 -ml-1.5 flex size-11 shrink-0 cursor-grab touch-none items-center justify-center rounded-lg text-foreground/60 outline-none hover:bg-card/70 focus-visible:ring-3 focus-visible:ring-ring/50 active:cursor-grabbing"
             data-testid="group-grip"
           >
             <GripVertical className="size-5" aria-hidden="true" />
           </button>
         )}
-        <h2 className="flex-1 text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{section.name}</h2>
-        <span className="font-mono text-[11px] text-muted-foreground" aria-hidden="true">
-          {section.entries.length}
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-[9px] bg-[var(--group)] text-[14px] font-bold text-white" aria-hidden="true">
+          {section.name.trim().charAt(0).toUpperCase()}
         </span>
+        <h2 className="min-w-0 truncate text-[16px] font-bold tracking-tight">{section.name}</h2>
+        <span className="shrink-0 text-[13px] text-muted-foreground">{m.productCount(section.entries.length)}</span>
       </div>
       {quick.map((entry) => (
         <QuickEntry key={entry.entryId} entry={entry} drafted={quantities[entry.variantId] || 0} sent={onTab[entry.variantId] || 0} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
       ))}
       {plain.length > 0 && (
-        <div className="flex flex-col">
+        <div className="grid gap-2.5" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${TILE_MIN[tiles]}px, 1fr))` }}>
           {plain.map((entry) => (
-            <EntryRow key={entry.entryId} entry={entry} drafted={quantities[entry.variantId] || 0} sent={onTab[entry.variantId] || 0} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
+            <EntryTile key={entry.entryId} entry={entry} tiles={tiles} counts={counts} drafted={quantities[entry.variantId] || 0} sent={onTab[entry.variantId] || 0} disabled={disabled} onAdd={onAdd} onRemove={onRemove} />
           ))}
         </div>
       )}
@@ -289,17 +352,44 @@ function SectionCard({
   )
 }
 
+// The narrowest a tile gets: as many across as fit.
+const TILE_MIN: Record<TileSize, number> = { large: 150, compact: 118, list: 220 }
+
 // Click adds, right-click takes off again — the browser menu never opens on a product.
 const removeOnRightClick = (disabled: boolean, remove: () => void) => (e: React.MouseEvent) => {
   e.preventDefault()
   if (!disabled) remove()
 }
 
-// `sent`: already on the tab; `drafted`: in the round being tapped (the only
-// part right-click can take off again — sent lines need a void with a reason).
-function EntryRow({ entry, drafted, sent, disabled, onAdd, onRemove }: { entry: KassaEntry; drafted: number; sent: number; disabled: boolean; onAdd: Change; onRemove: Change }) {
+const tileBase =
+  'rounded-xl bg-card text-left shadow-[0_1px_2px_rgba(0,0,0,.06),0_3px_10px_rgba(0,0,0,.05)] ring-1 ring-foreground/5 transition-[transform,box-shadow] outline-none hover:shadow-[0_2px_4px_rgba(0,0,0,.08),0_8px_20px_rgba(0,0,0,.08)] focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[.97] disabled:opacity-50 disabled:active:scale-100 dark:ring-white/10'
+
+// One product. `sent`: already on the tab; `drafted`: in the round being
+// tapped (the only part right-click can take off again — sent lines need a
+// void with a reason). Its parts in reading order (count, name, new, price);
+// tiles place them in a grid: the counts on top, the name and price below.
+function EntryTile({
+  entry,
+  tiles,
+  counts,
+  drafted,
+  sent,
+  disabled,
+  onAdd,
+  onRemove,
+}: {
+  entry: KassaEntry
+  tiles: TileSize
+  counts: boolean
+  drafted: number
+  sent: number
+  disabled: boolean
+  onAdd: Change
+  onRemove: Change
+}) {
   const m = useMessages(KASSA_MESSAGES)
   const total = drafted + sent
+  const list = tiles === 'list'
   return (
     <button
       type="button"
@@ -307,30 +397,44 @@ function EntryRow({ entry, drafted, sent, disabled, onAdd, onRemove }: { entry: 
       title={m.entryHint}
       onClick={() => onAdd(entryToPickerItem(entry), 1)}
       onContextMenu={removeOnRightClick(disabled, () => onRemove(entryToPickerItem(entry), 1))}
-      className="flex min-h-12 w-full items-center gap-2.5 border-b border-border/60 px-3.5 py-2.5 text-left transition-colors outline-none last:rounded-b-xl last:border-b-0 hover:bg-muted/60 focus-visible:bg-muted active:bg-muted disabled:opacity-50"
+      className={cn(
+        tileBase,
+        list
+          ? 'flex min-h-14 items-center gap-2.5 px-3 py-2'
+          : cn('grid grid-cols-[auto_1fr_auto] grid-rows-[auto_1fr_auto] gap-x-2 px-3 pt-2.5 pb-2.5', tiles === 'large' ? 'h-[128px]' : 'h-[108px]')
+      )}
     >
       {/* On the tab, all told: "3×" — dark while some of it is new, grey when
-          it's all sent; the new part beside it ("+1"). Decorative: the ticket lists it too. */}
-      {/* Fixed sizes, whatever the counts say: a tap never moves the rows. */}
+          it's all sent; the new part beside it ("+1"). Decorative: the ticket
+          lists it too. Fixed sizes, whatever the counts say: a tap never moves anything. */}
       <span
         aria-hidden="true"
         data-testid="entry-count"
         className={cn(
-          'flex h-[22px] w-9 shrink-0 items-center justify-center rounded-md font-mono text-[11.5px] leading-none font-semibold tabular-nums',
-          drafted ? 'bg-foreground text-background' : sent ? 'bg-foreground/15 text-foreground' : 'bg-muted'
+          'flex h-6 w-9 shrink-0 items-center justify-center rounded-md font-mono text-[12px] leading-none font-semibold tabular-nums',
+          !list && 'col-start-1 row-start-1',
+          !counts && 'invisible',
+          drafted ? 'bg-foreground text-background' : sent ? 'bg-foreground/15 text-foreground' : list && 'bg-muted'
         )}
       >
         {total ? `${total}×` : ''}
       </span>
-      <span className="min-w-0 flex-1 truncate text-[13.5px] leading-5 font-medium tracking-tight">{entry.name}</span>
-      <span aria-hidden="true" className="flex h-[22px] w-9 shrink-0 items-center justify-center font-mono text-[11px] leading-none font-semibold tabular-nums">
+      <span
+        className={cn(
+          'min-w-0 font-semibold tracking-tight',
+          list ? 'flex-1 truncate text-[15px]' : cn('col-span-3 row-start-2 line-clamp-2 self-end leading-tight', tiles === 'large' ? 'text-[16.5px]' : 'text-[15px]')
+        )}
+      >
+        {entry.name}
+      </span>
+      <span aria-hidden="true" className={cn('flex h-6 min-w-9 shrink-0 items-center justify-end font-mono text-[12px] leading-none font-semibold tabular-nums', !list && 'col-start-3 row-start-1', !counts && 'invisible')}>
         {drafted > 0 && sent > 0 && (
-          <span className="rounded-md border border-foreground/30 px-1 py-0.5" data-testid="entry-new">
+          <span className="rounded-md bg-foreground px-1.5 py-1 text-background" data-testid="entry-new">
             +{drafted}
           </span>
         )}
       </span>
-      <span className="font-mono text-[13px] text-foreground/70 tabular-nums">{formatEuro(entry.priceCents)}</span>
+      <span className={cn('font-mono text-[13px] text-muted-foreground tabular-nums', !list && 'col-span-3 row-start-3 mt-0.5')}>{formatEuro(entry.priceCents)}</span>
     </button>
   )
 }
@@ -339,8 +443,8 @@ function QuickEntry({ entry, drafted, sent, disabled, onAdd, onRemove }: { entry
   const m = useMessages(KASSA_MESSAGES)
   const item = entryToPickerItem(entry)
   return (
-    <div className="flex flex-col gap-3 p-3.5">
-      <p className="truncate text-xs leading-5 text-muted-foreground">
+    <div className="flex flex-col gap-2">
+      <p className="truncate px-1 text-[13px] leading-5 text-muted-foreground">
         <span className="font-medium text-foreground">{entry.name}</span> · {m.perPiece(formatEuro(entry.priceCents))}
         {drafted + sent > 0 && (
           <span className="ml-1.5 font-mono font-semibold text-foreground" data-testid="entry-count">
@@ -359,7 +463,7 @@ function QuickEntry({ entry, drafted, sent, disabled, onAdd, onRemove }: { entry
             title={m.quickHint(n)}
             onClick={() => onAdd(item, n)}
             onContextMenu={removeOnRightClick(disabled, () => onRemove(item, n))}
-            className="flex h-[84px] flex-col items-start justify-between rounded-xl border bg-card px-3.5 py-3 text-left transition-colors outline-none hover:border-foreground hover:bg-muted/40 focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[.985] disabled:opacity-50"
+            className={cn(tileBase, 'flex h-[88px] flex-col items-start justify-between px-3.5 py-3')}
           >
             <span className="font-mono text-[26px] leading-none font-semibold tracking-tight">{n}</span>
             <span className="text-[12.5px] text-muted-foreground">

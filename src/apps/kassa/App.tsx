@@ -45,7 +45,8 @@ import {
 import { fetchKassaCatalog, listEvents, type KassaCatalog } from './catalog-api'
 import { clampPanel, PANEL_DEFAULT, PANEL_MIN, panelMax, readPanelWidth, writePanelWidth } from './layout'
 import { PanelDivider } from './PanelDivider'
-import { ItemPicker, type CatalogState } from './ItemPicker'
+import { GroupTabs, ItemPicker, type CatalogState } from './ItemPicker'
+import { useKassaPrefs } from './prefs'
 import { PaymentStatus } from './PaymentStatus'
 import { CancelTicketDialog, NameDialog, VoidDialog } from './TabDialogs'
 import { KASSA_MESSAGES } from './messages'
@@ -101,6 +102,10 @@ export default function App() {
   // What this kassa sells from: the device's chosen catalog, else the org
   // default (see loadCatalog).
   const [catalogState, setCatalogState] = useState<CatalogState>({ status: 'loading' })
+  // The menu group shown (null: Alles), chosen in the header.
+  const [menuGroup, setMenuGroup] = useState<string | null>(null)
+  // This kassa's own look (Aanpassen): tile size, counts, ticket side, …
+  const prefs = useKassaPrefs()
   // The event new rekeningen (and so their sales) are tagged with — optional.
   const [event, setEvent] = useState<EventSelection | null>(() => getEventSelection())
   const eventRef = useRef<EventSelection | null>(event)
@@ -1167,7 +1172,9 @@ export default function App() {
             </span>
           </div>
         </div>
-        <div className="min-w-4 flex-1" />
+        <div className="flex min-w-4 flex-1 justify-center">
+          {kassaView && <GroupTabs catalogState={catalogState} group={menuGroup} onGroup={setMenuGroup} className="hidden xl:flex" />}
+        </div>
         <div className="flex items-center gap-1">
           <HeaderButton icon={<Monitor />} label={m.display} title={m.openDisplay} aria-label={m.openDisplay} disabled={openingDisplay} onClick={openDisplay} />
           <HeaderButton
@@ -1259,17 +1266,19 @@ export default function App() {
               <div className="flex w-full min-w-0 flex-col gap-3 lg:h-full lg:flex-1 lg:overflow-y-auto lg:pr-2 lg:pb-6 [&>*]:shrink-0">
                 {/* Which tab this order is for: the same as the selected one
                     on the left and the ticket on the right. */}
-                <div className="z-10 flex h-12 items-center gap-2.5 overflow-hidden rounded-xl border border-foreground/15 bg-card px-3.5 lg:sticky lg:top-0" data-testid="order-target">
-                  <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">{m.orderingFor}</span>
-                  <span className="min-w-0 truncate rounded-md bg-foreground px-2 py-0.5 text-[13.5px] font-semibold tracking-tight text-background">{active === 'quick' ? m.quickSale : panelTitle}</span>
+                <div className="z-10 flex items-end gap-3 overflow-hidden bg-[color-mix(in_oklab,var(--muted)_40%,var(--background))] pb-1 lg:sticky lg:top-0" data-testid="order-target">
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-[11.5px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">{m.orderingFor}</span>
+                    <span className="truncate text-[24px] leading-tight font-bold tracking-tight">{active === 'quick' ? m.quickSale : panelTitle}</span>
+                  </span>
                   {/* The same as the ticket on the right: its items and what's to pay, new ones included. */}
-                  <span className="ml-auto truncate text-right font-mono text-[12.5px] whitespace-nowrap text-muted-foreground tabular-nums" data-testid="order-target-summary">
+                  <span className="ml-auto truncate pb-1 text-right font-mono text-[12.5px] whitespace-nowrap text-muted-foreground tabular-nums" data-testid="order-target-summary">
                     {m.items(itemCount)} · <span className="font-semibold text-foreground">{formatEuro(targetCents)}</span>
                     {/* On the same line: the header never grows and pushes the menu down. */}
                     {draftCount > 0 && <span> · {m.newItems(draftCount)}</span>}
                   </span>
                 </div>
-                <ItemPicker catalogState={catalogState} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
+                <ItemPicker catalogState={catalogState} group={menuGroup} onGroup={setMenuGroup} tiles={prefs.tiles} counts={prefs.counts} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
               </div>
               <PanelDivider
                 width={shownPanelWidth}
@@ -1484,7 +1493,7 @@ function HeaderButton({
       )}
     >
       {icon}
-      <span className="max-w-24 truncate">{label}</span>
+      <span className="whitespace-nowrap">{label}</span>
     </button>
   )
 }
