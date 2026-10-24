@@ -299,6 +299,18 @@ Dutch, French and English to `../arcanum-bootstrapper/public/screenshots`
 then commit the new images in arcanum-bootstrapper. Not part of the test
 suite.
 
+## Design review pack
+
+`npm run review-pack` writes the kassa, the customer display and the
+console in their states (the same e2e fakes, the spaghetti evening of
+`screenshots/sample.ts`), as PNG and as HTML with the CSS inlined, to
+`../design-review/<date>/`, with the brief (`screenshots/review-brief.md`)
+and `pack.json`. It prints what changed since the previous pack (commits
+and release notes) for that pack's CHANGES.md. `npm run review-pack --
+--zip` zips the folder for upload to a design tool. The scenes are in
+`screenshots/review-pack.spec.ts`; skipped without `REVIEW_DIR`, so not
+part of `npm run screenshots`' website images.
+
 ## Self-hosted (SELF_HOSTING.md)
 
 `worker/app.ts` is the screens' server on both runtimes: the built files,

@@ -120,6 +120,13 @@ test.describe('kassa', () => {
     await shot(page, 'kassa', '17-kassa-settings')
   })
 
+  test('arranging the menu', async ({ page }) => {
+    await kassaOn(page, 'nl')
+    await page.getByTestId('arrange').click()
+    await expect(page.getByTestId('arrange-bar')).toBeVisible()
+    await shot(page, 'kassa', '18-arrange-groups')
+  })
+
   test('the register: opening, cash-up', async ({ page }) => {
     await kassaOn(page, 'nl', TABLET, false, true)
     await expect(page.getByTestId('open-register')).toBeVisible()
@@ -283,8 +290,16 @@ test('console', async ({ console: open, catalogAdmin, page }) => {
     await p.waitForLoadState('networkidle')
     await shot(p, 'console', name)
     if (name === '04-events') {
-      await p.getByRole('row').filter({ hasText: n.event }).getByRole('button', { name: 'Instellen' }).click()
+      await p.getByRole('button', { name: `Acties voor ${n.event}` }).click()
+      await p.getByRole('menuitem', { name: 'Instellen' }).click()
       await shot(p, 'console', '05-event-settings-dialog')
+      await p.keyboard.press('Escape')
+    }
+    if (name === '07-catalogs') {
+      // A line's actions: one "…" menu, deleting and archiving last, in red.
+      await p.getByRole('button', { name: `Acties voor ${menu.name}` }).click()
+      await expect(p.getByRole('menu')).toBeVisible()
+      await shot(p, 'console', '07-catalogs-row-menu')
       await p.keyboard.press('Escape')
     }
   }

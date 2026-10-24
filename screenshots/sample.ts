@@ -88,9 +88,12 @@ export const NAMES: Record<Lang, Names> = {
 
 const PRICES: Record<Item, number> = { pils: 220, cola: 220, wine: 350, coffee: 200, bolo: 1200, veggie: 1200, kids: 700, pancake: 300, mousse: 350 }
 
+// Each item's category (the reports' and the customer display's grouping): its menu group.
+const CATEGORY: Record<Item, 'drinks' | 'food' | 'desserts'> = { pils: 'drinks', cola: 'drinks', wine: 'drinks', coffee: 'drinks', bolo: 'food', veggie: 'food', kids: 'food', pancake: 'desserts', mousse: 'desserts' }
+
 export function eveningCatalog(lang: Lang): FakeCatalog {
   const n = NAMES[lang]
-  const e = (key: Item) => fakeEntry(`v-${key}`, n.items[key], PRICES[key], key)
+  const e = (key: Item) => ({ ...fakeEntry(`v-${key}`, n.items[key], PRICES[key], key), categoryName: n[CATEGORY[key]] })
   return {
     id: 'cat-spaghetti',
     name: n.catalog,
@@ -105,7 +108,7 @@ export function eveningCatalog(lang: Lang): FakeCatalog {
 }
 
 export function line(lang: Lang, key: Item, quantity: number): FakeLineInput {
-  return { itemCode: key, variantId: `v-${key}`, name: NAMES[lang].items[key], unitPriceCents: PRICES[key], quantity }
+  return { itemCode: key, variantId: `v-${key}`, name: NAMES[lang].items[key], unitPriceCents: PRICES[key], quantity, category: NAMES[lang][CATEGORY[key]] }
 }
 
 // The Rapporten page's report, as arcanum-backend would answer it for an evening.

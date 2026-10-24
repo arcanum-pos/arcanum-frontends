@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "screenshots": "playwright test -c playwright.screenshots.config.ts",
+    "review-pack": "node scripts/review-pack.mjs",
     "build:node": "esbuild worker/node.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-node/server.mjs --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
     "start:node": "node dist-node/server.mjs"
   },
