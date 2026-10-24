@@ -42,6 +42,12 @@ test('named tab: open, add an order, void part of a line with a reason', async (
 
   await panel(kassa).getByRole('button', button('Annuleren')).click()
   const dialog = kassa.getByRole('dialog')
+  // − and + within what's on it (2), and the number can be typed too.
+  await expect(dialog.getByLabel('Aantal annuleren')).toHaveValue('2')
+  await expect(dialog.getByRole('button', { name: 'meer Wandeltocht' })).toBeDisabled()
+  await dialog.getByRole('button', { name: 'minder Wandeltocht' }).click()
+  await expect(dialog.getByLabel('Aantal annuleren')).toHaveValue('1')
+  await expect(dialog.getByRole('button', { name: 'minder Wandeltocht' })).toBeDisabled()
   await dialog.getByLabel('Aantal annuleren').fill('1')
   // Confirm stays disabled until there's a reason.
   await expect(dialog.getByRole('button', button('Lijn annuleren'))).toBeDisabled()

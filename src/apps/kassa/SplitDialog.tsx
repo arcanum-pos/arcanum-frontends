@@ -125,10 +125,10 @@ export function SplitDialog({
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button className="h-11 px-5 text-[15px]" type="button" variant="outline" onClick={onClose}>
               {m.back}
             </Button>
-            <Button type="submit">{mode === 'equal' ? m.splitInto(parts) : m.pickItems}</Button>
+            <Button className="h-11 px-5 text-[15px]" type="submit">{mode === 'equal' ? m.splitInto(parts) : m.pickItems}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

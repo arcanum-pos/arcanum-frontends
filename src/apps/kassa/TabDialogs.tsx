@@ -50,10 +50,10 @@ export function NameDialog({
             <Input id="tab-name" autoFocus placeholder={m.namePlaceholder} maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button className="h-11 px-5 text-[15px]" type="button" variant="outline" onClick={onClose}>
               {m.back}
             </Button>
-            <Button type="submit">{confirmLabel}</Button>
+            <Button className="h-11 px-5 text-[15px]" type="submit">{confirmLabel}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -97,24 +97,33 @@ export function VoidDialog({
               <DialogDescription>{m.voidDescription(remaining, line.name)}</DialogDescription>
             </DialogHeader>
             {remaining > 1 && (
-              <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-3">
                 <Label htmlFor="void-qty">{m.voidQuantity}</Label>
-                <Input
-                  id="void-qty"
-                  type="number"
-                  min={1}
-                  max={remaining}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Math.round(Number(e.target.value)))}
-                  className="w-24"
-                />
+                {/* − n +: a finger at the bar, the number still typed when easier. */}
+                <div className="flex items-center rounded-[10px] bg-muted">
+                  <button type="button" aria-label={m.less(line.name)} disabled={quantity <= 1} onClick={() => setQuantity(Math.max(1, quantity - 1))} className="flex size-11 items-center justify-center text-[20px] disabled:opacity-40">
+                    −
+                  </button>
+                  <Input
+                    id="void-qty"
+                    type="number"
+                    min={1}
+                    max={remaining}
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.round(Number(e.target.value)))}
+                    className="h-11 w-14 [appearance:textfield] border-0 bg-transparent px-0 text-center text-[16px] font-bold shadow-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
+                  <button type="button" aria-label={m.more(line.name)} disabled={quantity >= remaining} onClick={() => setQuantity(Math.min(remaining, quantity + 1))} className="flex size-11 items-center justify-center text-[20px] disabled:opacity-40">
+                    +
+                  </button>
+                </div>
               </div>
             )}
             <div className="flex flex-col gap-2">
               <Label htmlFor="void-reason">{m.reason}</Label>
               <div className="flex flex-wrap gap-2">
                 {m.quickReasons.map((r) => (
-                  <Button key={r} type="button" size="sm" variant={reason === r ? 'default' : 'outline'} onClick={() => setReason(r)}>
+                  <Button key={r} type="button" className="h-10 px-3.5 text-[14px]" variant={reason === r ? 'default' : 'outline'} onClick={() => setReason(r)}>
                     {r}
                   </Button>
                 ))}
@@ -122,10 +131,10 @@ export function VoidDialog({
               <Input id="void-reason" placeholder={m.reasonPlaceholder} maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} />
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
+              <Button className="h-11 px-5 text-[15px]" type="button" variant="outline" onClick={onClose}>
                 {m.back}
               </Button>
-              <Button type="submit" variant="destructive" disabled={!reason.trim() || !validQuantity}>
+              <Button className="h-11 px-5 text-[15px]" type="submit" variant="destructive" disabled={!reason.trim() || !validQuantity}>
                 {m.voidTitle}
               </Button>
             </DialogFooter>
@@ -173,7 +182,7 @@ export function CancelTicketDialog({
             <Label htmlFor="cancel-reason">{m.reason}</Label>
             <div className="flex flex-wrap gap-2">
               {m.quickReasons.map((r) => (
-                <Button key={r} type="button" size="sm" variant={reason === r ? 'default' : 'outline'} onClick={() => setReason(r)}>
+                <Button key={r} type="button" className="h-10 px-3.5 text-[14px]" variant={reason === r ? 'default' : 'outline'} onClick={() => setReason(r)}>
                   {r}
                 </Button>
               ))}
@@ -181,10 +190,10 @@ export function CancelTicketDialog({
             <Input id="cancel-reason" placeholder={m.reasonPlaceholder} maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button className="h-11 px-5 text-[15px]" type="button" variant="outline" onClick={onClose}>
               {m.back}
             </Button>
-            <Button type="submit" variant="destructive" disabled={!reason.trim()}>
+            <Button className="h-11 px-5 text-[15px]" type="submit" variant="destructive" disabled={!reason.trim()}>
               {m.cancelTicket}
             </Button>
           </DialogFooter>
