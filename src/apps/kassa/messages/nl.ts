@@ -104,6 +104,7 @@ const nl = {
   closeEmpty: 'Lege rekening sluiten',
   // "Ticket annuleren": every line voided at once, with one reason, then the ticket cancelled.
   cancelTicket: 'Ticket annuleren',
+  moreActions: 'Meer acties',
   cancelTicketDescription: (items: number, amount: string) => `Alle ${items === 1 ? '1 item' : `${items} items`} (${amount}) worden geannuleerd, elk met deze reden, en het ticket wordt gesloten. Niets wordt gewist: de lijnen en de annulering blijven zichtbaar in de geschiedenis.`,
 
   // Product picker

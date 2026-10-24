@@ -1295,22 +1295,26 @@ export default function App() {
                 }}
               />
               <div className="w-full border-t-2 pt-4 lg:w-[var(--panel)] lg:shrink-0 lg:self-stretch lg:border-t-0 lg:pt-0 lg:pl-2" data-testid="tab-side">
-              <div className="flex flex-col gap-3 lg:h-full lg:overflow-y-auto lg:pb-6 [&>*]:shrink-0">
+              {/* The ticket fills the column (its lines scroll); scrolls as a whole only when even that doesn't fit. */}
+              <div className="flex flex-col gap-3 lg:h-full lg:overflow-y-auto lg:pb-4">
                 {kassaModes.length > 1 && (
-                  <div className="flex flex-col gap-1.5" role="group" aria-label={m.orderMode} data-testid="kassa-modes">
-                    <span className="text-[11.5px] font-medium text-muted-foreground">{m.orderMode}</span>
-                    <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(kassaModes.length, 3)}, minmax(0, 1fr))` }}>
+                  <div className="flex shrink-0 flex-col gap-1.5" role="group" aria-label={m.orderMode} data-testid="kassa-modes">
+                    <span className="px-1 text-[11.5px] font-medium text-muted-foreground">{m.orderMode}</span>
+                    <div className="grid gap-[3px] rounded-xl bg-muted p-[3px]" style={{ gridTemplateColumns: `repeat(${Math.min(kassaModes.length, 3)}, minmax(0, 1fr))` }}>
                       {kassaModes.map((mode) => (
-                        <Button
+                        <button
                           key={mode.id}
-                          variant={mode.id === orderModeId ? 'default' : 'outline'}
-                          className="h-10 truncate"
+                          type="button"
+                          className={cn(
+                            'h-10 truncate rounded-[9px] px-2 text-[14px] font-semibold transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50',
+                            mode.id === orderModeId ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                          )}
                           aria-pressed={mode.id === orderModeId}
                           disabled={busy || current !== null}
                           onClick={() => setOrderModeId(mode.id)}
                         >
                           {mode.name}
-                        </Button>
+                        </button>
                       ))}
                     </div>
                   </div>
@@ -1340,6 +1344,7 @@ export default function App() {
                   itemSelection={itemMode && shownTab && itemMode.tabId === shownTab.id ? itemMode.selection : null}
                   onItemSelection={(selection) => setItemMode((m) => (m ? { ...m, selection } : m))}
                   onStopItems={() => setItemMode(null)}
+                tipButtons={prefs.tipButtons}
                 />
               </div>
               </div>

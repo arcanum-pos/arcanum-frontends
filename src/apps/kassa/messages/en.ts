@@ -91,6 +91,7 @@ export default {
   park: 'Put on a bill',
   closeEmpty: 'Close empty bill',
   cancelTicket: 'Cancel ticket',
+  moreActions: 'More actions',
   cancelTicketDescription: (items: number, amount: string) => `${items === 1 ? 'The item' : `All ${items} items`} (${amount}) ${items === 1 ? 'is' : 'are'} cancelled, each with this reason, and the ticket is closed. Nothing is erased: the lines and the cancellation stay visible in the history.`,
 
   catalogLoading: 'Loading menu…',

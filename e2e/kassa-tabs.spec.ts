@@ -169,7 +169,9 @@ test('Afrekenen by mistake: back, then "Ticket annuleren" cancels the whole tick
   // The sale is a ticket on the server now: no "Leegmaken" — one void per line, or the whole ticket.
   await expect(kassa.getByRole('button', button('Leegmaken'))).toHaveCount(0)
 
-  await kassa.getByRole('button', button('Ticket annuleren')).click()
+  // Under the ticket's "…": what cancels something is never a button beside Afrekenen.
+  await kassa.getByTestId('ticket-more').click()
+  await kassa.getByRole('menuitem', { name: 'Ticket annuleren' }).click()
   const dialog = kassa.getByTestId('cancel-ticket')
   await expect(dialog).toContainText('Alle 11 items (€ 18,00) worden geannuleerd')
   await expect(dialog.getByRole('button', button('Ticket annuleren'))).toBeDisabled()
@@ -192,12 +194,16 @@ test('no "Ticket annuleren" while a payment runs, or once something is paid', as
   const tab = backend.openTab('Jan', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 100, quantity: 5 }])
   await kassa.reload()
   await kassa.getByRole('button', button(/^#1 Jan/)).click()
-  await expect(kassa.getByRole('button', button('Ticket annuleren'))).toBeEnabled()
+  await kassa.getByTestId('ticket-more').click()
+  await expect(kassa.getByRole('menuitem', { name: 'Ticket annuleren' })).toBeEnabled()
+  await kassa.keyboard.press('Escape')
   // A payment running for it (e.g. on another kassa): locked.
   backend.startCharge(tab.id, 'bancontact')
   await kassa.getByTestId('more-menu').click()
   await kassa.getByRole('menuitem', { name: 'Vernieuwen' }).click()
-  await expect(kassa.getByRole('button', button('Ticket annuleren'))).toBeDisabled()
+  await kassa.getByTestId('ticket-more').click()
+  await expect(kassa.getByRole('menuitem', { name: 'Ticket annuleren' })).toHaveAttribute('aria-disabled', 'true')
+  await kassa.keyboard.press('Escape')
   expect(tab.status).toBe('open')
 })
 
