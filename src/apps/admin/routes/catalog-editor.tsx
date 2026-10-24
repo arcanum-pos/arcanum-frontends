@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { useMessages } from '@/shared/i18n'
+import { GROUP_COLORS, GROUP_COLOR_NAMES, sectionColor } from '@/shared/group-colors'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MenuExportButton } from '../components/menu-export-button'
 import { RowActions } from '../components/row-actions'
 import { MenuImportDialog } from '../components/menu-import-dialog'
@@ -21,6 +23,7 @@ import {
   getCatalog,
   listProducts,
   renameSection,
+  setSectionColor,
   setCatalogLayout,
   updateEntry,
   type CatalogDetail,
@@ -44,7 +47,12 @@ import { useOrg } from '../lib/org-context'
 import { useAsync } from '../lib/use-async'
 import { ADMIN_CATALOG_MESSAGES } from '../messages/catalog'
 
-type Prompt = { kind: 'new-section' } | { kind: 'import' } | { kind: 'rename-section'; section: CatalogSection } | { kind: 'delete-section'; section: CatalogSection }
+type Prompt =
+  | { kind: 'new-section' }
+  | { kind: 'import' }
+  | { kind: 'rename-section'; section: CatalogSection }
+  | { kind: 'color-section'; section: CatalogSection; index: number }
+  | { kind: 'delete-section'; section: CatalogSection }
 
 // One menukaart: groepen (sections — the kassa's button groups) with their
 // lines (a product variant + its price here). Every change is saved right
@@ -114,7 +122,11 @@ export default function CatalogEditorPage() {
         data?.sections.map((section, sectionIndex) => (
           <Card key={section.id} data-testid={`section-${section.name}`}>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
-              <CardTitle className="text-base">{section.name}</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base">
+                {/* Its colour on the kassa (chosen, or automatic by its place). */}
+                <span className="size-3.5 shrink-0 rounded-full" style={{ background: sectionColor(section.color, sectionIndex) }} aria-hidden="true" data-testid="section-color" />
+                {section.name}
+              </CardTitle>
               <div className="flex flex-wrap gap-1">
                 <Button
                   variant="ghost"
@@ -138,6 +150,7 @@ export default function CatalogEditorPage() {
                   name={section.name}
                   actions={[
                     { label: m.rename, onSelect: () => setPrompt({ kind: 'rename-section', section }) },
+                    { label: m.sectionColor, onSelect: () => setPrompt({ kind: 'color-section', section, index: sectionIndex }) },
                     { label: m.remove, destructive: true, onSelect: () => setPrompt({ kind: 'delete-section', section }) },
                   ]}
                 />
@@ -202,6 +215,17 @@ export default function CatalogEditorPage() {
           onConfirm={async (name) => {
             await renameSection(orgId, catalogId, prompt.section.id, name)
             catalog.reload()
+          }}
+          onClose={() => setPrompt(null)}
+        />
+      )}
+      {orgId && prompt?.kind === 'color-section' && (
+        <SectionColorDialog
+          section={prompt.section}
+          index={prompt.index}
+          onPick={async (color) => {
+            setPrompt(null)
+            await run(() => setSectionColor(orgId, catalogId, prompt.section.id, color))
           }}
           onClose={() => setPrompt(null)}
         />
@@ -369,5 +393,43 @@ function AddEntryForm({
         {m.add}
       </Button>
     </form>
+  )
+}
+
+// A group's colour on the kassa: automatic (by its place in the menu) or one
+// of the palette - each with its name, never colour alone.
+function SectionColorDialog({ section, index, onPick, onClose }: { section: CatalogSection; index: number; onPick: (color: string | null) => void; onClose: () => void }) {
+  const m = useMessages(ADMIN_CATALOG_MESSAGES)
+  const names = useMessages(GROUP_COLOR_NAMES)
+  const chosen = section.color ?? null
+  const swatch = (color: string | null, label: string) => (
+    <button
+      key={label}
+      type="button"
+      aria-pressed={chosen === color}
+      onClick={() => onPick(color)}
+      className="flex flex-col items-center gap-1.5 rounded-lg p-2 text-xs outline-none hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 aria-pressed:bg-muted aria-pressed:font-semibold"
+    >
+      <span
+        className="size-10 rounded-full ring-offset-2 ring-offset-background [[aria-pressed=true]>&]:ring-2 [[aria-pressed=true]>&]:ring-foreground"
+        style={color ? { background: color } : { background: `repeating-linear-gradient(45deg, ${sectionColor(null, index)} 0 6px, transparent 6px 12px)`, boxShadow: `inset 0 0 0 2px ${sectionColor(null, index)}` }}
+        aria-hidden="true"
+      />
+      {label}
+    </button>
+  )
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{m.sectionColorTitle(section.name)}</DialogTitle>
+          <DialogDescription>{m.sectionColorDescription}</DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-3 gap-1 sm:grid-cols-5" role="group" aria-label={m.sectionColor}>
+          {swatch(null, m.colorAuto)}
+          {GROUP_COLORS.map((color, i) => swatch(color, names[i]))}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

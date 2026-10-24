@@ -8,7 +8,8 @@ import { entryToPickerItem, filterSections, searchPick, type PickerItem } from '
 import { KASSA_MESSAGES } from './messages'
 import { GroupColumns, type Grip } from './GroupColumns'
 import { columnsThatFit, placeRows, readLayout, writeLayout, type GroupLayout, type Rows } from './layout'
-import { groupColor, type TileSize } from './prefs'
+import { sectionColor } from '@/shared/group-colors'
+import type { TileSize } from './prefs'
 
 export type CatalogState = { status: 'loading' } | { status: 'none' } | { status: 'error'; message: string } | { status: 'ok'; catalog: KassaCatalog }
 
@@ -111,8 +112,11 @@ function Catalog({
   const m = useMessages(KASSA_MESSAGES)
   const [query, setQuery] = useState('')
   const setChosen = onGroup
-  // Each group's colour, by its place in the menu (whatever is filtered).
-  const colorOf = (id: string) => groupColor(catalog.sections.findIndex((s) => s.id === id))
+  // Each group's colour: chosen in the console, else by its place in the menu (whatever is filtered).
+  const colorOf = (id: string) => {
+    const index = catalog.sections.findIndex((s) => s.id === id)
+    return sectionColor(catalog.sections[index]?.color, index)
+  }
   // A group that's gone after a catalog reload falls back to "Alles".
   const group = chosen && catalog.sections.some((s) => s.id === chosen) ? chosen : null
   const sections = filterSections(catalog.sections, query, group)

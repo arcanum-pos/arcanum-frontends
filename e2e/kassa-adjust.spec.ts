@@ -73,3 +73,12 @@ test('the language: not while something is not sent yet (it reloads the kassa)',
   await sheet(kassa).getByRole('button', { name: 'Français' }).click()
   await expect(kassa.getByText('Comptoir - payer directement')).toBeVisible()
 })
+
+// Phase 6: a group's colour chosen in the console wins; the others stay automatic.
+test("a menu group in the colour chosen for it in the console", async ({ kassa, backend }) => {
+  backend.catalogs[0].sections[1].color = '#15803d'
+  await kassa.reload()
+  const box = (name: string) => kassa.getByTestId('menu-group').filter({ has: kassa.getByRole('heading', { name }) })
+  await expect(box('Bonnen')).toHaveCSS('--group', '#2563eb')
+  await expect(box('Tochten')).toHaveCSS('--group', '#15803d')
+})

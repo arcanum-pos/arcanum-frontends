@@ -6,6 +6,8 @@
 // same rules and returns the same status codes and Dutch messages as the
 // real backend, so the console's error handling is exercised — the
 // backend's own rules are tested for real in arcanum-backend's suite.
+import { GROUP_COLORS } from '../src/shared/group-colors'
+
 export interface FakeResponse {
   status: number
   body: unknown
@@ -45,6 +47,7 @@ interface Section {
   catalogId: string
   name: string
   position: number
+  color?: string | null
 }
 interface Entry {
   id: string
@@ -619,6 +622,10 @@ export class FakeCatalogAdmin {
       const section = this.sections.find((s) => s.id === childId && s.catalogId === catalog.id)
       if (!section) return notFound('Groep niet gevonden')
       if (method === 'PATCH') {
+        if (body.color !== undefined) {
+          if (body.color !== null && !GROUP_COLORS.includes(body.color)) return bad('color must be null or one of the palette')
+          section.color = body.color
+        }
         section.name = trimmed(body.name, 60) || section.name
         return ok({ ok: true })
       }
@@ -847,6 +854,7 @@ export class FakeCatalogAdmin {
           id: s.id,
           name: s.name,
           position: s.position,
+          color: s.color ?? null,
           entries: this.entries
             .filter((e) => e.sectionId === s.id)
             .sort((a, b) => a.position - b.position)

@@ -43,7 +43,7 @@ export interface FakeCatalog {
   name: string
   isDefault: boolean
   archived: boolean
-  sections: { id: string; name: string; entries: FakeEntry[] }[]
+  sections: { id: string; name: string; color?: string | null; entries: FakeEntry[] }[]
 }
 
 export function fakeEntry(variantId: string, name: string, priceCents: number, code: string | null, quickQuantities: number[] | null = null): FakeEntry {
@@ -569,6 +569,7 @@ export class FakeBackend {
           .map((s) => ({
             id: s.id,
             name: s.name,
+            color: s.color ?? null,
             entries: s.entries.filter((e) => e.visible).map(({ visible: _visible, ...e }) => e),
           }))
           .filter((s) => s.entries.length > 0),

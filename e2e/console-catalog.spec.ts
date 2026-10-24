@@ -269,6 +269,29 @@ test.describe('Menukaarten', () => {
     expect(catalogAdmin.entries).toHaveLength(1)
   })
 
+  test("a group's colour on the kassa: automatic by its place, or one of the palette by name", async ({ console: open, catalogAdmin }) => {
+    const { catalog } = seedCatalog(catalogAdmin)
+    const page = await open(`/catalogs/${catalog.id}`)
+    const dot = (section: string) => page.getByTestId(`section-${section}`).getByTestId('section-color')
+    // Automatic: the first two colours of the palette.
+    await expect(dot('Drank')).toHaveCSS('background-color', 'rgb(37, 99, 235)')
+    await expect(dot('Eten')).toHaveCSS('background-color', 'rgb(194, 65, 12)')
+
+    await rowAction(page.getByTestId('section-Eten'), 'Kleur')
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('button', { name: 'Automatisch' })).toHaveAttribute('aria-pressed', 'true')
+    await dialog.getByRole('button', { name: 'Groen', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(dot('Eten')).toHaveCSS('background-color', 'rgb(21, 128, 61)')
+    expect(catalogAdmin.sections.find((x) => x.name === 'Eten')!.color).toBe('#15803d')
+
+    await rowAction(page.getByTestId('section-Eten'), 'Kleur')
+    await expect(dialog.getByRole('button', { name: 'Groen', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await dialog.getByRole('button', { name: 'Automatisch' }).click()
+    await expect(dot('Eten')).toHaveCSS('background-color', 'rgb(194, 65, 12)')
+    expect(catalogAdmin.sections.find((x) => x.name === 'Eten')!.color).toBeNull()
+  })
+
   test('marks a line whose product was archived as not on the kassa', async ({ console: open, catalogAdmin }) => {
     const { catalog, cola } = seedCatalog(catalogAdmin)
     call(catalogAdmin, 'PATCH', `/catalog/products/${cola.id}`, { archived: true })

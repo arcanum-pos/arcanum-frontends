@@ -55,6 +55,10 @@ const nl = {
   emptySection: 'Nog geen producten in deze groep.',
   addSectionDescription: 'Een knoppenblok op de kassa, bv. Drank, Eten of Bonnen.',
   renameSection: 'Groep hernoemen',
+  sectionColor: 'Kleur',
+  sectionColorTitle: (name: string) => `Kleur van ${name} op de kassa`,
+  sectionColorDescription: 'De groep staat in deze kleur op de kassa. Automatisch: een kleur volgens haar plaats in de menukaart.',
+  colorAuto: 'Automatisch',
   deleteSectionTitle: (name: string) => `Groep “${name}” verwijderen?`,
   deleteSectionDescription: (count: number) => count === 1
       ? 'Het product in deze groep verdwijnt van deze menukaart. Het product zelf blijft bestaan.'

@@ -49,6 +49,10 @@ export default {
   emptySection: 'Pas encore de produit dans ce groupe.',
   addSectionDescription: 'Un bloc de boutons sur la caisse, p. ex. Boissons, Repas ou Bons.',
   renameSection: 'Renommer le groupe',
+  sectionColor: 'Couleur',
+  sectionColorTitle: (name: string) => `Couleur de ${name} sur la caisse`,
+  sectionColorDescription: 'Le groupe apparaît dans cette couleur sur la caisse. Automatique : une couleur selon sa place dans la carte.',
+  colorAuto: 'Automatique',
   deleteSectionTitle: (name: string) => `Supprimer le groupe « ${name} » ?`,
   deleteSectionDescription: (count: number) =>
     count === 1

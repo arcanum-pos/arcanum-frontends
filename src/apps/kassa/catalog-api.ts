@@ -17,7 +17,8 @@ export interface KassaCatalog {
   id: string
   name: string
   updatedAt: string
-  sections: { id: string; name: string; entries: KassaEntry[] }[]
+  // color: the group's colour chosen in the console (null: automatic).
+  sections: { id: string; name: string; color?: string | null; entries: KassaEntry[] }[]
 }
 
 export interface CatalogSummary {

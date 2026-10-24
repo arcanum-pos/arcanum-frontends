@@ -66,9 +66,5 @@ export function useKassaPrefs(): KassaPrefs {
   return prefs
 }
 
-// A menu group's colour, by its place in the menu (decision 2: automatic, a
-// fixed palette). Dark enough for white text on it (WCAG AA, ≥ 4.5:1); the
-// group's box is a light tint of it. Never the only cue: the name stays.
-const GROUP_COLORS = ['#2563eb', '#c2410c', '#be185d', '#15803d', '#7c3aed', '#0f766e', '#b45309', '#4f46e5']
-
-export const groupColor = (index: number) => GROUP_COLORS[((index % GROUP_COLORS.length) + GROUP_COLORS.length) % GROUP_COLORS.length]
+// The groups' colours live in shared/group-colors.ts (the console picks them too).
+export { groupColor } from '@/shared/group-colors'

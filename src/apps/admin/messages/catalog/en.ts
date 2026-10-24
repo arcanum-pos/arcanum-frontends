@@ -49,6 +49,10 @@ export default {
   emptySection: 'No products in this group yet.',
   addSectionDescription: 'A block of buttons on the till, e.g. Drinks, Food or Vouchers.',
   renameSection: 'Rename group',
+  sectionColor: 'Colour',
+  sectionColorTitle: (name: string) => `Colour of ${name} on the till`,
+  sectionColorDescription: 'The group shows in this colour on the till. Automatic: a colour by its place in the menu.',
+  colorAuto: 'Automatic',
   deleteSectionTitle: (name: string) => `Delete group “${name}”?`,
   deleteSectionDescription: (count: number) =>
     count === 1

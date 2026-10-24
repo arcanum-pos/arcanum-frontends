@@ -74,6 +74,8 @@ export interface CatalogSection {
   id: string
   name: string
   position: number
+  // Its colour on the kassa (shared/group-colors.ts); null: automatic. Absent from an older backend.
+  color?: string | null
   entries: CatalogEntry[]
 }
 
@@ -208,6 +210,11 @@ export function createSection(orgId: string, catalogId: string, name: string): P
 
 export function renameSection(orgId: string, catalogId: string, sectionId: string, name: string): Promise<{ ok: true }> {
   return request(`${org(orgId)}/catalogs/${id(catalogId)}/sections/${id(sectionId)}`, { method: 'PATCH', body: body({ name }) })
+}
+
+// Its colour on the kassa: one of GROUP_COLORS, or null for automatic.
+export function setSectionColor(orgId: string, catalogId: string, sectionId: string, color: string | null): Promise<{ ok: true }> {
+  return request(`${org(orgId)}/catalogs/${id(catalogId)}/sections/${id(sectionId)}`, { method: 'PATCH', body: body({ color }) })
 }
 
 export function deleteSection(orgId: string, catalogId: string, sectionId: string): Promise<{ ok: true }> {
