@@ -14,6 +14,7 @@ import { useNeedsFirstOrganization, useNoMembership } from '../lib/first-organiz
 import { OrgProvider, useOrg } from '../lib/org-context'
 import { useWaiterOnly, WaiterOnly } from '@/shared/waiter-only'
 import { ThemeProvider } from '../lib/theme'
+import { SupportButton } from '@/shared/support/support-button'
 
 // A fresh installation without an organization asks for its first one;
 // someone who's a member of nothing (and may not create one) is told so;
@@ -51,6 +52,7 @@ export function AppLayout() {
                 <SidebarTrigger className="-ml-1" />
                 <Separator orientation="vertical" className="mr-2 h-4" />
                 <AppBrand className="ml-auto" />
+                <SupportButton screen="console" className="ml-2" />
               </header>
               <main className="flex-1 p-6">
                 <MainContent />

@@ -12,6 +12,7 @@ import { EntranceScreen } from '@/shared/entrance-screen'
 import { sumupAppLink, sumupAppReturn } from '@/shared/sumup-app'
 import { WAITER_MESSAGES } from './messages'
 import { showOrgIcons } from '@/shared/install'
+import { SupportButton } from '@/shared/support/support-button'
 
 // The waiter screen (DOMAIN_MODEL.md "Tables and waiters", release C): on a
 // waiter's own phone, signed in (role Bediening, or admin / Kassa). The
@@ -182,14 +183,14 @@ export default function App() {
   const zones = groupByZone(tables ?? [])
   return (
     <div className="flex min-h-svh flex-col bg-muted/40" data-testid="waiter">
-      <header className="flex items-center justify-between gap-3 border-b bg-card px-4 py-3">
+      <header className="flex items-center gap-3 border-b bg-card px-4 py-3">
         <div className="min-w-0">
           <h1 className="truncate text-lg font-bold">{m.tables}</h1>
           <button className="truncate text-xs text-muted-foreground underline-offset-2 hover:underline" onClick={() => setEventId(null)}>
             {event?.name ?? ''}
           </button>
         </div>
-        <div className="flex flex-col items-end gap-1">
+        <div className="ml-auto flex flex-col items-end gap-1">
           <Legend />
           <button
             className="text-xs text-muted-foreground underline-offset-2 hover:underline"
@@ -199,6 +200,7 @@ export default function App() {
             {m.openEntrance}
           </button>
         </div>
+        <SupportButton screen="waiter" />
       </header>
       {error && (
         <p className="bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
@@ -317,6 +319,7 @@ function TableScreen({ orgId, event, table, tables, signal, onBack, onChanged, o
           <h1 className="truncate text-lg font-bold">{m.table(table.name)}</h1>
           <p className="text-xs text-muted-foreground">{m.states[table.state]}</p>
         </div>
+        <SupportButton screen="waiter" />
       </header>
       {error && (
         <p className="bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">

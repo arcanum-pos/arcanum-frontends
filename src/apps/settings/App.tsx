@@ -19,6 +19,7 @@ import { SlotPanel } from './SlotPanel'
 import { useSourceUrl } from '@/shared/source-url'
 import { SETTINGS_MESSAGES } from './messages'
 import { showOrgIcons } from '@/shared/install'
+import { SupportButton } from '@/shared/support/support-button'
 
 export default function App() {
   const m = useMessages(SETTINGS_MESSAGES)
@@ -98,9 +99,12 @@ export default function App() {
 
       <div className="flex items-center justify-between border-b pb-4">
         <h1 className="text-lg font-semibold">{m.title}</h1>
-        <a href="/kassa.html" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-          {m.back}
-        </a>
+        <div className="flex items-center gap-3">
+          <a href="/kassa.html" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+            {m.back}
+          </a>
+          <SupportButton screen="settings" />
+        </div>
       </div>
 
       <Card>

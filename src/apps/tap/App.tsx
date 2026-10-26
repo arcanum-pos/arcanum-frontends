@@ -11,6 +11,7 @@ import { connectNotifications, forgetTerminal, getRegisteredTerminal, pairDevice
 import { readTapAddress, tapReturnUrl, type TapAddress } from './lib'
 import { TAP_MESSAGES } from './messages'
 import { showOrgIcons } from '@/shared/install'
+import { SupportButton } from '@/shared/support/support-button'
 
 // A kassa's Tap to Pay phone (2026-10-16). Paired with a code for one kassa
 // (from this page itself: on an iPhone the home-screen app keeps its own
@@ -72,7 +73,10 @@ export default function App() {
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
       <main className="mx-auto flex w-full max-w-[440px] flex-1 flex-col gap-4 px-4 py-6">
-        <h1 className="text-lg font-semibold">{m.title}</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-lg font-semibold">{m.title}</h1>
+          <SupportButton screen="tap" />
+        </div>
         {address ? (
           <AddressedPayment address={address} onDone={terminal ? leaveAddress : null} />
         ) : terminal === undefined ? (

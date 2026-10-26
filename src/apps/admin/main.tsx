@@ -3,14 +3,12 @@ import { createRoot } from 'react-dom/client'
 import '@/shared/globals.css'
 import { ADMIN_LOCALE_KEY, preferredLocale } from '@/shared/i18n'
 import { LocaleProvider } from '@/shared/i18n/locale-provider'
-import { SupportButton } from '@/shared/support/support-button'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <LocaleProvider initial={preferredLocale(ADMIN_LOCALE_KEY)}>
       <App />
-      <SupportButton screen="console" />
     </LocaleProvider>
   </StrictMode>,
 )

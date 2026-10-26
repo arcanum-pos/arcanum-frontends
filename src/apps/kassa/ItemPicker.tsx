@@ -29,8 +29,12 @@ export function ItemPicker({
   counts = true,
   onAdd,
   onRemove,
+  leading,
 }: {
   catalogState: CatalogState
+  // First on the search row: who's working (the kassa's staff button), so
+  // the flow runs from the top down - who I am, find, tap.
+  leading?: React.ReactNode
   // The group shown (null: Alles) - chosen in the header on a big screen, here below.
   group: string | null
   onGroup: (group: string | null) => void
@@ -46,16 +50,21 @@ export function ItemPicker({
   onRemove: (item: PickerItem, quantity: number) => void
 }) {
   const m = useMessages(KASSA_MESSAGES)
-  if (catalogState.status === 'loading') return <p className="py-10 text-center text-sm text-muted-foreground">{m.catalogLoading}</p>
-  if (catalogState.status === 'none') {
-    return (
-      <div className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">
-        {m.noCatalog}
-      </div>
+  if (catalogState.status === 'ok') return <Catalog catalog={catalogState.catalog} quantities={quantities} onTab={onTab} disabled={disabled} chosen={group} onGroup={onGroup} tiles={tiles} counts={counts} onAdd={onAdd} onRemove={onRemove} leading={leading} />
+  const message =
+    catalogState.status === 'loading' ? (
+      <p className="py-10 text-center text-sm text-muted-foreground">{m.catalogLoading}</p>
+    ) : catalogState.status === 'none' ? (
+      <div className="rounded-xl border border-dashed bg-card p-8 text-center text-sm text-muted-foreground">{m.noCatalog}</div>
+    ) : (
+      <p className="text-sm font-medium text-destructive">{catalogState.message}</p>
     )
-  }
-  if (catalogState.status === 'error') return <p className="text-sm font-medium text-destructive">{catalogState.message}</p>
-  return <Catalog catalog={catalogState.catalog} quantities={quantities} onTab={onTab} disabled={disabled} chosen={group} onGroup={onGroup} tiles={tiles} counts={counts} onAdd={onAdd} onRemove={onRemove} />
+  return (
+    <div className="flex flex-col gap-3">
+      {leading && <div className="flex">{leading}</div>}
+      {message}
+    </div>
+  )
 }
 
 // The groups as one segmented control, in the kassa's header on a wide
@@ -97,6 +106,7 @@ function Catalog({
   counts,
   onAdd,
   onRemove,
+  leading,
 }: {
   catalog: KassaCatalog
   quantities: Record<string, number>
@@ -108,6 +118,7 @@ function Catalog({
   counts: boolean
   onAdd: Change
   onRemove: Change
+  leading?: React.ReactNode
 }) {
   const m = useMessages(KASSA_MESSAGES)
   const [query, setQuery] = useState('')
@@ -186,6 +197,7 @@ function Catalog({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
+        {leading}
         <input
           type="search"
           value={query}

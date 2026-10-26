@@ -45,11 +45,26 @@ test('? captures the kassa and hands it to the support form, which can close the
   expect(data.clicks).toContain('button: Alles')
   // The ? itself isn't one of the clicks.
   expect(data.clicks.join()).not.toContain('Hulp')
-  await expect(help).toBeHidden()
 
   await kassa.frameLocator('[data-testid="support-frame"]').getByRole('button', { name: 'Annuleren' }).click()
   await expect(dialog).toBeHidden()
   await expect(help).toBeVisible()
+})
+
+test('the ? is the last thing in the top right of every staff screen; on the kassa, who is working sits on the search row', async ({ kassa }) => {
+  const help = kassa.getByTestId('support-button')
+  const header = kassa.locator('header').first()
+  await expect(header.getByTestId('support-button')).toBeVisible()
+  const box = (await help.boundingBox())!
+  const viewport = kassa.viewportSize()!
+  expect(box.x + box.width).toBeGreaterThan(viewport.width - 40)
+  expect(box.y).toBeLessThan(40)
+  // Who's working: not in the header any more, first on the row with the product search.
+  await expect(header.getByTestId('staff-button')).toHaveCount(0)
+  const staff = (await kassa.getByTestId('staff-button').boundingBox())!
+  const search = (await kassa.getByRole('searchbox', { name: 'Zoek product' }).boundingBox())!
+  expect(Math.abs(staff.y + staff.height / 2 - (search.y + search.height / 2))).toBeLessThan(4)
+  expect(staff.x).toBeLessThan(search.x)
 })
 
 test("a message from anywhere but the form's own frame is ignored", async ({ kassa }) => {

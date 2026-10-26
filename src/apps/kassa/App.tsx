@@ -45,6 +45,7 @@ import {
 import { fetchKassaCatalog, listEvents, type KassaCatalog } from './catalog-api'
 import { clampPanel, PANEL_DEFAULT, PANEL_MIN, panelMax, readPanelWidth, writePanelWidth } from './layout'
 import { PanelDivider } from './PanelDivider'
+import { SupportButton } from '@/shared/support/support-button'
 import { GroupTabs, ItemPicker, type CatalogState } from './ItemPicker'
 import { useKassaPrefs } from './prefs'
 import { AdjustSheet } from './AdjustSheet'
@@ -1145,6 +1146,10 @@ export default function App() {
   const kassaView = !registerClosed && !cashUpOpen && view === 'kassa'
   const time = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+  // Who's working: first on the search row above the products (who I am,
+  // then find and tap, top down); the top right is the ? (help).
+  const staffButton = orgId ? <StaffButton orgId={orgId} required={staffRequired} open={staffOpen} onOpenChange={setStaffOpen} className="h-[38px]" /> : null
+
   return (
     // On a big screen the kassa fills the screen exactly (header, then the
     // tabs, the menu and the ticket each scrolling on their own); smaller,
@@ -1179,6 +1184,8 @@ export default function App() {
         </div>
         <div className="flex min-w-4 flex-1 justify-center">
           {kassaView && <GroupTabs catalogState={catalogState} group={menuGroup} onGroup={setMenuGroup} className="hidden xl:flex" />}
+          {/* Who's working: above the products in the kassa view (ItemPicker), here in the overview. */}
+          {!kassaView && staffButton}
         </div>
         <div className="flex items-center gap-1">
           <HeaderButton icon={<Monitor />} label={m.display} title={m.openDisplay} aria-label={m.openDisplay} disabled={openingDisplay} onClick={openDisplay} />
@@ -1237,12 +1244,8 @@ export default function App() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          {orgId && (
-            <>
-              <div className="mx-1.5 h-7 w-px bg-border" aria-hidden="true" />
-              <StaffButton orgId={orgId} required={staffRequired} open={staffOpen} onOpenChange={setStaffOpen} className="h-11" />
-            </>
-          )}
+          <div className="mx-1.5 h-7 w-px bg-border" aria-hidden="true" />
+          <SupportButton screen="kassa" labelled />
         </div>
       </header>
 
@@ -1284,7 +1287,7 @@ export default function App() {
                     {draftCount > 0 && <span> · {m.newItems(draftCount)}</span>}
                   </span>
                 </div>
-                <ItemPicker catalogState={catalogState} group={menuGroup} onGroup={setMenuGroup} tiles={prefs.tiles} counts={prefs.counts} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
+                <ItemPicker leading={staffButton} catalogState={catalogState} group={menuGroup} onGroup={setMenuGroup} tiles={prefs.tiles} counts={prefs.counts} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
               </div>
               <PanelDivider
                 width={shownPanelWidth}

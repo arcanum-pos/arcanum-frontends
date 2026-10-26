@@ -10,7 +10,7 @@ import { KioskShell } from '@/shared/kiosk-shell'
 export default function App() {
   const m = useMessages(DEVICE_MESSAGES)
   return (
-    <KioskShell maxWidth="max-w-md" devicePickers>
+    <KioskShell maxWidth="max-w-md" devicePickers screen="device">
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-lg">{m.title}</CardTitle>

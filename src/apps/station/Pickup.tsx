@@ -5,7 +5,6 @@ import { useMessages } from '@/shared/i18n'
 import { connectNotifications } from '@/shared/terminal'
 import { STATION_MESSAGES } from './messages'
 import { pickupColumns, type PickupOrder } from './lib'
-import { useGuestFacing } from '@/shared/support/guest-facing'
 
 // The pickup screen (ROADMAP.md §5): a station's orders as guests see them
 // — only their numbers, in three columns: received, being prepared, ready.
@@ -49,7 +48,6 @@ function chime(ctx: AudioContext) {
 }
 
 export function Pickup({ device }: { device: { orgId: string; terminalId: string; stationId: string; stationName: string } }) {
-  useGuestFacing()
   const m = useMessages(STATION_MESSAGES)
   const [orders, setOrders] = useState<PickupOrder[]>([])
   const [station, setStation] = useState(device.stationName)

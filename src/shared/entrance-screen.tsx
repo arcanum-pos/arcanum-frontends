@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Volume2, VolumeX } from 'lucide-react'
 import { cn } from 'cn'
 import { useMessages, type Messages } from './i18n'
-import { useGuestFacing } from '@/shared/support/guest-facing'
 
 // The entrance screen (DOMAIN_MODEL.md "Tables and waiters", release D): the
 // tables promised to guests waiting at the entrance — "Tafel 5 — even
@@ -52,7 +51,6 @@ function chime(ctx: AudioContext) {
 }
 
 export function EntranceScreen({ orgId, subscribe }: { orgId: string; subscribe: (onChange: () => void) => () => void }) {
-  useGuestFacing()
   const t = useMessages(TEXTS)
   const [list, setList] = useState<Promised[]>([])
   const [wanted, setWanted] = useState(soundWanted)

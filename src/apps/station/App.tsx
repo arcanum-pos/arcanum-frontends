@@ -12,6 +12,7 @@ import { STATION_MESSAGES } from './messages'
 import { Pickup } from './Pickup'
 import { nextStatus, previousStatus, visibleTickets, type Ticket, type TicketStatus } from './lib'
 import { iconSlot, showOrgIcons } from '@/shared/install'
+import { SupportButton } from '@/shared/support/support-button'
 
 // A station screen (device role 'station'): the prep tickets (bonnen) of the
 // one station this device is linked to, in columns by status — DOMAIN_MODEL.md
@@ -232,6 +233,7 @@ export default function App() {
           <Switch checked={filters.showDelivered} onCheckedChange={(v) => setFilter('showDelivered', v)} aria-label={m.showDelivered} />
           {m.showDelivered}
         </label>
+        <SupportButton screen="station" />
       </header>
       {error && (
         <p className="bg-destructive/10 px-5 py-2 text-sm text-destructive" role="alert">

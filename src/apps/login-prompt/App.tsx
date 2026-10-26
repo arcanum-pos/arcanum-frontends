@@ -19,7 +19,7 @@ export default function App() {
   const href = returnTo && returnTo !== '/' ? `/login?returnTo=${encodeURIComponent(returnTo)}` : '/login'
 
   return (
-    <KioskShell maxWidth="max-w-3xl" devicePickers>
+    <KioskShell maxWidth="max-w-3xl" devicePickers screen="login">
       <Card>
         <CardHeader className="text-center">
           <CardTitle className="text-xl">{m.title}</CardTitle>

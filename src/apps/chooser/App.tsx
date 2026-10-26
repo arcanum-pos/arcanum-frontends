@@ -142,7 +142,7 @@ export default function App() {
 
   if (view.step === 'loading') {
     return (
-      <KioskShell devicePickers>
+      <KioskShell devicePickers screen="chooser">
         <div className="flex flex-col items-center gap-3">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-24 w-full" />
@@ -155,7 +155,7 @@ export default function App() {
     const { terminal } = view
     const name = terminal.name || m.roles[terminal.role]
     return (
-      <KioskShell devicePickers>
+      <KioskShell devicePickers screen="chooser">
         <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="replace">
           <h1 className="font-heading text-xl font-bold">{m.pairedTitle(name)}</h1>
           {terminal.orgName && <p className="text-sm text-muted-foreground">{m.org(terminal.orgName)}</p>}
@@ -175,7 +175,7 @@ export default function App() {
   if (view.step === 'sign-in') {
     const back = link(view.code)
     return (
-      <KioskShell devicePickers>
+      <KioskShell devicePickers screen="chooser">
         <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="pair-sign-in">
           <h1 className="font-heading text-xl font-bold">{m.signInTitle}</h1>
           <p className="text-sm text-muted-foreground">{m.signInHint}</p>
@@ -191,7 +191,7 @@ export default function App() {
     const kind = appStorage()
     const steps = kind === 'mac' ? m.macSteps(device.name) : m.iosSteps(device.name)
     return (
-      <KioskShell devicePickers>
+      <KioskShell devicePickers screen="chooser">
         <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="install">
           <img src={document.head.querySelector('link[rel="apple-touch-icon"]')?.getAttribute('href') ?? `/icons/${ICON_FOR_ROLE[device.role]}-180.png`} alt="" className="mx-auto size-16 rounded-2xl" />
           <h1 className="font-heading text-xl font-bold">{device.name}</h1>
@@ -227,7 +227,7 @@ export default function App() {
   if (view.step === 'paired') {
     const { terminal } = view
     return (
-      <KioskShell devicePickers>
+      <KioskShell devicePickers screen="chooser">
         <section className="flex flex-col gap-3 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10" data-testid="paired">
           <h1 className="font-heading text-xl font-bold">{m.pairedTitle(terminal.name || m.roles[terminal.role])}</h1>
           {terminal.orgName && <p className="text-sm text-muted-foreground">{m.org(terminal.orgName)}</p>}
@@ -238,7 +238,7 @@ export default function App() {
   }
 
   return (
-    <KioskShell devicePickers>
+    <KioskShell devicePickers screen="chooser">
       <div className="flex flex-col gap-4">
         <h1 className="text-center font-heading text-xl font-bold">{m.title}</h1>
         {(moved || view.removed) && (
