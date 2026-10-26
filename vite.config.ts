@@ -2,6 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -16,8 +17,19 @@ const APPS = ['admin', 'login-prompt', 'device', 'chooser', 'display', 'kassa', 
 
 import { CONTENT_SECURITY_POLICY } from './worker/csp.js'
 
+// The commit this build came from, for a support report (shared/support);
+// empty outside a git checkout.
+function gitCommit(): string {
+  try {
+    return execSync('git rev-parse --short=12 HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+  } catch {
+    return ''
+  }
+}
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  define: { __ARCANUM_COMMIT__: JSON.stringify(gitCommit()) },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

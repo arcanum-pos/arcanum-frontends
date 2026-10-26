@@ -94,6 +94,7 @@ describe('the policy itself', () => {
     expect(CONTENT_SECURITY_POLICY).toContain("script-src 'self'")
     expect(CONTENT_SECURITY_POLICY).not.toMatch(/script-src[^;]*('unsafe-inline'|'unsafe-eval'|https:)/)
     expect(CONTENT_SECURITY_POLICY).toContain("frame-ancestors 'none'")
+    expect(CONTENT_SECURITY_POLICY).toContain('frame-src https://support.kaboutersoft.be')
     expect(CONTENT_SECURITY_POLICY).toContain("object-src 'none'")
   })
 

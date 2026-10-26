@@ -10,6 +10,8 @@
 //   img-src https: data: blob:  the Bancontact QR code (Bancontact's own host),
 //                           an org's logo (any URL its admin enters)
 //   connect-src 'self'      the API and the notification socket (same host)
+//   frame-src               the support form's dialog (shared/support), only
+//                           that one origin
 //   frame-ancestors 'none'  never inside another site's frame
 export const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
@@ -21,5 +23,6 @@ export const CONTENT_SECURITY_POLICY = [
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
+  'frame-src https://support.kaboutersoft.be',
   "frame-ancestors 'none'",
 ].join('; ');

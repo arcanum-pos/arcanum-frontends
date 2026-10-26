@@ -6,6 +6,7 @@ import { LocaleProvider } from '@/shared/i18n/locale-provider'
 import { InstallPrompt } from '@/shared/install-prompt'
 import { DEVICE_THEME_KEY } from '@/shared/theme'
 import { ThemeProvider } from '@/shared/theme-provider'
+import { SupportButton } from '@/shared/support/support-button'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider storageKey={DEVICE_THEME_KEY}>
       <LocaleProvider initial={deviceLocale()}>
         <App />
+        <SupportButton screen="station" />
         <InstallPrompt />
       </LocaleProvider>
     </ThemeProvider>
