@@ -46,6 +46,9 @@ async function pickFile(page: Page, name: string, buffer: Buffer, mimeType: stri
 
 const entryNames = (page: Page, section: string) => page.getByTestId(`section-${section}`).locator('[data-testid^=entry-] p.font-medium').allTextContents()
 
+// The name the app gives the file; WebKit on Linux reports its spaces as _.
+const downloadName = (name: string) => new RegExp(`^${name.replace(/[.]/g, '\\.').replace(/ /g, '[ _]')}$`)
+
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 test.describe('Menukaart export', () => {
@@ -54,7 +57,7 @@ test.describe('Menukaart export', () => {
     const page = await open(`/catalogs/${catalog.id}`)
     await page.getByRole('button', { name: 'Exporteren' }).click()
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'Excel (.xlsx)' }).click()])
-    expect(download.suggestedFilename()).toBe('menukaart-Kaas & wijn.xlsx')
+    expect(download.suggestedFilename()).toMatch(downloadName('menukaart-Kaas & wijn.xlsx'))
 
     const buffer = readFileSync(await download.path())
     expect(await readSheet(buffer)).toEqual([
@@ -73,7 +76,7 @@ test.describe('Menukaart export', () => {
     const page = await open('/catalogs')
     await page.getByTestId('catalog-Kaas & wijn').getByRole('button', { name: 'Acties voor Kaas & wijn' }).click()
     const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'Exporteren (CSV)' }).click()])
-    expect(download.suggestedFilename()).toBe('menukaart-Kaas & wijn.csv')
+    expect(download.suggestedFilename()).toMatch(downloadName('menukaart-Kaas & wijn.csv'))
     const text = readFileSync(await download.path(), 'utf8')
     expect(text.charCodeAt(0)).toBe(0xfeff)
     expect(parseCsv(text)[1]).toEqual(['Drank', 'Pils', '', '2,50', 'Drank', 'Bar', '21', '', '6, 12', 'ja'])

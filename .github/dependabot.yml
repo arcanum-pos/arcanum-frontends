@@ -10,6 +10,9 @@ updates:
     groups:
       dev-tooling:
         dependency-type: development
+      # react and react-dom must be the same version (React error #527 otherwise).
+      react:
+        patterns: ['react', 'react-dom']
     ignore:
       # Major versions are upgraded by hand (they change APIs).
       - dependency-name: '*'
