@@ -27,7 +27,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.36",
     "class-variance-authority": "^0.7.1",
-    "cn": "^0.3.0",
+    "cn": "^0.5.0",
     "hono": "^4.13.13",
     "lucide-react": "^1.46.0",
     "modern-screenshot": "^4.7.0",
