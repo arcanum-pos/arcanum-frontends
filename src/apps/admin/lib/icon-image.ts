@@ -4,11 +4,17 @@
 // fitted in whole: a wide logo gets white above and below.
 export const ICON_SIZES = [96, 180, 192, 512] as const
 
+// onload, not img.decode(): WebKit on Linux rejects decode() of a blob: image
+// ("EncodingError") that loads and draws fine.
 async function load(file: Blob): Promise<HTMLImageElement> {
   const img = new Image()
+  const loaded = new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve()
+    img.onerror = () => reject(new Error('not an image'))
+  })
   img.src = URL.createObjectURL(file)
   try {
-    await img.decode()
+    await loaded
     return img
   } finally {
     URL.revokeObjectURL(img.src)
