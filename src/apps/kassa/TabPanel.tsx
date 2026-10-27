@@ -1,4 +1,4 @@
-import { Check, MoreHorizontal } from 'lucide-react'
+import { Check, MoreHorizontal, X } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
@@ -242,7 +242,26 @@ export function TabPanel({
           {!byItems && rows.map((line) => {
             const qty = netQuantity(line)
             return (
-              <div key={line.id} className="flex items-center gap-2.5 border-b border-border/60 px-3.5 py-2">
+              <div key={line.id} className="flex items-center gap-2 border-b border-border/60 py-2 pr-3.5 pl-1.5">
+                {/* Cancel: an × in front of the line, away from the amounts.
+                    Paid units (per item) can't be cancelled - only offered
+                    while some aren't; otherwise its place stays empty, so the
+                    names stay in line. It asks first. */}
+                {payableUnits(line) > 0 ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-9 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    disabled={locked}
+                    aria-label={m.voidLine}
+                    title={m.voidLine}
+                    onClick={() => onVoid(line)}
+                  >
+                    <X className="size-4" aria-hidden="true" />
+                  </Button>
+                ) : (
+                  <span className="size-9 shrink-0" aria-hidden="true" />
+                )}
                 <div className={cn('min-w-0 flex-1', qty === 0 && 'text-muted-foreground line-through')}>
                   <p className="truncate text-[calc(15px*var(--kassa-text,1))] font-medium tracking-tight">{line.itemCode === FOOI_CODE ? m.tip : `${qty || line.quantity} × ${line.name}`}</p>
                   <p className="font-mono text-[11px] text-muted-foreground">
@@ -250,12 +269,6 @@ export function TabPanel({
                     {(line.paidQuantity || 0) > 0 && ` · ${m.unitsPaid(line.paidQuantity || 0)}`}
                   </p>
                 </div>
-                {/* Paid units (per item) can't be cancelled — only offered while some aren't. */}
-                {payableUnits(line) > 0 && (
-                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive" disabled={locked} onClick={() => onVoid(line)}>
-                    {m.voidLine}
-                  </Button>
-                )}
                 <span className="w-[72px] text-right font-mono text-[13.5px] font-semibold tabular-nums">{formatEuro(qty * line.unitPriceCents)}</span>
               </div>
             )

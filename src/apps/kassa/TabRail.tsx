@@ -138,8 +138,8 @@ function Row({ active, disabled, onClick, children }: { active: boolean; disable
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'flex min-h-14 w-56 shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:opacity-50 lg:w-full',
-        active ? 'bg-foreground/[0.08] ring-1 ring-foreground/25' : 'hover:bg-muted'
+        'flex min-h-14 w-56 shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset disabled:opacity-50 lg:w-full',
+        active ? 'bg-foreground/[0.08] ring-1 ring-foreground/25 ring-inset' : 'hover:bg-muted'
       )}
     >
       {children}

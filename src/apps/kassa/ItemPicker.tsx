@@ -30,11 +30,14 @@ export function ItemPicker({
   onAdd,
   onRemove,
   leading,
+  heading,
 }: {
   catalogState: CatalogState
   // First on the search row: who's working (the kassa's staff button), so
   // the flow runs from the top down - who I am, find, tap.
   leading?: React.ReactNode
+  // Before it, on the same row: which tab this order is for.
+  heading?: React.ReactNode
   // The group shown (null: Alles) - chosen in the header on a big screen, here below.
   group: string | null
   onGroup: (group: string | null) => void
@@ -50,7 +53,7 @@ export function ItemPicker({
   onRemove: (item: PickerItem, quantity: number) => void
 }) {
   const m = useMessages(KASSA_MESSAGES)
-  if (catalogState.status === 'ok') return <Catalog catalog={catalogState.catalog} quantities={quantities} onTab={onTab} disabled={disabled} chosen={group} onGroup={onGroup} tiles={tiles} counts={counts} onAdd={onAdd} onRemove={onRemove} leading={leading} />
+  if (catalogState.status === 'ok') return <Catalog catalog={catalogState.catalog} quantities={quantities} onTab={onTab} disabled={disabled} chosen={group} onGroup={onGroup} tiles={tiles} counts={counts} onAdd={onAdd} onRemove={onRemove} leading={leading} heading={heading} />
   const message =
     catalogState.status === 'loading' ? (
       <p className="py-10 text-center text-sm text-muted-foreground">{m.catalogLoading}</p>
@@ -61,7 +64,12 @@ export function ItemPicker({
     )
   return (
     <div className="flex flex-col gap-3">
-      {leading && <div className="flex">{leading}</div>}
+      {(heading || leading) && (
+        <div className="flex items-center gap-2" data-testid={heading ? 'order-target' : undefined}>
+          {heading}
+          {leading}
+        </div>
+      )}
       {message}
     </div>
   )
@@ -107,6 +115,7 @@ function Catalog({
   onAdd,
   onRemove,
   leading,
+  heading,
 }: {
   catalog: KassaCatalog
   quantities: Record<string, number>
@@ -119,6 +128,7 @@ function Catalog({
   onAdd: Change
   onRemove: Change
   leading?: React.ReactNode
+  heading?: React.ReactNode
 }) {
   const m = useMessages(KASSA_MESSAGES)
   const [query, setQuery] = useState('')
@@ -196,7 +206,12 @@ function Catalog({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Sticky with its heading: which tab, who, find - always in sight. */}
+      <div
+        className={cn('flex flex-wrap items-center gap-2', heading && 'z-10 bg-[color-mix(in_oklab,var(--muted)_40%,var(--background))] pb-1 lg:sticky lg:top-0')}
+        data-testid={heading ? 'order-target' : undefined}
+      >
+        {heading}
         {leading}
         <input
           type="search"
@@ -206,7 +221,7 @@ function Catalog({
           placeholder={m.searchPlaceholder}
           aria-label={m.searchLabel}
           autoComplete="off"
-          className="h-[38px] min-w-[180px] flex-[1_1_220px] rounded-[9px] border bg-card px-3 text-[13.5px] outline-none placeholder:text-muted-foreground focus-visible:border-foreground"
+          className="h-[38px] min-w-[110px] flex-[1_1_180px] rounded-[9px] border bg-card px-3 text-[13.5px] outline-none placeholder:text-muted-foreground focus-visible:border-foreground"
         />
         {catalog.sections.length > 1 && (
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 xl:hidden" role="group" aria-label={m.group}>
@@ -228,11 +243,14 @@ function Catalog({
           aria-hidden={!canArrange || arranging || undefined}
           tabIndex={!canArrange || arranging ? -1 : undefined}
           onClick={() => setArranging(true)}
+          aria-label={m.arrange}
+          title={m.arrange}
           data-testid="arrange"
           data-shown={canArrange && !arranging ? true : undefined}
         >
           <LayoutGrid className="size-4" aria-hidden="true" />
-          {m.arrange}
+          {/* Beside the heading, only the icon until there's room for the word. */}
+          <span className={cn(heading && 'hidden 2xl:inline')}>{m.arrange}</span>
         </button>
       </div>
       {arranging && (
@@ -417,18 +435,20 @@ function EntryTile({
         tileBase,
         list
           ? 'flex min-h-14 items-center gap-2.5 px-3 py-2'
-          : cn('grid grid-cols-[auto_1fr_auto] grid-rows-[auto_1fr_auto] gap-x-2 px-3 pt-2.5 pb-2.5', tiles === 'large' ? 'h-[calc(128px*var(--kassa-text,1))]' : 'h-[calc(108px*var(--kassa-text,1))]')
+          : cn('grid grid-cols-[auto_1fr] grid-rows-[1fr_auto] gap-x-2 gap-y-1 px-3 pt-2.5 pb-2.5', tiles === 'large' ? 'h-[calc(128px*var(--kassa-text,1))]' : 'h-[calc(108px*var(--kassa-text,1))]')
       )}
     >
-      {/* On the tab, all told: "3×" — dark while some of it is new, grey when
-          it's all sent; the new part beside it ("+1"). Decorative: the ticket
-          lists it too. Fixed sizes, whatever the counts say: a tap never moves anything. */}
+      {/* On the tab, all told: "3×" - dark while some of it is new, grey when
+          it's all sent. Decorative: the ticket lists it too. Fixed sizes,
+          whatever the counts say: a tap never moves anything. In a tile: the
+          name on top (its full width, up to three lines), below it the count
+          on the left and the price on the right. */}
       <span
         aria-hidden="true"
         data-testid="entry-count"
         className={cn(
           'flex h-6 w-9 shrink-0 items-center justify-center rounded-md font-mono text-[12px] leading-none font-semibold tabular-nums',
-          !list && 'col-start-1 row-start-1',
+          !list && 'col-start-1 row-start-2',
           !counts && 'invisible',
           drafted ? 'bg-foreground text-background' : sent ? 'bg-foreground/15 text-foreground' : list && 'bg-muted'
         )}
@@ -438,19 +458,12 @@ function EntryTile({
       <span
         className={cn(
           'min-w-0 font-semibold tracking-tight',
-          list ? 'flex-1 truncate text-[calc(15px*var(--kassa-text,1))]' : cn('col-span-3 row-start-2 line-clamp-2 self-end leading-tight', tiles === 'large' ? 'text-[calc(16.5px*var(--kassa-text,1))]' : 'text-[calc(15px*var(--kassa-text,1))]')
+          list ? 'flex-1 truncate text-[calc(15px*var(--kassa-text,1))]' : cn('col-span-2 row-start-1 line-clamp-3 self-start leading-tight', tiles === 'large' ? 'text-[calc(16.5px*var(--kassa-text,1))]' : 'text-[calc(15px*var(--kassa-text,1))]')
         )}
       >
         {entry.name}
       </span>
-      <span aria-hidden="true" className={cn('flex h-6 min-w-9 shrink-0 items-center justify-end font-mono text-[12px] leading-none font-semibold tabular-nums', !list && 'col-start-3 row-start-1', !counts && 'invisible')}>
-        {drafted > 0 && sent > 0 && (
-          <span className="rounded-md bg-foreground px-1.5 py-1 text-background" data-testid="entry-new">
-            +{drafted}
-          </span>
-        )}
-      </span>
-      <span className={cn('font-mono text-[calc(13px*var(--kassa-text,1))] text-muted-foreground tabular-nums', !list && 'col-span-3 row-start-3 mt-0.5')}>{formatEuro(entry.priceCents)}</span>
+      <span className={cn('font-mono text-[calc(13px*var(--kassa-text,1))] text-muted-foreground tabular-nums', !list && 'col-start-2 row-start-2 self-center justify-self-end')}>{formatEuro(entry.priceCents)}</span>
     </button>
   )
 }

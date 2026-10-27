@@ -1120,9 +1120,6 @@ export default function App() {
   // Tap to Pay is never confirmed by hand: SumUp does.
   const showConfirmButton = current !== null && current.status !== 'RESOLVED' && current.method !== 'tap'
   const shownPanelWidth = clampPanel(panelWidth, viewportWidth)
-  const draftCount = draft.reduce((n, l) => n + l.quantity, 0)
-  // What the ticket on the right says is to pay (what's open plus the new round).
-  const targetCents = (shownTab?.outstandingCents || 0) + draftTotalCents(draft)
   const panelTitle = active === 'quick' ? m.quickTitle : shownTab ? tabTitle(m, shownTab) : m.loading
   const itemCount = draft.reduce((n, l) => n + l.quantity, 0) + (shownTab?.lines || []).filter((l) => !l.voidsLineId).reduce((n, l) => n + netQuantity(l), 0)
   const panelSubtitle = `${active === 'quick' ? m.quickSubtitle : m.openTab} · ${m.items(itemCount)}`
@@ -1273,21 +1270,18 @@ export default function App() {
 
             <div className={cn('flex flex-col items-start gap-4 lg:min-h-0 lg:flex-1 lg:items-stretch lg:gap-0', prefs.side === 'left' ? 'lg:flex-row-reverse' : 'lg:flex-row')} style={{ '--panel': `${shownPanelWidth}px` } as React.CSSProperties}>
               <div className={cn('flex w-full min-w-0 flex-col gap-3 lg:h-full lg:flex-1 lg:overflow-y-auto lg:pb-6 [&>*]:shrink-0', prefs.side === 'left' ? 'lg:pl-2' : 'lg:pr-2')}>
-                {/* Which tab this order is for: the same as the selected one
-                    on the left and the ticket on the right. */}
-                <div className="z-10 flex items-end gap-3 overflow-hidden bg-[color-mix(in_oklab,var(--muted)_40%,var(--background))] pb-1 lg:sticky lg:top-0" data-testid="order-target">
-                  <span className="flex min-w-0 flex-col">
-                    <span className="text-[11.5px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">{m.orderingFor}</span>
-                    <span className="truncate text-[24px] leading-tight font-bold tracking-tight">{active === 'quick' ? m.quickSale : panelTitle}</span>
-                  </span>
-                  {/* The same as the ticket on the right: its items and what's to pay, new ones included. */}
-                  <span className="ml-auto truncate pb-1 text-right font-mono text-[12.5px] whitespace-nowrap text-muted-foreground tabular-nums" data-testid="order-target-summary">
-                    {m.items(itemCount)} · <span className="font-semibold text-foreground">{formatEuro(targetCents)}</span>
-                    {/* On the same line: the header never grows and pushes the menu down. */}
-                    {draftCount > 0 && <span> · {m.newItems(draftCount)}</span>}
-                  </span>
-                </div>
-                <ItemPicker leading={staffButton} catalogState={catalogState} group={menuGroup} onGroup={setMenuGroup} tiles={prefs.tiles} counts={prefs.counts} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
+                {/* Which tab this order is for (the same as the selected one on
+                    the left and the ticket on the right), on one row with who's
+                    working, the search and Indeling. Its items and total are on
+                    the ticket. */}
+                <ItemPicker
+                  heading={
+                    <span className="flex max-w-[45%] min-w-0 flex-col">
+                      <span className="text-[11.5px] font-semibold tracking-[0.06em] text-muted-foreground uppercase">{m.orderingFor}</span>
+                      <span className="truncate text-[24px] leading-tight font-bold tracking-tight">{active === 'quick' ? m.quickSale : panelTitle}</span>
+                    </span>
+                  }
+                  leading={staffButton} catalogState={catalogState} group={menuGroup} onGroup={setMenuGroup} tiles={prefs.tiles} counts={prefs.counts} quantities={draftQuantities} onTab={tabQuantities(shownTab)} disabled={busy || tabLoading || !!shownTab?.paymentPending || (!!itemMode && itemMode.tabId === shownTab?.id)} onAdd={addItem} onRemove={removeItem} />
               </div>
               <PanelDivider
                 width={shownPanelWidth}

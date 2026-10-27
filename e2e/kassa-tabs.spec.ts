@@ -213,20 +213,19 @@ test('no "Ticket annuleren" while a payment runs, or once something is paid', as
   expect(tab.status).toBe('open')
 })
 
-test('the menu shows what the open tab has, the new round apart - the same as the ticket on the right', async ({ kassa, backend }) => {
+test('the menu shows what the open tab has, dark while some of it is new - the same as the ticket on the right', async ({ kassa, backend }) => {
   backend.openTab('Tafel 4', [{ itemCode: 'wandeltocht', variantId: 'v-wandel', name: 'Wandeltocht', unitPriceCents: 600, quantity: 2 }])
   await kassa.reload()
   await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
   const row = kassa.getByRole('button', button(/^Wandeltocht \(niet-lid\)/))
   await expect(row.getByTestId('entry-count')).toHaveText('2×')
-  await expect(row.getByTestId('entry-new')).toHaveCount(0)
-  await expect(kassa.getByTestId('order-target-summary')).toContainText('2 items · € 12,00')
+  await expect(row.getByTestId('entry-count')).toHaveClass(/bg-foreground\/15/)
+  // Its items and total are on the ticket only, not above the menu.
+  await expect(kassa.getByTestId('order-target')).not.toContainText('€ 12,00')
 
   await row.click()
   await expect(row.getByTestId('entry-count')).toHaveText('3×')
-  await expect(row.getByTestId('entry-new')).toHaveText('+1')
-  await expect(kassa.getByTestId('order-target-summary')).toContainText('3 items · € 18,00')
-  await expect(kassa.getByTestId('order-target-summary')).toContainText('1 nieuw')
+  await expect(row.getByTestId('entry-count')).toHaveClass(/(^| )bg-foreground( |$)/)
   await expect(panel(kassa).getByText('Te betalen').locator('..')).toContainText('€ 18,00')
   // Right-click only takes back the new one; what's sent stays (a void, with a reason).
   await row.click({ button: 'right' })
@@ -263,4 +262,28 @@ test("Bancontact can't be reached to cancel: the kassa stays on the payment and 
   await kassa.getByRole('button', button('Betaling annuleren')).click()
   await expect(panel(kassa).getByText('5 × Bon')).toBeVisible()
   expect(backend.charges.map((c) => c.status)).toEqual(['failed'])
+})
+
+test('layout: a tile has its name on top and the count left of the price below it; the header is one row; cancel is an × in front of the line', async ({ kassa, backend }) => {
+  backend.openTab('Tafel 4', [{ itemCode: 'wandeltocht', variantId: 'v-wandel', name: 'Wandeltocht', unitPriceCents: 600, quantity: 2 }])
+  await kassa.reload()
+  await kassa.getByRole('button', button(/^#1 Tafel 4/)).click()
+  const box = async (l: import('@playwright/test').Locator) => (await l.boundingBox())!
+  const tile = kassa.getByRole('button', button(/^Wandeltocht \(niet-lid\)/))
+  const name = await box(tile.getByText('Wandeltocht (niet-lid)'))
+  const count = await box(tile.getByTestId('entry-count'))
+  const price = await box(tile.getByText('€ 6,00'))
+  expect(name.y + name.height).toBeLessThanOrEqual(count.y)
+  expect(Math.abs(count.y + count.height / 2 - (price.y + price.height / 2))).toBeLessThan(4)
+  expect(count.x).toBeLessThan(price.x)
+
+  const header = kassa.getByTestId('order-target')
+  const title = await box(header.getByText('#1 Tafel 4'))
+  const search = await box(header.getByRole('searchbox'))
+  expect(search.y).toBeLessThan(title.y + title.height)
+  expect(search.x).toBeGreaterThan(title.x + title.width)
+
+  const cancel = await box(panel(kassa).getByRole('button', { name: 'Annuleren' }).first())
+  const line = await box(panel(kassa).getByText('2 × Wandeltocht'))
+  expect(cancel.x + cancel.width).toBeLessThanOrEqual(line.x)
 })
