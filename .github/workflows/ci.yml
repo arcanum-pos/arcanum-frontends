@@ -1,0 +1,84 @@
+# Every push and pull request: the same checks as arcanum-auth's (its
+# HARDENING.md). A push deploys nothing (installations get the screens from
+# arcanum-releases), but a red run here means the next build shouldn't ship.
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # Weekly, for advisories published since the last push.
+    - cron: '23 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # tsc -b and vite build: every screen typechecks and bundles.
+      - run: npm run build
+      - run: npm test
+      # What's shipped: no known high or critical vulnerability.
+      - run: npm audit --omit=dev --audit-level=high
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps
+      # Every screen in three browsers, under the real Content-Security-Policy.
+      - run: npx playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: playwright-report/
+
+  semgrep:
+    runs-on: ubuntu-latest
+    container: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v7
+      - run: semgrep scan --config p/typescript --config p/javascript --config p/secrets --config p/jwt --metrics=off --error src worker
+
+  # The front door as a visitor meets it: these screens behind arcanum-bff's
+  # main, scanned by its .zap/scan.sh with its .zap/rules.tsv (one set of
+  # triaged findings for both repos; the bff sets the headers).
+  zap:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: arcanum-pos/arcanum-bff
+          path: bff
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            bff/package-lock.json
+      - run: npm ci && npm run build
+      - run: npm ci
+        working-directory: bff
+      - run: bff/.zap/scan.sh bff .
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: zap_scan
+          path: bff/zap-report/
