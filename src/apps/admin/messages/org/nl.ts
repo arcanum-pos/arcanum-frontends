@@ -182,6 +182,8 @@ const nl = {
 
   // Printers (Toestellen; arcanum/PRINTING.md)
   printers: {
+    receiptsTitle: 'Bonnen printen',
+    receiptsHint: 'Aan de kassa en in de bediening: na een betaling een bon op een printer. Wie een printer heeft, kiest hem in de Instellingen van de kassa of bovenaan de bediening. Geen BTW-kasticket.',
     kind: 'Printer',
     typeLabel: (brand: string) => `Printer (${brand})`,
     hint: 'Een bonnenprinter in de zaak: hij haalt zijn werk zelf op bij Arcanum, of een scherm op hetzelfde netwerk stuurt het hem.',

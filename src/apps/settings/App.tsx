@@ -11,6 +11,7 @@ import { connectNotifications, getRegisteredTerminal, renameDevice, unpairThisDe
 import { listMyMemberships } from '@/shared/memberships'
 import { LinkPanel } from './LinkPanel'
 import { ReaderPanel } from './ReaderPanel'
+import { ReceiptPanel } from './ReceiptPanel'
 import { CatalogPanel } from './CatalogPanel'
 import { RegisterPanel } from './RegisterPanel'
 import { getRegister } from '@/shared/register'
@@ -200,6 +201,8 @@ export default function App() {
               <ReaderPanel posOrgId={posOrgId} />
             </CardContent>
           </Card>
+
+          <ReceiptPanel posOrgId={posOrgId} />
         </>
       )}
 

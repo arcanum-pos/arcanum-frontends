@@ -1,6 +1,7 @@
 import type { WaiterMessages } from './nl'
 
 const en: WaiterMessages = {
+  receiptPrinterHint: "Where this phone's receipts print, after a payment at the table.",
   loading: 'Loading…',
   noAccess: 'You have no access to table service. Ask an admin to invite you (role Waiter).',
   noEvent: 'No event with an ordering mode "at the table". An admin sets that up in the event (Ordering modes).',

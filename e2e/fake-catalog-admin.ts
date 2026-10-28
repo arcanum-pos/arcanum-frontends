@@ -122,6 +122,7 @@ export class FakeCatalogAdmin {
   // Printers (arcanum-backend printing.ts) and the test pages asked for.
   printers: any[] = []
   testPrints: string[] = []
+  receiptsEnabled = false
   private seq = 0
 
   private id(prefix: string) {
@@ -193,6 +194,10 @@ export class FakeCatalogAdmin {
       return ok(eventId ? this.transactions.filter((t) => t.eventId === eventId) : this.transactions)
     }
     if (/^\/api\/organizations\/[^/]+\/devices$/.test(path) && method === 'GET') return ok(this.orgDevices)
+    if (/^\/api\/organizations\/[^/]+\/receipt-settings$/.test(path)) {
+      if (method === 'PUT') this.receiptsEnabled = body.enabled
+      return ok({ enabled: this.receiptsEnabled })
+    }
     const printer = path.match(/^\/api\/organizations\/[^/]+\/printers(?:\/([^/]+))?(?:\/(test|key))?$/)
     if (printer) {
       const stationsOf = (ids: string[]) => this.stations.filter((st) => ids.includes(st.id)).map((st) => ({ id: st.id, name: st.name }))

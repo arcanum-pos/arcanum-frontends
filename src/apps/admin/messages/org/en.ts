@@ -169,6 +169,8 @@ export default {
 
   // Printers (Devices; arcanum/PRINTING.md)
   printers: {
+    receiptsTitle: 'Print receipts',
+    receiptsHint: "At the till and in table service: a receipt on a printer after a payment. The printer is chosen in the till's Settings or at the top of the waiter's screen. Not a VAT receipt.",
     kind: 'Printer',
     typeLabel: (brand: string) => `Printer (${brand})`,
     hint: 'A receipt printer at the venue: it fetches its work from Arcanum, or a screen on the same network sends it.',

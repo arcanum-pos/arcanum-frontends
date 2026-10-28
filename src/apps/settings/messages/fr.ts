@@ -33,6 +33,8 @@ export default {
   linkDisplay: 'Lier un écran client',
   reader: 'Lecteur SumUp Solo',
   readerHint: 'Un vrai lecteur lié à votre compte SumUp. Les paiements de cette caisse vont alors vers ce lecteur.',
+  receiptPrinter: 'Imprimante de tickets',
+  receiptPrinterHint: 'Où les tickets de cette caisse sont imprimés, après un paiement.',
   freeSoftware: 'Arcanum est un logiciel libre (AGPL-3.0)',
   sourceCode: 'Code source',
 

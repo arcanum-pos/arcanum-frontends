@@ -102,3 +102,14 @@ test('changes a printer, sends it a test page, and removes it', async ({ console
   await rowAction(row, 'Verwijderen')
   await expect(row).toHaveCount(0)
 })
+
+test('receipts at the kassa and in table service: off until switched on here', async ({ console: open, page, catalogAdmin }) => {
+  await open('/devices')
+  const setting = page.getByTestId('receipts-setting')
+  await expect(setting).toContainText('Geen BTW-kasticket')
+  const toggle = setting.getByRole('switch', { name: 'Bonnen printen' })
+  await expect(toggle).not.toBeChecked()
+  await toggle.click()
+  await expect(toggle).toBeChecked()
+  expect(catalogAdmin.receiptsEnabled).toBe(true)
+})

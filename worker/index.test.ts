@@ -16,6 +16,7 @@ import { diskAssets } from './node-assets'
 const FILES: Record<string, [string, string]> = {
   '/kassa.html': ['text/html; charset=utf-8', '<html>kassa</html>'],
   '/station.html': ['text/html; charset=utf-8', '<html>station</html>'],
+  '/admin.html': ['text/html; charset=utf-8', '<html>admin</html>'],
   '/assets/kassa-abc123.js': ['text/javascript; charset=utf-8', 'console.log(1)'],
   '/assets/index-def456.css': ['text/css; charset=utf-8', 'body{}'],
   '/favicon.svg': ['image/svg+xml', '<svg/>'],
@@ -47,7 +48,7 @@ for (const [where, make] of [['on Cloudflare', cloudflare], ['self-hosted', onDi
 
     it('sends the policy with a page', async () => {
       const res = await get('/kassa.html')
-      expect(res.headers.get('Content-Security-Policy')).toBe(CONTENT_SECURITY_POLICY)
+      expect(res.headers.get('Content-Security-Policy')).toBe(PRINTING_POLICY)
       expect(await res.text()).toBe('<html>kassa</html>')
     })
 
@@ -55,7 +56,9 @@ for (const [where, make] of [['on Cloudflare', cloudflare], ['self-hosted', onDi
       expect((await get('/station.html')).headers.get('Content-Security-Policy')).toBe(PRINTING_POLICY)
       // As Cloudflare serves it: /station.html redirects to /station.
       expect((await get('/station')).headers.get('Content-Security-Policy')).toBe(PRINTING_POLICY)
-      expect((await get('/kassa')).headers.get('Content-Security-Policy')).toBe(CONTENT_SECURITY_POLICY)
+      // Receipts: the kassa too; a page that never prints stays 'self'.
+      expect((await get('/kassa')).headers.get('Content-Security-Policy')).toBe(PRINTING_POLICY)
+      expect((await get('/admin')).headers.get('Content-Security-Policy')).toBe(CONTENT_SECURITY_POLICY)
       expect(PRINTING_POLICY).toContain("connect-src 'self' https:")
       expect(CONTENT_SECURITY_POLICY).toContain("connect-src 'self';")
     })

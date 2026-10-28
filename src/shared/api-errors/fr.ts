@@ -26,6 +26,7 @@ export default {
   printer_invalid: 'Vérifiez les données de l’imprimante ({field})',
   print_job_not_found: 'Impression introuvable',
   print_job_taken: 'Cette impression est déjà prise par un autre écran',
+  receipts_off: 'L’impression de tickets n’est pas activée (console, Appareils)',
   unknown_station: 'Poste inconnu',
   product_not_found: 'Produit introuvable',
   unknown_product: 'Produit inconnu ou archivé',

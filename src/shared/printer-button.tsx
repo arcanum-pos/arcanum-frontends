@@ -96,6 +96,8 @@ export function PrinterButton({
   failed,
   onChoose,
   onRetry,
+  hint,
+  extra,
 }: {
   orgId: string
   printers: Printer[]
@@ -104,6 +106,9 @@ export function PrinterButton({
   failed: PrintJob[]
   onChoose?: (printerId: string | null) => void
   onRetry: (jobId: string) => void
+  // Another screen's own words for what this printer is for, and more settings.
+  hint?: string
+  extra?: React.ReactNode
 }) {
   const t = useMessages(TEXTS)
   const [open, setOpen] = useState(false)
@@ -128,7 +133,7 @@ export function PrinterButton({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t.title}</DialogTitle>
-            <DialogDescription>{t.hint}</DialogDescription>
+            <DialogDescription>{hint ?? t.hint}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4">
             {onChoose &&
@@ -178,6 +183,7 @@ export function PrinterButton({
                 </div>
                 {printer.connection === 'push' && <p className="text-xs text-muted-foreground">{t.openPrinterHint}</p>}
                 {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
+                {extra}
                 {failed.length > 0 && (
                   <div className="grid gap-2" data-testid="printer-failed">
                     <h3 className="text-sm font-medium">{t.failedTitle}</h3>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, CreditCard, Minus, Plus, QrCode, Smartphone, Wallet } from 'lucide-react'
 import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,9 @@ import { sumupAppLink, sumupAppReturn } from '@/shared/sumup-app'
 import { WAITER_MESSAGES } from './messages'
 import { showOrgIcons } from '@/shared/install'
 import { SupportButton } from '@/shared/support/support-button'
+import { usePrintRunner, useReceiptPrinter, type Printer } from '@/shared/printing'
+import { PrinterButton } from '@/shared/printer-button'
+import { ReceiptButton } from '@/shared/receipt-button'
 
 // The waiter screen (DOMAIN_MODEL.md "Tables and waiters", release C): on a
 // waiter's own phone, signed in (role Bediening, or admin / Kassa). The
@@ -45,6 +48,14 @@ export default function App() {
   const m = useMessages(WAITER_MESSAGES)
   const [orgs, setOrgs] = useState<Membership[] | null>(null)
   const [orgId, setOrgId] = useState<string | null>(null)
+  // Receipts (arcanum/PRINTING.md): when the org has them on, this phone's
+  // printer; one reached via a screen is sent to from here.
+  const receipt = useReceiptPrinter(orgId)
+  const receiptPrinting = usePrintRunner(orgId, receipt.printer)
+  const printPoke = useRef(receiptPrinting.poke)
+  useEffect(() => {
+    printPoke.current = receiptPrinting.poke
+  }, [receiptPrinting.poke])
   const [events, setEvents] = useState<EventInfo[] | null>(null)
   const [eventId, setEventId] = useState<string | null>(read(EVENT_KEY))
   const [tables, setTables] = useState<TableInfo[] | null>(null)
@@ -121,7 +132,7 @@ export default function App() {
         })
         .catch((err) => setTapNotice({ status: 'failed', text: err.message }))
     }
-    const stop = connectLive(orgId, () => load())
+    const stop = connectLive(orgId, () => load(), (printerId) => printPoke.current(printerId))
     const onVisible = () => document.visibilityState === 'visible' && load()
     document.addEventListener('visibilitychange', onVisible)
     return () => {
@@ -177,6 +188,7 @@ export default function App() {
         onChanged={load}
         onOpen={(id) => setOpenId(id)}
         notice={tapNotice}
+        receiptPrinter={receipt.printer}
       />
     )
 
@@ -200,6 +212,18 @@ export default function App() {
             {m.openEntrance}
           </button>
         </div>
+        {receipt.enabled && (
+          <PrinterButton
+            orgId={orgId}
+            printers={receipt.printers}
+            printer={receipt.printer}
+            state={receiptPrinting.state}
+            failed={receiptPrinting.failed}
+            onRetry={receiptPrinting.retry}
+            onChoose={(printerId) => receipt.choose({ printerId, auto: false })}
+            hint={m.receiptPrinterHint}
+          />
+        )}
         <SupportButton screen="waiter" />
       </header>
       {error && (
@@ -280,7 +304,7 @@ function groupByZone(tables: TableInfo[]): [string, TableInfo[]][] {
 }
 
 // One table: seat guests, its tab, order a round, take payment, Opgeruimd.
-function TableScreen({ orgId, event, table, tables, signal, onBack, onChanged, onOpen, notice }: { orgId: string; event: EventInfo; table: TableInfo; tables: TableInfo[]; signal: number; onBack: () => void; onChanged: () => void; onOpen: (id: string) => void; notice?: { status: 'pending' | 'succeeded' | 'failed'; text: string | null } | null }) {
+function TableScreen({ orgId, event, table, tables, signal, onBack, onChanged, onOpen, notice, receiptPrinter }: { orgId: string; event: EventInfo; table: TableInfo; tables: TableInfo[]; signal: number; onBack: () => void; onChanged: () => void; onOpen: (id: string) => void; notice?: { status: 'pending' | 'succeeded' | 'failed'; text: string | null } | null; receiptPrinter: Printer | null }) {
   const m = useMessages(WAITER_MESSAGES)
   const [tab, setTab] = useState<tabsApi.TabDetail | null>(null)
   const [view, setView] = useState<'tab' | 'order' | 'pay' | 'move' | 'merge'>('tab')
@@ -411,7 +435,7 @@ function TableScreen({ orgId, event, table, tables, signal, onBack, onChanged, o
             busy={busy}
           />
         )}
-        {table.state === 'occupied' && tab && view === 'pay' && <PayAtTable orgId={orgId} tab={tab} table={table} />}
+        {table.state === 'occupied' && tab && view === 'pay' && <PayAtTable orgId={orgId} tab={tab} table={table} receiptPrinter={receiptPrinter} />}
       </main>
     </div>
   )
@@ -495,7 +519,7 @@ function OrderRound({ orgId, catalogId, onSend, busy }: { orgId: string; catalog
 
 // Paying at the table (T4): Bancontact's QR on this phone, a SumUp Solo,
 // Tap to Pay on this phone through the SumUp app (release E), or the till for cash.
-function PayAtTable({ orgId, tab, table }: { orgId: string; tab: tabsApi.TabDetail; table: TableInfo }) {
+function PayAtTable({ orgId, tab, table, receiptPrinter }: { orgId: string; tab: tabsApi.TabDetail; table: TableInfo; receiptPrinter: Printer | null }) {
   const m = useMessages(WAITER_MESSAGES)
   const [qr, setQr] = useState<string | null>(null)
   const [sent, setSent] = useState<string | null>(null)
@@ -530,7 +554,16 @@ function PayAtTable({ orgId, tab, table }: { orgId: string; tab: tabsApi.TabDeta
       setBusy(false)
     }
   }
-  if (tab.status !== 'open' || tab.outstandingCents <= 0) return <p className="rounded-xl bg-emerald-500/15 p-4 text-center text-lg font-semibold text-emerald-800 dark:text-emerald-200" data-testid="paid">{m.paid}</p>
+  if (tab.status !== 'open' || tab.outstandingCents <= 0)
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="rounded-xl bg-emerald-500/15 p-4 text-center text-lg font-semibold text-emerald-800 dark:text-emerald-200" data-testid="paid">
+          {m.paid}
+        </p>
+        {/* A receipt: on the button only - this view shows again whenever the table is opened. */}
+        {receiptPrinter && <ReceiptButton orgId={orgId} printer={receiptPrinter} tabId={tab.id} auto={false} />}
+      </div>
+    )
   return (
     <div className="flex flex-col gap-3" data-testid="pay-at-table">
       <p className="text-center text-3xl font-bold tabular-nums">{formatEuro(tab.outstandingCents)}</p>

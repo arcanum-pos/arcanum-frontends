@@ -1,6 +1,7 @@
 import type { WaiterMessages } from './nl'
 
 const fr: WaiterMessages = {
+  receiptPrinterHint: 'Où les tickets de ce téléphone sont imprimés, après un paiement à table.',
   loading: 'Chargement…',
   noAccess: 'Vous n’avez pas accès au service en salle. Demandez à un administrateur de vous inviter (rôle Service).',
   noEvent: 'Aucun événement avec un mode de commande « à table ». Un administrateur le configure dans l’événement (Modes de commande).',

@@ -186,3 +186,67 @@ export const pollUrl = (printer: { id: string; pollKey?: string }) => `${window.
 
 // Has a polling printer asked lately? Its last ask is kept to the minute.
 export const pollingLately = (p: Printer, now = Date.now()) => !!p.lastPollAt && now - Date.parse(p.lastPollAt) < Math.max(3 * p.pollInterval * 1000, 150_000)
+
+// --- Receipts (switched on per organisation; the printer chosen per device) ---
+
+export const getReceiptsEnabled = (orgId: string) => call<{ enabled: boolean }>(`${org(orgId)}/receipt-settings`).then((r) => r.enabled)
+export const setReceiptsEnabled = (orgId: string, enabled: boolean) => call<{ enabled: boolean }>(`${org(orgId)}/receipt-settings`, { method: 'PUT', body: JSON.stringify({ enabled }) })
+export const printReceipt = (orgId: string, printerId: string, tabId: string, chargeId?: string) =>
+  call<{ id: string }>(`${org(orgId)}/printers/${encodeURIComponent(printerId)}/receipt`, { method: 'POST', body: JSON.stringify({ tabId, chargeId }) })
+
+// This device's receipt printer, and whether it prints after every payment
+// by itself - per browser and organisation, like the SumUp reader.
+const RECEIPT_KEY = 'arcanum-receipt-printer'
+export interface ReceiptChoice {
+  printerId: string | null
+  auto: boolean
+}
+export function getReceiptChoice(orgId: string): ReceiptChoice {
+  try {
+    const all = JSON.parse(localStorage.getItem(RECEIPT_KEY) || '{}')
+    return { printerId: all[orgId]?.printerId ?? null, auto: all[orgId]?.auto === true }
+  } catch {
+    return { printerId: null, auto: false }
+  }
+}
+export function setReceiptChoice(orgId: string, choice: ReceiptChoice): void {
+  try {
+    const all = JSON.parse(localStorage.getItem(RECEIPT_KEY) || '{}')
+    localStorage.setItem(RECEIPT_KEY, JSON.stringify({ ...all, [orgId]: choice }))
+  } catch {
+    // not remembered
+  }
+}
+
+// Receipts on this device: switched on for the org? which printer? Null
+// while loading or when off.
+export function useReceiptPrinter(orgId: string | null) {
+  const [enabled, setEnabled] = useState(false)
+  const [printers, setPrinters] = useState<Printer[]>([])
+  const [choice, setChoice] = useState<ReceiptChoice>(() => (orgId ? getReceiptChoice(orgId) : { printerId: null, auto: false }))
+  useEffect(() => {
+    if (!orgId) return
+    let live = true
+    getReceiptsEnabled(orgId)
+      .then(async (on) => {
+        if (!live) return
+        setEnabled(on)
+        setChoice(getReceiptChoice(orgId))
+        if (on) setPrinters(await listPrinters(orgId))
+      })
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [orgId])
+  const choose = useCallback(
+    (next: ReceiptChoice) => {
+      if (!orgId) return
+      setReceiptChoice(orgId, next)
+      setChoice(next)
+    },
+    [orgId]
+  )
+  const printer = enabled ? (printers.find((p) => p.id === choice.printerId) ?? null) : null
+  return { enabled, printers, printer, auto: choice.auto, choice, choose }
+}

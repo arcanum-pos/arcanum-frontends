@@ -33,6 +33,8 @@ export default {
   linkDisplay: 'Link customer display',
   reader: 'SumUp Solo reader',
   readerHint: 'A real reader linked to your SumUp account. Payments from this till then go to that reader.',
+  receiptPrinter: 'Receipt printer',
+  receiptPrinterHint: "Where this till's receipts print, after a payment.",
   freeSoftware: 'Arcanum is free software (AGPL-3.0)',
   sourceCode: 'Source code',
 

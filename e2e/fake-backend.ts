@@ -318,6 +318,10 @@ export class FakeBackend {
   branding: { primary: string | null; accent: string | null; logoUrl: string | null } = { primary: null, accent: null, logoUrl: null }
   eventBranding = new Map<string, { primary: string | null; accent: string | null }>()
   brandingRequests: { orgId: string; eventId: string | null }[] = []
+  // Receipts (arcanum-backend printing.ts): on for the org?, its printers, the receipts asked for.
+  receiptsEnabled = false
+  printers: any[] = []
+  receipts: { printerId: string; tabId: string; chargeId?: string }[] = []
   // A cancelled Bancontact payment: the provider can't be reached.
   cancelUnreachable = false
   devices = new Map<string, { terminal_id: string; org_id: string; role: string; linked_to: string | null; name: string | null }>([
@@ -450,6 +454,14 @@ export class FakeBackend {
 
     if (p === '/whoami') return { status: 200, body: { name: 'Test Kassier', email: 'kassier@example.test' } }
     if (p === '/api/devices/ws-token') return { status: 200, body: { token: 'test-token' } }
+    if (p === '/api/organizations/org-e2e/receipt-settings' && method === 'GET') return { status: 200, body: { enabled: this.receiptsEnabled } }
+    if (p === '/api/organizations/org-e2e/printers' && method === 'GET') return { status: 200, body: this.printers }
+    const receipt = p.match(/^\/api\/organizations\/org-e2e\/printers\/([^/]+)\/receipt$/)
+    if (receipt && method === 'POST') {
+      if (!this.receiptsEnabled) return { status: 409, body: { error: 'Bonnen printen staat niet aan (console, Toestellen)', code: 'receipts_off' } }
+      this.receipts.push({ printerId: receipt[1], tabId: body.tabId, chargeId: body.chargeId })
+      return { status: 201, body: { id: `job-${this.receipts.length}` } }
+    }
     if (p === '/api/organizations' && method === 'GET')
       return { status: 200, body: [{ id: 'org-e2e', name: 'E2E', demo: this.demoExpiresAt ? { expiresAt: this.demoExpiresAt, installUrl: null } : null }] }
     if (p === '/api/organizations/memberships' && method === 'GET') return { status: 200, body: [{ orgId: 'org-e2e', orgName: 'E2E', role: this.memberRole }] }

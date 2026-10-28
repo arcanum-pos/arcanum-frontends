@@ -169,6 +169,8 @@ export default {
 
   // Printers (Appareils; arcanum/PRINTING.md)
   printers: {
+    receiptsTitle: 'Imprimer des tickets',
+    receiptsHint: 'À la caisse et au service : un ticket sur une imprimante après un paiement. L’imprimante se choisit dans les Réglages de la caisse ou en haut de l’écran de service. Pas un ticket TVA.',
     kind: 'Imprimante',
     typeLabel: (brand: string) => `Imprimante (${brand})`,
     hint: 'Une imprimante de tickets dans l’établissement : elle récupère son travail chez Arcanum, ou un écran sur le même réseau le lui envoie.',

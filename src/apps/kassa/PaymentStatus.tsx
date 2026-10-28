@@ -18,6 +18,7 @@ export function PaymentStatus({
   onConfirm,
   onCancel,
   onNext,
+  receipt,
 }: {
   current: CurrentPayment
   manualStatus: ManualStatus | null
@@ -26,6 +27,8 @@ export function PaymentStatus({
   onConfirm: () => void
   onCancel: () => void
   onNext: () => void
+  // Once paid: "Bon printen" (when the org has receipts and this kassa a printer).
+  receipt?: React.ReactNode
 }) {
   const isManual = current.method === 'cash' || current.method === 'sumup' || current.method === 'tap'
   const resolved = isPaymentResolved(current)
@@ -113,6 +116,7 @@ export function PaymentStatus({
           </>
         )}
 
+        {resolved && receipt && <div className="w-full">{receipt}</div>}
         {resolved ? (
           <Button className="mt-1 h-11 w-full rounded-[10px] text-sm" onClick={onNext}>
             {current.remainsOpen ? (current.part ? m.nextPart : m.nextPerson) : m.nextCustomer}

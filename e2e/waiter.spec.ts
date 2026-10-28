@@ -30,6 +30,10 @@ class FakeRestaurant {
   charges: any[] = []
   appReturns: any[] = []
   appResult: 'pending' | 'succeeded' | 'failed' = 'succeeded'
+  // Receipts (arcanum/PRINTING.md).
+  receiptsEnabled = false
+  printers: any[] = []
+  receipts: any[] = []
 }
 
 const test = base.extend<{ fake: FakeRestaurant; waiter: Page; push: () => void }>({
@@ -83,6 +87,13 @@ const test = base.extend<{ fake: FakeRestaurant; waiter: Page; push: () => void 
         return route.fulfill({ json: target })
       }
       if (p === '/api/organizations/org-1/promised-tables') return route.fulfill({ json: fake.promised })
+      if (p === '/api/organizations/org-1/receipt-settings') return route.fulfill({ json: { enabled: fake.receiptsEnabled } })
+      if (p === '/api/organizations/org-1/printers') return route.fulfill({ json: fake.printers })
+      const receipt = p.match(/^\/api\/organizations\/org-1\/printers\/([^/]+)\/receipt$/)
+      if (receipt) {
+        fake.receipts.push({ printerId: receipt[1], ...req.postDataJSON() })
+        return route.fulfill({ status: 201, json: { id: 'job-1' } })
+      }
       const clear = p.match(/^\/api\/organizations\/org-1\/tables\/([^/]+)\/clear$/)
       if (clear) {
         const t = fake.tables.find((x) => x.id === clear[1])!
@@ -279,4 +290,33 @@ test.describe('Tap to Pay through the SumUp app (release E)', () => {
     await page.goto('/waiter.html?sumup-charge=c9&table=t1&smp-status=failed')
     await expect(page.getByTestId('tap-result')).toContainText('Niet betaald in de SumUp-app')
   })
+})
+
+test('receipts: the phone picks its printer in the header; "Bon printen" once the table has paid', async ({ waiter: page, fake, push }) => {
+  fake.receiptsEnabled = true
+  fake.printers = [{ id: 'pr-1', name: 'Zaalprinter', brand: 'epson', connection: 'poll', host: null, port: null, deviceId: 'local_printer', paperMm: 80, pollInterval: 10, lastPollAt: null, stations: [] }]
+  Object.assign(fake.tables[0], { state: 'occupied', tab: { id: 'tab1', number: 7, label: 'Tafel 1', openedAt: new Date().toISOString(), totalCents: 2400 } })
+  fake.tab = { id: 'tab1', number: 7, label: 'Tafel 1', status: 'open', lines: [], totalCents: 2400, paidCents: 0, outstandingCents: 2400, paymentPending: false }
+  await page.reload()
+
+  await page.getByTestId('printer-button').click()
+  await page.getByRole('combobox', { name: 'Printer' }).click()
+  await page.getByRole('option', { name: 'Zaalprinter' }).click()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('printer-button')).toContainText('Zaalprinter')
+
+  await page.getByTestId('table').filter({ hasText: /^1/ }).click()
+  await page.getByTestId('pay').click()
+  // Paid (at the till, or a QR): the table's tab says so.
+  Object.assign(fake.tab, { status: 'closed', paidCents: 2400, outstandingCents: 0 })
+  push()
+  await expect(page.getByTestId('paid')).toBeVisible()
+  expect(fake.receipts).toEqual([])
+  await page.getByRole('button', { name: 'Bon printen' }).click()
+  await expect.poll(() => fake.receipts).toEqual([{ printerId: 'pr-1', tabId: 'tab1' }])
+})
+
+test('receipts off: no printer in the header', async ({ waiter: page }) => {
+  await expect(page.getByRole('heading', { name: 'Tafels' })).toBeVisible()
+  await expect(page.getByTestId('printer-button')).toHaveCount(0)
 })

@@ -11,6 +11,8 @@ import { cn } from 'cn'
 import { Button } from '@/components/ui/button'
 import kabouterLogo from '@/shared/assets/kabouter.png'
 import { getCatalogSelection, getDeviceId, getDeviceName, getEventSelection, getSumupReader, setCatalogSelection, setEventSelection, type EventSelection } from '@/shared/device'
+import { usePrintRunner, useReceiptPrinter } from '@/shared/printing'
+import { ReceiptButton } from '@/shared/receipt-button'
 import { connectNotifications, getRegisteredTerminal, getStoredTerminalInfo, openCompanionDisplay, resetKassa } from '@/shared/terminal'
 import { DemoBar } from './DemoBar'
 import { getCurrentSlotId } from '@/shared/slots'
@@ -144,6 +146,15 @@ export default function App() {
   const [openingDisplay, setOpeningDisplay] = useState(false)
 
   const [orgId, setOrgId] = useState<string | null>(null)
+  // Receipts (arcanum/PRINTING.md): when the org has them on, this kassa's
+  // printer (chosen in Instellingen); a printer reached via a screen is sent
+  // to from here, told by print_job on the socket.
+  const receipt = useReceiptPrinter(orgId)
+  const receiptPrinting = usePrintRunner(orgId, receipt.printer?.connection === 'push' ? receipt.printer : null)
+  const printPokeRef = useRef(receiptPrinting.poke)
+  useEffect(() => {
+    printPokeRef.current = receiptPrinting.poke
+  }, [receiptPrinting.poke])
   // Who's working on this kassa (staff, release B1): the picker, and whether
   // the organisation requires someone to be chosen (S2).
   const [staffOpen, setStaffOpen] = useState(false)
@@ -1004,6 +1015,8 @@ export default function App() {
         tabs_changed: () => scheduleSync(),
         // Another kassa of this register opened or closed the drawer.
         shift_changed: () => loadRegisterRef.current(),
+        // A receipt for this kassa's printer, when a screen sends it (push).
+        print_job: (msg) => printPokeRef.current(msg.printer_id),
       })
     })
 
@@ -1434,6 +1447,11 @@ export default function App() {
             onConfirm={confirmManualPayment}
             onCancel={cancelPayment}
             onNext={finishPayment}
+            receipt={
+              orgId && receipt.printer && isPaymentResolved(current) ? (
+                <ReceiptButton key={current.chargeId} orgId={orgId} printer={receipt.printer} tabId={current.tabId} chargeId={current.chargeId} auto={receipt.auto} />
+              ) : null
+            }
           />
         </div>
       )}

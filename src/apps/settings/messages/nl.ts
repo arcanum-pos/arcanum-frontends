@@ -33,6 +33,8 @@ const nl = {
   linkDisplay: 'Klantscherm koppelen',
   reader: 'SumUp Solo-reader',
   readerHint: 'Echte reader gekoppeld aan je SumUp-account. Betalingen van deze kassa gaan dan naar die reader.',
+  receiptPrinter: 'Bonprinter',
+  receiptPrinterHint: 'Waar de bonnen van deze kassa geprint worden, na een betaling.',
   freeSoftware: 'Arcanum is vrije software (AGPL-3.0)',
   sourceCode: 'Broncode',
 

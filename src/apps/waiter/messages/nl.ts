@@ -1,6 +1,7 @@
 // The waiter screen's texts — the source of truth; fr.ts and en.ts must
 // match this shape (see src/shared/i18n).
 const nl = {
+  receiptPrinterHint: 'Waar de bonnen van deze telefoon geprint worden, na een betaling aan tafel.',
   loading: 'Laden…',
   noAccess: 'Je hebt geen toegang tot de bediening. Vraag een beheerder je uit te nodigen (rol Bediening).',
   noEvent: 'Geen evenement met een bestelwijze "aan tafel". Een beheerder stelt dat in bij het evenement (Bestelwijzen).',

@@ -26,6 +26,7 @@ export default {
   printer_invalid: "Check the printer's details ({field})",
   print_job_not_found: 'Print job not found',
   print_job_taken: 'Another screen is already printing this',
+  receipts_off: 'Printing receipts is switched off (console, Devices)',
   unknown_station: 'Unknown station',
   product_not_found: 'Product not found',
   unknown_product: 'Unknown or archived product',

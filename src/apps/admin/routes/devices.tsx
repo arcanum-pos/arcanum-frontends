@@ -8,7 +8,8 @@ import { AddDeviceDialog } from '../components/add-device-dialog'
 import { RepairDeviceDialog } from '../components/repair-device-dialog'
 import { RowActions } from '../components/row-actions'
 import { NewLinkDialog, PrinterDialog } from '../components/printer-dialog'
-import { deletePrinter, listPrinters, newPrinterKey, pollingLately, testPrint, type Printer } from '@/shared/printing'
+import { deletePrinter, getReceiptsEnabled, listPrinters, newPrinterKey, pollingLately, setReceiptsEnabled, testPrint, type Printer } from '@/shared/printing'
+import { Switch } from '@/components/ui/switch'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
@@ -85,6 +86,9 @@ export default function DevicesPage() {
   // their address on the network; a screen there prints on them.
   const { data: printers, reload: reloadPrinters } = useAsync(() => (orgId ? listPrinters(orgId).catch(() => [] as Printer[]) : Promise.resolve([] as Printer[])), [orgId])
   const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null)
+  // Receipts at the kassa and in table service: on per organisation.
+  const { data: receiptsOn, reload: reloadReceipts } = useAsync(() => (orgId ? getReceiptsEnabled(orgId).catch(() => false) : Promise.resolve(false)), [orgId])
+
   // "Nieuwe link": the printer with its new URL, shown once.
   const [newLink, setNewLink] = useState<Printer | null>(null)
 
@@ -356,6 +360,23 @@ export default function DevicesPage() {
             reloadPairings()
           }}
         />
+      )}
+
+      {orgId && (
+        <label className="flex items-start gap-3 rounded-lg border p-4" data-testid="receipts-setting">
+          <Switch
+            checked={!!receiptsOn}
+            onCheckedChange={async (on) => {
+              await setReceiptsEnabled(orgId, on).catch((err) => setDeviceError(err instanceof Error ? err.message : String(err)))
+              reloadReceipts()
+            }}
+            aria-label={m.printers.receiptsTitle}
+          />
+          <span>
+            <span className="block text-sm font-medium">{m.printers.receiptsTitle}</span>
+            <span className="block text-sm text-muted-foreground">{m.printers.receiptsHint}</span>
+          </span>
+        </label>
       )}
 
       <p className="text-sm text-muted-foreground">{m.devices.footnote}</p>

@@ -77,8 +77,9 @@ export async function listReaders(orgId: string): Promise<{ readers: { id: strin
 }
 
 // The organisation's kassa channel (a waiter's phone is no device): tabs
-// and tables changing elsewhere. Reconnects by itself.
-export function connectLive(orgId: string, onChange: () => void): () => void {
+// and tables changing elsewhere, and print jobs (a receipt for a printer this
+// phone sends to). Reconnects by itself.
+export function connectLive(orgId: string, onChange: () => void, onPrintJob?: (printerId: unknown) => void): () => void {
   let socket: WebSocket | null = null
   let stopped = false
   let delay = 1000
@@ -97,6 +98,7 @@ export function connectLive(orgId: string, onChange: () => void): () => void {
         try {
           const msg = JSON.parse(e.data)
           if (msg.event === 'tabs_changed' || msg.event === 'tables_changed') onChange()
+          else if (msg.event === 'print_job') onPrintJob?.(msg.printer_id)
         } catch {
           // not ours
         }
