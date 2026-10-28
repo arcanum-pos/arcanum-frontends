@@ -19,9 +19,8 @@ export interface Printer {
   port: number | null
   deviceId: string
   paperMm: 58 | 80
-  // Polling: how often it asks (seconds), when it last did (to the minute),
-  // and - only in the answer that made it - the secret for its URL.
-  pollInterval: number
+  // Polling: when it last asked (to the minute), and - only in the answer
+  // that made it, or from showPrinterKey - the secret for its URL.
   lastPollAt: string | null
   pollKey?: string
   stations: { id: string; name: string }[]
@@ -172,7 +171,6 @@ export interface PrinterInput {
   connection: 'push' | 'poll'
   host?: string
   port?: number
-  pollInterval?: number
   paperMm: 58 | 80
   stationIds: string[]
 }
@@ -184,8 +182,13 @@ export const newPrinterKey = (orgId: string, id: string) => call<Printer>(`${org
 // The URL a polling printer is given (Server Direct Print), on this installation's address.
 export const pollUrl = (printer: { id: string; pollKey?: string }) => `${window.location.origin}/api/public/print/epson/${encodeURIComponent(printer.id)}?key=${printer.pollKey}`
 
-// Has a polling printer asked lately? Its last ask is kept to the minute.
-export const pollingLately = (p: Printer, now = Date.now()) => !!p.lastPollAt && now - Date.parse(p.lastPollAt) < Math.max(3 * p.pollInterval * 1000, 150_000)
+// A polling printer's secret again, to show its URL (null: made before it
+// was kept - a new link makes one).
+export const showPrinterKey = (orgId: string, id: string) => call<{ pollKey: string | null }>(`${org(orgId)}/printers/${encodeURIComponent(id)}/key`).then((r) => r.pollKey)
+
+// Has a polling printer asked lately? Its last ask is kept to the minute;
+// how often it asks is set in the printer (10 s recommended).
+export const pollingLately = (p: Printer, now = Date.now()) => !!p.lastPollAt && now - Date.parse(p.lastPollAt) < 5 * 60_000
 
 // --- Receipts (switched on per organisation; the printer chosen per device) ---
 

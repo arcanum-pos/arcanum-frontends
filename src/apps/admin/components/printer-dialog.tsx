@@ -5,19 +5,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMessages } from '@/shared/i18n'
-import { createPrinter, pollUrl, updatePrinter, type Printer } from '@/shared/printing'
+import { createPrinter, pollUrl, showPrinterKey, updatePrinter, type Printer } from '@/shared/printing'
 import { listStations, type Station } from '../lib/catalog-api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 
-// Workers Free: requests a day (arcanum/PRINTING.md, "Polling cost").
-const FREE_REQUESTS_PER_DAY = 100_000
-
 // A printer's settings (arcanum/PRINTING.md): its name, Epson (Star later),
 // how it gets its work - it asks Arcanum itself (polling, the default: no
 // certificate, no screen) or a screen on its network sends it (push) - and
-// then its interval or its address, paper, and which stations' tickets it
-// prints. A new polling printer ends on its URL (PollLink). The form only;
+// then its address (push), paper, and which stations' tickets it prints.
+// How often a polling printer asks is set in the printer itself (the steps
+// say 10 s and what it costs). A new polling printer ends on its URL
+// (PollLink); editing one shows it too. The form only;
 // PrinterDialog wraps it for "Bewerken", AddDeviceDialog shows it for a new one.
 export function PrinterForm({ orgId, printer, onSaved, onCancel }: { orgId: string; printer?: Printer; onSaved: (p: Printer) => void; onCancel?: () => void }) {
   const m = useMessages(ADMIN_ORG_MESSAGES)
@@ -25,7 +24,6 @@ export function PrinterForm({ orgId, printer, onSaved, onCancel }: { orgId: stri
   const shell = useMessages(ADMIN_SHELL_MESSAGES)
   const [name, setName] = useState(printer?.name ?? '')
   const [connection, setConnection] = useState<'poll' | 'push'>(printer?.connection ?? 'poll')
-  const [interval, setPollSeconds] = useState(String(printer?.pollInterval ?? 10))
   const [host, setHost] = useState(printer?.host ?? '')
   const [port, setPort] = useState(String(printer?.port ?? 443))
   const [paper, setPaper] = useState<'80' | '58'>(printer?.paperMm === 58 ? '58' : '80')
@@ -40,16 +38,14 @@ export function PrinterForm({ orgId, printer, onSaved, onCancel }: { orgId: stri
     listStations(orgId).then(setStations, () => setStations([]))
   }, [orgId])
 
-  const seconds = Math.max(1, Number(interval) || 0)
-  const perDay = Math.round(86_400 / seconds)
-  const ready = name.trim() && (connection === 'poll' ? seconds >= 3 && seconds <= 300 : host.trim())
+  const ready = name.trim() && (connection === 'poll' || host.trim())
 
   async function save() {
     setBusy(true)
     setError(null)
     try {
       const common = { name: name.trim(), brand: 'epson' as const, connection, paperMm: Number(paper) as 58 | 80, stationIds }
-      const body = connection === 'poll' ? { ...common, pollInterval: seconds } : { ...common, host: host.trim(), port: Number(port) || 443 }
+      const body = connection === 'poll' ? common : { ...common, host: host.trim(), port: Number(port) || 443 }
       const saved = printer ? await updatePrinter(orgId, printer.id, body) : await createPrinter(orgId, body)
       if (saved.pollKey) setMade(saved)
       else onSaved(saved)
@@ -110,13 +106,7 @@ export function PrinterForm({ orgId, printer, onSaved, onCancel }: { orgId: stri
         <p className="text-xs text-muted-foreground">{connection === 'poll' ? t.pollHint : t.pushHint}</p>
       </div>
       {connection === 'poll' ? (
-        <div className="grid gap-2">
-          <Label htmlFor="printer-interval">{t.interval}</Label>
-          <Input id="printer-interval" value={interval} onChange={(e) => setPollSeconds(e.target.value.replace(/\D/g, ''))} inputMode="numeric" autoComplete="off" className="w-24 font-mono" />
-          <p className="text-xs text-muted-foreground" data-testid="interval-cost">
-            {t.intervalCost(perDay, Math.round((perDay / FREE_REQUESTS_PER_DAY) * 100))}
-          </p>
-        </div>
+        printer && <SavedLink orgId={orgId} printer={printer} />
       ) : (
         <>
           <div className="grid grid-cols-[1fr_6rem] gap-4">
@@ -190,10 +180,42 @@ export function PollLink({ printer, onDone }: { printer: Printer; onDone: () => 
           <li key={step}>{step}</li>
         ))}
       </ol>
-      <p className="text-xs text-muted-foreground">{t.urlOnce}</p>
+      <p className="text-xs text-muted-foreground">{t.urlLater}</p>
       <DialogFooter>
         <Button onClick={onDone}>{t.done}</Button>
       </DialogFooter>
+    </div>
+  )
+}
+
+// Editing a polling printer: its URL again (kept encrypted, admins only).
+function SavedLink({ orgId, printer }: { orgId: string; printer: Printer }) {
+  const t = useMessages(ADMIN_ORG_MESSAGES).printers
+  const [key, setKey] = useState<string | null | undefined>(undefined)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    showPrinterKey(orgId, printer.id).then(setKey, () => setKey(null))
+  }, [orgId, printer.id])
+  if (key === undefined) return null
+  if (key === null) return <p className="text-sm text-muted-foreground">{t.noLinkKept}</p>
+  const url = pollUrl({ id: printer.id, pollKey: key })
+  return (
+    <div className="grid gap-2" data-testid="saved-link">
+      <Label htmlFor="printer-link">{t.urlTitle}</Label>
+      <div className="flex gap-2">
+        <Input id="printer-link" readOnly value={url} onFocus={(e) => e.target.select()} className="font-mono text-xs" />
+        <Button
+          variant="outline"
+          onClick={async () => {
+            await navigator.clipboard?.writeText(url).then(
+              () => setCopied(true),
+              () => {}
+            )
+          }}
+        >
+          {copied ? t.copied : t.copy}
+        </Button>
+      </div>
     </div>
   )
 }

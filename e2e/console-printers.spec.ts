@@ -17,7 +17,7 @@ async function addPrinter(page: import('@playwright/test').Page) {
   return dialog
 }
 
-test('adds a printer that asks for its work: what it costs, then its URL with the steps', async ({ console: open, page, catalogAdmin }) => {
+test('adds a printer that asks for its work: its URL with the steps (10 s, and what that costs)', async ({ console: open, page, catalogAdmin }) => {
   catalogAdmin.stations = STATIONS
   await open('/devices')
   const dialog = await addPrinter(page)
@@ -27,9 +27,8 @@ test('adds a printer that asks for its work: what it costs, then its URL with th
   // Polling is the default; no address asked.
   await expect(dialog.getByRole('combobox', { name: 'Verbinding' })).toContainText('De printer haalt zelf op (aangeraden)')
   await expect(dialog.getByLabel('IP-adres of naam')).toHaveCount(0)
-  await expect(dialog.getByTestId('interval-cost')).toContainText('8.640 keer per dag - 9%')
-  await dialog.getByLabel('Om de hoeveel seconden').fill('30')
-  await expect(dialog.getByTestId('interval-cost')).toContainText('2.880 keer per dag - 3%')
+  // How often it asks is set in the printer, not here.
+  await expect(dialog.getByLabel('Om de hoeveel seconden')).toHaveCount(0)
 
   await dialog.getByLabel('Naam', { exact: true }).fill('Barprinter')
   await dialog.getByLabel('Bar').check()
@@ -38,21 +37,25 @@ test('adds a printer that asks for its work: what it costs, then its URL with th
   const link = dialog.getByTestId('poll-link')
   await expect(link.getByRole('textbox')).toHaveValue(/^http:\/\/localhost:\d+\/api\/public\/print\/epson\/printer-\d+\?key=key-printer-\d+$/)
   await expect(link).toContainText('Server Direct Print')
-  await expect(link).toContainText('maar één keer getoond')
+  await expect(link).toContainText('interval op 10 seconden (dat is 8.640 keer per dag, ongeveer 9%')
+  await expect(link).toContainText('terug bij Bewerken')
   await link.getByRole('button', { name: 'Klaar' }).click()
 
   const row = page.getByTestId('printer-Barprinter')
   await expect(row).toContainText('Haalt zelf op')
   await expect(row).toContainText('Nog niet gevraagd')
   await expect(row.getByTestId('device-offline')).toHaveText('Stil')
-  expect(catalogAdmin.printers[0]).toMatchObject({ connection: 'poll', pollInterval: 30, host: null })
+  expect(catalogAdmin.printers[0]).toMatchObject({ connection: 'poll', host: null })
 })
 
-test('a printer that asked lately shows as polling; a new link replaces the old one', async ({ console: open, page, catalogAdmin }) => {
-  catalogAdmin.printers = [{ id: 'pr-1', name: 'Keukenprinter', brand: 'epson', connection: 'poll', host: null, port: null, deviceId: 'local_printer', paperMm: 80, pollInterval: 10, lastPollAt: new Date().toISOString(), stations: [] }]
+test('a printer that asked lately shows as polling; editing shows its link; a new link replaces it', async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.printers = [{ id: 'pr-1', name: 'Keukenprinter', brand: 'epson', connection: 'poll', host: null, port: null, deviceId: 'local_printer', paperMm: 80, lastPollAt: new Date().toISOString(), stations: [], pollKey: 'kept-key' }]
   await open('/devices')
   const row = page.getByTestId('printer-Keukenprinter')
   await expect(row.getByTestId('device-online')).toHaveText('Haalt op')
+  await rowAction(row, 'Bewerken')
+  await expect(page.getByTestId('saved-link').getByRole('textbox')).toHaveValue(/\/api\/public\/print\/epson\/pr-1\?key=kept-key$/)
+  await page.keyboard.press('Escape')
   page.once('dialog', (d) => d.accept())
   await rowAction(row, 'Nieuwe link')
   await expect(page.getByTestId('poll-link').getByRole('textbox')).toHaveValue(/key=new-key-pr-1$/)

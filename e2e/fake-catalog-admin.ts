@@ -204,12 +204,13 @@ export class FakeCatalogAdmin {
       if (!printer[1] && method === 'GET') return ok(this.printers)
       if (!printer[1] && method === 'POST') {
         const poll = body.connection === 'poll'
-        const p = { id: this.id('printer'), name: body.name, brand: body.brand, connection: body.connection, host: poll ? null : body.host, port: poll ? null : body.port, deviceId: 'local_printer', paperMm: body.paperMm, pollInterval: body.pollInterval ?? 10, lastPollAt: null, stations: stationsOf(body.stationIds ?? []) }
+        const p = { id: this.id('printer'), name: body.name, brand: body.brand, connection: body.connection, host: poll ? null : body.host, port: poll ? null : body.port, deviceId: 'local_printer', paperMm: body.paperMm, lastPollAt: null, stations: stationsOf(body.stationIds ?? []) }
         this.printers.push(p)
         return { status: 201, body: poll ? { ...p, pollKey: `key-${p.id}` } : p }
       }
       const p = this.printers.find((x) => x.id === printer[1])
       if (!p) return { status: 404, body: { error: 'Printer niet gevonden', code: 'printer_not_found' } }
+      if (printer[2] === 'key' && method === 'GET') return ok({ pollKey: p.pollKey ?? null })
       if (printer[2] === 'key') return ok({ ...p, pollKey: `new-key-${p.id}` })
       if (printer[2] === 'test') {
         this.testPrints.push(p.id)
