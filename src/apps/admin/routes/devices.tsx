@@ -7,8 +7,8 @@ import { listDevicePairings, listOrgDevices, listSumupReaders, removeDevice, rem
 import { AddDeviceDialog } from '../components/add-device-dialog'
 import { RepairDeviceDialog } from '../components/repair-device-dialog'
 import { RowActions } from '../components/row-actions'
-import { PrinterDialog } from '../components/printer-dialog'
-import { deletePrinter, listPrinters, testPrint, type Printer } from '@/shared/printing'
+import { NewLinkDialog, PrinterDialog } from '../components/printer-dialog'
+import { deletePrinter, listPrinters, newPrinterKey, pollingLately, testPrint, type Printer } from '@/shared/printing'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
@@ -85,6 +85,18 @@ export default function DevicesPage() {
   // their address on the network; a screen there prints on them.
   const { data: printers, reload: reloadPrinters } = useAsync(() => (orgId ? listPrinters(orgId).catch(() => [] as Printer[]) : Promise.resolve([] as Printer[])), [orgId])
   const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null)
+  // "Nieuwe link": the printer with its new URL, shown once.
+  const [newLink, setNewLink] = useState<Printer | null>(null)
+
+  async function handleNewLink(printer: Printer) {
+    if (!orgId || !window.confirm(m.printers.confirmNewLink(printer.name))) return
+    setDeviceError(null)
+    try {
+      setNewLink(await newPrinterKey(orgId, printer.id))
+    } catch (err) {
+      setDeviceError(err instanceof Error ? err.message : String(err))
+    }
+  }
 
   async function handleRemovePrinter(printer: Printer) {
     if (!orgId || !window.confirm(m.printers.confirmRemove(printer.name))) return
@@ -286,9 +298,15 @@ export default function DevicesPage() {
               <TableRow key={`printer-${printer.id}`} data-testid={`printer-${printer.name}`}>
                 <TableCell>
                   <div className="font-medium">{printer.name}</div>
-                  <div className="font-mono text-xs text-muted-foreground">
-                    {printer.host}
-                    {printer.port && printer.port !== 443 ? `:${printer.port}` : ''}
+                  <div className="text-xs text-muted-foreground">
+                    {printer.connection === 'poll' ? (
+                      m.printers.pollLabel
+                    ) : (
+                      <span className="font-mono">
+                        {printer.host}
+                        {printer.port && printer.port !== 443 ? `:${printer.port}` : ''}
+                      </span>
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>
@@ -298,9 +316,15 @@ export default function DevicesPage() {
                 <TableCell className={printer.stations.length ? undefined : 'text-muted-foreground'}>
                   {printer.stations.length ? m.printers.printsFor(printer.stations.map((st) => st.name).join(', ')) : m.printers.printsNothing}
                 </TableCell>
-                <TableCell className="text-muted-foreground">-</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {printer.connection === 'poll' ? (printer.lastPollAt ? m.printers.lastPoll(new Date(printer.lastPollAt).toLocaleString(intlLocale)) : m.printers.neverPolled) : '-'}
+                </TableCell>
                 <TableCell>
-                  <Badge variant="outline">{m.printers.viaScreenBadge}</Badge>
+                  {printer.connection === 'poll' ? (
+                    <OnlineBadge online={pollingLately(printer)} label={pollingLately(printer) ? m.printers.pollingBadge : m.printers.notPollingBadge} />
+                  ) : (
+                    <Badge variant="outline">{m.printers.viaScreenBadge}</Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <RowActions
@@ -309,6 +333,7 @@ export default function DevicesPage() {
                     actions={[
                       { label: m.printers.edit, onSelect: () => setEditingPrinter(printer) },
                       { label: m.printers.test, onSelect: () => handleTestPrinter(printer) },
+                      printer.connection === 'poll' && { label: m.printers.newLink, onSelect: () => handleNewLink(printer) },
                       { label: m.remove, destructive: true, onSelect: () => handleRemovePrinter(printer) },
                     ]}
                   />
@@ -319,6 +344,7 @@ export default function DevicesPage() {
       </Table>
 
       {orgId && <PrinterDialog orgId={orgId} printer={editingPrinter} onClose={() => setEditingPrinter(null)} onSaved={reloadPrinters} />}
+      <NewLinkDialog printer={newLink} onClose={() => setNewLink(null)} />
 
       {orgId && (
         <RepairDeviceDialog

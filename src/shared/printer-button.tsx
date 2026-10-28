@@ -20,6 +20,7 @@ type Texts = {
   choose: string
   noPrinters: string
   address: (address: string) => string
+  polls: string
   openPrinter: string
   openPrinterHint: string
   test: string
@@ -41,6 +42,7 @@ const TEXTS: Messages<Texts> = {
     choose: 'Printer',
     noPrinters: 'Nog geen printers - voeg er een toe in de console (Toestellen).',
     address: (a) => `Op het netwerk: ${a}`,
+    polls: 'Deze printer haalt zijn bonnen zelf op bij Arcanum - dit scherm hoeft er niets voor te doen.',
     openPrinter: 'Printer openen',
     openPrinterHint: 'De eerste keer op dit toestel: open de printer en aanvaard zijn certificaat, anders kan dit scherm hem niet bereiken.',
     test: 'Testafdruk',
@@ -57,6 +59,7 @@ const TEXTS: Messages<Texts> = {
     choose: 'Imprimante',
     noPrinters: 'Pas encore d’imprimante - ajoutez-en une dans la console (Appareils).',
     address: (a) => `Sur le réseau : ${a}`,
+    polls: 'Cette imprimante récupère elle-même ses bons chez Arcanum - cet écran n’a rien à faire.',
     openPrinter: 'Ouvrir l’imprimante',
     openPrinterHint: 'La première fois sur cet appareil : ouvrez l’imprimante et acceptez son certificat, sinon cet écran ne peut pas la joindre.',
     test: 'Page de test',
@@ -73,6 +76,7 @@ const TEXTS: Messages<Texts> = {
     choose: 'Printer',
     noPrinters: 'No printers yet - add one in the console (Devices).',
     address: (a) => `On the network: ${a}`,
+    polls: 'This printer fetches its tickets from Arcanum itself - this screen has nothing to do for it.',
     openPrinter: 'Open printer',
     openPrinterHint: "The first time on this device: open the printer and accept its certificate, or this screen can't reach it.",
     test: 'Test page',
@@ -147,18 +151,20 @@ export function PrinterButton({
               ))}
             {printer && (
               <>
-                <p className="text-sm text-muted-foreground">{t.address(`${printer.host}${printer.port && printer.port !== 443 ? `:${printer.port}` : ''}`)}</p>
+                <p className="text-sm text-muted-foreground">{printer.connection === 'poll' ? t.polls : t.address(`${printer.host}${printer.port && printer.port !== 443 ? `:${printer.port}` : ''}`)}</p>
                 {state.phase === 'problem' && (
                   <p className="text-sm font-medium text-destructive" role="alert" data-testid="printer-problem">
                     {t.problem(state.code)}
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" asChild>
-                    <a href={printerUrl(printer)} target="_blank" rel="noopener">
-                      {t.openPrinter}
-                    </a>
-                  </Button>
+                  {printer.connection === 'push' && (
+                    <Button variant="outline" asChild>
+                      <a href={printerUrl(printer)} target="_blank" rel="noopener">
+                        {t.openPrinter}
+                      </a>
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     onClick={async () => {
@@ -170,7 +176,7 @@ export function PrinterButton({
                     {t.test}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">{t.openPrinterHint}</p>
+                {printer.connection === 'push' && <p className="text-xs text-muted-foreground">{t.openPrinterHint}</p>}
                 {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
                 {failed.length > 0 && (
                   <div className="grid gap-2" data-testid="printer-failed">

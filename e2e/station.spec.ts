@@ -43,7 +43,7 @@ class FakeStation {
   claims: { id: string; staffId: string }[] = []
   // Printing (arcanum/PRINTING.md): the org's printers, the print jobs, and
   // what reached the printer on this network (an Epson, ePOS-Print).
-  printers: { id: string; name: string; brand: 'epson'; connection: 'push'; host: string; port: number; deviceId: string; paperMm: number; stations: { id: string; name: string }[] }[] = []
+  printers: { id: string; name: string; brand: 'epson'; connection: 'push' | 'poll'; host: string | null; port: number | null; deviceId: string; paperMm: number; stations: { id: string; name: string }[] }[] = []
   jobs: { id: string; printerId: string; kind: string; title: string; status: string; error: string | null; document: string; claimedBy?: string }[] = []
   results: { id: string; success: boolean; code: string }[] = []
   printed: string[] = []
@@ -362,4 +362,18 @@ test('chooses its printer on the screen itself', async ({ station: page, fake })
   await expect.poll(() => fake.stationPrinter).toEqual(['pr-1'])
   await expect(page.getByTestId('printer-button')).toContainText('Keukenprinter')
   await expect(page.getByRole('link', { name: 'Printer openen' })).toHaveAttribute('href', 'https://192.168.1.50/')
+})
+
+test('a printer that fetches its own work: the screen sends nothing, but shows what failed', async ({ station: page, fake }) => {
+  fake.printers = [{ ...PRINTER, connection: 'poll', host: null, port: null, stations: [{ id: 'st-keuken', name: 'Keuken' }] }]
+  fake.jobs = [printJob('j1', 'Keuken #5'), { ...printJob('j2', 'Keuken #4'), status: 'failed', error: 'EPTR_COVER_OPEN' }]
+  await epson(page, fake)
+  await page.reload()
+  await expect(page.getByTestId('printer-button')).toContainText('1 niet geprint')
+  await page.getByTestId('printer-button').click()
+  await expect(page.getByRole('dialog')).toContainText('haalt zijn bonnen zelf op')
+  await expect(page.getByRole('link', { name: 'Printer openen' })).toHaveCount(0)
+  await expect(page.getByTestId('printer-failed')).toContainText('De klep staat open')
+  expect(fake.results).toEqual([])
+  expect(fake.printed).toEqual([])
 })

@@ -19,6 +19,11 @@ export interface Printer {
   port: number | null
   deviceId: string
   paperMm: 58 | 80
+  // Polling: how often it asks (seconds), when it last did (to the minute),
+  // and - only in the answer that made it - the secret for its URL.
+  pollInterval: number
+  lastPollAt: string | null
+  pollKey?: string
   stations: { id: string; name: string }[]
 }
 
@@ -87,7 +92,12 @@ export function usePrintRunner(orgId: string | null, printer: Printer | null) {
 
   const run = useCallback(async () => {
     const { orgId, printer } = current.current
-    if (!orgId || !printer || printer.connection !== 'push') return
+    if (!orgId || !printer) return
+    // A printer that asks for its work prints by itself: only show what failed.
+    if (printer.connection !== 'push') {
+      listPrintJobs(orgId, printer.id).then((jobs) => setFailed(jobs.filter((j) => j.status === 'failed')), () => {})
+      return
+    }
     if (running.current) {
       again.current = true
       return
@@ -159,12 +169,20 @@ export function usePrintRunner(orgId: string | null, printer: Printer | null) {
 export interface PrinterInput {
   name: string
   brand: 'epson'
-  connection: 'push'
-  host: string
-  port: number
+  connection: 'push' | 'poll'
+  host?: string
+  port?: number
+  pollInterval?: number
   paperMm: 58 | 80
   stationIds: string[]
 }
 export const createPrinter = (orgId: string, p: PrinterInput) => call<Printer>(`${org(orgId)}/printers`, { method: 'POST', body: JSON.stringify(p) })
 export const updatePrinter = (orgId: string, id: string, p: Partial<PrinterInput>) => call<Printer>(`${org(orgId)}/printers/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(p) })
 export const deletePrinter = (orgId: string, id: string) => call<{ ok: true }>(`${org(orgId)}/printers/${encodeURIComponent(id)}`, { method: 'DELETE' })
+export const newPrinterKey = (orgId: string, id: string) => call<Printer>(`${org(orgId)}/printers/${encodeURIComponent(id)}/key`, { method: 'POST' })
+
+// The URL a polling printer is given (Server Direct Print), on this installation's address.
+export const pollUrl = (printer: { id: string; pollKey?: string }) => `${window.location.origin}/api/public/print/epson/${encodeURIComponent(printer.id)}?key=${printer.pollKey}`
+
+// Has a polling printer asked lately? Its last ask is kept to the minute.
+export const pollingLately = (p: Printer, now = Date.now()) => !!p.lastPollAt && now - Date.parse(p.lastPollAt) < Math.max(3 * p.pollInterval * 1000, 150_000)
