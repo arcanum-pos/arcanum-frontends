@@ -8,13 +8,14 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createApp } from './app'
-import { CONTENT_SECURITY_POLICY } from './csp'
+import { CONTENT_SECURITY_POLICY, PRINTING_POLICY } from './csp'
 import worker from './index'
 import { diskAssets } from './node-assets'
 
 // The same few files, from each runtime's source.
 const FILES: Record<string, [string, string]> = {
   '/kassa.html': ['text/html; charset=utf-8', '<html>kassa</html>'],
+  '/station.html': ['text/html; charset=utf-8', '<html>station</html>'],
   '/assets/kassa-abc123.js': ['text/javascript; charset=utf-8', 'console.log(1)'],
   '/assets/index-def456.css': ['text/css; charset=utf-8', 'body{}'],
   '/favicon.svg': ['image/svg+xml', '<svg/>'],
@@ -47,6 +48,12 @@ for (const [where, make] of [['on Cloudflare', cloudflare], ['self-hosted', onDi
       const res = await get('/kassa.html')
       expect(res.headers.get('Content-Security-Policy')).toBe(CONTENT_SECURITY_POLICY)
       expect(await res.text()).toBe('<html>kassa</html>')
+    })
+
+    it('lets only a screen that prints connect to a printer on its network', async () => {
+      expect((await get('/station.html')).headers.get('Content-Security-Policy')).toBe(PRINTING_POLICY)
+      expect(PRINTING_POLICY).toContain("connect-src 'self' https:")
+      expect(CONTENT_SECURITY_POLICY).toContain("connect-src 'self';")
     })
 
     it('leaves scripts, styles and images as they are', async () => {

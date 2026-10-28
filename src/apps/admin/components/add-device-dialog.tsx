@@ -11,6 +11,8 @@ import { createDevicePairing, pairSumupReader, type OrgDevice, type SumupReader 
 import { listStations, type Station } from '../lib/catalog-api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import { PairingClaimed, PairingCode, usePairingStatus, type ShownPairing } from './pairing-code'
+import { PrinterForm } from './printer-dialog'
+import type { Printer } from '@/shared/printing'
 
 // Toestellen → "Toestel toevoegen": a pairing code for a new kassa or
 // customer display (arcanum-backend devices.ts). The code and its QR are
@@ -23,9 +25,10 @@ import { PairingClaimed, PairingCode, usePairingStatus, type ShownPairing } from
 // A SumUp card reader is one more type (when the org has a SumUp account):
 // the other way round — the reader shows a code, typed in here, and SumUp
 // pairs it (arcanum-backend sumup.ts). One button for every device.
+// A printer too: no code, its address on the network (PrinterForm).
 const LATER = 'later'
 
-type Kind = 'pos' | 'cfd' | 'station' | 'pickup' | 'entrance' | 'tap' | 'sumup'
+type Kind = 'pos' | 'cfd' | 'station' | 'pickup' | 'entrance' | 'tap' | 'sumup' | 'printer'
 
 export function AddDeviceDialog({
   orgId,
@@ -33,6 +36,7 @@ export function AddDeviceDialog({
   sumup = false,
   onPaired,
   onReaderPaired,
+  onPrinterAdded,
 }: {
   orgId: string
   kassas: OrgDevice[]
@@ -40,8 +44,10 @@ export function AddDeviceDialog({
   sumup?: boolean
   onPaired: () => void
   onReaderPaired?: (reader: SumupReader) => void
+  onPrinterAdded?: (printer: Printer) => void
 }) {
-  const m = useMessages(ADMIN_ORG_MESSAGES).devices
+  const all = useMessages(ADMIN_ORG_MESSAGES)
+  const m = all.devices
   const [open, setOpen] = useState(false)
   // 'pickup': a station screen for guests (role 'station', view 'pickup').
   // 'entrance': the entrance screen (role 'station', view 'tables', no station — release D).
@@ -137,6 +143,8 @@ export function AddDeviceDialog({
                   {m.moreInfo}
                 </a>
               </>
+            ) : role === 'printer' ? (
+              all.printers.hint
             ) : (
               m.addDeviceHint
             )}
@@ -166,15 +174,27 @@ export function AddDeviceDialog({
                   <SelectItem value="entrance">{m.entranceScreen}</SelectItem>
                   <SelectItem value="tap">{m.roles.tap}</SelectItem>
                   {sumup && <SelectItem value="sumup">{m.sumupReaderType}</SelectItem>}
+                  <SelectItem value="printer">{all.printers.kind}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            {role === 'printer' && (
+              <PrinterForm
+                orgId={orgId}
+                onSaved={(printer) => {
+                  setOpen(false)
+                  reset()
+                  onPrinterAdded?.(printer)
+                }}
+              />
+            )}
             {role === 'sumup' && (
               <div className="grid gap-2">
                 <Label htmlFor="pairing-code">{m.pairingCode}</Label>
                 <Input id="pairing-code" value={readerCode} onChange={(e) => setReaderCode(e.target.value)} autoComplete="off" className="font-mono uppercase" />
               </div>
             )}
+            {role !== 'printer' && (
             <div className="grid gap-2">
               <Label htmlFor="device-name">{role === 'sumup' ? m.readerName : m.deviceName}</Label>
               <Input
@@ -185,6 +205,7 @@ export function AddDeviceDialog({
                 autoComplete="off"
               />
             </div>
+            )}
             {(role === 'cfd' || role === 'tap') && (
               <div className="grid gap-2">
                 <Label>{m.forKassa}</Label>
@@ -243,7 +264,7 @@ export function AddDeviceDialog({
               {busy ? m.busy : m.pair}
             </Button>
           )}
-          {!pairing && role !== 'sumup' && (
+          {!pairing && role !== 'sumup' && role !== 'printer' && (
             <Button onClick={create} disabled={busy || !name.trim() || (forStation && !stationId) || (role === 'tap' && linkTo === LATER)}>
               {busy ? m.busy : m.makeCode}
             </Button>

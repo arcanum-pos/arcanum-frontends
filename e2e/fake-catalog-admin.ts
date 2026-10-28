@@ -119,6 +119,9 @@ export class FakeCatalogAdmin {
   pairError: string | null = null
   // Toestellen: the registered kassa's and customer displays (devicehub's /by-org).
   orgDevices: any[] = []
+  // Printers (arcanum-backend printing.ts) and the test pages asked for.
+  printers: any[] = []
+  testPrints: string[] = []
   private seq = 0
 
   private id(prefix: string) {
@@ -190,6 +193,30 @@ export class FakeCatalogAdmin {
       return ok(eventId ? this.transactions.filter((t) => t.eventId === eventId) : this.transactions)
     }
     if (/^\/api\/organizations\/[^/]+\/devices$/.test(path) && method === 'GET') return ok(this.orgDevices)
+    const printer = path.match(/^\/api\/organizations\/[^/]+\/printers(?:\/([^/]+))?(?:\/(test))?$/)
+    if (printer) {
+      const stationsOf = (ids: string[]) => this.stations.filter((st) => ids.includes(st.id)).map((st) => ({ id: st.id, name: st.name }))
+      if (!printer[1] && method === 'GET') return ok(this.printers)
+      if (!printer[1] && method === 'POST') {
+        const p = { id: this.id('printer'), name: body.name, brand: body.brand, connection: body.connection, host: body.host, port: body.port, deviceId: 'local_printer', paperMm: body.paperMm, stations: stationsOf(body.stationIds ?? []) }
+        this.printers.push(p)
+        return { status: 201, body: p }
+      }
+      const p = this.printers.find((x) => x.id === printer[1])
+      if (!p) return { status: 404, body: { error: 'Printer niet gevonden', code: 'printer_not_found' } }
+      if (printer[2] === 'test') {
+        this.testPrints.push(p.id)
+        return { status: 201, body: { id: this.id('job') } }
+      }
+      if (method === 'PATCH') {
+        Object.assign(p, { name: body.name ?? p.name, host: body.host ?? p.host, port: body.port ?? p.port, paperMm: body.paperMm ?? p.paperMm }, body.stationIds ? { stations: stationsOf(body.stationIds) } : {})
+        return ok(p)
+      }
+      if (method === 'DELETE') {
+        this.printers = this.printers.filter((x) => x.id !== p.id)
+        return ok({ ok: true })
+      }
+    }
     const device = path.match(/^\/api\/organizations\/[^/]+\/devices\/([^/]+)$/)
     if (device && method === 'DELETE') {
       this.orgDevices = this.orgDevices.filter((d) => d.terminal_id !== decodeURIComponent(device[1]))

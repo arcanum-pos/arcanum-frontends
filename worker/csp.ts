@@ -13,6 +13,10 @@
 //   frame-src               the support form's dialog (shared/support), only
 //                           that one origin
 //   frame-ancestors 'none'  never inside another site's frame
+//
+// A screen that prints (PRINTING_PAGES) also connects to the printer on its
+// network (arcanum/PRINTING.md): connect-src adds https: - a printer's local
+// address can't be listed in advance. No more than img-src already allows.
 export const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self'",
@@ -26,3 +30,8 @@ export const CONTENT_SECURITY_POLICY = [
   'frame-src https://support.kaboutersoft.be',
   "frame-ancestors 'none'",
 ].join('; ');
+
+export const PRINTING_PAGES = new Set(['/station.html'])
+export const PRINTING_POLICY = CONTENT_SECURITY_POLICY.replace("connect-src 'self'", "connect-src 'self' https:")
+
+export const policyFor = (pathname: string) => (PRINTING_PAGES.has(pathname) ? PRINTING_POLICY : CONTENT_SECURITY_POLICY)

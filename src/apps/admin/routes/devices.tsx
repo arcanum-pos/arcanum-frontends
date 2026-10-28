@@ -7,6 +7,8 @@ import { listDevicePairings, listOrgDevices, listSumupReaders, removeDevice, rem
 import { AddDeviceDialog } from '../components/add-device-dialog'
 import { RepairDeviceDialog } from '../components/repair-device-dialog'
 import { RowActions } from '../components/row-actions'
+import { PrinterDialog } from '../components/printer-dialog'
+import { deletePrinter, listPrinters, testPrint, type Printer } from '@/shared/printing'
 import { useAsync } from '../lib/use-async'
 import { useOrg } from '../lib/org-context'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
@@ -79,6 +81,36 @@ export default function DevicesPage() {
   const [repairing, setRepairing] = useState<OrgDevice | null>(null)
   const [readerNotice, setReaderNotice] = useState<string | null>(null)
 
+  // Printers (arcanum/PRINTING.md): devices of the org without a pairing -
+  // their address on the network; a screen there prints on them.
+  const { data: printers, reload: reloadPrinters } = useAsync(() => (orgId ? listPrinters(orgId).catch(() => [] as Printer[]) : Promise.resolve([] as Printer[])), [orgId])
+  const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null)
+
+  async function handleRemovePrinter(printer: Printer) {
+    if (!orgId || !window.confirm(m.printers.confirmRemove(printer.name))) return
+    setRemovingId(printer.id)
+    setDeviceError(null)
+    try {
+      await deletePrinter(orgId, printer.id)
+      reloadPrinters()
+    } catch (err) {
+      setDeviceError(m.devices.removeFailed(err instanceof Error ? err.message : String(err)))
+    } finally {
+      setRemovingId(null)
+    }
+  }
+
+  async function handleTestPrinter(printer: Printer) {
+    if (!orgId) return
+    setDeviceError(null)
+    try {
+      await testPrint(orgId, printer.id)
+      setReaderNotice(m.printers.testSent(printer.name))
+    } catch (err) {
+      setDeviceError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   // Removing a reader unpairs it at SumUp: one word for both, like any device.
   async function handleRemoveReader(reader: SumupReader) {
     if (!orgId) return
@@ -136,6 +168,10 @@ export default function DevicesPage() {
                 setReaderNotice(m.devices.paired(reader.name))
                 reloadReaders()
               }}
+              onPrinterAdded={(printer) => {
+                setReaderNotice(m.printers.added(printer.name))
+                reloadPrinters()
+              }}
             />
           )}
         </div>
@@ -186,7 +222,7 @@ export default function DevicesPage() {
                 </TableCell>
               </TableRow>
             ))}
-          {!loading && devices?.length === 0 && !sumupReaders?.readers.length && (
+          {!loading && devices?.length === 0 && !sumupReaders?.readers.length && !printers?.length && (
             <TableRow>
               <TableCell colSpan={6} className="text-center text-muted-foreground">
                 {m.devices.empty}
@@ -245,8 +281,44 @@ export default function DevicesPage() {
                 </TableCell>
               </TableRow>
             ))}
+          {!loading &&
+            printers?.map((printer) => (
+              <TableRow key={`printer-${printer.id}`} data-testid={`printer-${printer.name}`}>
+                <TableCell>
+                  <div className="font-medium">{printer.name}</div>
+                  <div className="font-mono text-xs text-muted-foreground">
+                    {printer.host}
+                    {printer.port && printer.port !== 443 ? `:${printer.port}` : ''}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {m.printers.typeLabel(printer.brand === 'epson' ? 'Epson' : 'Star')}
+                  <div className="text-xs text-muted-foreground">{printer.paperMm} mm</div>
+                </TableCell>
+                <TableCell className={printer.stations.length ? undefined : 'text-muted-foreground'}>
+                  {printer.stations.length ? m.printers.printsFor(printer.stations.map((st) => st.name).join(', ')) : m.printers.printsNothing}
+                </TableCell>
+                <TableCell className="text-muted-foreground">-</TableCell>
+                <TableCell>
+                  <Badge variant="outline">{m.printers.viaScreenBadge}</Badge>
+                </TableCell>
+                <TableCell>
+                  <RowActions
+                    name={printer.name}
+                    disabled={removingId === printer.id}
+                    actions={[
+                      { label: m.printers.edit, onSelect: () => setEditingPrinter(printer) },
+                      { label: m.printers.test, onSelect: () => handleTestPrinter(printer) },
+                      { label: m.remove, destructive: true, onSelect: () => handleRemovePrinter(printer) },
+                    ]}
+                  />
+                </TableCell>
+              </TableRow>
+            ))}
         </TableBody>
       </Table>
+
+      {orgId && <PrinterDialog orgId={orgId} printer={editingPrinter} onClose={() => setEditingPrinter(null)} onSaved={reloadPrinters} />}
 
       {orgId && (
         <RepairDeviceDialog

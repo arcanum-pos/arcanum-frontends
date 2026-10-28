@@ -41,7 +41,17 @@ class FakeStation {
   ]
   staffOnMoves: (string | null)[] = []
   claims: { id: string; staffId: string }[] = []
+  // Printing (arcanum/PRINTING.md): the org's printers, the print jobs, and
+  // what reached the printer on this network (an Epson, ePOS-Print).
+  printers: { id: string; name: string; brand: 'epson'; connection: 'push'; host: string; port: number; deviceId: string; paperMm: number; stations: { id: string; name: string }[] }[] = []
+  jobs: { id: string; printerId: string; kind: string; title: string; status: string; error: string | null; document: string; claimedBy?: string }[] = []
+  results: { id: string; success: boolean; code: string }[] = []
+  printed: string[] = []
+  paperOut = false
+  stationPrinter: (string | null)[] = []
 }
+
+const PRINTER = { id: 'pr-1', name: 'Keukenprinter', brand: 'epson' as const, connection: 'push' as const, host: '192.168.1.50', port: 443, deviceId: 'local_printer', paperMm: 80 }
 
 function ticket(id: string, number: number, paid: boolean, lines: FakeTicket['lines'], selfOrder = false): FakeTicket {
   const at = new Date(Date.now() - 4 * 60_000).toISOString()
@@ -78,6 +88,34 @@ const test = base.extend<{ fake: FakeStation; push: (msg: Record<string, unknown
         return route.fulfill({ json: fake.tickets.filter((t) => withDelivered || t.status !== 'delivered') })
       }
       if (url.pathname === '/api/organizations/org-1/staff') return route.fulfill({ json: { required: false, staff: fake.staff } })
+      if (url.pathname === '/api/organizations/org-1/printers') return route.fulfill({ json: fake.printers })
+      const jobs = url.pathname.match(/^\/api\/organizations\/org-1\/printers\/(.+)\/jobs$/)
+      if (jobs) return route.fulfill({ json: fake.jobs.filter((j) => j.printerId === jobs[1] && j.status !== 'printed' && j.status !== 'claimed').map(({ document, ...j }) => (void document, j)) })
+      const job = url.pathname.match(/^\/api\/organizations\/org-1\/print-jobs\/(.+)\/(claim|result|retry)$/)
+      if (job) {
+        const j = fake.jobs.find((x) => x.id === job[1])!
+        if (job[2] === 'claim') {
+          if (j.status !== 'waiting') return route.fulfill({ status: 409, json: { error: 'x', code: 'print_job_taken' } })
+          j.status = 'claimed'
+          return route.fulfill({ json: { claim: `c-${j.id}`, document: j.document, printer: { host: PRINTER.host, port: PRINTER.port, deviceId: PRINTER.deviceId } } })
+        }
+        if (job[2] === 'result') {
+          const { success, code } = req.postDataJSON()
+          fake.results.push({ id: j.id, success, code })
+          j.status = success ? 'printed' : 'failed'
+          j.error = success ? null : code
+          return route.fulfill({ json: { ok: true } })
+        }
+        j.status = 'waiting'
+        j.error = null
+        return route.fulfill({ json: { ok: true } })
+      }
+      if (url.pathname === '/api/organizations/org-1/stations/st-keuken/printer') {
+        const { printerId } = req.postDataJSON()
+        fake.stationPrinter.push(printerId)
+        for (const p of fake.printers) p.stations = p.id === printerId ? [{ id: 'st-keuken', name: 'Keuken' }] : []
+        return route.fulfill({ json: { ok: true } })
+      }
       const token = url.pathname.match(/^\/api\/organizations\/org-1\/staff\/(.+)\/token$/)
       if (token) {
         const member = fake.staff.find((x) => x.id === token[1])!
@@ -256,4 +294,72 @@ test("the station's own icon, once it knows its station", async ({ station: page
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken-180.png')
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken-96.png')
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken.webmanifest?name=Keuken')
+})
+
+// --- Printing (arcanum/PRINTING.md) ---
+
+// The printer on this network: an Epson answering ePOS-Print.
+async function epson(page: Page, fake: FakeStation) {
+  await page.route('https://192.168.1.50/cgi-bin/epos/service.cgi**', async (route) => {
+    const body = route.request().postData() ?? ''
+    if (!fake.paperOut) fake.printed.push(body)
+    const response = fake.paperOut ? 'success="false" code="EPTR_REC_EMPTY" status="252641308"' : 'success="true" code="" status="251658262"'
+    return route.fulfill({
+      headers: { 'Content-Type': 'text/xml; charset=utf-8', 'Access-Control-Allow-Origin': '*' },
+      body: `<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body><response xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print" ${response} battery="0"/></s:Body></s:Envelope>`,
+    })
+  })
+}
+
+const printJob = (id: string, title: string) => ({ id, printerId: 'pr-1', kind: 'ticket', title, status: 'waiting', error: null, document: `<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print"><text>${title}&#10;</text><cut/></epos-print>` })
+
+test("prints its station's tickets: what waits when it opens, then each one it's told about", async ({ station: page, fake, push }) => {
+  fake.printers = [{ ...PRINTER, stations: [{ id: 'st-keuken', name: 'Keuken' }] }]
+  fake.jobs = [printJob('j1', 'Keuken #5')]
+  await epson(page, fake)
+  await page.reload()
+  await expect(page.getByTestId('printer-button')).toContainText('Keukenprinter')
+  await expect.poll(() => fake.results).toEqual([{ id: 'j1', success: true, code: '' }])
+  expect(fake.printed[0]).toContain('<s:Body><epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print"><text>Keuken #5&#10;</text><cut/></epos-print></s:Body>')
+
+  fake.jobs.push(printJob('j2', 'Keuken #6'))
+  push({ event: 'print_job', printer_id: 'pr-1' })
+  await expect.poll(() => fake.results.map((r) => r.id)).toEqual(['j1', 'j2'])
+  // Another printer's job: not this screen's.
+  fake.jobs.push({ ...printJob('j3', 'Bar #7'), printerId: 'pr-2' })
+  push({ event: 'print_job', printer_id: 'pr-2' })
+  await page.waitForTimeout(300)
+  expect(fake.results).toHaveLength(2)
+  await expect(page.getByTestId('printer-button')).toHaveAttribute('data-state', 'idle')
+})
+
+test('paper out: says so, holds the rest, and prints it again when asked', async ({ station: page, fake }) => {
+  fake.printers = [{ ...PRINTER, stations: [{ id: 'st-keuken', name: 'Keuken' }] }]
+  fake.jobs = [printJob('j1', 'Keuken #5'), printJob('j2', 'Keuken #6')]
+  fake.paperOut = true
+  await epson(page, fake)
+  await page.reload()
+  await expect(page.getByTestId('printer-button')).toHaveAttribute('data-state', 'problem')
+  await expect(page.getByTestId('printer-button')).toContainText('1 niet geprint')
+  // The first failed; the second waits until it's sorted.
+  expect(fake.results).toEqual([{ id: 'j1', success: false, code: 'EPTR_REC_EMPTY' }])
+
+  await page.getByTestId('printer-button').click()
+  await expect(page.getByTestId('printer-problem')).toHaveText('Het papier is op')
+  fake.paperOut = false
+  await page.getByTestId('printer-failed').getByRole('button', { name: 'Opnieuw' }).click()
+  await expect.poll(() => fake.results.filter((r) => r.success).map((r) => r.id)).toEqual(['j1', 'j2'])
+  await expect(page.getByTestId('printer-failed')).toHaveCount(0)
+})
+
+test('chooses its printer on the screen itself', async ({ station: page, fake }) => {
+  fake.printers = [{ ...PRINTER, stations: [] }]
+  await page.reload()
+  await expect(page.getByTestId('printer-button')).toContainText('Geen printer')
+  await page.getByTestId('printer-button').click()
+  await page.getByRole('combobox', { name: 'Printer' }).click()
+  await page.getByRole('option', { name: 'Keukenprinter' }).click()
+  await expect.poll(() => fake.stationPrinter).toEqual(['pr-1'])
+  await expect(page.getByTestId('printer-button')).toContainText('Keukenprinter')
+  await expect(page.getByRole('link', { name: 'Printer openen' })).toHaveAttribute('href', 'https://192.168.1.50/')
 })

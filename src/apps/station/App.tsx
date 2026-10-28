@@ -13,6 +13,8 @@ import { Pickup } from './Pickup'
 import { nextStatus, previousStatus, visibleTickets, type Ticket, type TicketStatus } from './lib'
 import { iconSlot, showOrgIcons } from '@/shared/install'
 import { SupportButton } from '@/shared/support/support-button'
+import { listPrinters, setStationPrinter, usePrintRunner, type Printer } from '@/shared/printing'
+import { PrinterButton } from '@/shared/printer-button'
 
 // A station screen (device role 'station'): the prep tickets (bonnen) of the
 // one station this device is linked to, in columns by status — DOMAIN_MODEL.md
@@ -142,10 +144,25 @@ export default function App() {
     return () => clearInterval(clock)
   }, [])
 
+  // Its station's printer (arcanum/PRINTING.md): this screen prints the
+  // station's tickets on it - told by `print_job` on the same socket.
+  const [printers, setPrinters] = useState<Printer[]>([])
+  const reloadPrinters = useCallback(() => {
+    if (!device?.stationId || device.pickup || device.entrance) return
+    listPrinters(device.orgId).then(setPrinters, () => {})
+  }, [device])
+  useEffect(reloadPrinters, [reloadPrinters])
+  const printer = printers.find((p) => p.stations.some((s) => s.id === device?.stationId)) ?? null
+  const printing = usePrintRunner(device?.orgId ?? null, printer)
+  const poke = useRef(printing.poke)
+  useEffect(() => {
+    poke.current = printing.poke
+  }, [printing.poke])
+
   useEffect(() => {
     if (!device || device.pickup || device.entrance) return
     load()
-    const socket = connectNotifications(device.terminalId, { tabs_changed: () => scheduleLoad() })
+    const socket = connectNotifications(device.terminalId, { tabs_changed: () => scheduleLoad(), print_job: (msg) => poke.current(msg.printer_id) })
     // A push missed while the socket was down: reload when looked at again.
     const onVisible = () => document.visibilityState === 'visible' && load()
     document.addEventListener('visibilitychange', onVisible)
@@ -233,6 +250,18 @@ export default function App() {
           <Switch checked={filters.showDelivered} onCheckedChange={(v) => setFilter('showDelivered', v)} aria-label={m.showDelivered} />
           {m.showDelivered}
         </label>
+        <PrinterButton
+          orgId={device.orgId}
+          printers={printers}
+          printer={printer}
+          state={printing.state}
+          failed={printing.failed}
+          onRetry={printing.retry}
+          onChoose={async (printerId) => {
+            await setStationPrinter(device.orgId, device.stationId!, printerId).catch((err) => setError(err instanceof Error ? err.message : String(err)))
+            reloadPrinters()
+          }}
+        />
         <SupportButton screen="station" />
       </header>
       {error && (

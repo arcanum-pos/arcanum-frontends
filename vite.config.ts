@@ -15,7 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 // root (copy admin.html as a starting point), and add src/apps/<name>/.
 const APPS = ['admin', 'login-prompt', 'device', 'chooser', 'display', 'kassa', 'settings', 'station', 'selforder', 'pair', 'waiter', 'tap'] as const
 
-import { CONTENT_SECURITY_POLICY } from './worker/csp.js'
+import { policyFor } from './worker/csp.js'
 
 // The commit this build came from, for a support report (shared/support);
 // empty outside a git checkout.
@@ -28,7 +28,22 @@ function gitCommit(): string {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    // The built screens as the Playwright suite sees them: under the policy
+    // the Worker sends each page (worker/csp.ts). Not on the dev server (npm
+    // run dev): its hot reload injects inline script.
+    {
+      name: 'screens-policy',
+      configurePreviewServer(server) {
+        server.middlewares.use((req, res, next) => {
+          res.setHeader('Content-Security-Policy', policyFor(new URL(req.url ?? '/', 'http://screens').pathname))
+          next()
+        })
+      },
+    },
+  ],
   define: { __ARCANUM_COMMIT__: JSON.stringify(gitCommit()) },
   resolve: {
     alias: {
@@ -39,12 +54,6 @@ export default defineConfig({
     rollupOptions: {
       input: Object.fromEntries(APPS.map((name) => [name, path.resolve(__dirname, `${name}.html`)])),
     },
-  },
-  // The built screens as the Playwright suite sees them: under the same
-  // policy the Worker sends (worker/csp.ts). Not on the dev server (npm run
-  // dev): its hot reload injects inline script.
-  preview: {
-    headers: { 'Content-Security-Policy': CONTENT_SECURITY_POLICY },
   },
   server: {
     // Vite's own hot-reload dev server (npm run dev) — separate from, and

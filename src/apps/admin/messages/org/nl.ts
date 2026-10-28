@@ -180,6 +180,38 @@ const nl = {
     selfOrderNeedsCatalog: 'Maak eerst een menukaart (Menukaarten) - daar bestellen gasten uit.',
   },
 
+  // Printers (Toestellen; arcanum/PRINTING.md)
+  printers: {
+    kind: 'Printer',
+    typeLabel: (brand: string) => `Printer (${brand})`,
+    hint: 'Een bonnenprinter op het netwerk van de zaak. Een scherm op hetzelfde netwerk (het stationscherm) stuurt de bonnen naar de printer.',
+    brand: 'Merk',
+    brandLater: 'Star (later)',
+    connection: 'Verbinding',
+    viaScreen: 'Via een scherm op hetzelfde netwerk',
+    polling: 'De printer haalt zelf op (later)',
+    host: 'IP-adres of naam',
+    hostHint: 'Het adres van de printer op het netwerk, bv. 192.168.1.50 (op het statusblad dat de printer afdrukt).',
+    port: 'Poort',
+    paper: 'Papier',
+    paper80: '80 mm',
+    paper58: '58 mm',
+    stations: 'Print de bonnen van',
+    noStations: 'Nog geen stations (Producten → Stations).',
+    namePlaceholder: 'bv. Printer keuken',
+    add: 'Printer toevoegen',
+    save: 'Opslaan',
+    edit: 'Bewerken',
+    editTitle: (name: string) => `${name} bewerken`,
+    test: 'Testafdruk',
+    testSent: (name: string) => `Testafdruk gestuurd naar ${name} - een scherm op hetzelfde netwerk print hem.`,
+    added: (name: string) => `${name} is toegevoegd. Open de printer eenmaal op elk scherm dat erop print, om zijn certificaat te aanvaarden.`,
+    printsFor: (stations: string) => `Print voor ${stations}`,
+    printsNothing: 'Print nog niets',
+    viaScreenBadge: 'Via scherm',
+    confirmRemove: (name: string) => `${name} verwijderen? Wat nog niet geprint is, wordt niet meer geprint.`,
+  },
+
   // Devices
   devices: {
     addDevice: 'Toestel toevoegen',
