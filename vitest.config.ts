@@ -13,6 +13,6 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['src/**/*.test.ts', 'worker/**/*.test.ts', 'scripts/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'worker/**/*.test.ts', 'scripts/**/*.test.ts', 'tools/**/*.test.ts'],
   },
 })

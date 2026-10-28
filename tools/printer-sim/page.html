@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printer simulator</title>
+<style>
+/* Layout: settings and activity on the left, the paper roll on the right - what the printer printed, newest first. */
+:root {
+  --bg: #eef1f3; --panel: #ffffff; --fg: #1d2429; --muted: #63717a; --line: #d6dde2;
+  --accent: #0b6e8a; --ok: #2e7d32; --bad: #c62828; --paper: #ffffff; --ink: #111111;
+  --sans: system-ui, -apple-system, "Segoe UI", sans-serif; --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root {
+  --bg: #14191c; --panel: #1c2327; --fg: #e4eaee; --muted: #93a2ab; --line: #2f3a40; --accent: #4fc3e0; --ok: #81c784; --bad: #ef9a9a; color-scheme: dark } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+h1 { font-size: 16px; margin: 0; }
+h1 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--bad); }
+.live.on i { background: var(--ok); }
+.chip { font: 12px var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; }
+main { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start; }
+@media (max-width: 860px) { main { grid-template-columns: minmax(0, 1fr); } }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0; }
+label { display: flex; flex-direction: column; gap: 3px; font-size: 12.5px; color: var(--muted); }
+label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--fg); font-size: 13.5px; }
+input[type=text], input[type=url], input[type=password], input[type=number], select { font: 13px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; width: 100%; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+button { font: 13px var(--sans); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
+dt { color: var(--muted); }
+dd { margin: 0; font-family: var(--mono); overflow-wrap: anywhere; }
+#log { list-style: none; margin: 0; padding: 0; font: 12px var(--mono); max-height: 320px; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+#log li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; }
+#log time { color: var(--muted); }
+#log .error { color: var(--bad); }
+#log .print { color: var(--ok); }
+.roll { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1100px) { .roll { grid-template-columns: minmax(0, 1fr); } }
+#tickets { list-style: none; margin: 0; padding: 0; max-height: 70vh; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+#tickets button { width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 8px; display: grid; grid-template-columns: auto 1fr; gap: 0 8px; font-size: 13px; }
+#tickets button[aria-current=true] { background: var(--bg); outline: 1px solid var(--line); }
+#tickets small { grid-column: 2; color: var(--muted); font-size: 11.5px; }
+.via { font: 11px var(--mono); padding: 0 6px; border-radius: 4px; border: 1px solid var(--line); align-self: center; }
+.nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.nav .meta { color: var(--muted); font-size: 12.5px; margin-right: auto; }
+.stage { overflow-x: auto; padding: 12px 0 24px; }
+/* The paper: 48 columns of Font A on 80 mm, 32 on 58 mm. */
+.paper { --cols: 48; background: var(--paper); color: var(--ink); font: 13px/1.35 var(--mono); width: calc(var(--cols) * 1ch + 32px); padding: 18px 16px 10px; margin: 0 auto;
+  box-shadow: 0 1px 2px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.08); }
+.paper .ln { white-space: pre; min-height: 1.35em; }
+.paper .seg { white-space: pre; }
+.paper .em { font-weight: 700; }
+.paper .ul { text-decoration: underline; }
+.paper .rev { background: var(--ink); color: var(--paper); }
+.paper .rule { border-top: 1px solid var(--ink); margin: 6px 0; }
+.paper .block { border: 1px dashed #888; padding: 8px; margin: 6px auto; text-align: center; font-size: 11px; width: fit-content; max-width: 100%; overflow-wrap: anywhere; white-space: normal; }
+.paper .note { color: #777; font-size: 11px; font-style: italic; }
+.paper .cut { border-top: 2px dashed #999; margin: 14px -16px 0; padding-top: 2px; text-align: center; font-size: 10px; color: #999; }
+.empty { color: var(--muted); text-align: center; padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Epson printer simulator<small id="model"></small></h1>
+  <span class="live" id="live"><i></i><span>connecting</span></span>
+  <span class="chip" id="hosts"></span>
+</header>
+<main>
+  <div class="col">
+    <section aria-labelledby="h-push">
+      <h2 id="h-push">Push (ePOS-Print)</h2>
+      <p class="hint">Always on. A screen sends tickets here; in the console, use one of these as the printer's host and port.</p>
+      <dl>
+        <dt>Host : port</dt><dd id="push-hosts"></dd>
+        <dt>Endpoint</dt><dd>/cgi-bin/epos/service.cgi</dd>
+        <dt>Device id</dt><dd id="push-devid"></dd>
+        <dt>Login</dt><dd>none (as a real printer)</dd>
+      </dl>
+    </section>
+
+    <form id="settings">
+      <section aria-labelledby="h-poll">
+        <h2 id="h-poll">Polling (Server Direct Print)</h2>
+        <label class="check"><input type="checkbox" id="poll-enabled"> Ask a URL for work</label>
+        <label for="poll-url">URL (from the console, with its secret)<input type="url" id="poll-url" placeholder="https://…/print/epson/…"></label>
+        <div class="row">
+          <label for="poll-id">ID<input type="text" id="poll-id" autocomplete="off"></label>
+          <label for="poll-password">Password<input type="password" id="poll-password" autocomplete="new-password"></label>
+        </div>
+        <p class="hint">ID and password: HTTP Digest, only if the server asks for it (as the printer's WebConfig).</p>
+        <label for="poll-interval">Interval (seconds, after each exchange)<input type="number" id="poll-interval" min="1" max="3600"></label>
+        <div class="nav"><span class="meta" id="poll-status">Not polling</span><button type="button" id="poll-now">Poll now</button></div>
+      </section>
+      <section aria-labelledby="h-printer" style="margin-top:16px">
+        <h2 id="h-printer">Printer</h2>
+        <div class="row">
+          <label for="paper">Paper<select id="paper"><option value="80">80 mm (48 columns)</option><option value="58">58 mm (32 columns)</option></select></label>
+          <label for="devid">Device id<input type="text" id="devid"></label>
+        </div>
+        <label class="check"><input type="checkbox" id="paper-out"> Paper out (refuse with EPTR_REC_EMPTY)</label>
+        <div class="nav"><span class="meta" id="saved"></span><button class="primary" type="submit">Save</button></div>
+      </section>
+    </form>
+
+    <section aria-labelledby="h-log">
+      <h2 id="h-log">Activity</h2>
+      <ul id="log"></ul>
+    </section>
+  </div>
+
+  <section aria-labelledby="h-roll">
+    <div class="nav">
+      <h2 id="h-roll">Printed</h2>
+      <span class="meta" id="meta"></span>
+      <label class="check"><input type="checkbox" id="follow" checked> Show new tickets</label>
+      <button type="button" id="prev">Older</button>
+      <button type="button" id="next">Newer</button>
+      <button type="button" id="clear">Clear all</button>
+    </div>
+    <div class="roll">
+      <ul id="tickets"></ul>
+      <div class="stage" id="stage"><p class="empty">Nothing printed yet.</p></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id)
+let state = { tickets: [], config: {} }
+let current = null
+const time = (iso) => new Date(iso).toLocaleTimeString()
+
+// --- The receipt: run the ePOS-Print commands the way the printer does.
+// Text settings stick until changed; "\n" ends a line.
+function render(ticket) {
+  const cols = { 80: { font_a: 48, font_b: 64 }, 58: { font_a: 32, font_b: 42 } }[ticket.paper || 80]
+  const paper = document.createElement('div')
+  paper.className = 'paper'
+  paper.style.setProperty('--cols', cols.font_a)
+  const s = { align: 'left', font: 'font_a', w: 1, h: 1, em: false, ul: false, rev: false }
+  let line = null
+  const open = () => { if (!line) { line = document.createElement('div'); line.className = 'ln'; line.style.textAlign = s.align; paper.append(line) } return line }
+  const end = () => { open(); line = null }
+  const block = (cls, text) => { if (line) end(); const d = document.createElement('div'); d.className = cls; d.textContent = text; paper.append(d) }
+  const flag = (v) => v === 'true' || v === '1'
+  for (const c of ticket.commands) {
+    const a = c.attrs || {}
+    if (c.tag === 'text') {
+      if (a.align) s.align = a.align
+      if (a.font) s.font = a.font
+      if (a.width) s.w = Number(a.width)
+      if (a.height) s.h = Number(a.height)
+      if (a.dw) s.w = flag(a.dw) ? 2 : 1
+      if (a.dh) s.h = flag(a.dh) ? 2 : 1
+      if (a.em) s.em = flag(a.em)
+      if (a.ul) s.ul = flag(a.ul)
+      if (a.reverse) s.rev = flag(a.reverse)
+      const parts = (c.text || '').split('\n')
+      parts.forEach((part, i) => {
+        if (i > 0) end()
+        if (!part) return
+        const seg = document.createElement('span')
+        seg.className = 'seg' + (s.em ? ' em' : '') + (s.ul ? ' ul' : '') + (s.rev ? ' rev' : '')
+        // Font B is narrower; width/height multiply. 1ch stays one column of Font A.
+        const base = s.font === 'font_b' ? cols.font_a / cols.font_b : 1
+        seg.style.fontSize = `${base * s.h}em`
+        seg.style.letterSpacing = `${(s.w - s.h) / s.h}ch`
+        seg.textContent = part
+        open().append(seg)
+      })
+    } else if (c.tag === 'feed') {
+      if (line) end()
+      const n = a.line ? Number(a.line) : 0
+      for (let i = 0; i < n; i++) end()
+      if (a.unit) { const d = document.createElement('div'); d.style.height = `${Number(a.unit) / 2}px`; paper.append(d) }
+    } else if (c.tag === 'cut') {
+      block('cut', '✂ ' + (a.type || 'feed') + ' cut')
+    } else if (c.tag === 'hline') {
+      block('rule', '')
+    } else if (c.tag === 'symbol') {
+      block('block', `[${a.type || 'qrcode'}] ${c.text}`)
+    } else if (c.tag === 'barcode') {
+      block('block', `[barcode ${a.type || ''}] ${c.text}`)
+    } else if (c.tag === 'image' || c.tag === 'logo') {
+      block('block', `[${c.tag}]`)
+    } else if (c.tag === 'sound') {
+      block('note', '♪ buzzer')
+    } else if (c.tag === 'pulse') {
+      block('note', 'cash drawer opens')
+    } else {
+      block('note', `<${c.tag}>`)
+    }
+  }
+  if (line) end()
+  return paper
+}
+
+async function show(id) {
+  current = id
+  for (const b of $('tickets').querySelectorAll('button')) b.setAttribute('aria-current', b.dataset.id == id)
+  const stage = $('stage')
+  if (!id) { stage.innerHTML = '<p class="empty">Nothing printed yet.</p>'; $('meta').textContent = ''; return }
+  const t = await (await fetch('/api/tickets/' + id)).json()
+  stage.replaceChildren(render(t))
+  $('meta').textContent = `#${t.id} · ${t.via} · ${new Date(t.at).toLocaleString()}${t.printjobid ? ' · job ' + t.printjobid : ''}`
+  const i = state.tickets.findIndex((x) => x.id === id)
+  $('next').disabled = i <= 0
+  $('prev').disabled = i < 0 || i >= state.tickets.length - 1
+}
+
+function listTickets() {
+  $('tickets').replaceChildren(...state.tickets.map((t) => {
+    const li = document.createElement('li')
+    const b = document.createElement('button')
+    b.type = 'button'; b.dataset.id = t.id; b.setAttribute('aria-current', t.id === current)
+    b.innerHTML = `<span class="via"></span><span></span><small></small>`
+    b.children[0].textContent = t.via
+    b.children[1].textContent = `#${t.id}`
+    b.children[2].textContent = time(t.at) + (t.printjobid ? ' · job ' + t.printjobid : '')
+    b.onclick = () => { $('follow').checked = false; show(t.id) }
+    li.append(b)
+    return li
+  }))
+}
+
+// --- Activity: a run of empty polls is one line that counts up.
+let pollRun = null
+function addLog(e) {
+  const li = document.createElement('li')
+  li.innerHTML = '<time></time><span></span>'
+  li.children[0].textContent = time(e.at)
+  li.children[1].textContent = e.message
+  li.children[1].className = e.kind
+  $('log').prepend(li)
+  pollRun = null
+}
+function addPoll(e) {
+  $('poll-status').textContent = `Last poll ${time(e.at)}: ${e.result} (${e.ms} ms)`
+  if (e.result === 'nothing') {
+    if (!pollRun) { addLog({ at: e.at, kind: 'poll', message: '' }); pollRun = { n: 0, li: $('log').firstChild } }
+    pollRun.n++
+    pollRun.li.children[0].textContent = time(e.at)
+    pollRun.li.children[1].textContent = `Polled ${pollRun.n}× - nothing to print`
+  } else addLog({ at: e.at, kind: 'poll', message: `Polled - ${e.result}` })
+}
+
+function fill(cfg) {
+  $('model').textContent = cfg.model
+  $('push-devid').textContent = cfg.devid
+  $('poll-enabled').checked = cfg.poll.enabled
+  $('poll-url').value = cfg.poll.url
+  $('poll-id').value = cfg.poll.id
+  $('poll-password').value = cfg.poll.password
+  $('poll-interval').value = cfg.poll.interval
+  $('paper').value = String(cfg.paper)
+  $('devid').value = cfg.devid
+  $('paper-out').checked = cfg.paperOut
+  if (!cfg.poll.enabled || !cfg.poll.url) $('poll-status').textContent = 'Not polling'
+}
+
+async function load() {
+  state = await (await fetch('/api/state')).json()
+  fill(state.config)
+  $('hosts').textContent = state.hosts[0] ? 'https://' + state.hosts[0] : ''
+  $('push-hosts').textContent = state.hosts.join('  ') || 'localhost:' + state.config.port
+  $('log').replaceChildren()
+  for (const e of state.log) addLog(e)
+  listTickets()
+  show(state.tickets[0]?.id || null)
+}
+
+$('settings').onsubmit = async (ev) => {
+  ev.preventDefault()
+  const body = {
+    paper: Number($('paper').value), devid: $('devid').value.trim() || 'local_printer', paperOut: $('paper-out').checked,
+    poll: { enabled: $('poll-enabled').checked, url: $('poll-url').value.trim(), id: $('poll-id').value, password: $('poll-password').value, interval: Math.max(1, Number($('poll-interval').value) || 10) },
+  }
+  const r = await (await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json()
+  fill(r.config)
+  $('saved').textContent = 'Saved'
+  setTimeout(() => ($('saved').textContent = ''), 2000)
+}
+$('poll-now').onclick = () => fetch('/api/poll-now', { method: 'POST' })
+$('clear').onclick = async () => { if ($('clear').dataset.sure) { await fetch('/api/tickets/clear', { method: 'POST' }); delete $('clear').dataset.sure; $('clear').textContent = 'Clear all' } else { $('clear').dataset.sure = 1; $('clear').textContent = 'Sure? Click again' } }
+$('prev').onclick = () => { const i = state.tickets.findIndex((x) => x.id === current); if (state.tickets[i + 1]) { $('follow').checked = false; show(state.tickets[i + 1].id) } }
+$('next').onclick = () => { const i = state.tickets.findIndex((x) => x.id === current); if (i > 0) show(state.tickets[i - 1].id) }
+
+function connect() {
+  const es = new EventSource('/events')
+  es.onopen = () => { $('live').classList.add('on'); $('live').lastChild.textContent = 'live' }
+  es.onerror = () => { $('live').classList.remove('on'); $('live').lastChild.textContent = 'reconnecting' }
+  es.onmessage = (m) => {
+    const e = JSON.parse(m.data)
+    if (e.type === 'log') addLog(e)
+    else if (e.type === 'poll') addPoll(e)
+    else if (e.type === 'ticket') { state.tickets.unshift(e.ticket); listTickets(); if ($('follow').checked) show(e.ticket.id); else show(current) }
+    else if (e.type === 'cleared') { state.tickets = []; listTickets(); show(null) }
+  }
+}
+load().then(connect)
+</script>
+</body>
+</html>
