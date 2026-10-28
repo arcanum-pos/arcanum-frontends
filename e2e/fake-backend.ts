@@ -321,7 +321,7 @@ export class FakeBackend {
   // Receipts (arcanum-backend printing.ts): on for the org?, its printers, the receipts asked for.
   receiptsEnabled = false
   printers: any[] = []
-  receipts: { printerId: string; tabId: string; chargeId?: string }[] = []
+  receipts: { printerId: string; tabId: string; chargeId?: string; chargeStatus?: string }[] = []
   // A cancelled Bancontact payment: the provider can't be reached.
   cancelUnreachable = false
   devices = new Map<string, { terminal_id: string; org_id: string; role: string; linked_to: string | null; name: string | null }>([
@@ -459,7 +459,7 @@ export class FakeBackend {
     const receipt = p.match(/^\/api\/organizations\/org-e2e\/printers\/([^/]+)\/receipt$/)
     if (receipt && method === 'POST') {
       if (!this.receiptsEnabled) return { status: 409, body: { error: 'Bonnen printen staat niet aan (console, Toestellen)', code: 'receipts_off' } }
-      this.receipts.push({ printerId: receipt[1], tabId: body.tabId, chargeId: body.chargeId })
+      this.receipts.push({ printerId: receipt[1], tabId: body.tabId, chargeId: body.chargeId, chargeStatus: this.charges.find((c) => c.id === body.chargeId)?.status })
       return { status: 201, body: { id: `job-${this.receipts.length}` } }
     }
     if (p === '/api/organizations' && method === 'GET')

@@ -36,7 +36,7 @@ test('"Bon printen" after the payment sends that tab and payment to the chosen p
   await kassa.getByRole('button', button('Bon printen')).click()
   await expect(kassa.getByText('Bon naar de printer gestuurd')).toBeVisible()
   const charge = backend.charges.at(-1)!
-  expect(backend.receipts).toEqual([{ printerId: 'pr-1', tabId: charge.tabId, chargeId: charge.id }])
+  expect(backend.receipts).toEqual([{ printerId: 'pr-1', tabId: charge.tabId, chargeId: charge.id, chargeStatus: 'succeeded' }])
   await expect(kassa.getByRole('button', button('Nog een bon'))).toBeVisible()
 })
 
@@ -63,4 +63,19 @@ test('the printer is chosen in Instellingen, only when receipts are on', async (
   await kassa.getByRole('option', { name: 'Toogprinter' }).click()
   await panel.getByRole('switch', { name: 'Na elke betaling vanzelf een bon' }).click()
   expect(await kassa.evaluate(() => JSON.parse(localStorage.getItem('arcanum-receipt-printer') || '{}'))).toEqual({ 'org-e2e': { printerId: 'pr-1', auto: true } })
+})
+
+test('a cash payment shows as paid at once, but the receipt waits until the backend has recorded it', async ({ kassa, backend }) => {
+  backend.receiptsEnabled = true
+  backend.printers = [PRINTER]
+  await choose(kassa, { printerId: 'pr-1', auto: true })
+  await kassa.reload()
+  // The backend takes its time recording the payment.
+  await kassa.route('**/api/bancontact/sumup/confirm', async (route) => {
+    await new Promise((r) => setTimeout(r, 800))
+    await route.fallback()
+  })
+  await payCash(kassa)
+  await expect.poll(() => backend.receipts.length).toBe(1)
+  expect(backend.receipts[0].chargeStatus).toBe('succeeded')
 })

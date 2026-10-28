@@ -150,6 +150,9 @@ export default function App() {
   // printer (chosen in Instellingen); a printer reached via a screen is sent
   // to from here, told by print_job on the socket.
   const receipt = useReceiptPrinter(orgId)
+  // A payment confirmed by hand on this kassa (cash, SumUp): recorded by the
+  // backend a moment after it shows as paid. Others resolve on the backend first.
+  const [recordedCharge, setRecordedCharge] = useState<string | null>(null)
   const receiptPrinting = usePrintRunner(orgId, receipt.printer?.connection === 'push' ? receipt.printer : null)
   const printPokeRef = useRef(receiptPrinting.poke)
   useEffect(() => {
@@ -803,6 +806,8 @@ export default function App() {
       if (!res.ok) return
 
       if (data.status === 'succeeded') {
+        // Recorded already: the backend said so.
+        setRecordedCharge(chargeId)
         setCurrentBoth({ ...cur, status: 'RESOLVED' })
         setManualStatus({ kind: 'paid' })
         channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
@@ -837,7 +842,9 @@ export default function App() {
     setManualStatus({ kind: 'paid' })
     channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
     // Backend records the sale and closes the tab once it resolves the charge.
-    resolveTrackedCharge(cur.chargeId, true)
+    // Shown as paid at once; a receipt waits until it's recorded (or it
+    // would show nothing paid).
+    resolveTrackedCharge(cur.chargeId, true).finally(() => setRecordedCharge(cur.chargeId))
   }
 
   function clearPaymentView() {
@@ -1448,7 +1455,7 @@ export default function App() {
             onCancel={cancelPayment}
             onNext={finishPayment}
             receipt={
-              orgId && receipt.printer && isPaymentResolved(current) ? (
+              orgId && receipt.printer && isPaymentResolved(current) && (current.status !== 'RESOLVED' || recordedCharge === current.chargeId) ? (
                 <ReceiptButton key={current.chargeId} orgId={orgId} printer={receipt.printer} tabId={current.tabId} chargeId={current.chargeId} auto={receipt.auto} />
               ) : null
             }
