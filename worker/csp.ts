@@ -31,7 +31,9 @@ export const CONTENT_SECURITY_POLICY = [
   "frame-ancestors 'none'",
 ].join('; ');
 
-export const PRINTING_PAGES = new Set(['/station.html'])
+// By name without .html: Cloudflare's assets redirect /station.html to
+// /station, and that's the page the browser gets.
+export const PRINTING_PAGES = new Set(['/station'])
 export const PRINTING_POLICY = CONTENT_SECURITY_POLICY.replace("connect-src 'self'", "connect-src 'self' https:")
 
-export const policyFor = (pathname: string) => (PRINTING_PAGES.has(pathname) ? PRINTING_POLICY : CONTENT_SECURITY_POLICY)
+export const policyFor = (pathname: string) => (PRINTING_PAGES.has(pathname.replace(/\.html$/, '')) ? PRINTING_POLICY : CONTENT_SECURITY_POLICY)

@@ -24,7 +24,8 @@ const FILES: Record<string, [string, string]> = {
 const cloudflare = (): ((req: Request) => Promise<Response>) => {
   const ASSETS = {
     fetch: async (req: Request) => {
-      const file = FILES[new URL(req.url).pathname]
+      // As Cloudflare's assets: /kassa is kassa.html.
+      const file = FILES[new URL(req.url).pathname] ?? FILES[`${new URL(req.url).pathname}.html`]
       return file ? new Response(file[1], { headers: { 'Content-Type': file[0], 'Cache-Control': 'public' } }) : new Response('Not found', { status: 404 })
     },
   }
@@ -52,6 +53,9 @@ for (const [where, make] of [['on Cloudflare', cloudflare], ['self-hosted', onDi
 
     it('lets only a screen that prints connect to a printer on its network', async () => {
       expect((await get('/station.html')).headers.get('Content-Security-Policy')).toBe(PRINTING_POLICY)
+      // As Cloudflare serves it: /station.html redirects to /station.
+      expect((await get('/station')).headers.get('Content-Security-Policy')).toBe(PRINTING_POLICY)
+      expect((await get('/kassa')).headers.get('Content-Security-Policy')).toBe(CONTENT_SECURITY_POLICY)
       expect(PRINTING_POLICY).toContain("connect-src 'self' https:")
       expect(CONTENT_SECURITY_POLICY).toContain("connect-src 'self';")
     })
