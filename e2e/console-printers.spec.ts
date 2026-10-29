@@ -67,7 +67,7 @@ test('or one a screen on its network sends to: its address instead', async ({ co
   const dialog = await addPrinter(page)
   await dialog.getByRole('combobox', { name: 'Verbinding' }).click()
   await page.getByRole('option', { name: 'Via een scherm op hetzelfde netwerk' }).click()
-  await expect(dialog).toContainText('Werkt alleen in Chrome')
+  await expect(dialog).toContainText('Printer vertrouwen op dit toestel')
   await dialog.getByLabel('Naam', { exact: true }).fill('Keukenprinter')
   await dialog.getByLabel('IP-adres of naam').fill('192.168.1.50')
   await dialog.getByLabel('Keuken').check()
@@ -91,6 +91,8 @@ test('changes a printer, sends it a test page, and removes it', async ({ console
 
   await rowAction(row, 'Bewerken')
   const dialog = page.getByRole('dialog')
+  // Its certificate: none uploaded by a screen yet.
+  await expect(dialog.getByTestId('printer-cert-info')).toContainText('Nog geen certificaat opgeladen')
   await dialog.getByLabel('Poort').fill('8043')
   await dialog.getByLabel('Bar').check()
   await dialog.getByRole('button', { name: 'Opslaan' }).click()
@@ -115,4 +117,11 @@ test('receipts at the kassa and in table service: off until switched on here', a
   await toggle.click()
   await expect(toggle).toBeChecked()
   expect(catalogAdmin.receiptsEnabled).toBe(true)
+})
+
+test("shows the certificate a screen uploaded for a printer it sends to", async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.printers = [{ id: 'pr-1', name: 'Barprinter', brand: 'epson', connection: 'push', host: '192.168.1.60', port: 443, deviceId: 'local_printer', paperMm: 80, pollInterval: 10, lastPollAt: null, certFingerprint: '0f'.repeat(32), certUploadedAt: '2026-10-29T08:00:00.000Z', stations: [] } as any]
+  await open('/devices')
+  await rowAction(page.getByTestId('printer-Barprinter'), 'Bewerken')
+  await expect(page.getByRole('dialog').getByTestId('printer-cert-info')).toContainText(`vingerafdruk (SHA-256) ${'0F:'.repeat(31)}0F`)
 })

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMessages } from '@/shared/i18n'
-import { createPrinter, pollUrl, showPrinterKey, updatePrinter, type Printer } from '@/shared/printing'
+import { createPrinter, pollUrl, showFingerprint, showPrinterKey, updatePrinter, type Printer } from '@/shared/printing'
 import { listStations, type Station } from '../lib/catalog-api'
 import { ADMIN_ORG_MESSAGES } from '../messages/org'
 import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
@@ -13,7 +13,8 @@ import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 // A printer's settings (arcanum/PRINTING.md): its name, Epson (Star later),
 // how it gets its work - it asks Arcanum itself (polling, the default: no
 // certificate, no screen) or a screen on its network sends it (push) - and
-// then its address (push), paper, and which stations' tickets it prints.
+// then its address (push, and the certificate a screen uploaded), paper,
+// and which stations' tickets it prints.
 // How often a polling printer asks is set in the printer itself (the steps
 // say 10 s and what it costs). A new polling printer ends on its URL
 // (PollLink); editing one shows it too. The form only;
@@ -120,6 +121,14 @@ export function PrinterForm({ orgId, printer, onSaved, onCancel }: { orgId: stri
             </div>
           </div>
           <p className="-mt-2 text-xs text-muted-foreground">{t.hostHint}</p>
+          {printer && (
+            <div className="grid gap-1" data-testid="printer-cert-info">
+              <span className="text-sm font-medium">{t.certTitle}</span>
+              <p className="break-all text-xs text-muted-foreground">
+                {printer.certFingerprint && printer.certUploadedAt ? t.certUploaded(new Date(printer.certUploadedAt).toLocaleString(), showFingerprint(printer.certFingerprint)) : t.noCert}
+              </p>
+            </div>
+          )}
         </>
       )}
       <fieldset className="grid gap-2">

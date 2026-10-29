@@ -43,12 +43,18 @@ class FakeStation {
   claims: { id: string; staffId: string }[] = []
   // Printing (arcanum/PRINTING.md): the org's printers, the print jobs, and
   // what reached the printer on this network (an Epson, ePOS-Print).
-  printers: { id: string; name: string; brand: 'epson'; connection: 'push' | 'poll'; host: string | null; port: number | null; deviceId: string; paperMm: number; stations: { id: string; name: string }[] }[] = []
+  printers: { id: string; name: string; brand: 'epson'; connection: 'push' | 'poll'; host: string | null; port: number | null; deviceId: string; paperMm: number; certFingerprint?: string | null; certUploadedAt?: string | null; stations: { id: string; name: string }[] }[] = []
   jobs: { id: string; printerId: string; kind: string; title: string; status: string; error: string | null; document: string; claimedBy?: string }[] = []
   results: { id: string; success: boolean; code: string }[] = []
   printed: string[] = []
   paperOut = false
   stationPrinter: (string | null)[] = []
+  // Trusting a push printer: does this browser reach it, has its
+  // certificate been uploaded, the codes and links handed out.
+  reachable = true
+  certUploaded = false
+  trustCodes = 0
+  profileLinks = 0
 }
 
 const PRINTER = { id: 'pr-1', name: 'Keukenprinter', brand: 'epson' as const, connection: 'push' as const, host: '192.168.1.50', port: 443, deviceId: 'local_printer', paperMm: 80 }
@@ -110,6 +116,11 @@ const test = base.extend<{ fake: FakeStation; push: (msg: Record<string, unknown
         j.error = null
         return route.fulfill({ json: { ok: true } })
       }
+      if (url.pathname === '/api/organizations/org-1/printers/pr-1/trust-code') return route.fulfill({ status: 201, json: { code: `code-${++fake.trustCodes}`, expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() } })
+      if (url.pathname === '/api/organizations/org-1/printers/pr-1/profile-link') {
+        if (!fake.certUploaded) return route.fulfill({ status: 409, json: { error: 'Voor deze printer is nog geen certificaat opgeladen', code: 'printer_no_certificate' } })
+        return route.fulfill({ status: 201, json: { token: `tok-${++fake.profileLinks}`, expiresAt: new Date(Date.now() + 10 * 60_000).toISOString() } })
+      }
       if (url.pathname === '/api/organizations/org-1/stations/st-keuken/printer') {
         const { printerId } = req.postDataJSON()
         fake.stationPrinter.push(printerId)
@@ -145,6 +156,8 @@ const test = base.extend<{ fake: FakeStation; push: (msg: Record<string, unknown
       }
       return route.fulfill({ status: 404, json: { error: 'not stubbed' } })
     })
+    // The printer's own page: answers when this browser trusts it.
+    await page.route('https://192.168.1.50/', (route) => (fake.reachable ? route.fulfill({ body: 'Epson' }) : route.abort('failed')))
     await page.goto('/station.html')
     await provide(page)
   },
@@ -376,4 +389,59 @@ test('a printer that fetches its own work: the screen sends nothing, but shows w
   await expect(page.getByTestId('printer-failed')).toContainText('De klep staat open')
   expect(fake.results).toEqual([])
   expect(fake.printed).toEqual([])
+})
+
+test("a printer this screen can't reach: the command for a computer, the profile for an iPad", async ({ station: page, fake }) => {
+  fake.printers = [{ ...PRINTER, stations: [{ id: 'st-keuken', name: 'Keuken' }] }]
+  fake.reachable = false
+  await page.reload()
+  await page.getByTestId('printer-button').click()
+  const trust = page.getByTestId('printer-trust')
+  await expect(trust).toHaveAttribute('data-reach', 'no')
+  await expect(trust).toContainText('Dit toestel bereikt de printer niet')
+
+  // A Mac: one command that uploads the certificate, then trusts it.
+  await trust.getByRole('combobox', { name: 'Toestel' }).click()
+  await page.getByRole('option', { name: 'Mac' }).click()
+  await trust.getByRole('button', { name: 'Toon het commando' }).click()
+  const command = trust.getByTestId('trust-command')
+  await expect(command).toContainText("openssl s_client -connect '192.168.1.50:443'")
+  await expect(command).toContainText(`/api/public/print/cert/pr-1?code=code-1`)
+  await expect(command).toContainText('security add-trusted-cert')
+  await expect(trust).toContainText('Open Terminal')
+  // Windows: PowerShell instead, with a new code.
+  await trust.getByRole('combobox', { name: 'Toestel' }).click()
+  await page.getByRole('option', { name: 'Windows' }).click()
+  await trust.getByRole('button', { name: 'Toon het commando' }).click()
+  await expect(command).toContainText('Import-Certificate')
+  await expect(command).toContainText('code=code-2')
+
+  // An iPad: no certificate uploaded yet - says to do that from a computer first.
+  await trust.getByRole('combobox', { name: 'Toestel' }).click()
+  await page.getByRole('option', { name: 'iPad of iPhone' }).click()
+  await expect(trust).toContainText('nog niet opgeladen')
+  fake.certUploaded = true
+  await trust.getByRole('button', { name: 'Opnieuw proberen' }).click()
+  const profile = trust.getByTestId('profile-link')
+  await expect(profile).toHaveText('Download profiel')
+  await expect(profile).toHaveAttribute('href', /\/api\/public\/print\/profile\/pr-1\?token=tok-1$/)
+  await expect(profile).toHaveAttribute('target', '_blank')
+  await expect(trust).toContainText('Instellingen voor certificaatvertrouwen')
+
+  // Trusted now: checked again, it reaches the printer.
+  fake.reachable = true
+  await trust.getByRole('button', { name: 'Opnieuw controleren' }).click()
+  await expect(trust).toHaveAttribute('data-reach', 'ok')
+  await expect(trust).toContainText('Dit toestel bereikt de printer.')
+})
+
+test('a printer it reaches: says so; trusting it stays one tap away, with the uploaded certificate', async ({ station: page, fake }) => {
+  fake.printers = [{ ...PRINTER, certFingerprint: 'ab'.repeat(32), certUploadedAt: '2026-10-29T08:00:00.000Z', stations: [{ id: 'st-keuken', name: 'Keuken' }] }]
+  await page.reload()
+  await page.getByTestId('printer-button').click()
+  const trust = page.getByTestId('printer-trust')
+  await expect(trust).toHaveAttribute('data-reach', 'ok')
+  await expect(trust.getByTestId('trust-command')).toHaveCount(0)
+  await trust.getByRole('button', { name: 'Printer vertrouwen op dit toestel' }).click()
+  await expect(trust.getByTestId('printer-cert')).toContainText('AB:AB:AB')
 })

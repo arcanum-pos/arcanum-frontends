@@ -27,6 +27,7 @@ export default {
   print_job_not_found: 'Print job not found',
   print_job_taken: 'Another screen is already printing this',
   receipts_off: 'Printing receipts is switched off (console, Devices)',
+  printer_no_certificate: 'No certificate has been uploaded for this printer yet',
   unknown_station: 'Unknown station',
   product_not_found: 'Product not found',
   unknown_product: 'Unknown or archived product',

@@ -33,8 +33,9 @@ export const CONTENT_SECURITY_POLICY = [
 
 // By name without .html: Cloudflare's assets redirect /station.html to
 // /station, and that's the page the browser gets.
-// The station screen (its tickets), the kassa and the waiter's screen (receipts).
-export const PRINTING_PAGES = new Set(['/station', '/kassa', '/waiter'])
+// The station screen (its tickets), the kassa and the waiter's screen
+// (receipts), and the kassa's settings (does it reach its receipt printer?).
+export const PRINTING_PAGES = new Set(['/station', '/kassa', '/waiter', '/settings'])
 export const PRINTING_POLICY = CONTENT_SECURITY_POLICY.replace("connect-src 'self'", "connect-src 'self' https:")
 
 export const policyFor = (pathname: string) => (PRINTING_PAGES.has(pathname.replace(/\.html$/, '')) ? PRINTING_POLICY : CONTENT_SECURITY_POLICY)

@@ -23,6 +23,10 @@ export interface Printer {
   // that made it, or from showPrinterKey - the secret for its URL.
   lastPollAt: string | null
   pollKey?: string
+  // Push: the printer's own certificate, once a screen's command uploaded
+  // it (SHA-256, hex) - for an iPad's profile (printer-trust.tsx).
+  certFingerprint?: string | null
+  certUploadedAt?: string | null
   stations: { id: string; name: string }[]
 }
 
@@ -53,6 +57,31 @@ export const setStationPrinter = (orgId: string, stationId: string, printerId: s
 
 // The printer's own address, to accept its certificate (and its settings page).
 export const printerUrl = (p: { host: string | null; port: number | null }) => `https://${p.host}${p.port && p.port !== 443 ? `:${p.port}` : ''}/`
+
+// Does this device reach the printer? An opaque answer is enough: a
+// certificate this browser doesn't trust (or the printer off, a wrong
+// address) fails the request itself.
+export async function checkReachable(printer: { host: string | null; port: number | null }, timeoutMs = 5000): Promise<boolean> {
+  if (!printer.host) return false
+  try {
+    await fetch(printerUrl(printer), { mode: 'no-cors', cache: 'no-store', signal: AbortSignal.timeout(timeoutMs) })
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Trusting a push printer (printer-trust.tsx): a one-time code for the
+// command that uploads its certificate (15 min), a link for an iPad's
+// profile (10 min) - both opened without a session.
+export const newTrustCode = (orgId: string, printerId: string) => call<{ code: string; expiresAt: string }>(`${org(orgId)}/printers/${encodeURIComponent(printerId)}/trust-code`, { method: 'POST' })
+export const newProfileLink = (orgId: string, printerId: string) =>
+  call<{ token: string; expiresAt: string }>(`${org(orgId)}/printers/${encodeURIComponent(printerId)}/profile-link`, { method: 'POST' }).then((r) => ({
+    url: `${window.location.origin}/api/public/print/profile/${encodeURIComponent(printerId)}?token=${encodeURIComponent(r.token)}`,
+    expiresAt: r.expiresAt,
+  }))
+export const certUploadUrl = (printerId: string, code: string) => `${window.location.origin}/api/public/print/cert/${encodeURIComponent(printerId)}?code=${encodeURIComponent(code)}`
+export const showFingerprint = (hex: string) => hex.toUpperCase().match(/.{2}/g)?.join(':') ?? hex
 
 // One ePOS-Print request. `code`: the printer's (EPTR_REC_EMPTY, …), or
 // 'unreachable' when the browser couldn't reach it at all (off, wrong

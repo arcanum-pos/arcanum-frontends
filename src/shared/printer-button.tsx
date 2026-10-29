@@ -5,13 +5,15 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useMessages, type Messages } from '@/shared/i18n'
 import { cn } from 'cn'
+import { PrinterTrust } from './printer-trust'
 import { printerUrl, testPrint, type PrintJob, type Printer, type PrintState } from './printing'
 
 // A screen's printer (arcanum/PRINTING.md): which one it prints on, how it's
 // doing, and what didn't print. In the header: the printer's name with a
 // light - green ready, blue printing, red a problem - and how many failed.
-// Opened: choose another, open the printer to accept its certificate, a
-// test page, and "print again" for what failed.
+// Opened: choose another, whether this device reaches it (and how to trust
+// it - printer-trust.tsx), open the printer's own page, a test page, and
+// "print again" for what failed.
 
 type Texts = {
   none: string
@@ -22,7 +24,6 @@ type Texts = {
   address: (address: string) => string
   polls: string
   openPrinter: string
-  openPrinterHint: string
   test: string
   testSent: string
   failedTitle: string
@@ -44,12 +45,11 @@ const TEXTS: Messages<Texts> = {
     address: (a) => `Op het netwerk: ${a}`,
     polls: 'Deze printer haalt zijn bonnen zelf op bij Arcanum - dit scherm hoeft er niets voor te doen.',
     openPrinter: 'Printer openen',
-    openPrinterHint: 'De eerste keer op dit toestel: open de printer en aanvaard zijn certificaat, anders kan dit scherm hem niet bereiken.',
     test: 'Testafdruk',
     testSent: 'Testafdruk gestuurd.',
     failedTitle: 'Niet geprint',
     again: 'Opnieuw',
-    problem: (c) => problem(c, { unreachable: 'Printer niet bereikbaar - staat hij aan, en is zijn certificaat aanvaard?', paper: 'Het papier is op', cover: 'De klep staat open', device: 'De printer kent dit toestel-id niet', other: (c) => `Printerfout (${c})` }),
+    problem: (c) => problem(c, { unreachable: 'Printer niet bereikbaar - staat hij aan, en vertrouwt dit toestel hem?', paper: 'Het papier is op', cover: 'De klep staat open', device: 'De printer kent dit toestel-id niet', other: (c) => `Printerfout (${c})` }),
     failedCount: (n) => `${n} niet geprint`,
   },
   fr: {
@@ -61,12 +61,11 @@ const TEXTS: Messages<Texts> = {
     address: (a) => `Sur le réseau : ${a}`,
     polls: 'Cette imprimante récupère elle-même ses bons chez Arcanum - cet écran n’a rien à faire.',
     openPrinter: 'Ouvrir l’imprimante',
-    openPrinterHint: 'La première fois sur cet appareil : ouvrez l’imprimante et acceptez son certificat, sinon cet écran ne peut pas la joindre.',
     test: 'Page de test',
     testSent: 'Page de test envoyée.',
     failedTitle: 'Non imprimé',
     again: 'Réessayer',
-    problem: (c) => problem(c, { unreachable: 'Imprimante injoignable - est-elle allumée, et son certificat accepté ?', paper: 'Plus de papier', cover: 'Le capot est ouvert', device: 'L’imprimante ne connaît pas cet identifiant', other: (c) => `Erreur d’imprimante (${c})` }),
+    problem: (c) => problem(c, { unreachable: 'Imprimante injoignable - est-elle allumée, et cet appareil lui fait-il confiance ?', paper: 'Plus de papier', cover: 'Le capot est ouvert', device: 'L’imprimante ne connaît pas cet identifiant', other: (c) => `Erreur d’imprimante (${c})` }),
     failedCount: (n) => `${n} non imprimé${n > 1 ? 's' : ''}`,
   },
   en: {
@@ -78,12 +77,11 @@ const TEXTS: Messages<Texts> = {
     address: (a) => `On the network: ${a}`,
     polls: 'This printer fetches its tickets from Arcanum itself - this screen has nothing to do for it.',
     openPrinter: 'Open printer',
-    openPrinterHint: "The first time on this device: open the printer and accept its certificate, or this screen can't reach it.",
     test: 'Test page',
     testSent: 'Test page sent.',
     failedTitle: 'Not printed',
     again: 'Print again',
-    problem: (c) => problem(c, { unreachable: "Printer can't be reached - is it on, and its certificate accepted?", paper: 'Out of paper', cover: 'The cover is open', device: "The printer doesn't know this device id", other: (c) => `Printer error (${c})` }),
+    problem: (c) => problem(c, { unreachable: "Printer can't be reached - is it on, and does this device trust it?", paper: 'Out of paper', cover: 'The cover is open', device: "The printer doesn't know this device id", other: (c) => `Printer error (${c})` }),
     failedCount: (n) => `${n} not printed`,
   },
 }
@@ -181,7 +179,7 @@ export function PrinterButton({
                     {t.test}
                   </Button>
                 </div>
-                {printer.connection === 'push' && <p className="text-xs text-muted-foreground">{t.openPrinterHint}</p>}
+                {printer.connection === 'push' && <PrinterTrust orgId={orgId} printer={printer} />}
                 {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
                 {extra}
                 {failed.length > 0 && (

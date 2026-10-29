@@ -456,6 +456,8 @@ export class FakeBackend {
     if (p === '/api/devices/ws-token') return { status: 200, body: { token: 'test-token' } }
     if (p === '/api/organizations/org-e2e/receipt-settings' && method === 'GET') return { status: 200, body: { enabled: this.receiptsEnabled } }
     if (p === '/api/organizations/org-e2e/printers' && method === 'GET') return { status: 200, body: this.printers }
+    // Trusting a push printer (printer-trust.tsx): the command's one-time code.
+    if (/^\/api\/organizations\/org-e2e\/printers\/[^/]+\/trust-code$/.test(p) && method === 'POST') return { status: 201, body: { code: 'code-1', expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() } }
     const receipt = p.match(/^\/api\/organizations\/org-e2e\/printers\/([^/]+)\/receipt$/)
     if (receipt && method === 'POST') {
       if (!this.receiptsEnabled) return { status: 409, body: { error: 'Bonnen printen staat niet aan (console, Toestellen)', code: 'receipts_off' } }

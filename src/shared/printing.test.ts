@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { printerUrl, sendToEpson } from './printing'
+import { checkReachable, printerUrl, sendToEpson, showFingerprint } from './printing'
 
 const printer = { host: '192.168.1.50', port: 443, deviceId: 'local_printer' }
 const answer = (success: boolean, code = '') =>
@@ -31,5 +31,26 @@ describe('sendToEpson (ePOS-Print)', () => {
   it('addresses a printer on another port', () => {
     expect(printerUrl({ host: '192.168.1.45', port: 8043 })).toBe('https://192.168.1.45:8043/')
     expect(printerUrl({ host: 'printer.local', port: 443 })).toBe('https://printer.local/')
+  })
+})
+
+describe('checkReachable', () => {
+  it('any answer, even an opaque one, means this browser reaches (and trusts) the printer', async () => {
+    const fetch = vi.fn(async () => new Response(null))
+    vi.stubGlobal('fetch', fetch)
+    expect(await checkReachable({ host: '192.168.1.50', port: 8043 })).toBe(true)
+    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('https://192.168.1.50:8043/')
+    expect(init.mode).toBe('no-cors')
+  })
+
+  it('a failed request (untrusted certificate, off, wrong address) does not; no address neither', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))))
+    expect(await checkReachable({ host: '192.168.1.50', port: 443 })).toBe(false)
+    expect(await checkReachable({ host: null, port: null })).toBe(false)
+  })
+
+  it('shows a fingerprint as Keychain and Windows do', () => {
+    expect(showFingerprint('ab01ff')).toBe('AB:01:FF')
   })
 })

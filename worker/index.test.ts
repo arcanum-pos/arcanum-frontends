@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { createApp } from './app'
-import { CONTENT_SECURITY_POLICY, PRINTING_POLICY } from './csp'
+import { CONTENT_SECURITY_POLICY, policyFor, PRINTING_POLICY } from './csp'
 import worker from './index'
 import { diskAssets } from './node-assets'
 
@@ -58,6 +58,8 @@ for (const [where, make] of [['on Cloudflare', cloudflare], ['self-hosted', onDi
       expect((await get('/station')).headers.get('Content-Security-Policy')).toBe(PRINTING_POLICY)
       // Receipts: the kassa too; a page that never prints stays 'self'.
       expect((await get('/kassa')).headers.get('Content-Security-Policy')).toBe(PRINTING_POLICY)
+      // The kassa's settings check that it reaches its receipt printer.
+      expect(policyFor('/settings')).toBe(PRINTING_POLICY)
       expect((await get('/admin')).headers.get('Content-Security-Policy')).toBe(CONTENT_SECURITY_POLICY)
       expect(PRINTING_POLICY).toContain("connect-src 'self' https:")
       expect(CONTENT_SECURITY_POLICY).toContain("connect-src 'self';")

@@ -65,6 +65,21 @@ test('the printer is chosen in Instellingen, only when receipts are on', async (
   expect(await kassa.evaluate(() => JSON.parse(localStorage.getItem('arcanum-receipt-printer') || '{}'))).toEqual({ 'org-e2e': { printerId: 'pr-1', auto: true } })
 })
 
+test("a receipt printer the kassa sends to: Instellingen says whether this kassa reaches it, and how to trust it", async ({ kassa, backend }) => {
+  backend.receiptsEnabled = true
+  backend.printers = [{ ...PRINTER, connection: 'push', host: '192.168.1.60', port: 443 }]
+  await choose(kassa, { printerId: 'pr-1', auto: false })
+  await kassa.route('https://192.168.1.60/', (route) => route.abort('failed'))
+  await kassa.goto('/settings.html')
+  const trust = kassa.getByTestId('printer-trust')
+  await expect(trust).toHaveAttribute('data-reach', 'no')
+  await trust.getByRole('combobox', { name: 'Toestel' }).click()
+  await kassa.getByRole('option', { name: 'Linux of Chromebook' }).click()
+  await trust.getByRole('button', { name: 'Toon het commando' }).click()
+  await expect(trust.getByTestId('trust-command')).toContainText('/api/public/print/cert/pr-1?code=code-1')
+  await expect(trust.getByTestId('trust-command')).toContainText('certutil')
+})
+
 test('a cash payment shows as paid at once, but the receipt waits until the backend has recorded it', async ({ kassa, backend }) => {
   backend.receiptsEnabled = true
   backend.printers = [PRINTER]
