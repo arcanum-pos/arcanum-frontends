@@ -25,6 +25,7 @@ interface Names {
   event: string
   modes: [string, string]
   kitchen: string
+  printer: string
   bar: string
   note: string
 }
@@ -47,6 +48,7 @@ export const NAMES: Record<Lang, Names> = {
     event: 'Spaghettiavond 2026',
     modes: ['Ter plaatse', 'Take-away'],
     kitchen: 'Keuken',
+    printer: 'Keukenprinter',
     bar: 'Bar',
     note: 'zonder kaas',
   },
@@ -64,6 +66,7 @@ export const NAMES: Record<Lang, Names> = {
     event: 'Souper spaghetti 2026',
     modes: ['Sur place', 'À emporter'],
     kitchen: 'Cuisine',
+    printer: 'Imprimante cuisine',
     bar: 'Bar',
     note: 'sans fromage',
   },
@@ -81,6 +84,7 @@ export const NAMES: Record<Lang, Names> = {
     event: 'Spaghetti dinner 2026',
     modes: ['Eat in', 'Take away'],
     kitchen: 'Kitchen',
+    printer: 'Kitchen printer',
     bar: 'Bar',
     note: 'no cheese',
   },
