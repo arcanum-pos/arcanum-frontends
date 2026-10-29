@@ -158,3 +158,31 @@ export function salesReport(lang: Lang) {
     openTabs: { count: 3, outstandingCents: 4870 },
   }
 }
+
+// The evening's payments behind the report's charts: today from 17:30 to
+// 22:30, busiest around dinner, adding up to the report's totals per method.
+export function salesTransactions(lang: Lang) {
+  const { payments } = salesReport(lang)
+  const today = new Date()
+  today.setHours(17, 30, 0, 0)
+  const out: { id: string; amountCents: number; description: string; method: string; items: Record<string, number>; slotId: null; deviceId: null; deviceName: null; userName: null; userEmail: null; eventId: null; tipCents: number; tabId: null; completedAt: string }[] = []
+  let i = 0
+  for (const m of payments.byMethod) {
+    let left = m.amountCents
+    let tipLeft = m.tipCents
+    for (let k = 0; k < m.count; k++) {
+      const last = k === m.count - 1
+      // Roughly even amounts, a little apart, whole tens of cents.
+      const amount = last ? left : Math.round(((m.amountCents / m.count) * (0.7 + ((k * 37) % 60) / 100)) / 10) * 10
+      const tip = last ? tipLeft : Math.min(tipLeft, k % 3 === 0 ? Math.round(m.tipCents / Math.ceil(m.count / 3) / 10) * 10 : 0)
+      left -= amount
+      tipLeft -= tip
+      // Spread over five hours, peaking around 19:45 (a triangular spread).
+      const t = (i * 0.618) % 1
+      const minutes = Math.round(300 * (t < 0.45 ? Math.sqrt(t * 0.45) : 1 - Math.sqrt((1 - t) * 0.55)))
+      out.push({ id: `tx-${i}`, amountCents: amount, description: '', method: m.method, items: {}, slotId: null, deviceId: null, deviceName: null, userName: null, userEmail: null, eventId: null, tipCents: tip, tabId: null, completedAt: new Date(today.getTime() + minutes * 60_000).toISOString() })
+      i++
+    }
+  }
+  return out
+}

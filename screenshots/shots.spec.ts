@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 import type { Page } from '@playwright/test'
 import { expect, test } from '../e2e/console-fixtures'
 import { ORG_ID, type FakeCatalogAdmin } from '../e2e/fake-catalog-admin'
-import { BROWSER_LOCALE, LANGS, NAMES, salesReport, type Lang } from './sample'
+import { BROWSER_LOCALE, LANGS, NAMES, salesReport, salesTransactions, type Lang } from './sample'
 import { evening, openKassa, QR, seedMenu } from './scenes'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -76,6 +76,7 @@ for (const lang of LANGS) {
       await shot(page, 'console-catalog', lang)
 
       catalogAdmin.salesReport = { ...catalogAdmin.salesReport, ...salesReport(lang) }
+      catalogAdmin.transactions = salesTransactions(lang)
       page = await open('/reports')
       await expect(page.getByText(NAMES[lang].items.pils).first()).toBeVisible()
       await shot(page, 'console-reports', lang)
@@ -215,7 +216,8 @@ async function eventShot(open: (path: string) => Promise<Page>, catalogAdmin: Fa
   ]
   const page = await open('/events')
   await page.getByRole('row').filter({ hasText: n.event }).getByRole('button').last().click()
-  await expect(page.getByRole('dialog').getByTestId('order-mode')).toBeVisible()
+  await page.getByRole('menuitem').first().click() // Set up (the line's … menu)
+  await expect(page.getByRole('dialog').getByTestId('order-mode').first()).toBeVisible()
   // The installation's own address, not the test server's.
   await page.locator('#self-order-url').evaluate((el: HTMLTextAreaElement) => (el.value = 'https://kassa.scoutskabouterland.be/bestel/spaghetti-7kq2'))
   await page.mouse.move(0, 0)
