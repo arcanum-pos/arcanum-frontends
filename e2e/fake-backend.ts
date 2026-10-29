@@ -351,13 +351,15 @@ export class FakeBackend {
   lastLeftInDrawer: number | null = null
   registerIdsSent: (string | null)[] = []
   shiftCash = 0
+  // The shift's payments per method, when a scene wants more than the cash taken (screenshots).
+  shiftMethods: Record<string, { count: number; cents: number; tipCents: number }> | null = null
   // Who worked on the open shift (the backend works it out from the payments).
   shiftPeople: { name: string; payments: number }[] = []
   private shiftJson() {
     const s = this.shift
     if (!s) return null
     const expected = s.openingFloatCents + this.shiftCash + s.movements.reduce((n: number, m: any) => n + (m.direction === 'in' ? m.amountCents : -m.amountCents), 0)
-    return { ...s, totals: { methods: this.shiftCash ? { cash: { count: 1, cents: this.shiftCash, tipCents: 0 } } : {}, cashIn: 0, cashOut: 0 }, expectedCents: this.blindCount ? null : expected, pendingPayments: 0, openTabs: this.tabs.filter((t) => t.status === 'open').length, people: this.shiftPeople, _expected: expected }
+    return { ...s, totals: { methods: this.shiftMethods ?? (this.shiftCash ? { cash: { count: 1, cents: this.shiftCash, tipCents: 0 } } : {}), cashIn: 0, cashOut: 0 }, expectedCents: this.blindCount ? null : expected, pendingPayments: 0, openTabs: this.tabs.filter((t) => t.status === 'open').length, people: this.shiftPeople, _expected: expected }
   }
   private registerRoute(method: string, p: string, body: any): FakeResponse | null {
     if (/^\/api\/organizations\/[^/]+\/registers$/.test(p) && method === 'GET') return { status: 200, body: { blindCount: this.blindCount, registers: this.registers } }

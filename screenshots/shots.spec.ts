@@ -290,6 +290,12 @@ async function kasopmaakShot(page: Page, lang: Lang) {
     movements: [{ direction: 'out', amountCents: 1500, reason: { nl: 'IJs gekocht', fr: 'Glace achetée', en: 'Bought ice' }[lang], by: null, at: new Date(now - 90 * 60e3).toISOString() }],
   }
   backend.shiftCash = 41250
+  // The evening's payments on this drawer, by method (as many as the people below took).
+  backend.shiftMethods = {
+    cash: { count: 21, cents: 41250, tipCents: 0 },
+    bancontact: { count: 31, cents: 128420, tipCents: 1900 },
+    sumup: { count: 22, cents: 92130, tipCents: 1250 },
+  }
   backend.registers[0].name = REGISTER[lang]
   backend.shiftPeople = WORKERS
   await page.setViewportSize({ width: 1707, height: 1067 })
@@ -301,8 +307,11 @@ async function kasopmaakShot(page: Page, lang: Lang) {
   await expect(cashUp).toBeVisible()
   for (const [d, n] of [['€ 50', 3], ['€ 20', 8], ['€ 10', 10], ['€ 5', 4], ['€ 2', 6], ['€ 1', 5]] as const) await cashUp.getByLabel(d, { exact: true }).fill(String(n))
   await cashUp.locator('#cash-up-left').fill('50')
-  await page.getByTestId('more-menu').evaluate((el) => (el as HTMLElement).blur())
   await cashUp.evaluate((el) => el.scrollIntoView({ block: 'start' }))
+  // No focus ring on the menu that opened it: once the menu is gone (it
+  // hands focus back to its button as it closes), nothing has focus.
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
   await page.mouse.move(0, 0)
   await shot(page, 'kasopmaak', lang)
 }
