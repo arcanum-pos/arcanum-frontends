@@ -22,6 +22,8 @@ class FakeRestaurant {
   tab: any = null
   rounds: any[] = []
   payments: any[] = []
+  // The device marker each round and payment came with (a personal device: T7).
+  devices: (string | null)[] = []
   calls: string[] = []
   managed: { table: string; action: string; body: any }[] = []
   promised: { name: string; zone: string | null; ready: boolean; promisedAt: string }[] = []
@@ -104,6 +106,7 @@ const test = base.extend<{ fake: FakeRestaurant; waiter: Page; push: () => void 
       if (p === '/api/organizations/org-1/tabs/tab1/orders') {
         const body = req.postDataJSON()
         fake.rounds.push(body)
+        fake.devices.push((await req.headerValue('X-Arcanum-Device')) ?? null)
         fake.tab.lines.push({ id: 'l1', orderId: 'o1', itemCode: null, name: 'Spaghetti', unitPriceCents: 1200, quantity: 2, voidsLineId: null, voidReason: null, voidedQuantity: 0, createdAt: '' })
         Object.assign(fake.tab, { totalCents: 2400, outstandingCents: 2400 })
         return route.fulfill({ status: 201, json: fake.tab })
@@ -114,6 +117,7 @@ const test = base.extend<{ fake: FakeRestaurant; waiter: Page; push: () => void 
         })
       if (p === '/api/bancontact/payments') {
         fake.payments.push(req.postDataJSON())
+        fake.devices.push((await req.headerValue('X-Arcanum-Device')) ?? null)
         return route.fulfill({ status: 201, json: { chargeId: 'c1', qrCodeUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=', status: 'pending' } })
       }
       if (p === '/api/bancontact/sumup/readers') return route.fulfill({ json: { readers: [], tapToPay: fake.tapToPay } })
@@ -159,6 +163,8 @@ test('the tables by zone and status; seat guests, order a round, take payment', 
   await expect(page.getByTestId('bancontact-qr')).toBeVisible()
   expect(await overflowingButtons(page), 'button text running over').toEqual([])
   expect(fake.payments[0]).toMatchObject({ orgId: 'org-1', tabId: 'tab1', amount: 2400 })
+  // A personal device: no person to choose, even where the organisation requires one.
+  expect(fake.devices).toEqual(['personal', 'personal'])
 })
 
 test('a table to clear: Opgeruimd makes it free again', async ({ waiter: page, fake }) => {

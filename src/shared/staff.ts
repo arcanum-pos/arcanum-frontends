@@ -47,8 +47,17 @@ export function onStaffChange(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
+// A personal device (the waiter screen, on someone's own phone and account -
+// T7) chooses nobody: it says so, and the backend records the account (or
+// its linked staff member) even where an organisation requires a person.
+let personalDevice = false
+export function markPersonalDevice(): void {
+  personalDevice = true
+}
+
 // The header to send with what this device does — nothing without a person.
 export function staffHeaders(orgId: string | null | undefined): Record<string, string> {
+  if (personalDevice) return { 'X-Arcanum-Device': 'personal' }
   const staff = chosenStaff(orgId)
   return staff ? { 'X-Staff': staff.token } : {}
 }

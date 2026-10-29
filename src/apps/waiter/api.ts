@@ -2,6 +2,7 @@
 // tabs, menus and payments go through the kassa's own modules.
 import { apiErrorMessage } from '@/shared/api-errors'
 import { getDeviceId, getDeviceName } from '@/shared/device'
+import { staffHeaders } from '@/shared/staff'
 
 export interface TableInfo {
   id: string
@@ -53,7 +54,7 @@ export async function startPayment(orgId: string, tabId: string, amountCents: nu
   const path = method === 'bancontact' ? '/api/bancontact/payments' : '/api/bancontact/sumup/charge'
   const res = await fetch(path, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...staffHeaders(orgId) },
     body: JSON.stringify({ orgId, tabId, amount: amountCents, deviceId: getDeviceId(), deviceName: getDeviceName(), ...(method === 'sumup' ? { method: 'sumup', ...(app ? { app: true } : { readerId }) } : {}) }),
   })
   const data = await res.json().catch(() => null)
