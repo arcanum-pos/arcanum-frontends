@@ -533,6 +533,14 @@ export class FakeBackend {
         this.resolveCharge(charge.id, false)
         return { status: 200, body: { ok: true, chargeId: charge.id, status: charge.status } }
       }
+      // Cash, "keep the change": added to the amount and the tip (arcanum-backend).
+      if (body.extraTipCents) {
+        if (!charge || charge.method !== 'cash' || body.success === false) return { status: 400, body: { error: 'x' } }
+        if (charge.status === 'pending') {
+          charge.amountCents += body.extraTipCents
+          charge.tipCents += body.extraTipCents
+        }
+      }
       this.resolveCharge(body.chargeId, body.success !== false)
       return { status: 200, body: { ok: true, chargeId: body.chargeId } }
     }

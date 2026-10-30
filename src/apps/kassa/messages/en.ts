@@ -141,6 +141,12 @@ export default {
   status: 'Status:',
   expiresIn: (seconds: number) => `Expires in ${seconds}s`,
   expired: 'Expired',
+  // Cash: what the customer handed over; the change back, or kept as a tip.
+  received: 'Received',
+  receivedTooLittle: (short: string) => `${short} short`,
+  paidGiveChange: (change: string) => `Paid, ${change} change`,
+  paidKeepTip: (change: string) => `Paid, ${change} is a tip`,
+  changeBack: 'Change to give',
   manual: {
     cash: { waiting: 'Waiting for cash payment', confirm: 'Confirm cash received', paid: 'Paid (cash)' },
     sumup: { waiting: 'Waiting for SumUp payment (automatic, or confirm below)', confirm: 'Confirm SumUp payment', paid: 'Paid (SumUp)' },

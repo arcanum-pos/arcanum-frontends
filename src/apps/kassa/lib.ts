@@ -229,6 +229,45 @@ export interface CurrentPayment {
   tapToken?: string
 }
 
+// Cash: what the customer handed over, against what's asked. Change to
+// give back, or (the customer says "keep the change") a tip. Nothing until
+// more than asked is entered; capped so the payment's tip stays allowed.
+export function cashChange(current: Pick<CurrentPayment, 'amountCents' | 'tipCents'>, receivedCents: number): number {
+  if (receivedCents <= current.amountCents) return 0
+  return Math.min(receivedCents - current.amountCents, MAX_TIP_CENTS - current.tipCents)
+}
+
+// Euro notes and coins, largest first (no €500/€200 notes: rarely seen at a bar).
+export const EURO_DENOMINATIONS = [10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1]
+
+// The change in as few notes and coins as possible.
+export function changeInDenominations(cents: number): { cents: number; count: number }[] {
+  const out: { cents: number; count: number }[] = []
+  let left = Math.max(0, Math.round(cents))
+  for (const d of EURO_DENOMINATIONS) {
+    const count = Math.floor(left / d)
+    if (count > 0) out.push({ cents: d, count })
+    left -= count * d
+  }
+  return out
+}
+
+// The notes a customer is likely to hand over for this amount: the next
+// three notes above it (€5 to €100).
+export function likelyNotes(amountCents: number): number[] {
+  return [500, 1000, 2000, 5000, 10000].filter((n) => n > amountCents).slice(0, 3)
+}
+
+// The payment once "keep the change" is confirmed: amount and tip go up,
+// and the breakdown's tip line (the last one, when there's a tip) shows the
+// new tip.
+export function withExtraTip(m: BreakdownMessages, current: CurrentPayment, extraCents: number): CurrentPayment {
+  if (extraCents <= 0) return current
+  const tipCents = current.tipCents + extraCents
+  const lines = current.tipCents > 0 ? current.breakdown.slice(0, -1) : current.breakdown
+  return { ...current, amountCents: current.amountCents + extraCents, tipCents, breakdown: [...lines, m.breakdownTip(formatEuro(tipCents))] }
+}
+
 export function isPaymentResolved(current: CurrentPayment): boolean {
   return current.status === 'RESOLVED' || current.status === 'SUCCEEDED'
 }

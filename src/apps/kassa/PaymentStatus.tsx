@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { Check } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { formatEuro } from '@/shared/format'
 import { useMessages } from '@/shared/i18n'
 import { STATUS_MESSAGES } from '@/shared/payment-labels'
-import { isPaymentResolved, tapLink, type CurrentPayment, type ManualStatus } from './lib'
+import { cashChange, changeInDenominations, centsToInput, isPaymentResolved, likelyNotes, readAmountCents, tapLink, type CurrentPayment, type ManualStatus } from './lib'
 import { KASSA_MESSAGES } from './messages'
 
 // A payment in progress, in place of the kassa (styled after the payment
@@ -24,7 +26,8 @@ export function PaymentStatus({
   manualStatus: ManualStatus | null
   countdownText: string
   showConfirmButton: boolean
-  onConfirm: () => void
+  // Cash: with the change kept as a tip ("keep the change"), in cents.
+  onConfirm: (extraTipCents?: number) => void
   onCancel: () => void
   onNext: () => void
   // Once paid: "Bon printen" (when the org has receipts and this kassa a printer).
@@ -33,6 +36,11 @@ export function PaymentStatus({
   const isManual = current.method === 'cash' || current.method === 'sumup' || current.method === 'tap'
   const resolved = isPaymentResolved(current)
   const m = useMessages(KASSA_MESSAGES)
+  // Cash: what the customer handed over (optional), for the change.
+  const [received, setReceived] = useState('')
+  const receivedCents = readAmountCents(received)
+  const change = current.method === 'cash' ? cashChange(current, receivedCents) : 0
+  const tooLittle = receivedCents > 0 && receivedCents < current.amountCents
   const statusLabels = useMessages(STATUS_MESSAGES)
   const methodLabel = m.methods[current.method] ?? current.method
   const manual = isManual ? m.manual[current.method as 'cash' | 'sumup' | 'tap'] : null
@@ -108,8 +116,51 @@ export function PaymentStatus({
               {!resolved && (current.method === 'sumup' || current.method === 'tap') && <Spinner />}
               <span>{manualText}</span>
             </p>
-            {showConfirmButton && (
-              <Button className="h-11 w-full rounded-[10px] text-sm" onClick={onConfirm}>
+            {showConfirmButton && current.method === 'cash' && (
+              <div className="flex w-full flex-col gap-2" data-testid="cash-received">
+                <label className="flex items-center gap-3 text-left text-[13px]">
+                  <span className="shrink-0 text-foreground/75">{m.received}</span>
+                  <Input
+                    inputMode="decimal"
+                    placeholder={formatEuro(current.amountCents)}
+                    value={received}
+                    onChange={(e) => setReceived(e.target.value)}
+                    className="h-10 text-right font-mono tabular-nums"
+                    data-testid="cash-received-input"
+                  />
+                </label>
+                <div className="flex gap-2">
+                  {likelyNotes(current.amountCents).map((note) => (
+                    <Button key={note} variant="outline" className="h-9 flex-1 rounded-[10px] font-mono text-[13px] tabular-nums" onClick={() => setReceived(centsToInput(note))}>
+                      {formatEuro(note)}
+                    </Button>
+                  ))}
+                </div>
+                {change > 0 && (
+                  <div className="rounded-[10px] border bg-muted/40 px-3 py-2 text-left" data-testid="cash-change">
+                    <p className="flex justify-between text-[13px] font-semibold">
+                      <span>{m.changeBack}</span>
+                      <span className="font-mono tabular-nums">{formatEuro(change)}</span>
+                    </p>
+                    <p className="mt-0.5 text-[12.5px] text-muted-foreground" data-testid="cash-change-coins">
+                      {changeInDenominations(change).map((d) => `${d.count} × ${formatEuro(d.cents)}`).join('  ·  ')}
+                    </p>
+                  </div>
+                )}
+                {tooLittle && <p className="text-[12.5px] text-destructive" data-testid="cash-too-little">{m.receivedTooLittle(formatEuro(current.amountCents - receivedCents))}</p>}
+              </div>
+            )}
+            {showConfirmButton && change > 0 ? (
+              <div className="flex w-full flex-col gap-2">
+                <Button className="h-11 w-full rounded-[10px] text-sm" onClick={() => onConfirm(0)} data-testid="cash-give-change">
+                  {m.paidGiveChange(formatEuro(change))}
+                </Button>
+                <Button variant="secondary" className="h-11 w-full rounded-[10px] text-sm" onClick={() => onConfirm(change)} data-testid="cash-keep-tip">
+                  {m.paidKeepTip(formatEuro(change))}
+                </Button>
+              </div>
+            ) : showConfirmButton && (
+              <Button className="h-11 w-full rounded-[10px] text-sm" onClick={() => onConfirm(0)}>
                 {manual?.confirm}
               </Button>
             )}

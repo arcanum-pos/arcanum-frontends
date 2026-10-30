@@ -78,3 +78,49 @@ test('a line added by another kassa just before paying with a tip: 409, no charg
   // Refreshed: € 6,00 on the tab now, still with the € 1 tip on top.
   await expect(kassa.getByRole('button', button('Afrekenen € 7,00'))).toBeVisible()
 })
+
+test('cash: the change in notes and coins, given back or kept as a tip', async ({ kassa, backend }) => {
+  backend.entry('v-bon')!.priceCents = 175
+  await kassa.reload()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
+
+  // € 17,50, the customer hands over € 20.
+  await kassa.getByRole('button', button('10 × Bon')).click()
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', button('Afrekenen € 17,50')).click()
+  await kassa.getByRole('button', button('€ 20,00')).click()
+  await expect(kassa.getByTestId('cash-change')).toContainText('€ 2,50')
+  await expect(kassa.getByTestId('cash-change-coins')).toHaveText('1 × € 2,00  ·  1 × € 0,50')
+
+  // Too little: said so, and no change buttons.
+  await kassa.getByTestId('cash-received-input').fill('15')
+  await expect(kassa.getByTestId('cash-too-little')).toHaveText('Nog € 2,50 te weinig')
+  await expect(kassa.getByTestId('cash-keep-tip')).toHaveCount(0)
+
+  // "Keep the change": € 2,50 tip on the payment, not on the tab.
+  await kassa.getByTestId('cash-received-input').fill('20')
+  await kassa.getByRole('button', button('Betaald, € 2,50 is fooi')).click()
+  await expect(kassa.getByText('Fooi = € 2,50')).toBeVisible()
+  await expect(kassa.getByText('€ 20,00', { exact: true })).toBeVisible()
+  expect(backend.charges[0]).toMatchObject({ amountCents: 2000, tipCents: 250, status: 'succeeded' })
+  await kassa.getByRole('button', button('Volgende klant')).click()
+  expect(backend.tabs[0]).toMatchObject({ status: 'closed' })
+
+  // Next customer, change given back: no tip.
+  await kassa.getByRole('button', button('10 × Bon')).click()
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', button('Afrekenen € 17,50')).click()
+  await kassa.getByRole('button', button('€ 50,00')).click()
+  await expect(kassa.getByTestId('cash-change-coins')).toHaveText('1 × € 20,00  ·  1 × € 10,00  ·  1 × € 2,00  ·  1 × € 0,50')
+  await kassa.getByRole('button', button('Betaald, € 32,50 terug')).click()
+  expect(backend.charges[1]).toMatchObject({ amountCents: 1750, tipCents: 0, status: 'succeeded' })
+})
+
+test('cash: confirming without filling in what was received works as before', async ({ kassa, backend }) => {
+  await kassa.getByRole('button', button('10 × Bon')).click()
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', button('Afrekenen € 10,00')).click()
+  await expect(kassa.getByTestId('cash-change')).toHaveCount(0)
+  await kassa.getByRole('button', button('Bevestig ontvangst contant geld')).click()
+  expect(backend.charges[0]).toMatchObject({ amountCents: 1000, tipCents: 0, status: 'succeeded' })
+})

@@ -160,6 +160,12 @@ const nl = {
   status: 'Status:',
   expiresIn: (seconds: number) => `Vervalt over ${seconds}s`,
   expired: 'Verlopen',
+  // Cash: what the customer handed over; the change back, or kept as a tip.
+  received: 'Ontvangen',
+  receivedTooLittle: (short: string) => `Nog ${short} te weinig`,
+  paidGiveChange: (change: string) => `Betaald, ${change} terug`,
+  paidKeepTip: (change: string) => `Betaald, ${change} is fooi`,
+  changeBack: 'Terug te geven',
   manual: {
     cash: { waiting: 'Wacht op contante betaling', confirm: 'Bevestig ontvangst contant geld', paid: 'Betaald (contant)' },
     sumup: { waiting: 'Wacht op SumUp betaling (automatisch, of bevestig hieronder)', confirm: 'Bevestig SumUp betaling', paid: 'Betaald (SumUp)' },

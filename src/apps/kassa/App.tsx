@@ -25,6 +25,7 @@ import {
   changeQuantity,
   subtractDraft,
   clampTip,
+  withExtraTip,
   customerOrderFromTab,
   customerViewOrder,
   selectionCents,
@@ -820,31 +821,35 @@ export default function App() {
     }
   }
 
-  async function resolveTrackedCharge(chargeId: string, success: boolean) {
+  async function resolveTrackedCharge(chargeId: string, success: boolean, extraTipCents = 0) {
     try {
       await fetch(`${WORKER_URL}/sumup/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chargeId, success }),
+        body: JSON.stringify({ chargeId, success, ...(extraTipCents > 0 ? { extraTipCents } : {}) }),
       })
     } catch (err) {
       console.error('Kon betaling niet bijwerken', err)
     }
   }
 
-  function confirmManualPayment() {
+  // extraTipCents: cash only, "keep the change" (the Ontvangen field).
+  function confirmManualPayment(extraTipCents = 0) {
     // Guards against the SumUp push and this manual tap both trying to
     // complete the same payment.
     const cur = currentRef.current
     if (!cur || (cur.method !== 'cash' && cur.method !== 'sumup') || cur.status === 'RESOLVED') return
+    const extra = cur.method === 'cash' ? extraTipCents : 0
     stopCountdown()
-    setCurrentBoth({ ...cur, status: 'RESOLVED' })
+    setCurrentBoth({ ...withExtraTip(m, cur, extra), status: 'RESOLVED' })
     setManualStatus({ kind: 'paid' })
+    // The customer display shows the amount with the tip, then paid.
+    if (extra > 0) broadcastCurrent()
     channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
     // Backend records the sale and closes the tab once it resolves the charge.
     // Shown as paid at once; a receipt waits until it's recorded (or it
     // would show nothing paid).
-    resolveTrackedCharge(cur.chargeId, true).finally(() => setRecordedCharge(cur.chargeId))
+    resolveTrackedCharge(cur.chargeId, true, extra).finally(() => setRecordedCharge(cur.chargeId))
   }
 
   function clearPaymentView() {
@@ -1447,6 +1452,7 @@ export default function App() {
       {current && (
         <div className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/25 p-6 pt-12 backdrop-blur-md" data-testid="payment-overlay">
           <PaymentStatus
+            key={current.chargeId}
             current={current}
             manualStatus={manualStatus}
             countdownText={countdownText}

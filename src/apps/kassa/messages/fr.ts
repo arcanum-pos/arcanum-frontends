@@ -141,6 +141,12 @@ export default {
   status: 'Statut :',
   expiresIn: (seconds: number) => `Expire dans ${seconds} s`,
   expired: 'Expiré',
+  // Cash: what the customer handed over; the change back, or kept as a tip.
+  received: 'Reçu',
+  receivedTooLittle: (short: string) => `Il manque ${short}`,
+  paidGiveChange: (change: string) => `Payé, rendre ${change}`,
+  paidKeepTip: (change: string) => `Payé, ${change} de pourboire`,
+  changeBack: 'À rendre',
   manual: {
     cash: { waiting: 'En attente du paiement en espèces', confirm: 'Confirmer la réception des espèces', paid: 'Payé (espèces)' },
     sumup: { waiting: 'En attente du paiement SumUp (automatique, ou confirmez ci-dessous)', confirm: 'Confirmer le paiement SumUp', paid: 'Payé (SumUp)' },

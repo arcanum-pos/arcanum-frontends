@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
 import {
+  cashChange,
+  changeInDenominations,
+  likelyNotes,
+  withExtraTip,
   mergeTabLines,
   spreadUnits,
   addToDraft,
@@ -440,5 +444,58 @@ describe('mergeTabLines', () => {
     expect(spreadUnits(parts, 3, true).map((x) => [x.line.id, x.quantity])).toEqual([['b', 2], ['a', 1]])
     expect(spreadUnits(parts, 3).map((x) => [x.line.id, x.quantity])).toEqual([['a', 2], ['b', 1]])
     expect(spreadUnits(parts, 9).reduce((n, x) => n + x.quantity, 0)).toBe(4)
+  })
+})
+
+describe('cash change', () => {
+  const pay = { amountCents: 1750, tipCents: 0 }
+
+  it('is what was handed over minus the amount, nothing until more is entered', () => {
+    expect(cashChange(pay, 2000)).toBe(250)
+    expect(cashChange(pay, 1750)).toBe(0)
+    expect(cashChange(pay, 1000)).toBe(0)
+    expect(cashChange(pay, 0)).toBe(0)
+  })
+
+  it('never lets the tip pass the maximum', () => {
+    expect(cashChange({ amountCents: 1000, tipCents: 99_900 }, 5000)).toBe(100)
+  })
+
+  it('in as few notes and coins as possible', () => {
+    expect(changeInDenominations(250)).toEqual([{ cents: 200, count: 1 }, { cents: 50, count: 1 }])
+    expect(changeInDenominations(3280)).toEqual([
+      { cents: 2000, count: 1 },
+      { cents: 1000, count: 1 },
+      { cents: 200, count: 1 },
+      { cents: 50, count: 1 },
+      { cents: 20, count: 1 },
+      { cents: 10, count: 1 },
+    ])
+    expect(changeInDenominations(40)).toEqual([{ cents: 20, count: 2 }])
+    expect(changeInDenominations(0)).toEqual([])
+  })
+
+  it('suggests the next three notes above the amount', () => {
+    expect(likelyNotes(1750)).toEqual([2000, 5000, 10000])
+    expect(likelyNotes(350)).toEqual([500, 1000, 2000])
+    expect(likelyNotes(1000)).toEqual([2000, 5000, 10000])
+    expect(likelyNotes(12000)).toEqual([])
+  })
+})
+
+describe('withExtraTip', () => {
+  const base = { method: 'cash' as const, status: 'AWAITING_MANUAL', chargeId: 'c', tabId: 't', amountCents: 1750, tipCents: 0, breakdown: ['1 × Spaghetti'] }
+
+  it('adds the tip to the amount and a tip line to the breakdown', () => {
+    expect(withExtraTip(m, base, 250)).toMatchObject({ amountCents: 2000, tipCents: 250, breakdown: ['1 × Spaghetti', 'Fooi = € 2,50'] })
+  })
+
+  it('replaces an earlier tip line with the new total', () => {
+    const tipped = { ...base, amountCents: 1850, tipCents: 100, breakdown: ['1 × Spaghetti', 'Fooi = € 1,00'] }
+    expect(withExtraTip(m, tipped, 150)).toMatchObject({ amountCents: 2000, tipCents: 250, breakdown: ['1 × Spaghetti', 'Fooi = € 2,50'] })
+  })
+
+  it('no extra: unchanged', () => {
+    expect(withExtraTip(m, base, 0)).toBe(base)
   })
 })
