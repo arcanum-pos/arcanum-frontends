@@ -213,6 +213,12 @@ export interface NotificationSocket {
 // devicehub hostname — so the notification channel follows whatever address
 // the instance is on (its custom domain or workers.dev), with no extra
 // configuration.
+// The handler for an event name from the socket - only one of the handlers'
+// own (never "constructor", "toString" or another inherited name).
+export function handlerFor(handlers: NotificationHandlers, event: unknown) {
+  return typeof event === 'string' && Object.hasOwn(handlers, event) ? handlers[event] : undefined
+}
+
 export function connectNotifications(terminalId: string, handlers: NotificationHandlers): NotificationSocket {
   let socket: WebSocket | null = null
   let retryDelayMs = 1000
@@ -239,7 +245,7 @@ export function connectNotifications(terminalId: string, handlers: NotificationH
         } catch {
           return
         }
-        const handler = msg && handlers[msg.event]
+        const handler = msg && handlerFor(handlers, msg.event)
         if (handler) handler(msg)
       }
 

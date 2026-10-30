@@ -2,7 +2,7 @@
 // longer has — the SumUp simulator's 'sim', removed 2026-10-06 — counts as
 // not registered, so the chooser asks again instead of opening a page that's gone.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { claimPairingCode, getRegisteredTerminal, getStoredTerminalInfo } from './terminal'
+import { claimPairingCode, getRegisteredTerminal, getStoredTerminalInfo, handlerFor, type NotificationHandlers } from './terminal'
 
 function stored(value: unknown) {
   const items: Record<string, string> = { 'arcanum-terminal': JSON.stringify(value) }
@@ -89,5 +89,14 @@ describe('claimPairingCode', () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: 'x', code: 'pairing_code_invalid' }, { status: 400 })))
     await expect(claimPairingCode('nope')).rejects.toThrow('This pairing code is wrong')
     expect(items['arcanum-terminal']).toBeUndefined()
+  })
+})
+
+describe('handlerFor', () => {
+  it("only the handlers' own events, never an inherited name", () => {
+    const tabs = vi.fn()
+    const handlers: NotificationHandlers = { tabs_changed: tabs }
+    expect(handlerFor(handlers, 'tabs_changed')).toBe(tabs)
+    for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'nope', 42, null]) expect(handlerFor(handlers, name), String(name)).toBeUndefined()
   })
 })
