@@ -45,9 +45,12 @@ function luminance(hex: string): number {
   return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5)
 }
 
+const NEAR_BLACK = '#0a0a0a'
+
 // Text on a background of this colour: near-black or white, whichever reads
-// better (the higher contrast) — scouts green gets white, a yellow scarf black.
+// better (the higher contrast, measured with the near-black it shows, not
+// pure black) — scouts green gets white, a yellow scarf black.
 export function textOn(hex: string): string {
   const l = luminance(hex)
-  return (l + 0.05) / 0.05 > 1.05 / (l + 0.05) ? '#0a0a0a' : '#ffffff'
+  return (l + 0.05) / (luminance(NEAR_BLACK) + 0.05) > 1.05 / (l + 0.05) ? NEAR_BLACK : '#ffffff'
 }

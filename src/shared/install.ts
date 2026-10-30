@@ -19,7 +19,7 @@ export function appStorage(ua = navigator.userAgent, touchPoints = navigator.max
 // A role's icon set (public/icons/, scripts/app-icons.mjs).
 export const ICON_FOR_ROLE: Record<Role, string> = { pos: 'kassa', cfd: 'display', station: 'station', tap: 'tap' }
 
-export const isRole = (value: string | null): value is Role => !!value && value in ICON_FOR_ROLE
+export const isRole = (value: string | null): value is Role => !!value && Object.hasOwn(ICON_FOR_ROLE, value)
 
 const setHead = (selector: string, attr: string, value: string) => document.head.querySelector(selector)?.setAttribute(attr, value)
 
