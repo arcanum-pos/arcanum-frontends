@@ -1,5 +1,7 @@
 # arcanum-frontends
 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/arcanum-pos/arcanum-frontends/badge)](https://scorecard.dev/viewer/?uri=github.com/arcanum-pos/arcanum-frontends)
+
 
 Every UI screen the platform serves — the admin portal (`admin`, at
 `/console`), kassa, settings, the customer display, the
