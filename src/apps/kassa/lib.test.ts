@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
+import type { TabSummary } from './tabs-api'
 import {
+  upsertTab,
+  refreshNeeded,
+  REFRESH_FULL_MS,
+  REFRESH_LIGHT_MS,
   cashChange,
   changeInDenominations,
   likelyNotes,
@@ -497,5 +502,39 @@ describe('withExtraTip', () => {
 
   it('no extra: unchanged', () => {
     expect(withExtraTip(m, base, 0)).toBe(base)
+  })
+})
+
+describe('upsertTab', () => {
+  const tab = (id: string, number: number, extra: Partial<TabSummary> = {}): TabSummary => ({
+    id, number, label: 'Toog', status: 'open', openedDeviceName: null, openedAt: '2026-11-01T10:00:00Z', receiptNumber: null,
+    totalCents: 100, paidCents: 0, outstandingCents: 100, paymentPending: false, ...extra,
+  })
+
+  it('replaces the tab from the response, keeps the others in place', () => {
+    const list = [tab('b', 2), tab('a', 1)]
+    expect(upsertTab(list, tab('a', 1, { totalCents: 500 })).map((t) => [t.id, t.totalCents])).toEqual([['b', 100], ['a', 500]])
+  })
+
+  it('adds a new one, newest number first, and only its summary (no lines)', () => {
+    const added = upsertTab([tab('a', 1)], { ...tab('b', 2), lines: [] } as TabSummary)
+    expect(added.map((t) => t.id)).toEqual(['b', 'a'])
+    expect(added[0]).not.toHaveProperty('lines')
+  })
+
+  it('drops one that is closed or cancelled; unchanged when it was not there', () => {
+    const list = [tab('b', 2), tab('a', 1)]
+    expect(upsertTab(list, tab('a', 1, { status: 'closed' })).map((t) => t.id)).toEqual(['b'])
+    expect(upsertTab(list, tab('c', 3, { status: 'cancelled' }))).toBe(list)
+  })
+})
+
+describe('refreshNeeded', () => {
+  const now = 10 * REFRESH_FULL_MS
+  it('nothing right after a look, the tabs after a while, everything after a long while', () => {
+    expect(refreshNeeded(now, now - 1000, now - 1000)).toBe('none')
+    expect(refreshNeeded(now, now - REFRESH_LIGHT_MS, now - REFRESH_LIGHT_MS)).toBe('tabs')
+    expect(refreshNeeded(now, now - 1000, now - REFRESH_FULL_MS)).toBe('all')
+    expect(refreshNeeded(now, 0, 0)).toBe('all')
   })
 })

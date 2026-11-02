@@ -154,6 +154,7 @@ export default {
   icon_slot_unknown: 'This page can’t have an icon of its own',
   icon_invalid: 'This icon couldn’t be saved ({size} px): choose another image',
   payment_cancel_unconfirmed: 'The payment couldn’t be cancelled at the provider yet - try again (otherwise it expires by itself)',
+  payment_already_failed: 'This payment already failed - nothing was paid. Cancel it and try again.',
   event_in_use: 'This event already has bills or sales - it is kept',
   event_end_before_start: 'The last day cannot be before the first day',
   branding_color_invalid: 'Choose a colour as #rrggbb',

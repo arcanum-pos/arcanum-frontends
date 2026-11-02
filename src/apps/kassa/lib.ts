@@ -2,7 +2,7 @@ import { formatEuro } from '@/shared/format'
 import type { CustomerOrder } from '@/shared/customer-order'
 import type { KassaCatalog, KassaEntry } from './catalog-api'
 import type { KassaMessages } from './messages/nl'
-import type { DraftLine, TabDetail, TabLine } from './tabs-api'
+import type { DraftLine, TabDetail, TabLine, TabSummary } from './tabs-api'
 import { netQuantity, shownNumber } from './tabs-api'
 
 // A tappable item: a catalog entry. The server prices it from the catalog
@@ -421,4 +421,30 @@ export function spreadUnits(parts: TabLine[], n: number, latestFirst = false): {
     if (left <= 0) break
   }
   return out
+}
+
+// The open-tab list after this kassa's own change to one tab: that tab
+// replaced (from the response), added, or gone once it's no longer open -
+// without asking the server for the whole list again. Newest number first,
+// like the server sends it.
+export function upsertTab(list: TabSummary[], tab: TabSummary): TabSummary[] {
+  const others = list.filter((t) => t.id !== tab.id)
+  if (tab.status !== 'open') return others.length === list.length ? list : others
+  const { id, number, eventNumber, source, orderMode, label, eventId, eventName, status, openedDeviceName, openedByName, openedByStaff, openedAt, closedAt, cancelReason, receiptNumber, totalCents, paidCents, outstandingCents, paymentPending, split, methods, itemCount } = tab
+  const summary: TabSummary = { id, number, eventNumber, source, orderMode, label, eventId, eventName, status, openedDeviceName, openedByName, openedByStaff, openedAt, closedAt, cancelReason, receiptNumber, totalCents, paidCents, outstandingCents, paymentPending, split, methods, itemCount }
+  return [...others, summary].sort((a, b) => b.number - a.number)
+}
+
+// Coming back to the kassa (focus, the page shown again): nothing when it
+// looked less than REFRESH_LIGHT_MS ago; the tabs after that; everything
+// (catalog, event, readers too) after REFRESH_FULL_MS. On an iPad the
+// kassa gets focus every time the cashier taps it after the customer
+// display's window, so this runs often (REQUEST_BUDGET.md).
+export const REFRESH_LIGHT_MS = 30_000
+export const REFRESH_FULL_MS = 5 * 60_000
+
+export function refreshNeeded(now: number, lastLight: number, lastFull: number): 'none' | 'tabs' | 'all' {
+  if (now - lastFull >= REFRESH_FULL_MS) return 'all'
+  if (now - lastLight >= REFRESH_LIGHT_MS) return 'tabs'
+  return 'none'
 }

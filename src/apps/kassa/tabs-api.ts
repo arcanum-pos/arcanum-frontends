@@ -130,6 +130,23 @@ function withRegister(orgId: string, body: unknown): unknown {
   return register && body && typeof body === 'object' && !Array.isArray(body) ? { ...(body as Record<string, unknown>), registerId: register.id } : body
 }
 
+// The tabs this kassa changed itself, and when: devicehub's tabs_changed
+// for them comes back to this kassa too, which already has the new state
+// from its own response (REQUEST_BUDGET.md). Kept for a few seconds.
+const ownChanges = new Map<string, number>()
+export const OWN_CHANGE_MS = 3000
+
+export function noteOwnChange(tabId: string | null | undefined, now = Date.now()) {
+  if (!tabId) return
+  ownChanges.set(tabId, now)
+  for (const [id, at] of ownChanges) if (now - at > OWN_CHANGE_MS) ownChanges.delete(id)
+}
+
+// Every tab of a push is one this kassa just changed itself.
+export function onlyOwnChanges(tabIds: string[], now = Date.now()): boolean {
+  return tabIds.length > 0 && tabIds.every((id) => now - (ownChanges.get(id) ?? -Infinity) <= OWN_CHANGE_MS)
+}
+
 async function request<T>(orgId: string, path: string, init?: { method?: string; body?: unknown }): Promise<T> {
   const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/tabs${path}`, {
     method: init?.method || 'GET',
@@ -140,6 +157,7 @@ async function request<T>(orgId: string, path: string, init?: { method?: string;
   })
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw TabApiError.fromResponse(res.status, data, `Fout ${res.status}`)
+  if (init?.method && init.method !== 'GET') noteOwnChange((data as { id?: string })?.id)
   return data as T
 }
 

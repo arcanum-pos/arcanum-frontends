@@ -1,0 +1,1657 @@
+{
+ "day": "2026-11-01",
+ "bills": [
+  {
+   "gapMs": 0,
+   "durationMs": 19013,
+   "rounds": [
+    2
+   ],
+   "voids": 2,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": false
+    }
+   ]
+  },
+  {
+   "gapMs": 1015448,
+   "durationMs": 37305121,
+   "rounds": [
+    1
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 707965,
+   "durationMs": 36585275,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 3929332,
+   "durationMs": 49335,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 1044926,
+   "durationMs": 61624,
+   "rounds": [
+    6,
+    1
+   ],
+   "voids": 1,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": false
+    },
+    {
+     "method": "cash",
+     "ok": false
+    },
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 291714,
+   "durationMs": 35421,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 333786,
+   "durationMs": 20660,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 372182,
+   "durationMs": 29772,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 121728,
+   "durationMs": 81132,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 105208,
+   "durationMs": 29948,
+   "rounds": [
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 53180,
+   "durationMs": 36545,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 58622,
+   "durationMs": 6983,
+   "rounds": [
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 70579,
+   "durationMs": 44300,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 520871,
+   "durationMs": 23596,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 489514,
+   "durationMs": 31596,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 833194,
+   "durationMs": 61843,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 200992,
+   "durationMs": 34274,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 128167,
+   "durationMs": 22118,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 36111,
+   "durationMs": 19173,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 69300,
+   "durationMs": 118639,
+   "rounds": [
+    5,
+    1
+   ],
+   "voids": 1,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": false
+    },
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 448095,
+   "durationMs": 20471,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 307380,
+   "durationMs": 31480,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 139621,
+   "durationMs": 41279,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 732082,
+   "durationMs": 31363,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 81271,
+   "durationMs": 17114,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 216580,
+   "durationMs": 102248,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "bancontact",
+     "ok": false
+    },
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 138268,
+   "durationMs": 21605,
+   "rounds": [
+    8
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 85660,
+   "durationMs": 31473,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 100665,
+   "durationMs": 11667,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 73884,
+   "durationMs": 38674,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 111200,
+   "durationMs": 38574,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 196140,
+   "durationMs": 24970,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 51311,
+   "durationMs": 27797,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 49164,
+   "durationMs": 5072,
+   "rounds": [
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 20589,
+   "durationMs": 36160,
+   "rounds": [
+    4
+   ],
+   "voids": 4,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": false
+    }
+   ]
+  },
+  {
+   "gapMs": 54775,
+   "durationMs": 50837,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "cash",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 60539,
+   "durationMs": 16601,
+   "rounds": [
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 43052,
+   "durationMs": 14453,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 41983,
+   "durationMs": 26202,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 42973,
+   "durationMs": 6096,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 48412,
+   "durationMs": 28495,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 37692,
+   "durationMs": 4262,
+   "rounds": [
+    1
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 30611,
+   "durationMs": 18525,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 53866,
+   "durationMs": 33378,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 62064,
+   "durationMs": 65764,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 333268,
+   "durationMs": 20014,
+   "rounds": [
+    1
+   ],
+   "voids": 1,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "cash",
+     "ok": false
+    }
+   ]
+  },
+  {
+   "gapMs": 87773,
+   "durationMs": 28134,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 90373,
+   "durationMs": 31005,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 58078,
+   "durationMs": 320389,
+   "rounds": [
+    8
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 52954,
+   "durationMs": 17278,
+   "rounds": [
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 50407,
+   "durationMs": 29599,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 95486,
+   "durationMs": 23752,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 67357,
+   "durationMs": 24284,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 106025,
+   "durationMs": 32347,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 54464,
+   "durationMs": 66299,
+   "rounds": [
+    2,
+    1
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": false
+    },
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 477142,
+   "durationMs": 52670,
+   "rounds": [
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 683105,
+   "durationMs": 17867,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 368488,
+   "durationMs": 31503,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 87726,
+   "durationMs": 95256,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 124317,
+   "durationMs": 13827,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 331549,
+   "durationMs": 31475,
+   "rounds": [
+    8
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 4752420,
+   "durationMs": 42017,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 2005722,
+   "durationMs": 35266,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 1479998,
+   "durationMs": 8644,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 919173,
+   "durationMs": 121990,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 223243,
+   "durationMs": 21859,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 664909,
+   "durationMs": 25335,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 434926,
+   "durationMs": 43932,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 813431,
+   "durationMs": 34143,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 97424,
+   "durationMs": 13745,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 29381,
+   "durationMs": 24357,
+   "rounds": [
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 33922,
+   "durationMs": 12774,
+   "rounds": [
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 51744,
+   "durationMs": 15122,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 32807,
+   "durationMs": 12340,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 92413,
+   "durationMs": 28245,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 109755,
+   "durationMs": 19152,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 227580,
+   "durationMs": 63114,
+   "rounds": [
+    8
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    },
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 187135,
+   "durationMs": 16882,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 337965,
+   "durationMs": 33781,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 286517,
+   "durationMs": 33084,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 90636,
+   "durationMs": 47504,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": false
+    },
+    {
+     "method": "bancontact",
+     "ok": false
+    },
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 288135,
+   "durationMs": 31141,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 1140793,
+   "durationMs": 19841,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 143223,
+   "durationMs": 13335,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 369705,
+   "durationMs": 14410,
+   "rounds": [
+    9
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 451647,
+   "durationMs": 20326,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 104785,
+   "durationMs": 17336,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 47362,
+   "durationMs": 30156,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 409407,
+   "durationMs": 22819,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 129729,
+   "durationMs": 61731,
+   "rounds": [
+    12
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 406055,
+   "durationMs": 11191,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 128402,
+   "durationMs": 28678,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 361193,
+   "durationMs": 40494,
+   "rounds": [
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 60010,
+   "durationMs": 16481,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 415351,
+   "durationMs": 31518,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 58422,
+   "durationMs": 35474,
+   "rounds": [
+    7,
+    2
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 59486,
+   "durationMs": 19074,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 46550,
+   "durationMs": 32469,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 1517425,
+   "durationMs": 21776,
+   "rounds": [
+    8
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 45198,
+   "durationMs": 15254,
+   "rounds": [
+    7
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 37045,
+   "durationMs": 72718,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 811172,
+   "durationMs": 24414,
+   "rounds": [
+    5
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 295807,
+   "durationMs": 31828,
+   "rounds": [
+    10
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 69087,
+   "durationMs": 18423,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 71518,
+   "durationMs": 40760,
+   "rounds": [
+    6
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "bancontact",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 675138,
+   "durationMs": 481491,
+   "rounds": [
+    11
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": false
+    },
+    {
+     "method": "cash",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    },
+    {
+     "method": "sumup",
+     "ok": false
+    },
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 52289,
+   "durationMs": 22383,
+   "rounds": [
+    3
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "cash",
+     "ok": true
+    },
+    {
+     "method": "cash",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "gapMs": 53528,
+   "durationMs": 17030,
+   "rounds": [
+    4
+   ],
+   "voids": 0,
+   "payments": [
+    {
+     "method": "sumup",
+     "ok": true
+    }
+   ]
+  }
+ ]
+}

@@ -172,7 +172,7 @@ const nl = {
     tap: { waiting: 'Wacht op Tap to Pay op de telefoon', confirm: 'SumUp bevestigt het', paid: 'Betaald (Tap to Pay)' },
   } satisfies Record<'cash' | 'sumup' | 'tap', { waiting: string; confirm: string; paid: string }>,
   sumupFailed: (error: string) => `SumUp betaling mislukt: ${error}`,
-  sumupFailedRetry: 'SumUp betaling mislukt. Probeer opnieuw of bevestig handmatig.',
+  sumupFailedRetry: 'SumUp betaling mislukt, er is niets betaald. Annuleer en probeer opnieuw.',
   nextPart: 'Volgend deel',
   nextPerson: 'Volgende persoon',
   nextCustomer: 'Volgende klant',

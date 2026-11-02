@@ -153,7 +153,7 @@ export default {
     tap: { waiting: 'En attente de Tap to Pay sur le téléphone', confirm: 'SumUp le confirme', paid: 'Payé (Tap to Pay)' },
   },
   sumupFailed: (error: string) => `Échec du paiement SumUp : ${error}`,
-  sumupFailedRetry: 'Échec du paiement SumUp. Réessayez ou confirmez manuellement.',
+  sumupFailedRetry: 'Échec du paiement SumUp, rien n’a été payé. Annulez et réessayez.',
   nextPart: 'Partie suivante',
   nextPerson: 'Personne suivante',
   nextCustomer: 'Client suivant',

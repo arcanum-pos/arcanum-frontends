@@ -333,6 +333,9 @@ export class FakeBackend {
   // The order being entered: what kassa's sent (PUT), what a display gets (GET).
   customerViewPuts: { terminal: string; order: any; seq: number }[] = []
   customerView: { order: any; seq: number } = { order: null, seq: 0 }
+  // Whether the kassa has a customer display on another device (the PUT's answer).
+  customerViewShown = true
+  tapPhoneLinked = false
   pairingCodes = new Map<string, { role: 'pos' | 'cfd'; name: string }>()
   // The signed-in person's role in org-e2e (Instellingen's Beheer is for admins).
   memberRole: 'admin' | 'cashier' | 'waiter' = 'cashier'
@@ -488,7 +491,8 @@ export class FakeBackend {
     const view = p.match(/^\/api\/organizations\/[^/]+\/devices\/([^/]+)\/customer-view$/)
     if (view && method === 'PUT') {
       this.customerViewPuts.push({ terminal: decodeURIComponent(view[1]), ...body })
-      return { status: 200, body: { shown: true } }
+      // linked: any device elsewhere (a display, a Tap to Pay phone) - like customer-view.ts.
+      return { status: 200, body: { shown: this.customerViewShown, linked: this.customerViewShown || this.tapPhoneLinked } }
     }
     if (view && method === 'GET') return { status: 200, body: this.customerView }
     const device = p.match(/^\/api\/organizations\/([^/]+)\/devices\/([^/]+)(?:\/(display|linked|linkable|link|unlink|reset))?$/)
@@ -541,8 +545,11 @@ export class FakeBackend {
           charge.tipCents += body.extraTipCents
         }
       }
+      // Already failed (the reader said so): never paid by hand afterwards.
+      if (body.success !== false && charge?.status === 'failed')
+        return { status: 409, body: { error: 'Deze betaling is al mislukt - er is niets betaald. Annuleer ze en probeer opnieuw.', code: 'payment_already_failed' } }
       this.resolveCharge(body.chargeId, body.success !== false)
-      return { status: 200, body: { ok: true, chargeId: body.chargeId } }
+      return { status: 200, body: { ok: true, chargeId: body.chargeId, status: charge?.status } }
     }
     const status = p.match(/^\/api\/bancontact\/sumup\/status\/([^/]+)$/)
     if (status) {

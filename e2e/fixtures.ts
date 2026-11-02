@@ -9,7 +9,8 @@ import { FakeBackend } from './fake-backend'
 type Fixtures = {
   backend: FakeBackend
   kassa: Page
-  push: (msg: Record<string, unknown>) => void
+  // push.drop(): the socket goes down, as when devicehub restarts.
+  push: ((msg: Record<string, unknown>) => void) & { drop: () => void }
 }
 
 export const test = base.extend<Fixtures>({
@@ -34,7 +35,11 @@ export const test = base.extend<Fixtures>({
     await page.routeWebSocket(/\/devices\/connect/, (ws) => {
       sockets.push(ws)
     })
-    await provide((msg) => sockets.forEach((ws) => ws.send(JSON.stringify(msg))))
+    await provide(
+      Object.assign((msg: Record<string, unknown>) => sockets.forEach((ws) => ws.send(JSON.stringify(msg))), {
+        drop: () => sockets.splice(0).forEach((ws) => ws.close()),
+      })
+    )
   },
 
   kassa: async ({ page, backend, push }, provide) => {

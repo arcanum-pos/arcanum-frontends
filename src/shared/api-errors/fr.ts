@@ -154,6 +154,7 @@ export default {
   icon_slot_unknown: 'Impossible de définir une icône pour cette page',
   icon_invalid: 'Cette icône n’a pas pu être enregistrée ({size} px) : choisissez une autre image',
   payment_cancel_unconfirmed: 'Le paiement n’a pas encore pu être annulé chez le fournisseur - réessayez (sinon il expire de lui-même)',
+  payment_already_failed: 'Ce paiement a déjà échoué - rien n’a été payé. Annulez-le et réessayez.',
   event_in_use: 'Cet événement a déjà des additions ou des ventes - il est conservé',
   event_end_before_start: 'Le dernier jour ne peut pas précéder le premier',
   branding_color_invalid: 'Choisissez une couleur au format #rrggbb',

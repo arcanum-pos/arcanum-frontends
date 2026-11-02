@@ -169,11 +169,11 @@ export function PaymentStatus({
 
         {resolved && receipt && <div className="w-full">{receipt}</div>}
         {resolved ? (
-          <Button className="mt-1 h-11 w-full rounded-[10px] text-sm" onClick={onNext}>
+          <Button className="mt-1 h-11 w-full rounded-[10px] text-sm" onClick={onNext} data-testid="payment-next">
             {current.remainsOpen ? (current.part ? m.nextPart : m.nextPerson) : m.nextCustomer}
           </Button>
         ) : (
-          <Button variant="outline" className="h-10 w-full rounded-[10px]" onClick={onCancel}>
+          <Button variant="outline" className="h-10 w-full rounded-[10px]" onClick={onCancel} data-testid="payment-cancel">
             {m.cancelPayment}
           </Button>
         )}

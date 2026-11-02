@@ -153,7 +153,7 @@ export default {
     tap: { waiting: 'Waiting for Tap to Pay on the phone', confirm: 'SumUp confirms it', paid: 'Paid (Tap to Pay)' },
   },
   sumupFailed: (error: string) => `SumUp payment failed: ${error}`,
-  sumupFailedRetry: 'SumUp payment failed. Try again or confirm manually.',
+  sumupFailedRetry: 'SumUp payment failed, nothing was paid. Cancel and try again.',
   nextPart: 'Next part',
   nextPerson: 'Next person',
   nextCustomer: 'Next customer',

@@ -219,10 +219,13 @@ export function handlerFor(handlers: NotificationHandlers, event: unknown) {
   return typeof event === 'string' && Object.hasOwn(handlers, event) ? handlers[event] : undefined
 }
 
-export function connectNotifications(terminalId: string, handlers: NotificationHandlers): NotificationSocket {
+// onReconnect: the socket is open again after it was down - pushes sent in
+// between were missed, so whatever they'd have said is worth asking again.
+export function connectNotifications(terminalId: string, handlers: NotificationHandlers, onReconnect?: () => void): NotificationSocket {
   let socket: WebSocket | null = null
   let retryDelayMs = 1000
   let stopped = false
+  let opened = false
 
   async function connect() {
     if (stopped) return
@@ -236,6 +239,8 @@ export function connectNotifications(terminalId: string, handlers: NotificationH
 
       socket.onopen = () => {
         retryDelayMs = 1000
+        if (opened) onReconnect?.()
+        opened = true
       }
 
       socket.onmessage = (event) => {

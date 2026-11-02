@@ -39,6 +39,8 @@ import {
   tabBreakdownLines,
   pickedBreakdownLines,
   spreadUnits,
+  upsertTab,
+  refreshNeeded,
   type CurrentPayment,
   type MergedLine,
   type ManualStatus,
@@ -65,6 +67,8 @@ import { showOrgIcons } from '@/shared/install'
 import type { CustomerOrder } from '@/shared/customer-order'
 
 const WORKER_URL = '/api/bancontact'
+// How long after the last tap the order goes to a display on another device.
+const CUSTOMER_VIEW_REMOTE_MS = 700
 
 // Refusals that mean this kassa's catalog is out of date.
 const CATALOG_ERRORS = new Set<ApiErrorCode>(['unknown_catalog', 'product_not_on_catalog', 'catalog_not_found', 'no_catalog', 'unknown_product'])
@@ -200,6 +204,20 @@ export default function App() {
   const [view, setView] = useState<'kassa' | 'overview'>('kassa')
   const [tabsSignal, setTabsSignal] = useState(0)
   const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // The tabs named by tabs_changed pushes waiting for that sync ('*': unknown).
+  const pushedTabsRef = useRef<string[]>([])
+  // When this kassa last pulled its tabs, and everything (refreshNeeded).
+  const lastTabsRef = useRef(0)
+  const lastAllRef = useRef(0)
+  // What the backend said about this kassa's links (customer-view.ts): a
+  // display on another device, and anything linked at all (a display, a Tap
+  // to Pay phone). null: not known yet, or the links changed since.
+  const linksRef = useRef<{ shown: boolean; linked: boolean } | null>(null)
+  // The menu choice (Instellingen) the catalog was last loaded for.
+  const catalogChoiceRef = useRef<string | null>(null)
+  const registerChoiceRef = useRef<string | null>(null)
+  // A SumUp payment being confirmed by hand (one tap, one request).
+  const confirmingRef = useRef(false)
 
   const currentRef = useRef<CurrentPayment | null>(null)
   const catalogRef = useRef<KassaCatalog | null>(null)
@@ -287,7 +305,7 @@ export default function App() {
     const run = tabsApi.addOrder(org, key, lines, catalogRef.current?.id ?? null).then((tab) => {
       updateDraft(key, (current) => subtractDraft(current, lines))
       if (activeRef.current === key) setActiveTab(tab)
-      refreshTabs()
+      showInList(tab)
       return tab
     })
     commitsRef.current.set(key, run)
@@ -359,6 +377,7 @@ export default function App() {
     try {
       let catalog: KassaCatalog | null = null
       const selection = getCatalogSelection()
+      catalogChoiceRef.current = selection?.id ?? null
       if (selection) {
         catalog = await fetchKassaCatalog(org, selection.id)
         if (!catalog) {
@@ -427,6 +446,12 @@ export default function App() {
     }
   }
 
+  // This kassa changed a tab itself: the list follows from the response,
+  // without asking the server for it again.
+  function showInList(tab: TabSummary) {
+    setTabs((list) => upsertTab(list, tab))
+  }
+
   async function loadTab(key: ActiveKey) {
     const org = posOrgIdRef.current
     if (!org || key === 'quick') {
@@ -435,6 +460,8 @@ export default function App() {
     }
     try {
       const tab = await tabsApi.getTab(org, key)
+      // Its entry in the list follows (a payment ended, a change elsewhere).
+      showInList(tab)
       // Ignore a slow response for a tab the cashier already switched away from.
       if (activeRef.current === key) setActiveTab(tab)
     } catch (err) {
@@ -446,6 +473,7 @@ export default function App() {
   async function loadRegister() {
     const org = posOrgIdRef.current
     const choice = getRegister(org)
+    registerChoiceRef.current = choice?.id ?? null
     if (!org || !choice) return setRegState(null)
     try {
       setRegState(await registerState(org, choice.id))
@@ -468,17 +496,37 @@ export default function App() {
   }
 
   async function refreshAll() {
+    lastAllRef.current = Date.now()
     loadCatalog()
     loadEvent()
     loadRegister()
+    if (posOrgIdRef.current) loadTapToPay(posOrgIdRef.current)
+    // Its links are asked again with the next order on screen.
+    linksRef.current = null
     setTabsSignal((n) => n + 1)
     await syncTabs()
+  }
+
+  // The kassa is looked at again: as much as refreshNeeded says. A menu,
+  // event or register chosen in Instellingen meanwhile (this device) right
+  // away - that costs nothing when nothing changed.
+  function comeBack() {
+    if ((getCatalogSelection()?.id ?? null) !== catalogChoiceRef.current) loadCatalog()
+    if ((getEventSelection()?.id ?? null) !== (eventRef.current?.id ?? null)) loadEvent()
+    if ((getRegister(posOrgIdRef.current)?.id ?? null) !== registerChoiceRef.current) loadRegister()
+    const need = refreshNeeded(Date.now(), lastTabsRef.current, lastAllRef.current)
+    if (need === 'all') refreshAll()
+    else if (need === 'tabs') {
+      setTabsSignal((n) => n + 1)
+      syncTabs()
+    }
   }
 
   // The open-tab list and the selected tab. Also notices a tab that was
   // closed or cancelled on another kassa in the meantime and falls back to
   // Toog.
   async function syncTabs() {
+    lastTabsRef.current = Date.now()
     const list = await refreshTabs()
     const key = activeRef.current
     if (list && key !== 'quick' && !list.some((t) => t.id === key) && !currentRef.current) {
@@ -492,24 +540,35 @@ export default function App() {
   }
 
   // Another kassa changed a tab (devicehub's tabs_changed): pull the list
-  // and the selected tab — once for a burst of pushes.
-  function scheduleSync() {
+  // and the selected tab — once for a burst of pushes. Not for the echo of
+  // this kassa's own change: it has that from its own response.
+  function scheduleSync(tabId?: string) {
+    pushedTabsRef.current.push(tabId || '*')
     if (syncTimerRef.current) clearTimeout(syncTimerRef.current)
     syncTimerRef.current = setTimeout(() => {
       syncTimerRef.current = null
+      // Nor for the tab being paid here: the payment's own end loads it.
+      const paying = currentRef.current?.tabId
+      const tabIds = pushedTabsRef.current.filter((id) => id !== paying)
+      pushedTabsRef.current = []
+      if (tabIds.length === 0 || tabsApi.onlyOwnChanges(tabIds)) return
       setTabsSignal((n) => n + 1)
       syncTabs()
     }, 250)
   }
 
   // A message about the tab that was on screen doesn't follow to the next one.
-  function selectTab(key: ActiveKey) {
+  // The list stays as it is: pushes and this kassa's own responses keep it
+  // current. `loaded`: the tab, just fetched (not asked again).
+  function selectTab(key: ActiveKey, loaded?: TabDetail) {
     setError('')
     setActive(key)
     activeRef.current = key
-    setActiveTab(null)
-    loadTab(key)
-    refreshTabs()
+    if (loaded && loaded.id === key) setActiveTab(loaded)
+    else {
+      setActiveTab(null)
+      loadTab(key)
+    }
   }
 
   function addItem(item: PickerItem, quantity: number) {
@@ -550,15 +609,16 @@ export default function App() {
     setNameDialog(null)
     runTabAction(async (org) => {
       if (mode === 'rename' && shownTab) {
-        setActiveTab(await tabsApi.renameTab(org, shownTab.id, name))
-        refreshTabs()
+        const renamed = await tabsApi.renameTab(org, shownTab.id, name)
+        setActiveTab(renamed)
+        showInList(renamed)
         return
       }
       // 'park' moves the Toog draft onto a new named tab as its first order.
       const lines = mode === 'park' ? drafts.quick || [] : []
       const tab = await tabsApi.createTab(org, name, getCurrentSlotId(), lines, catalogRef.current?.id ?? null, eventRef.current?.id ?? null, orderModeRef.current)
       if (mode === 'park') setDraftFor('quick', [])
-      await refreshTabs()
+      showInList(tab)
       setActive(tab.id)
       activeRef.current = tab.id
       setActiveTab(tab)
@@ -573,8 +633,11 @@ export default function App() {
     const tabId = shownTab.id
     const parts = 'parts' in line ? spreadUnits(line.parts, quantity, true) : [{ line, quantity }]
     runTabAction(async (org) => {
-      for (const part of parts) setActiveTab(await tabsApi.voidLine(org, tabId, part.line.id, reason, part.quantity))
-      refreshTabs()
+      for (const part of parts) {
+        const tab = await tabsApi.voidLine(org, tabId, part.line.id, reason, part.quantity)
+        setActiveTab(tab)
+        showInList(tab)
+      }
     })
   }
 
@@ -585,7 +648,7 @@ export default function App() {
     if (!shownTab) return
     const tabId = shownTab.id
     runTabAction(async (org) => {
-      await tabsApi.cancelTab(org, tabId, reason, true)
+      showInList(await tabsApi.cancelTab(org, tabId, reason, true))
       setDraftFor(tabId, [])
       selectTab('quick')
     })
@@ -595,7 +658,7 @@ export default function App() {
     if (!shownTab) return
     const tabId = shownTab.id
     runTabAction(async (org) => {
-      await tabsApi.cancelTab(org, tabId)
+      showInList(await tabsApi.cancelTab(org, tabId))
       selectTab('quick')
     })
   }
@@ -620,7 +683,7 @@ export default function App() {
       tab = (await commitDraft(key, true)) ?? (await tabsApi.getTab(org, key))
     }
     setActiveTab(tab)
-    refreshTabs()
+    showInList(tab)
     return tab
   }
 
@@ -630,8 +693,9 @@ export default function App() {
     const key = active
     runTabAction(async (org) => {
       const tab = await submitDraftFirst(org, key)
-      setActiveTab(await tabsApi.setSplit(org, tab.id, parts))
-      refreshTabs()
+      const split = await tabsApi.setSplit(org, tab.id, parts)
+      setActiveTab(split)
+      showInList(split)
     })
   }
 
@@ -649,8 +713,9 @@ export default function App() {
     if (!shownTab) return
     const tabId = shownTab.id
     runTabAction(async (org) => {
-      setActiveTab(await tabsApi.setSplit(org, tabId, null))
-      refreshTabs()
+      const tab = await tabsApi.setSplit(org, tabId, null)
+      setActiveTab(tab)
+      showInList(tab)
     })
   }
 
@@ -821,15 +886,19 @@ export default function App() {
     }
   }
 
-  async function resolveTrackedCharge(chargeId: string, success: boolean, extraTipCents = 0) {
+  // What the backend made of it: the charge's status now, or its refusal.
+  async function resolveTrackedCharge(chargeId: string, success: boolean, extraTipCents = 0): Promise<{ status?: string; code?: string; message?: string } | null> {
     try {
-      await fetch(`${WORKER_URL}/sumup/confirm`, {
+      const res = await fetch(`${WORKER_URL}/sumup/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chargeId, success, ...(extraTipCents > 0 ? { extraTipCents } : {}) }),
       })
+      const data = await res.json().catch(() => ({}))
+      return res.ok ? { status: data.status } : { code: data.code, message: apiErrorMessage(data, m.chargeFailed) }
     } catch (err) {
       console.error('Kon betaling niet bijwerken', err)
+      return null
     }
   }
 
@@ -839,6 +908,7 @@ export default function App() {
     // complete the same payment.
     const cur = currentRef.current
     if (!cur || (cur.method !== 'cash' && cur.method !== 'sumup') || cur.status === 'RESOLVED') return
+    if (cur.method === 'sumup') return confirmSumupByHand(cur)
     const extra = cur.method === 'cash' ? extraTipCents : 0
     stopCountdown()
     setCurrentBoth({ ...withExtraTip(m, cur, extra), status: 'RESOLVED' })
@@ -852,6 +922,29 @@ export default function App() {
     resolveTrackedCharge(cur.chargeId, true, extra).finally(() => setRecordedCharge(cur.chargeId))
   }
 
+  // SumUp confirmed by hand (no callback came): shown paid only once the
+  // backend recorded it - one the reader already reported as failed was
+  // never paid, and stays failed (REQUEST_BUDGET.md, the first live day).
+  async function confirmSumupByHand(cur: CurrentPayment) {
+    if (confirmingRef.current) return
+    confirmingRef.current = true
+    try {
+      const result = await resolveTrackedCharge(cur.chargeId, true)
+      if (currentRef.current?.chargeId !== cur.chargeId || currentRef.current.status === 'RESOLVED') return
+      if (result?.status === 'succeeded') {
+        setRecordedCharge(cur.chargeId)
+        setCurrentBoth({ ...cur, status: 'RESOLVED' })
+        setManualStatus({ kind: 'paid' })
+        channelRef.current?.postMessage({ type: 'status', status: 'SUCCEEDED' })
+      } else if (result?.code === 'payment_already_failed' || result?.status === 'failed') {
+        setManualStatus({ kind: 'failed', error: null })
+        channelRef.current?.postMessage({ type: 'status', status: 'FAILED' })
+      } else setError(result?.message || m.chargeFailed)
+    } finally {
+      confirmingRef.current = false
+    }
+  }
+
   function clearPaymentView() {
     stopCountdown()
     setCurrentBoth(null)
@@ -859,7 +952,9 @@ export default function App() {
     setError('')
     broadcastCurrent()
 
-    if (posTerminalIdRef.current && posOrgIdRef.current) {
+    // Only for a device elsewhere (a display, a Tap to Pay phone): its own
+    // second window was just told over the channel.
+    if (posTerminalIdRef.current && posOrgIdRef.current && linksRef.current?.linked !== false) {
       resetKassa(posOrgIdRef.current, posTerminalIdRef.current).catch((err) => console.error('Kon klantscherm niet resetten', err))
     }
   }
@@ -885,7 +980,8 @@ export default function App() {
         const more = tab.status === 'open' && tab.outstandingCents > 0
         // Per item: the next person starts with nothing picked.
         setItemMode((m) => (m && m.tabId === tabId && more ? { tabId, selection: {} } : m && m.tabId === tabId ? null : m))
-        selectTab(more ? tab.id : 'quick')
+        showInList(tab)
+        selectTab(more ? tab.id : 'quick', tab)
       })
       .catch(() => selectTab('quick'))
   }
@@ -1024,12 +1120,18 @@ export default function App() {
           if (msg.method === 'sumup') checkSumupStatus(msg.payment_id)
           else if (msg.method === 'bancontact') checkBancontactStatus(msg.payment_id)
         },
-        tabs_changed: () => scheduleSync(),
+        tabs_changed: (msg) => scheduleSync(typeof msg.tab_id === 'string' ? msg.tab_id : undefined),
+        // A display or phone linked to this kassa, or unlinked: asked again.
+        links_changed: () => {
+          linksRef.current = null
+          customerViewSentRef.current = null
+        },
         // Another kassa of this register opened or closed the drawer.
         shift_changed: () => loadRegisterRef.current(),
         // A receipt for this kassa's printer, when a screen sends it (push).
         print_job: (msg) => printPokeRef.current(msg.printer_id),
-      })
+        // Back after the socket was down: the pushes in between were missed.
+      }, () => scheduleSync())
     })
 
     return () => {
@@ -1041,36 +1143,32 @@ export default function App() {
 
   // Is Tap to Pay set up for the org? The readers list says so — also when
   // SumUp itself can't list the readers right now (then a 502 that still
-  // carries it). Asked again whenever the kassa is looked at again (set up
-  // in the console meanwhile).
+  // carries it). Asked again with everything else (refreshAll: set up in
+  // the console meanwhile).
   function loadTapToPay(org: string) {
     fetch(`${WORKER_URL}/sumup/readers?org_id=${encodeURIComponent(org)}`)
       .then((res) => res.json())
       .then((data) => setTapToPay(data?.tapToPay === true))
       .catch(() => {})
   }
-  useEffect(() => {
-    if (!orgId) return
-    const onVisible = () => document.visibilityState === 'visible' && loadTapToPay(orgId)
-    document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [orgId])
-
   // Besides the live tabs_changed push: reload when this kassa is looked at
-  // again (a push missed while the socket was down).
+  // again (a push missed while the socket was down) - throttled, since on an
+  // iPad with the customer display in a second window that's every tap
+  // after the customer's (comeBack).
   useEffect(() => {
     if (!orgId) return
+    lastTabsRef.current = lastAllRef.current = Date.now()
     refreshTabs()
     loadCatalog()
     loadEvent()
     loadRegister()
     function onVisible() {
-      if (document.visibilityState === 'visible') refreshAll()
+      if (document.visibilityState === 'visible') comeBack()
     }
-    window.addEventListener('focus', refreshAll)
+    window.addEventListener('focus', comeBack)
     document.addEventListener('visibilitychange', onVisible)
     return () => {
-      window.removeEventListener('focus', refreshAll)
+      window.removeEventListener('focus', comeBack)
       document.removeEventListener('visibilitychange', onVisible)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1119,31 +1217,45 @@ export default function App() {
   // Not while a tab is still loading (no flicker to the resting screen).
   // Switched off: nothing — the display rests until the payment.
   const customerView = tabLoading ? undefined : JSON.stringify(showOrder ? customerViewOrder(m, draft, shownTab, event?.name ?? null, event?.id ?? null) : null)
+  // To a display elsewhere only while there is one (linksRef: the backend
+  // says so; asked again when the links change or with refreshAll), and a
+  // bit later than to the second window: one request for a few taps.
   useEffect(() => {
     if (customerView === undefined) return
+    const order = JSON.parse(customerView) as CustomerOrder | null
     const timer = setTimeout(() => {
-      const order = JSON.parse(customerView) as CustomerOrder | null
       // Newer always higher, also across a reload of the kassa.
       const seq = Math.max(Date.now(), customerViewRef.current.seq + 1)
       customerViewRef.current = { order, seq }
       channelRef.current?.postMessage({ type: 'order-view', order, seq })
+    }, 250)
+    const remote = setTimeout(() => {
       const org = posOrgIdRef.current
       const pos = posTerminalIdRef.current
-      if (!org || !pos || customerViewSentRef.current === customerView) return
+      if (!org || !pos || linksRef.current?.shown === false || customerViewSentRef.current === customerView) return
       customerViewSentRef.current = customerView
       fetch(`/api/organizations/${encodeURIComponent(org)}/devices/${encodeURIComponent(pos)}/customer-view`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order, seq }),
-      }).catch(() => {
-        customerViewSentRef.current = null
+        body: JSON.stringify({ order, seq: customerViewRef.current.seq }),
       })
-    }, 250)
-    return () => clearTimeout(timer)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && typeof data.shown === 'boolean') linksRef.current = { shown: data.shown, linked: data.linked !== false }
+        })
+        .catch(() => {
+          customerViewSentRef.current = null
+        })
+    }, CUSTOMER_VIEW_REMOTE_MS)
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(remote)
+    }
   }, [customerView])
 
   // Tap to Pay is never confirmed by hand: SumUp does.
-  const showConfirmButton = current !== null && current.status !== 'RESOLVED' && current.method !== 'tap'
+  // Nor once it's known to have failed: then only cancel, and try again.
+  const showConfirmButton = current !== null && current.status !== 'RESOLVED' && current.method !== 'tap' && manualStatus?.kind !== 'failed'
   const shownPanelWidth = clampPanel(panelWidth, viewportWidth)
   const panelTitle = active === 'quick' ? m.quickTitle : shownTab ? tabTitle(m, shownTab) : m.loading
   const itemCount = draft.reduce((n, l) => n + l.quantity, 0) + (shownTab?.lines || []).filter((l) => !l.voidsLineId).reduce((n, l) => n + netQuantity(l), 0)
