@@ -188,6 +188,43 @@ test.describe('Producten', () => {
 })
 
 test.describe('Menukaarten', () => {
+  test('the order sheet for the waiters: the groups and items in the kassa\'s order, a box per item for the tally, no prices; A5 twice on an A4', async ({ console: open, page, catalogAdmin, browserName }) => {
+    const { catalog } = seedCatalog(catalogAdmin)
+    // Hidden on the menu: not on the sheet either.
+    const pils = catalogAdmin.entries.find((e) => e.catalogId === catalog.id && e.priceCents === 250)!
+    call(catalogAdmin, 'PATCH', `/catalogs/${catalog.id}/entries/${pils.id}`, { visible: false })
+    // The frame's print dialog: counted, not opened.
+    await page.addInitScript(() => {
+      window.print = () => {
+        ;(window.top as any).__printed = ((window.top as any).__printed ?? 0) + 1
+      }
+    })
+    await open('/catalogs')
+    await rowAction(page.getByRole('row', { name: /Kaas & wijn/ }), 'Bestelblad afdrukken')
+    await expect.poll(() => page.evaluate(() => (window as any).__printed)).toBe(1)
+    const frame = page.frameLocator('[data-testid="order-sheet-frame"]')
+    await expect(frame.locator('.a5')).toHaveCount(2)
+    const first = frame.locator('.a5').first()
+    await expect(first.locator('.title')).toHaveText('Kaas & wijn')
+    await expect(first.locator('.group')).toHaveText(['Drank', 'Eten'])
+    await expect(first.locator('.name')).toHaveText(['Cola', 'Steak'])
+    await expect(first.locator('.box')).toHaveCount(2)
+    await expect(first.locator('.fields')).toContainText('Tafel')
+    await expect(first).not.toContainText('€')
+
+    // A real print (Chromium makes PDFs): one A4 page, landscape.
+    if (browserName === 'chromium') {
+      const html = await page.getByTestId('order-sheet-frame').evaluate((f) => (f as HTMLIFrameElement).contentDocument!.documentElement.outerHTML)
+      const sheet = await page.context().newPage()
+      await sheet.setContent(html)
+      const pdf = (await sheet.pdf({ preferCSSPageSize: true })).toString('latin1')
+      expect(pdf.match(/\/Type\s*\/Page[^s]/g)?.length).toBe(1)
+      const box = pdf.match(/\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)/)!
+      expect(Number(box[1])).toBeGreaterThan(Number(box[2]))
+      await sheet.close()
+    }
+  })
+
   test('creates a catalog, a group and a priced line, then edits price, visibility and quick buttons', async ({ console: open, catalogAdmin }) => {
     call(catalogAdmin, 'POST', '/catalog/products', { name: 'Pils' })
     const page = await open('/catalogs')

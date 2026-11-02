@@ -73,6 +73,11 @@ export default {
   // Export / import
   export: 'Exporter',
   exportAs: (format: string) => `Exporter (${format})`,
+  // The order sheet on paper (order-sheet.ts): a tally per item, per table.
+  printOrderSheet: 'Imprimer la feuille de commande',
+  sheetTable: 'Table',
+  sheetWaiter: 'Serveur',
+  sheetDate: 'Date',
   importInto: (name: string) => `Importer dans ${name}`,
   importCatalog: 'Importer une carte',
   importReplaceDescription:

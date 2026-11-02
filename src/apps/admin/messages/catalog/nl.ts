@@ -78,6 +78,11 @@ const nl = {
   // Export / import
   export: 'Exporteren',
   exportAs: (format: string) => `Exporteren (${format})`,
+  // The order sheet on paper (order-sheet.ts): a tally per item, per table.
+  printOrderSheet: 'Bestelblad afdrukken',
+  sheetTable: 'Tafel',
+  sheetWaiter: 'Ober',
+  sheetDate: 'Datum',
   importInto: (name: string) => `Importeren in ${name}`,
   importCatalog: 'Menukaart importeren',
   importReplaceDescription:

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { BookOpen } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { useMessages } from '@/shared/i18n'
+import { useLocale, useMessages } from '@/shared/i18n'
 import { downloadCatalogFile } from '../components/menu-export-button'
 import { MenuImportDialog } from '../components/menu-import-dialog'
 import { PromptDialog } from '../components/prompt-dialog'
@@ -15,6 +15,7 @@ import {
   archiveCatalog,
   createCatalog,
   duplicateCatalog,
+  getCatalog,
   listCatalogs,
   renameCatalog,
   restoreCatalog,
@@ -22,6 +23,8 @@ import {
   type CatalogSummary,
 } from '../lib/catalog-api'
 import { catalogNoticeText, serverNotice, type CatalogNotice } from '../lib/catalog-helpers'
+import { orderSheetHtml, sheetGroups } from '../lib/order-sheet'
+import { printDocument } from '../lib/qr-sheet'
 import { useOrg } from '../lib/org-context'
 import { useAsync } from '../lib/use-async'
 import { ADMIN_CATALOG_MESSAGES } from '../messages/catalog'
@@ -62,8 +65,25 @@ export default function CatalogsPage() {
     }
   }
 
+  // The order sheet for the waiters (order-sheet.ts), printed from a frame.
+  const frameRef = useRef<HTMLIFrameElement>(null)
+  const { locale } = useLocale()
+  async function printSheet(catalogId: string) {
+    const frame = frameRef.current
+    if (!orgId || !frame) return
+    setActionError(null)
+    try {
+      const catalog = await getCatalog(orgId, catalogId)
+      const texts = { title: catalog.name, table: m.sheetTable, waiter: m.sheetWaiter, date: m.sheetDate }
+      printDocument(frame, orderSheetHtml(texts, sheetGroups(catalog), locale))
+    } catch (err) {
+      setActionError(serverNotice(err))
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      <iframe ref={frameRef} title={m.printOrderSheet} aria-hidden="true" tabIndex={-1} className="pointer-events-none fixed top-0 left-0 size-px opacity-0" data-testid="order-sheet-frame" />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{m.catalogsTitle}</h1>
@@ -143,6 +163,7 @@ export default function CatalogsPage() {
                               !catalog.isDefault && { label: m.makeDefault, onSelect: () => run(() => setDefaultCatalog(orgId, catalog.id)) },
                               { label: m.exportAs('Excel'), onSelect: () => runExport(catalog.id, 'xlsx') },
                               { label: m.exportAs('CSV'), onSelect: () => runExport(catalog.id, 'csv') },
+                              { label: m.printOrderSheet, onSelect: () => printSheet(catalog.id) },
                               !catalog.isDefault && { label: m.archive, destructive: true, onSelect: () => run(() => archiveCatalog(orgId, catalog.id)) },
                             ]
                       }

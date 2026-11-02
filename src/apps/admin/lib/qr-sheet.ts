@@ -39,8 +39,10 @@ export function qrSheetHtml(title: string, cards: QrCard[], lang = 'nl'): string
     .join('')}</body></html>`
 }
 
-// Prints it from `frame` (kept on the page, invisible): written fresh each time.
-export function printQrSheet(frame: HTMLIFrameElement, html: string) {
+// Prints it from `frame` (kept on the page, invisible): written fresh each
+// time. Any such document (the order sheet too, order-sheet.ts).
+export const printQrSheet = printDocument
+export function printDocument(frame: HTMLIFrameElement, html: string) {
   const doc = frame.contentDocument
   const win = frame.contentWindow
   if (!doc || !win) return
