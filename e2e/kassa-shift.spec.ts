@@ -145,3 +145,21 @@ test('logging out with the drawer open asks: kasopmaak, or leave it open', async
   await dialog.getByRole('button', button('Kasopmaak')).click()
   await expect(kassa.getByTestId('cash-up')).toBeVisible()
 })
+
+test('Kasbeweging: Erin and Eruit, each short enough to fit its button', async ({ kassa, backend }) => {
+  await kassa.getByTestId('open-register').getByRole('button', button('Kassa openen')).click()
+  await kassa.getByTestId('more-menu').click()
+  await kassa.getByRole('menuitem', { name: 'Kasbeweging' }).click()
+  const dialog = kassa.getByRole('dialog')
+  for (const name of ['Erin', 'Eruit']) {
+    const fits = await dialog.getByRole('button', button(name)).evaluate((el) => el.scrollWidth <= el.clientWidth)
+    expect(fits, `${name} fits its button`).toBe(true)
+  }
+  await dialog.getByRole('button', button('Erin')).click()
+  await expect(dialog.getByLabel('Reden')).toHaveAttribute('placeholder', 'bv. Extra wisselgeld')
+  await dialog.getByLabel('Bedrag').fill('10')
+  await dialog.getByLabel('Reden').fill('Wisselgeld')
+  await dialog.getByRole('button', button('Opslaan')).click()
+  await expect(dialog).toBeHidden()
+  expect(backend.shift.movements).toMatchObject([{ direction: 'in', amountCents: 1000, reason: 'Wisselgeld' }])
+})
