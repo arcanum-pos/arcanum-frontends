@@ -69,3 +69,25 @@ test('a new rekening elsewhere shows up in the overview live', async ({ kassa, b
   await kassa.getByRole('button', { name: '← Terug naar de kassa' }).click()
   await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
 })
+
+test('a partly paid rekening: its own badge with what is paid, under Open and Betaald, its paid part in the totals', async ({ kassa, backend }) => {
+  const tab = backend.openTab('Tafel 8', [{ itemCode: 'bon', name: 'Bon', unitPriceCents: 500, quantity: 4 }])
+  const part = backend.startCharge(tab.id)
+  part.amountCents = 800
+  backend.resolveCharge(part.id, true)
+
+  await kassa.getByTestId('more-menu').click()
+  await kassa.getByRole('menuitem', { name: 'Rekeningen' }).click()
+  const overview = kassa.getByTestId('tabs-overview')
+  const row = overview.getByTestId('overview-row').filter({ hasText: 'Tafel 8' })
+  await expect(row).toContainText('Deels betaald')
+  await expect(row.getByTestId('overview-part-paid')).toHaveText('€ 8,00 betaald')
+  await expect(overview.getByTestId('overview-totals')).toHaveText('0 betaald · € 8,00 - 1 open · € 12,00')
+  for (const chip of ['Open', 'Betaald']) {
+    await overview.getByRole('button', { name: chip, exact: true }).click()
+    await expect(row).toHaveCount(1)
+  }
+  // Still open: it continues on this kassa.
+  await row.click()
+  await expect(panel(kassa).getByRole('heading', { name: /Tafel 8/ })).toBeVisible()
+})

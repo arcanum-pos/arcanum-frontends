@@ -12,21 +12,27 @@ export function startOfDay(now = new Date()): string {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
 }
 
-export type TabStatusKind = 'open' | 'paying' | 'paid' | 'cancelled'
+// "partial": still open, part of it paid already (a split bill).
+export type TabStatusKind = 'open' | 'partial' | 'paying' | 'paid' | 'cancelled'
 
-export function tabStatusKind(tab: Pick<TabSummary, 'status' | 'paymentPending'>): TabStatusKind {
+export function tabStatusKind(tab: Pick<TabSummary, 'status' | 'paymentPending' | 'paidCents'>): TabStatusKind {
   if (tab.status === 'closed') return 'paid'
   if (tab.status === 'cancelled') return 'cancelled'
-  return tab.paymentPending ? 'paying' : 'open'
+  if (tab.paymentPending) return 'paying'
+  return tab.paidCents > 0 ? 'partial' : 'open'
 }
 
-// The status chips: "open" includes a payment in progress.
+// The status chips: "open" includes a payment in progress; a partly paid
+// rekening is under "open" (something is still to pay) and "paid" (some
+// money came in).
 export type OverviewFilter = 'all' | 'open' | 'paid' | 'cancelled'
 export const OVERVIEW_FILTERS: OverviewFilter[] = ['all', 'open', 'paid', 'cancelled']
 
 function matchesFilter(tab: TabSummary, filter: OverviewFilter): boolean {
   const kind = tabStatusKind(tab)
-  return filter === 'all' || kind === filter || (filter === 'open' && kind === 'paying')
+  if (filter === 'all' || kind === filter) return true
+  if (filter === 'open') return kind === 'paying' || kind === 'partial'
+  return filter === 'paid' && kind === 'partial'
 }
 
 // The search: "#12" finds rekening 12; a query of just digits finds an
@@ -53,13 +59,14 @@ export function filterOverview(m: Pick<KassaMessages, 'quickSale' | 'tabNumber' 
   return tabs.filter((t) => matchesFilter(t, filter) && matchesQuery(m, t, query))
 }
 
-// The line above the list: what's been paid today, what's still open.
+// The line above the list: what's been paid today (the paid part of an
+// open rekening too), what's still open.
 export function overviewTotals(tabs: TabSummary[]) {
   const paid = tabs.filter((t) => t.status === 'closed')
   const open = tabs.filter((t) => t.status === 'open')
   return {
     paidCount: paid.length,
-    paidCents: paid.reduce((sum, t) => sum + t.totalCents, 0),
+    paidCents: paid.reduce((sum, t) => sum + t.totalCents, 0) + open.reduce((sum, t) => sum + t.paidCents, 0),
     openCount: open.length,
     openCents: open.reduce((sum, t) => sum + t.outstandingCents, 0),
   }

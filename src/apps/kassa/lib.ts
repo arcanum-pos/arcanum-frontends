@@ -218,7 +218,8 @@ export interface CurrentPayment {
   // Part of amountCents — paid by the customer, but not revenue.
   tipCents: number
   // One part of an equal split ("deel 2 van 3"); absent for a full payment.
-  part?: { index: number; of: number }
+  // `count` parts at once ("deel 2-4 van 11"), 1 when absent.
+  part?: { index: number; of: number; count?: number }
   // Something stays open on the rekening after this payment (a part, or an item payment).
   remainsOpen?: boolean
   // True once a SumUp charge was actually sent to a physical reader — then
@@ -340,6 +341,22 @@ export function splitSequence(cents: number, parts: number): number[] {
     open -= part
   }
   return out
+}
+
+// The next payment of a split, `count` parts at once (3 of 11): their share
+// of what's open (`openCents`), rounded down, all parts left take the rest -
+// as the server computes it (tabs.ts splitPartsCents). `count` is kept
+// within 1 and the parts left.
+export function splitPayment(split: { parts: number; paid: number }, openCents: number, count = 1) {
+  const left = Math.max(1, split.parts - split.paid)
+  const n = Math.min(Math.max(1, count), left)
+  return {
+    index: Math.min(split.paid + 1, split.parts),
+    of: split.parts,
+    count: n,
+    left,
+    cents: n >= left ? openCents : Math.floor((openCents * n) / left),
+  }
 }
 
 // "3 × € 25,83" or "€ 8,66 + 2 × € 8,67" — the parts, equal ones grouped.

@@ -61,7 +61,7 @@ export function PaymentStatus({
           <span className="text-[11px] font-semibold tracking-[0.08em] text-foreground/70 uppercase">{methodLabel}</span>
           {current.part && (
             <span className="ml-auto rounded-md border px-1.5 py-0.5 text-[11px] font-semibold" data-testid="payment-part">
-              {m.part(current.part.index, current.part.of)}
+              {m.part(current.part.index, current.part.of, current.part.count)}
             </span>
           )}
         </div>

@@ -3,7 +3,7 @@ import { Eye, EyeOff, Monitor, MoreHorizontal, SlidersHorizontal } from 'lucide-
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getRegister, registerState, setRegister, type RegisterState } from '@/shared/register'
-import { CashUp, MovementDialog, OpenRegister, useShiftTexts } from './Shift'
+import { CashUp, MovementDialog, OpenRegister, RegisterOverview, useShiftTexts } from './Shift'
 import { chosenStaff, listStaff, staffHeaders } from '@/shared/staff'
 import { StaffButton } from '@/shared/staff-picker'
 import { useEffect, useRef, useState } from 'react'
@@ -29,6 +29,7 @@ import {
   customerOrderFromTab,
   customerViewOrder,
   selectionCents,
+  splitPayment,
   selectionLines,
   type ItemSelection,
   draftTotalCents,
@@ -173,6 +174,7 @@ export default function App() {
   const [regState, setRegState] = useState<RegisterState | null>(null)
   const [cashUpOpen, setCashUpOpen] = useState(false)
   const [movementOpen, setMovementOpen] = useState(false)
+  const [registerOverviewOpen, setRegisterOverviewOpen] = useState(false)
   const [leaving, setLeaving] = useState(false)
   const st = useShiftTexts()
   const waiterOnly = useWaiterOnly(orgId)
@@ -195,6 +197,10 @@ export default function App() {
   // "Ticket annuleren" asked for the shown tab.
   const [cancellingTicket, setCancellingTicket] = useState(false)
   const [splitDialogOpen, setSplitDialogOpen] = useState(false)
+  // While split: how many parts the next payment covers, for this tab at
+  // this point of its plan (back to 1 after a payment or on another tab).
+  const [splitTake, setSplitTake] = useState<{ tabId: string; paid: number; count: number } | null>(null)
+  const splitCountFor = (tab: TabDetail | null) => (tab?.split && splitTake && splitTake.tabId === tab.id && splitTake.paid === tab.split.paid ? splitTake.count : 1)
   // Split per item: on which rekening, and the units picked for the next payment.
   const [itemMode, setItemMode] = useState<{ tabId: string; selection: ItemSelection } | null>(null)
   const itemModeRef = useRef(itemMode)
@@ -748,9 +754,9 @@ export default function App() {
   // checks they cost the amount and aren't paid yet.
   async function startCharge(org: string, tab: TabDetail, tipCents: number, items: ItemSelection | null = null) {
     const picked = items ? selectionLines(tab, items) : null
-    const split = picked ? null : (tab.split ?? null)
-    const amountCents = (picked ? selectionCents(tab, items!) : split ? split.nextCents : tab.outstandingCents) + tipCents
-    const part = split ? { index: Math.min(split.paid + 1, split.parts), of: split.parts } : undefined
+    const split = picked || !tab.split ? null : splitPayment(tab.split, tab.outstandingCents, splitCountFor(tab))
+    const amountCents = (picked ? selectionCents(tab, items!) : split ? split.cents : tab.outstandingCents) + tipCents
+    const part = split ? { index: split.index, of: split.of, count: split.count } : undefined
     const remainsOpen = amountCents - tipCents < tab.outstandingCents
     const breakdown = picked ? pickedBreakdownLines(m, picked, tipCents) : tabBreakdownLines(m, tab, tipCents)
     const order = {
@@ -761,6 +767,7 @@ export default function App() {
       amount: amountCents,
       tipCents,
       splitPart: split ? true : undefined,
+      splitParts: split && split.count > 1 ? split.count : undefined,
       lines: picked ? picked.map((x) => ({ lineId: x.line.id, quantity: x.quantity })) : undefined,
       orgId: org,
       tabId: tab.id,
@@ -1349,6 +1356,19 @@ export default function App() {
                   {st.movement}
                 </DropdownMenuItem>
               )}
+              {regState?.shift && (
+                <DropdownMenuItem
+                  className="h-10"
+                  data-testid="open-register-overview"
+                  onSelect={() => {
+                    // What the shift adds up to right now, as for the kasopmaak.
+                    loadRegister()
+                    setRegisterOverviewOpen(true)
+                  }}
+                >
+                  {st.overview}
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem className="h-10" onSelect={refreshAll}>
                 {m.refresh}
               </DropdownMenuItem>
@@ -1482,6 +1502,8 @@ export default function App() {
                   onRefresh={refreshAll}
                   onSplit={() => setSplitDialogOpen(true)}
                   onStopSplit={stopSplit}
+                  splitCount={splitCountFor(shownTab)}
+                  onSplitCount={(count) => shownTab?.split && setSplitTake({ tabId: shownTab.id, paid: shownTab.split.paid, count })}
                   itemSelection={itemMode && shownTab && itemMode.tabId === shownTab.id ? itemMode.selection : null}
                   onItemSelection={(selection) => setItemMode((m) => (m ? { ...m, selection } : m))}
                   onStopItems={() => setItemMode(null)}
@@ -1532,6 +1554,9 @@ export default function App() {
           />
         )}
         </main>
+      )}
+      {regState?.shift && registerOverviewOpen && !movementOpen && (
+        <RegisterOverview state={{ ...regState, shift: regState.shift }} onMovement={() => setMovementOpen(true)} onClose={() => setRegisterOverviewOpen(false)} />
       )}
       {orgId && regState?.shift && movementOpen && (
         <MovementDialog orgId={orgId} shift={regState.shift} deviceName={getDeviceName()} onClose={() => setMovementOpen(false)} onSaved={() => loadRegister()} />

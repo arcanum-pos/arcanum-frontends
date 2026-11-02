@@ -14,7 +14,7 @@ export default {
   alreadyPaid: 'Déjà payé',
   tip: 'Pourboire',
   totalDue: 'Total à payer',
-  partDue: (index: number, of: number) => `À payer · partie ${index} sur ${of}`,
+  partDue: (index: number, of: number, count = 1) => `À payer · partie ${count > 1 ? `${index}-${index + count - 1}` : index} sur ${of}`,
   stillOpen: (amount: string) => `Reste à payer sur l’addition : ${amount}`,
   items: (count: number) => (count === 1 ? '1 article' : `${count} articles`),
   qrAlt: 'Code QR pour le paiement',
@@ -47,5 +47,5 @@ export default {
   followHint: 'Scannez pour savoir quand votre commande est prête.',
   followQrAlt: 'Code QR pour suivre votre commande',
   paid: (amount: string, method: string) => `${amount} payé · ${method}`,
-  part: (index: number, of: number) => `Partie ${index} sur ${of}`,
+  part: (index: number, of: number, count = 1) => `Partie ${count > 1 ? `${index}-${index + count - 1}` : index} sur ${of}`,
 } satisfies DisplayMessages

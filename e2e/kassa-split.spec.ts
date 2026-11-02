@@ -249,3 +249,68 @@ test('per item: paid units can no longer be cancelled - only the unpaid ones are
   await expect(kassa.getByRole('dialog')).toContainText('1 × Pintje')
   await expect(kassa.getByRole('dialog').getByLabel('Aantal annuleren')).toHaveCount(0)
 })
+
+test('several parts in one payment: split in 11, then 3, 2, 2 and 4 parts paid at once', async ({ kassa, backend }) => {
+  backend.openTab('Tafel 11', [{ name: 'Menu', unitPriceCents: 1000, quantity: 11 }])
+  await kassa.reload()
+  await kassa.getByRole('button', { name: /^#1 Tafel 11/ }).click()
+  await panel(kassa).getByRole('button', { name: 'Splitsen', exact: true }).click()
+  const dialog = kassa.getByRole('dialog')
+  for (let i = 0; i < 9; i++) await dialog.getByRole('button', { name: 'Meer personen' }).click()
+  await dialog.getByRole('button', { name: 'In 11 verdelen' }).click()
+
+  const count = panel(kassa).getByTestId('split-count')
+  const more = count.getByRole('button', { name: 'Een deel meer' })
+  await expect(count.locator('output')).toHaveText('1')
+  await expect(count.getByRole('button', { name: 'Een deel minder' })).toBeDisabled()
+  await more.click()
+  await more.click()
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', { name: 'Afrekenen deel 1-3/11 · € 30,00', exact: true }).click()
+  await expect(kassa.getByTestId('payment-part')).toHaveText('Deel 1-3 van 11')
+  await kassa.getByRole('button', { name: 'Bevestig ontvangst contant geld' }).click()
+  await kassa.getByRole('button', { name: 'Volgend deel', exact: true }).click()
+
+  // Back to one part after a payment.
+  await expect(panel(kassa).getByTestId('split-banner')).toContainText('deel 4 van 11')
+  await expect(count.locator('output')).toHaveText('1')
+  await more.click()
+  await payCashPart(kassa, 'Afrekenen deel 4-5/11 · € 20,00', 'Volgend deel')
+  await more.click()
+  await payCashPart(kassa, 'Afrekenen deel 6-7/11 · € 20,00', 'Volgend deel')
+  for (let i = 0; i < 3; i++) await more.click()
+  // All parts left: no more to add.
+  await expect(more).toBeDisabled()
+  await payCashPart(kassa, 'Afrekenen deel 8-11/11 · € 40,00', 'Volgende klant')
+
+  expect(backend.tabs[0]).toMatchObject({ status: 'closed' })
+  expect(backend.charges.map((c) => [c.amountCents, c.splitPart, c.splitCount])).toEqual([
+    [3000, 1, 3],
+    [2000, 4, 2],
+    [2000, 6, 2],
+    [4000, 8, 4],
+  ])
+})
+
+test('several parts: the CFD shows which parts are paid', async ({ kassa, backend }) => {
+  const display = await kassa.context().newPage()
+  await display.routeWebSocket(/\/devices\/connect/, () => {})
+  await display.route(/\/(api\/|whoami)/, async (route) => {
+    const url = new URL(route.request().url())
+    const { status, body } = backend.handle(route.request().method(), url.pathname + url.search, null)
+    await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+  })
+  await display.goto('/display.html?terminal=cfd-e2e')
+
+  await fietstochten(kassa)
+  await panel(kassa).getByRole('button', { name: 'Splitsen', exact: true }).click()
+  const dialog = kassa.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Meer personen' }).click()
+  await dialog.getByRole('button', { name: 'In 3 verdelen' }).click()
+  await panel(kassa).getByTestId('split-count').getByRole('button', { name: 'Een deel meer' }).click()
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', { name: 'Afrekenen deel 1-2/3 · € 17,33', exact: true }).click()
+  await expect(display.getByTestId('cfd-waiting')).toContainText('Te betalen · deel 1-2 van 3')
+  await kassa.getByRole('button', { name: 'Bevestig ontvangst contant geld' }).click()
+  await expect(display.getByTestId('cfd-part')).toHaveText('Deel 1-2 van 3')
+})

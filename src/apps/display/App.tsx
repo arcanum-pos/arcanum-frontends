@@ -53,7 +53,7 @@ interface Payment {
   status: string
   errorMessage?: string
   // One part of an equal split ("deel 2 van 3").
-  part?: { index: number; of: number } | null
+  part?: { index: number; of: number; count?: number } | null
 }
 
 export default function App() {
@@ -149,7 +149,7 @@ export default function App() {
         // Still pending: the provider's detail (Bancontact's IDENTIFIED…).
         status: data.status && data.status !== 'pending' ? data.status : data.providerStatus || data.status,
         errorMessage: data.status === 'failed' ? data.errorMessage || undefined : undefined,
-        part: readPart(data.splitPart, data.order?.split?.parts),
+        part: readPart(data.splitPart, data.order?.split?.parts, data.splitCount),
       })
     } catch (err) {
       console.error('Kon betaalstatus niet ophalen', err)
@@ -215,7 +215,7 @@ export default function App() {
           qrCodeUrl: msg.qrCodeUrl,
           expiresAt: msg.expiresAt,
           status: msg.status,
-          part: readPart(msg.part?.index, msg.part?.of),
+          part: readPart(msg.part?.index, msg.part?.of, msg.part?.count),
         })
       } else if (msg.type === 'status') {
         setStatus(msg.status)
@@ -350,8 +350,11 @@ function beforePayment(order: CustomerOrder | null, paidNowCents: number): Custo
   return { ...order, paidCents: Math.max(0, (order.paidCents as number) - paidNowCents) }
 }
 
-function readPart(index: unknown, of: unknown): Payment['part'] {
-  return Number.isInteger(index) && Number.isInteger(of) && (index as number) >= 1 && (of as number) >= (index as number) ? { index: index as number, of: of as number } : null
+// `count`: several parts in one payment ("deel 2-4 van 11"), 1 when absent.
+function readPart(index: unknown, of: unknown, count?: unknown): Payment['part'] {
+  if (!(Number.isInteger(index) && Number.isInteger(of) && (index as number) >= 1 && (of as number) >= (index as number))) return null
+  const n = Number.isInteger(count) && (count as number) > 1 && (index as number) + (count as number) - 1 <= (of as number) ? (count as number) : 1
+  return { index: index as number, of: of as number, count: n }
 }
 
 // The payment, from asking for it to "Bedankt!", on one screen: the order
@@ -442,7 +445,7 @@ function PayView({ payment, eventName, phase, countdownText, branded, onTap }: {
             </p>
           )}
           <p className={cn('text-xs font-semibold tracking-[0.1em] uppercase', muted)}>
-            {paid ? m.paidLabel : payment.part ? m.partDue(payment.part.index, payment.part.of) : m.totalDue}
+            {paid ? m.paidLabel : payment.part ? m.partDue(payment.part.index, payment.part.of, payment.part.count) : m.totalDue}
           </p>
           <p className="mt-2 font-mono text-[56px] leading-none font-semibold tracking-tight tabular-nums">{formatEuro(bill.amountCents)}</p>
           <p className={cn('mt-3 text-[13.5px]', muted)} data-testid="cfd-summary">
@@ -478,7 +481,7 @@ function PayView({ payment, eventName, phase, countdownText, branded, onTap }: {
           {countdownText && !paid && <p className={cn('font-mono text-xs', muted)}>{countdownText}</p>}
           {paid && payment.part && (
             <p className={cn('text-base', muted)} data-testid="cfd-part">
-              {m.part(payment.part.index, payment.part.of)}
+              {m.part(payment.part.index, payment.part.of, payment.part.count)}
             </p>
           )}
           {paid && payment.order?.followUrl && (

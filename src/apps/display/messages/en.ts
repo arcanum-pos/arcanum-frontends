@@ -14,7 +14,7 @@ export default {
   alreadyPaid: 'Already paid',
   tip: 'Tip',
   totalDue: 'Total to pay',
-  partDue: (index: number, of: number) => `To pay · part ${index} of ${of}`,
+  partDue: (index: number, of: number, count = 1) => `To pay · part ${count > 1 ? `${index}-${index + count - 1}` : index} of ${of}`,
   stillOpen: (amount: string) => `Still open on the bill: ${amount}`,
   items: (count: number) => (count === 1 ? '1 item' : `${count} items`),
   qrAlt: 'QR code for payment',
@@ -47,5 +47,5 @@ export default {
   followHint: 'Scan to see when your order is ready.',
   followQrAlt: 'QR code to follow your order',
   paid: (amount: string, method: string) => `${amount} paid · ${method}`,
-  part: (index: number, of: number) => `Part ${index} of ${of}`,
+  part: (index: number, of: number, count = 1) => `Part ${count > 1 ? `${index}-${index + count - 1}` : index} of ${of}`,
 } satisfies DisplayMessages

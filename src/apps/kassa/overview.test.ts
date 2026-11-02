@@ -26,6 +26,7 @@ const tabs = [
   tab({ number: 2, label: 'Tafel 4', status: 'open', totalCents: 4150, outstandingCents: 4150, openedDeviceName: 'Kassa 2' }),
   tab({ number: 3, label: 'Tafel 7', status: 'open', paymentPending: true, totalCents: 2000, paidCents: 500, outstandingCents: 1500 }),
   tab({ number: 4, label: 'Jan', status: 'cancelled', openedDeviceName: 'Kassa 2' }),
+  tab({ number: 5, label: 'Piet', status: 'open', totalCents: 3000, paidCents: 1000, outstandingCents: 2000 }),
 ]
 
 describe('startOfDay', () => {
@@ -37,17 +38,17 @@ describe('startOfDay', () => {
 
 describe('tabStatusKind', () => {
   it('open, paying, paid or cancelled', () => {
-    expect(tabs.map(tabStatusKind)).toEqual(['paid', 'open', 'paying', 'cancelled'])
+    expect(tabs.map(tabStatusKind)).toEqual(['paid', 'open', 'paying', 'cancelled', 'partial'])
   })
 })
 
 describe('filterOverview', () => {
   const numbers = (list: TabSummary[]) => list.map((t) => t.number)
 
-  it('filters by status - "open" includes a payment in progress', () => {
-    expect(numbers(filterOverview(m, tabs, '', 'all'))).toEqual([1, 2, 3, 4])
-    expect(numbers(filterOverview(m, tabs, '', 'open'))).toEqual([2, 3])
-    expect(numbers(filterOverview(m, tabs, '', 'paid'))).toEqual([1])
+  it('filters by status - "open" includes a payment in progress; a partly paid one is open and paid', () => {
+    expect(numbers(filterOverview(m, tabs, '', 'all'))).toEqual([1, 2, 3, 4, 5])
+    expect(numbers(filterOverview(m, tabs, '', 'open'))).toEqual([2, 3, 5])
+    expect(numbers(filterOverview(m, tabs, '', 'paid'))).toEqual([1, 5])
     expect(numbers(filterOverview(m, tabs, '', 'cancelled'))).toEqual([4])
   })
 
@@ -65,7 +66,7 @@ describe('filterOverview', () => {
 })
 
 describe('overviewTotals', () => {
-  it("what's paid today and what's still open", () => {
-    expect(overviewTotals(tabs)).toEqual({ paidCount: 1, paidCents: 1000, openCount: 2, openCents: 5650 })
+  it("what's paid today (the paid part of open ones too) and what's still open", () => {
+    expect(overviewTotals(tabs)).toEqual({ paidCount: 1, paidCents: 2500, openCount: 3, openCents: 7650 })
   })
 })

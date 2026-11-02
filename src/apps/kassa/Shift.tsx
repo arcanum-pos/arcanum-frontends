@@ -59,6 +59,14 @@ const TEXTS: Messages<{
   doneTitle: string
   done: string
   total: string
+  overview: string
+  inDrawer: string
+  cashPaid: (n: number) => string
+  movedIn: string
+  movedOut: string
+  expectedInDrawer: string
+  noMovements: string
+  otherMethods: string
 }> = {
   nl: {
     openTitle: (r) => `Kassa openen - ${r}`,
@@ -101,6 +109,14 @@ const TEXTS: Messages<{
     doneTitle: 'Kassa afgesloten',
     done: 'Klaar',
     total: 'Totaal',
+    overview: 'Kasoverzicht',
+    inDrawer: 'In de lade',
+    cashPaid: (n) => `Contant betaald (${n}×)`,
+    movedIn: 'Erin',
+    movedOut: 'Eruit',
+    expectedInDrawer: 'Hoort in de lade',
+    noMovements: 'Nog geen kasbewegingen in deze shift.',
+    otherMethods: 'Andere betaalmethodes',
   },
   fr: {
     openTitle: (r) => `Ouvrir la caisse - ${r}`,
@@ -143,6 +159,14 @@ const TEXTS: Messages<{
     doneTitle: 'Caisse clôturée',
     done: 'Terminé',
     total: 'Total',
+    overview: 'Aperçu de la caisse',
+    inDrawer: 'Dans le tiroir',
+    cashPaid: (n) => `Payé en espèces (${n}×)`,
+    movedIn: 'Entrées',
+    movedOut: 'Sorties',
+    expectedInDrawer: 'Devrait être dans le tiroir',
+    noMovements: 'Pas encore de mouvements de caisse pendant ce service.',
+    otherMethods: 'Autres moyens de paiement',
   },
   en: {
     openTitle: (r) => `Open the till - ${r}`,
@@ -185,6 +209,14 @@ const TEXTS: Messages<{
     doneTitle: 'Till closed',
     done: 'Done',
     total: 'Total',
+    overview: 'Till overview',
+    inDrawer: 'In the drawer',
+    cashPaid: (n) => `Paid in cash (${n}×)`,
+    movedIn: 'In',
+    movedOut: 'Out',
+    expectedInDrawer: 'Should be in the drawer',
+    noMovements: 'No cash movements in this shift yet.',
+    otherMethods: 'Other payment methods',
   },
 }
 
@@ -331,6 +363,69 @@ export function MovementDialog({ orgId, shift, deviceName, onClose, onSaved }: {
           <Button onClick={save} disabled={busy || !readAmountCents(amount) || !reason.trim()}>
             {t.save}
           </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// "Kasoverzicht": the shift so far, without closing it - what went into
+// and out of the drawer (the float, cash payments, every movement with its
+// time, reason and who) and what should be in it now (not with blind count).
+export function RegisterOverview({ state, onMovement, onClose }: { state: RegisterState & { shift: Shift }; onMovement: () => void; onClose: () => void }) {
+  const t = useMessages(TEXTS)
+  const { locale } = useLocale()
+  const shift = state.shift
+  const time = (iso: string) => new Date(iso).toLocaleTimeString(INTL_LOCALES[locale], { hour: '2-digit', minute: '2-digit' })
+  const cash = shift.totals.methods.cash ?? { count: 0, cents: 0, tipCents: 0 }
+  const others = Object.entries(shift.totals.methods).filter(([method]) => method !== 'cash')
+  const line = (label: string, cents: number, testId?: string, strong = false) => (
+    <div className={cn('flex justify-between gap-3', strong && 'border-t pt-1.5 font-semibold')}>
+      <span>{label}</span>
+      <span className="font-mono tabular-nums" data-testid={testId}>
+        {formatEuro(cents)}
+      </span>
+    </div>
+  )
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" data-testid="register-overview">
+        <DialogHeader>
+          <DialogTitle>{t.overview}</DialogTitle>
+          <p className="text-sm text-muted-foreground">{t.header(state.register.name, shift.number, time(shift.openedAt))}</p>
+        </DialogHeader>
+        <section className="grid gap-1.5 text-sm">
+          <h3 className="font-semibold">{t.inDrawer}</h3>
+          {line(t.floatLine, shift.openingFloatCents)}
+          {line(t.cashPaid(cash.count), cash.cents, 'overview-cash')}
+          {line(t.movedIn, shift.totals.cashIn)}
+          {line(t.movedOut, -shift.totals.cashOut)}
+          {shift.expectedCents === null ? <p className="border-t pt-1.5 text-muted-foreground">{t.blindHint}</p> : line(t.expectedInDrawer, shift.expectedCents, 'overview-expected', true)}
+        </section>
+        <section className="grid gap-1.5 text-sm" data-testid="overview-movements">
+          <h3 className="font-semibold">{t.movements}</h3>
+          {shift.movements.length === 0 && <p className="text-muted-foreground">{t.noMovements}</p>}
+          {shift.movements.map((mv, i) => (
+            <div key={i} className="flex justify-between gap-3">
+              <span className="min-w-0">
+                <span className="font-mono text-muted-foreground tabular-nums">{time(mv.at)}</span> {mv.reason}
+                {mv.by && <span className="text-muted-foreground"> · {mv.by}</span>}
+              </span>
+              <span className={cn('shrink-0 font-mono tabular-nums', mv.direction === 'out' && 'text-destructive')}>{formatEuro(mv.direction === 'in' ? mv.amountCents : -mv.amountCents)}</span>
+            </div>
+          ))}
+        </section>
+        {others.length > 0 && (
+          <section className="grid gap-1.5 text-sm">
+            <h3 className="font-semibold">{t.otherMethods}</h3>
+            {others.map(([method, x]) => line(`${t.methodNames[method] ?? method} (${x.count}×)`, x.cents))}
+          </section>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onMovement}>
+            {t.movement}
+          </Button>
+          <Button onClick={onClose}>{t.back}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

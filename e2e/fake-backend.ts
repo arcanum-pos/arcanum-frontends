@@ -136,6 +136,8 @@ export interface FakeCharge {
   tipCents: number
   // Which part of an equal split (1-based), 0 = not a part.
   splitPart?: number
+  // How many parts from splitPart on (several at once).
+  splitCount?: number
   // Per item: the units this payment covers.
   lines?: { lineId: string; quantity: number }[]
   // Every charge body as the kassa sent it, for assertions.
@@ -202,7 +204,7 @@ export class FakeBackend {
     charge.status = success ? 'succeeded' : 'failed'
     if (success && charge.tabId && charge.splitPart) {
       const tab = this.tab(charge.tabId)!
-      if (tab.splitParts) tab.splitPaid = (tab.splitPaid || 0) + 1
+      if (tab.splitParts) tab.splitPaid = Math.min(tab.splitParts, (tab.splitPaid || 0) + (charge.splitCount || 1))
     }
     if (success && charge.tabId) this.settle(charge.tabId)
   }
@@ -361,8 +363,9 @@ export class FakeBackend {
   private shiftJson() {
     const s = this.shift
     if (!s) return null
+    const moved = (d: string) => s.movements.filter((m: any) => m.direction === d).reduce((n: number, m: any) => n + m.amountCents, 0)
     const expected = s.openingFloatCents + this.shiftCash + s.movements.reduce((n: number, m: any) => n + (m.direction === 'in' ? m.amountCents : -m.amountCents), 0)
-    return { ...s, totals: { methods: this.shiftMethods ?? (this.shiftCash ? { cash: { count: 1, cents: this.shiftCash, tipCents: 0 } } : {}), cashIn: 0, cashOut: 0 }, expectedCents: this.blindCount ? null : expected, pendingPayments: 0, openTabs: this.tabs.filter((t) => t.status === 'open').length, people: this.shiftPeople, _expected: expected }
+    return { ...s, totals: { methods: this.shiftMethods ?? (this.shiftCash ? { cash: { count: 1, cents: this.shiftCash, tipCents: 0 } } : {}), cashIn: moved('in'), cashOut: moved('out') }, expectedCents: this.blindCount ? null : expected, pendingPayments: 0, openTabs: this.tabs.filter((t) => t.status === 'open').length, people: this.shiftPeople, _expected: expected }
   }
   private registerRoute(method: string, p: string, body: any): FakeResponse | null {
     if (/^\/api\/organizations\/[^/]+\/registers$/.test(p) && method === 'GET') return { status: 200, body: { blindCount: this.blindCount, registers: this.registers } }
@@ -577,6 +580,7 @@ export class FakeBackend {
             return { name: l.name, quantity: pick.quantity, unitPriceCents: l.unitPriceCents }
           }) : null } : null,
           splitPart: c.splitPart || null,
+          splitCount: c.splitPart ? c.splitCount || 1 : null,
         },
       }
     }
@@ -801,12 +805,15 @@ export class FakeBackend {
         }
         if (cents !== pays) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', code: 'tab_changed', tab: s } }
       }
-      const expected = body.lines !== undefined ? pays >= 1 && pays <= s.outstandingCents : body.splitPart === true ? pays === s.split?.nextCents : body.partial === true ? pays >= 1 && pays <= s.outstandingCents : pays === s.outstandingCents
+      const count = body.splitParts ?? 1
+      const left = s.split ? Math.max(1, s.split.parts - s.split.paid) : 0
+      const partsCents = count >= left ? s.outstandingCents : Math.floor((s.outstandingCents * count) / left)
+      const expected = body.lines !== undefined ? pays >= 1 && pays <= s.outstandingCents : body.splitPart === true ? !!s.split && count <= left && pays === partsCents : body.partial === true ? pays >= 1 && pays <= s.outstandingCents : pays === s.outstandingCents
       if (!expected) return { status: 409, body: { error: 'Rekening is gewijzigd, herlaad en probeer opnieuw', code: 'tab_changed', tab: s } }
     }
     const tab = tabId ? this.tab(tabId) : undefined
     const splitPart = body.splitPart === true && tab?.splitParts ? (tab.splitPaid || 0) + 1 : 0
-    const charge: FakeCharge = { id: nextId('charge'), tabId, method, status: 'pending', amountCents: body.amount, tipCents, splitPart, lines: body.lines, body }
+    const charge: FakeCharge = { id: nextId('charge'), tabId, method, status: 'pending', amountCents: body.amount, tipCents, splitPart, splitCount: splitPart ? body.splitParts ?? 1 : undefined, lines: body.lines, body }
     this.charges.push(charge)
     if (method === 'bancontact') {
       return { status: 201, body: { chargeId: charge.id, status: 'PENDING', amount: body.amount, expiresAt: new Date(Date.now() + 120_000).toISOString(), qrCodeUrl: QR_URL } }

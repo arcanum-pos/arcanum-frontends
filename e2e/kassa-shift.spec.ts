@@ -66,6 +66,39 @@ test('counted per note and coin; a cash movement; the kasopmaak with its differe
   await expect(kassa.getByTestId('open-register').getByLabel('Wisselgeld')).toHaveValue('40,00')
 })
 
+test('Kasoverzicht: the shift so far without closing it - float, cash paid, every movement with who, what should be in the drawer', async ({ kassa, backend }) => {
+  const open = kassa.getByTestId('open-register')
+  await open.getByLabel('Wisselgeld').fill('50')
+  await open.getByRole('button', button('Kassa openen')).click()
+  await kassa.getByRole('button', button('10 × Bon')).click()
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', button(/^Afrekenen/)).click()
+  await kassa.getByRole('button', button('Bevestig ontvangst contant geld')).click()
+  await kassa.getByTestId('payment-next').click()
+
+  await kassa.getByTestId('more-menu').click()
+  await kassa.getByTestId('open-register-overview').click()
+  const overview = kassa.getByTestId('register-overview')
+  await expect(overview).toContainText('Toog · shift 1')
+  await expect(overview.getByTestId('overview-cash')).toHaveText('€ 10,00')
+  await expect(overview.getByTestId('overview-movements')).toContainText('Nog geen kasbewegingen in deze shift.')
+  await expect(overview.getByTestId('overview-expected')).toHaveText('€ 60,00')
+
+  // A movement from the overview; it comes back with it.
+  await overview.getByRole('button', button('Kasbeweging')).click()
+  const dialog = kassa.getByRole('dialog')
+  await dialog.getByLabel('Bedrag').fill('20')
+  await dialog.getByLabel('Reden').fill('Naar de kluis')
+  await dialog.getByRole('button', button('Opslaan')).click()
+  await expect(overview.getByTestId('overview-movements')).toContainText('Naar de kluis')
+  await expect(overview.getByTestId('overview-movements')).toContainText('-€ 20,00')
+  await expect(overview.getByTestId('overview-expected')).toHaveText('€ 40,00')
+  await overview.getByRole('button', button('Terug')).click()
+  await expect(overview).toBeHidden()
+  // Nothing closed.
+  expect(backend.closedShifts).toHaveLength(0)
+})
+
 test("the kasopmaak counts the cash payments made since the kassa last looked (no reload, no focus)", async ({ kassa }) => {
   const open = kassa.getByTestId('open-register')
   await open.getByLabel('Wisselgeld').fill('50')

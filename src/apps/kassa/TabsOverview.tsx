@@ -10,6 +10,7 @@ import { getTab, listTabsSince, netQuantity, tabTitle, type TabDetail, type TabS
 
 const BADGE: Record<TabStatusKind, string> = {
   open: 'bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200',
+  partial: 'bg-violet-100 text-violet-900 dark:bg-violet-950/60 dark:text-violet-200',
   paying: 'bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200',
   paid: 'bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-300',
   cancelled: 'bg-muted text-muted-foreground',
@@ -110,7 +111,7 @@ export function TabsOverview({ orgId, refreshSignal, onOpenTab }: { orgId: strin
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => (kind === 'open' || kind === 'paying' ? onOpenTab(tab.id) : setDetailId(tab.id))}
+                onClick={() => (kind === 'open' || kind === 'partial' || kind === 'paying' ? onOpenTab(tab.id) : setDetailId(tab.id))}
                 className={cn(GRID, 'w-full border-b border-border/60 px-4 py-3 text-left text-[13.5px] transition-colors last:border-b-0 hover:bg-muted/60')}
                 data-testid="overview-row"
               >
@@ -122,7 +123,14 @@ export function TabsOverview({ orgId, refreshSignal, onOpenTab }: { orgId: strin
                 <span>
                   <span className={cn('inline-flex rounded-md px-2 py-0.5 text-[12px] font-semibold', BADGE[kind])}>{m.overviewStatus[kind]}</span>
                 </span>
-                <span className="text-right font-mono font-semibold tabular-nums">{formatEuro(tab.totalCents)}</span>
+                <span className="text-right font-mono font-semibold tabular-nums">
+                  {formatEuro(tab.totalCents)}
+                  {tab.status === 'open' && tab.paidCents > 0 && (
+                    <span className="block text-[11.5px] font-normal text-muted-foreground" data-testid="overview-part-paid">
+                      {m.overviewPartPaid(formatEuro(tab.paidCents))}
+                    </span>
+                  )}
+                </span>
               </button>
             )
           })}

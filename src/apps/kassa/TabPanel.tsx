@@ -15,6 +15,7 @@ import {
   readAmountCents,
   roundUpTipCents,
   selectionCents,
+  splitPayment,
   spreadUnits,
   type ItemSelection,
   type PaymentMethod,
@@ -55,6 +56,8 @@ export function TabPanel({
   onRefresh,
   onSplit,
   onStopSplit,
+  splitCount = 1,
+  onSplitCount,
   itemSelection,
   onItemSelection,
   onStopItems,
@@ -83,6 +86,9 @@ export function TabPanel({
   // "Splitsen": pay what's open in equal parts (opens the dialog).
   onSplit: () => void
   onStopSplit: () => void
+  // While split: how many parts the next payment covers (3 of 11 at once).
+  splitCount?: number
+  onSplitCount?: (count: number) => void
   // Split per item in progress: the units picked for this payment (null = not in that mode).
   itemSelection: ItemSelection | null
   onItemSelection: (selection: ItemSelection) => void
@@ -99,9 +105,9 @@ export function TabPanel({
   // Split into equal parts: this payment is the next part — what's open ÷
   // parts left, the last one takes the rest (as the server computes it).
   const split = tab?.split ?? null
-  const partsLeft = split ? Math.max(1, split.parts - split.paid) : 1
+  const next = split ? splitPayment(split, toPay, splitCount) : null
   const byItems = !!tab && itemSelection !== null
-  const payCents = byItems ? selectionCents(tab!, itemSelection!) : split && partsLeft > 1 ? Math.floor(toPay / partsLeft) : toPay
+  const payCents = byItems ? selectionCents(tab!, itemSelection!) : next ? next.cents : toPay
   const tipCents = payCents > 0 ? clampTip(readAmountCents(tipInput)) : 0
   const locked = busy || !!tab?.paymentPending
   const noTip = locked || payCents < 1
@@ -131,14 +137,28 @@ export function TabPanel({
           <div className="flex shrink-0 items-center gap-3 border-b bg-muted/40 px-4 py-2.5" data-testid="split-banner">
             <div className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold tracking-tight">
-                {m.splitBanner(split.parts, Math.min(split.paid + 1, split.parts))}
+                {m.splitBanner(split.parts, next!.index)}
               </p>
-              <div className="mt-1.5 flex gap-1" aria-hidden="true">
+              <div className="mt-1.5 flex flex-wrap gap-1" aria-hidden="true">
                 {Array.from({ length: split.parts }, (_, i) => (
-                  <span key={i} className={cn('h-1.5 w-5 rounded-full', i < split.paid ? 'bg-foreground' : 'bg-foreground/15')} />
+                  <span key={i} className={cn('h-1.5 w-5 rounded-full', i < split.paid ? 'bg-foreground' : next && i < split.paid + next.count ? 'bg-foreground/45' : 'bg-foreground/15')} />
                 ))}
               </div>
             </div>
+            {next && next.left > 1 && onSplitCount && (
+              // Several parts in one payment: someone pays for 3 of the 11.
+              <div className="flex shrink-0 items-center gap-1.5" role="group" aria-label={m.partsThisPayment} data-testid="split-count">
+                <Button variant="outline" size="icon-sm" aria-label={m.fewerParts} disabled={locked || next.count <= 1} onClick={() => onSplitCount(next.count - 1)}>
+                  −
+                </Button>
+                <output className="w-6 text-center font-mono text-[15px] font-semibold tabular-nums" aria-live="polite" title={m.partsThisPayment}>
+                  {next.count}
+                </output>
+                <Button variant="outline" size="icon-sm" aria-label={m.moreParts} disabled={locked || next.count >= next.left} onClick={() => onSplitCount(next.count + 1)}>
+                  +
+                </Button>
+              </div>
+            )}
             <Button variant="ghost" size="sm" disabled={locked} onClick={onStopSplit}>
               {m.stopSplit}
             </Button>
@@ -357,7 +377,7 @@ export function TabPanel({
           {byItems
             ? m.paySelection(payCents > 0 ? formatEuro(payCents + tipCents) : null)
             : split
-            ? m.payPart(Math.min(split.paid + 1, split.parts), split.parts, formatEuro(payCents + tipCents))
+            ? m.payPart(next!.index, next!.of, formatEuro(payCents + tipCents), next!.count)
             : m.pay(payCents > 0 ? formatEuro(payCents + tipCents) : null)}
         </button>
         {tipCents > 0 && <p className="-mt-1 text-center text-[12.5px] text-muted-foreground">{m.ofWhichTip(formatEuro(tipCents))}</p>}

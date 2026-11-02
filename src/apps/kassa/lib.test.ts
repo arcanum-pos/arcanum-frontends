@@ -26,6 +26,7 @@ import {
   selectionCents,
   selectionLines,
   splitPreviewText,
+  splitPayment,
   splitSequence,
   filterSections,
   normalizeSearch,
@@ -371,6 +372,18 @@ describe('product search and group filter', () => {
 })
 
 describe('equal split', () => {
+  it('several parts at once: their share of what is open, rounded down; all parts left take the rest (the server rule)', () => {
+    // 11 parts of € 100: 3, then 2, 2 and 4.
+    expect(splitPayment({ parts: 11, paid: 0 }, 10000, 3)).toEqual({ index: 1, of: 11, count: 3, left: 11, cents: 2727 })
+    expect(splitPayment({ parts: 11, paid: 3 }, 7273, 2).cents).toBe(1818)
+    expect(splitPayment({ parts: 11, paid: 5 }, 5455, 2).cents).toBe(1818)
+    expect(splitPayment({ parts: 11, paid: 7 }, 3637, 4)).toMatchObject({ index: 8, count: 4, cents: 3637 })
+    // One part: as before; the count stays within 1 and the parts left.
+    expect(splitPayment({ parts: 3, paid: 0 }, 2600).cents).toBe(866)
+    expect(splitPayment({ parts: 3, paid: 1 }, 1734, 5)).toMatchObject({ count: 2, cents: 1734 })
+    expect(splitPayment({ parts: 3, paid: 0 }, 2600, 0).count).toBe(1)
+  })
+
   it('each part is what is open ÷ parts left, rounded down (the server rule)', () => {
     expect(splitSequence(2600, 3)).toEqual([866, 867, 867])
     expect(splitSequence(7750, 3)).toEqual([2583, 2583, 2584])

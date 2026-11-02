@@ -15,7 +15,7 @@ const nl = {
   alreadyPaid: 'Al betaald',
   tip: 'Fooi',
   totalDue: 'Totaal te betalen',
-  partDue: (index: number, of: number) => `Te betalen · deel ${index} van ${of}`,
+  partDue: (index: number, of: number, count = 1) => `Te betalen · deel ${count > 1 ? `${index}-${index + count - 1}` : index} van ${of}`,
   stillOpen: (amount: string) => `Nog open op de rekening: ${amount}`,
   items: (count: number) => (count === 1 ? '1 item' : `${count} items`),
   qrAlt: 'QR-code voor betaling',
@@ -50,7 +50,7 @@ const nl = {
   followHint: 'Scan om te volgen wanneer je bestelling klaar is.',
   followQrAlt: 'QR-code om je bestelling te volgen',
   paid: (amount: string, method: string) => `${amount} betaald · ${method}`,
-  part: (index: number, of: number) => `Deel ${index} van ${of}`,
+  part: (index: number, of: number, count = 1) => `Deel ${count > 1 ? `${index}-${index + count - 1}` : index} van ${of}`,
 }
 
 export type DisplayMessages = typeof nl
