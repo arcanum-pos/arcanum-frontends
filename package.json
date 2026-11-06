@@ -54,5 +54,10 @@
     "vite": "^8.3.0",
     "vitest": "^5.0.1",
     "wrangler": "^4.132.0"
+  },
+  "overrides": {
+    "@ts-morph/common": {
+      "minimatch": "^11.0.1"
+    }
   }
 }
