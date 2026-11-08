@@ -180,8 +180,9 @@ arcanum-backend `organizations/example-menu.ts`) unless its creator unticks
 it. The dashboard's "Aan de slag" card (`admin/components/getting-started.tsx`)
 then offers the example menukaart, this browser as a kassa (a pairing code
 opened in a new tab, like the demo) or a device, and a kassalade, until the
-organisation has a menukaart and a kassa (`GET …/onboarding`). Hidden per
-organisation in `arcanum-admin-getting-started-closed` (localStorage).
+organisation has all three (`GET …/onboarding`). Hidden per organisation in
+`arcanum-admin-getting-started-closed`; the kassalade step skipped ("Niet
+nodig", no cash) in `arcanum-admin-getting-started-no-register` (localStorage).
 
 ## Light / dark
 

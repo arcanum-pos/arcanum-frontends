@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { closeGettingStarted, gettingStartedOpen, isGettingStartedClosed } from './getting-started'
+import { closeGettingStarted, gettingStartedOpen, isGettingStartedClosed, isRegisterSkipped, skipRegister } from './getting-started'
 
 describe('"Aan de slag"', () => {
   let stored: Record<string, string> = {}
@@ -17,6 +17,16 @@ describe('"Aan de slag"', () => {
     // The kassalade's step stays in view until it's done or the card is closed.
     expect(gettingStartedOpen({ menu: true, kassa: true, register: false }, false)).toBe(true)
     expect(gettingStartedOpen({ menu: true, kassa: true, register: true }, false)).toBe(false)
+  })
+
+  it('the kassalade step skipped ("Niet nodig"): done once there is a menukaart and a kassa, per organisation', () => {
+    expect(gettingStartedOpen({ menu: true, kassa: true, register: false }, false, true)).toBe(false)
+    expect(gettingStartedOpen({ menu: true, kassa: false, register: false }, false, true)).toBe(true)
+    expect(isRegisterSkipped('org-1')).toBe(false)
+    skipRegister('org-1')
+    expect(isRegisterSkipped('org-1')).toBe(true)
+    expect(isRegisterSkipped('org-2')).toBe(false)
+    expect(isGettingStartedClosed('org-1')).toBe(false)
   })
 
   it('hidden stays hidden, per organisation', () => {

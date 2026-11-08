@@ -93,6 +93,8 @@ export default {
     registerText: 'Comptez ce qu’il contient à l’ouverture et à la fermeture, et voyez ce qui a été vendu.',
     registerLink: 'Tiroirs-caisses',
     registerDone: 'Vous avez un tiroir-caisse.',
+    registerSkip: 'Pas nécessaire',
+    registerSkipped: 'Pas de tiroir-caisse. Vous pouvez toujours en créer un plus tard dans Tiroirs-caisses.',
     allDone: 'Tout est prêt. Bonnes ventes !',
   },
   kpis: {

@@ -93,6 +93,8 @@ export default {
     registerText: 'Count what is in it when opening and closing, and see what was sold.',
     registerLink: 'Cash drawers',
     registerDone: 'You have a cash drawer.',
+    registerSkip: 'Not needed',
+    registerSkipped: 'No cash drawer needed. You can always add one later under Cash drawers.',
     allDone: 'Everything is ready. Happy selling!',
   },
   kpis: {

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useLocale, useMessages } from '@/shared/i18n'
 import { addExampleMenu, createDevicePairing, getOnboarding, type Onboarding } from '../lib/api'
-import { closeGettingStarted, gettingStartedOpen, isGettingStartedClosed } from '../lib/getting-started'
+import { closeGettingStarted, gettingStartedOpen, isGettingStartedClosed, isRegisterSkipped, skipRegister } from '../lib/getting-started'
 import { useOrg } from '../lib/org-context'
 import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 import { AddDeviceDialog } from './add-device-dialog'
@@ -22,6 +22,7 @@ export function GettingStarted() {
   const orgId = currentOrg?.id ?? null
   const [status, setStatus] = useState<{ orgId: string; value: Onboarding } | null>(null)
   const [closed, setClosed] = useState<string[]>([])
+  const [skipped, setSkipped] = useState<string[]>([])
   const [busy, setBusy] = useState<'menu' | 'kassa' | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +41,8 @@ export function GettingStarted() {
   }, [refresh])
 
   const current = status && status.orgId === orgId ? status.value : null
-  if (!orgId || !gettingStartedOpen(current, closed.includes(orgId) || isGettingStartedClosed(orgId)) || !current) return null
+  const registerSkipped = !!orgId && (skipped.includes(orgId) || isRegisterSkipped(orgId))
+  if (!orgId || !gettingStartedOpen(current, closed.includes(orgId) || isGettingStartedClosed(orgId), registerSkipped) || !current) return null
 
   async function exampleMenu() {
     setBusy('menu')
@@ -137,13 +139,24 @@ export function GettingStarted() {
             'getting-started-kassa'
           )}
           {step(
-            current.register,
+            current.register || registerSkipped,
             m.registerTitle,
             m.registerText,
-            m.registerDone,
-            <Button variant="outline" asChild>
-              <Link to="/registers">{m.registerLink}</Link>
-            </Button>,
+            current.register ? m.registerDone : m.registerSkipped,
+            <>
+              <Button variant="outline" asChild>
+                <Link to="/registers">{m.registerLink}</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  skipRegister(orgId)
+                  setSkipped((s) => [...s, orgId])
+                }}
+              >
+                {m.registerSkip}
+              </Button>
+            </>,
             'getting-started-register'
           )}
         </ol>

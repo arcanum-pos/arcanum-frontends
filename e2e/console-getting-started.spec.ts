@@ -75,6 +75,23 @@ test('"Koppel een iPad of tablet" opens the usual pairing, for a kassa', async (
   await expect(page.getByRole('dialog').getByRole('heading', { name: 'Toestel toevoegen' })).toBeVisible()
 })
 
+// No cash: the kassalade step is skipped, not the whole card.
+test('"Niet nodig" skips the kassalade step; with a menukaart and a kassa the card is done', async ({ console: open, page, catalogAdmin }) => {
+  catalogAdmin.exampleMenu = 'nl'
+  await open('/dashboard')
+  const card = page.getByTestId('getting-started')
+  const register = card.getByTestId('getting-started-register')
+  await register.getByRole('button', { name: 'Niet nodig' }).click()
+  await expect(register).toHaveAttribute('data-done', 'true')
+  await expect(register.getByText('Geen kassalade nodig. Je kunt er later altijd een maken bij Kassalades.')).toBeVisible()
+  // The kassa still to do: the card stays.
+  await expect(card.getByTestId('getting-started-kassa')).toHaveAttribute('data-done', 'false')
+  catalogAdmin.orgDevices = [{ terminal_id: 't-1', role: 'pos', name: 'Kassa 1' }]
+  await page.reload()
+  await expect(page.getByRole('heading', { level: 1, name: 'Overzicht' })).toBeVisible()
+  await expect(page.getByTestId('getting-started')).toHaveCount(0)
+})
+
 test('hidden, it stays hidden for that organisation; done, it never shows', async ({ console: open, page, catalogAdmin }) => {
   await open('/dashboard')
   await page.getByTestId('getting-started').getByRole('button', { name: 'Verbergen' }).click()

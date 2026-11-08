@@ -99,6 +99,8 @@ const nl = {
     registerText: 'Tel bij het openen en sluiten wat erin zit, en zie wat er verkocht werd.',
     registerLink: 'Kassalades',
     registerDone: 'Je hebt een kassalade.',
+    registerSkip: 'Niet nodig',
+    registerSkipped: 'Geen kassalade nodig. Je kunt er later altijd een maken bij Kassalades.',
     allDone: 'Alles staat klaar. Veel verkoop!',
   },
   kpis: {
