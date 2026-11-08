@@ -88,8 +88,9 @@ const subscribe = (watcher: () => void) => {
 // storage (shared/install): "Installeer als app", once. With the browser's
 // own install when it offers one (beforeinstallprompt; Safari never does,
 // there the app is installed before pairing), else after a while the steps
-// in its menu.
-export function InstallPrompt() {
+// in its menu. `center`: in the middle of the screen (the kassa, whose
+// corners hold its pay buttons).
+export function InstallPrompt({ center = false }: { center?: boolean }) {
   const t = useMessages(TEXTS)
   const event = useSyncExternalStore(subscribe, () => caught)
   const [open, setOpen] = useState(offered)
@@ -108,7 +109,7 @@ export function InstallPrompt() {
     setOpen(false)
   }
   return (
-    <div role="dialog" aria-label={t.title} data-testid="install-prompt" className="fixed right-4 bottom-4 z-50 flex max-w-xs items-start gap-3 rounded-xl bg-card p-4 text-card-foreground shadow-lg ring-1 ring-foreground/10">
+    <div role="dialog" aria-label={t.title} data-testid="install-prompt" data-position={center ? 'center' : 'corner'} className={`fixed z-50 flex ${center ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2' : 'right-4 bottom-4'} max-w-xs items-start gap-3 rounded-xl bg-card p-4 text-card-foreground shadow-lg ring-1 ring-foreground/10`}>
       <div className="flex flex-col gap-2">
         <p className="font-semibold">{t.title}</p>
         <p className="text-sm text-muted-foreground">{t.hint}</p>

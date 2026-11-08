@@ -13,7 +13,7 @@ createRoot(document.getElementById('root')!).render(
     <ThemeProvider storageKey={DEVICE_THEME_KEY}>
       <LocaleProvider initial={deviceLocale()}>
         <App />
-        <InstallPrompt />
+        <InstallPrompt center />
       </LocaleProvider>
     </ThemeProvider>
   </StrictMode>,

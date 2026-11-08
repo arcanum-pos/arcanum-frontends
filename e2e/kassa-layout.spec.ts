@@ -114,3 +114,18 @@ test('right-click leaves lines already on the rekening alone (those need a void)
   await expect(panel(kassa).getByText('1 × Fietstocht (niet-lid)')).toBeVisible()
   await expect(panel(kassa).getByText('Te betalen').locator('..')).toContainText('€ 8,00')
 })
+
+// "Installeer als app" on the kassa: in the middle, off its pay buttons in
+// the corner (the other screens keep it in the corner).
+test('the install card sits in the middle of the kassa, not on its pay buttons', async ({ kassa: page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'Chrome, Edge and Android only')
+  await page.evaluate(() => sessionStorage.setItem('arcanum-offer-install', '1'))
+  await page.reload()
+  await page.evaluate(() => window.dispatchEvent(Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt: async () => {} })))
+  const card = page.getByTestId('install-prompt')
+  await expect(card).toHaveAttribute('data-position', 'center')
+  const box = (await card.boundingBox())!
+  const view = page.viewportSize()!
+  expect(Math.abs(box.x + box.width / 2 - view.width / 2)).toBeLessThan(2)
+  expect(Math.abs(box.y + box.height / 2 - view.height / 2)).toBeLessThan(2)
+})
