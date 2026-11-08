@@ -253,10 +253,13 @@ export function changeInDenominations(cents: number): { cents: number; count: nu
   return out
 }
 
-// The notes a customer is likely to hand over for this amount: the next
-// three notes above it (€5 to €100).
+// What a customer is likely to hand over for this amount: the amount
+// rounded up to a multiple of each note (€5 to €100) - for €74: €75
+// (50+20+5), €80 (50+20+10, or 4 × 20) and €100. Above €100 too. At most
+// four, smallest first; coins the cashier types.
 export function likelyNotes(amountCents: number): number[] {
-  return [500, 1000, 2000, 5000, 10000].filter((n) => n > amountCents).slice(0, 3)
+  const amounts = [500, 1000, 2000, 5000, 10000].map((note) => Math.ceil(amountCents / note) * note).filter((n) => n > amountCents)
+  return [...new Set(amounts)].sort((a, b) => a - b).slice(0, 4)
 }
 
 // The payment once "keep the change" is confirmed: amount and tip go up,

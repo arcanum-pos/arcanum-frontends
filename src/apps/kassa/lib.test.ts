@@ -493,11 +493,19 @@ describe('cash change', () => {
     expect(changeInDenominations(0)).toEqual([])
   })
 
-  it('suggests the next three notes above the amount', () => {
+  it('suggests what a customer hands over: the amount rounded up to each note', () => {
+    // €74: 50+20+5, 50+20+10 or 4 × 20, a €100 note.
+    expect(likelyNotes(7400)).toEqual([7500, 8000, 10000])
+    expect(likelyNotes(4600)).toEqual([5000, 6000, 10000])
     expect(likelyNotes(1750)).toEqual([2000, 5000, 10000])
-    expect(likelyNotes(350)).toEqual([500, 1000, 2000])
+    expect(likelyNotes(350)).toEqual([500, 1000, 2000, 5000])
+    // Exactly a note: what's above it.
     expect(likelyNotes(1000)).toEqual([2000, 5000, 10000])
-    expect(likelyNotes(12000)).toEqual([])
+    expect(likelyNotes(7500)).toEqual([8000, 10000])
+    // Above €100 too, at most four.
+    expect(likelyNotes(12100)).toEqual([12500, 13000, 14000, 15000])
+    expect(likelyNotes(12000)).toEqual([15000, 20000])
+    expect(likelyNotes(0)).toEqual([])
   })
 })
 

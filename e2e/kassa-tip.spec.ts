@@ -116,6 +116,22 @@ test('cash: the change in notes and coins, given back or kept as a tip', async (
   expect(backend.charges[1]).toMatchObject({ amountCents: 1750, tipCents: 0, status: 'succeeded' })
 })
 
+// What a customer hands over for € 74: € 75 (50+20+5), € 80 (50+20+10 or
+// 4 × 20) or a € 100 note - not just the next note.
+test('cash: the amounts a customer likely hands over, rounded up to each note', async ({ kassa, backend }) => {
+  backend.entry('v-bon')!.priceCents = 740
+  await kassa.reload()
+  await expect(kassa.getByText('Toog - direct afrekenen')).toBeVisible()
+  await kassa.getByRole('button', button('10 × Bon')).click()
+  await kassa.getByLabel('Contant').check()
+  await kassa.getByRole('button', button('Afrekenen € 74,00')).click()
+  for (const note of ['€ 75,00', '€ 80,00', '€ 100,00']) await expect(kassa.getByRole('button', button(note))).toBeVisible()
+  await expect(kassa.getByRole('button', button('€ 50,00'))).toHaveCount(0)
+  await kassa.getByRole('button', button('€ 80,00')).click()
+  await expect(kassa.getByTestId('cash-change')).toContainText('€ 6,00')
+  await expect(kassa.getByTestId('cash-change-coins')).toHaveText('1 × € 5,00  ·  1 × € 1,00')
+})
+
 test('cash: confirming without filling in what was received works as before', async ({ kassa, backend }) => {
   await kassa.getByRole('button', button('10 × Bon')).click()
   await kassa.getByLabel('Contant').check()
