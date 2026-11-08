@@ -32,7 +32,14 @@ describe('app icons', () => {
     if (!href?.startsWith('/icons/')) return
     const manifest = JSON.parse(readFileSync(path.join(root, 'public', href), 'utf8'))
     expect(manifest.display).toBe('standalone')
-    expect(manifest.start_url).toBeUndefined()
+    // Chrome, Edge and Android install a page only with a start_url: the
+    // screen's own (the console's at /console; the kassa's settings open the
+    // kassa). The pairing pages' none - that app opens on its pairing link.
+    const key = href.slice('/icons/'.length, -'.webmanifest'.length)
+    if (key === 'arcanum') expect(manifest.start_url).toBeUndefined()
+    else expect(manifest.start_url).toBe(key === 'admin' ? '/console' : `/${key}.html`)
+    if (manifest.start_url?.endsWith('.html')) expect(existsSync(path.join(root, manifest.start_url))).toBe(true)
+    expect(manifest.id).toBe(manifest.start_url)
     expect(manifest.scope).toBe('/')
     for (const icon of manifest.icons) expect(pngSize(icon.src)).toBe(icon.sizes)
     expect(manifest.icons.map((i: { sizes: string }) => i.sizes)).toEqual(expect.arrayContaining(['192x192', '512x512']))

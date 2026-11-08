@@ -40,6 +40,24 @@ export function iconSlot(role: Role, station?: { stationId?: string | null; view
   return station?.stationId ? `station-${station.stationId}` : 'station'
 }
 
+// The page an installed screen opens (its manifest's start_url: Chrome,
+// Edge and Android offer to install a page only with one). The screen's
+// own page, with what tells it which view it is; nothing that changes
+// between visits (?tafel=, ?code=). Not for a pairing link's manifest:
+// that app opens on the link itself.
+export function startPageFor(slot: string): string | null {
+  if (slot === 'pickup') return '/station.html?view=pickup'
+  if (slot === 'entrance') return '/waiter.html?view=ingang'
+  if (slot === 'station' || slot.startsWith('station-')) return '/station.html'
+  return ({ kassa: '/kassa.html', display: '/display.html', waiter: '/waiter.html', tap: '/tap', console: '/console' } as Record<string, string>)[slot] ?? null
+}
+
+export function orgManifestUrl(orgId: string, slot: string, name?: string): string {
+  const start = startPageFor(slot)
+  const query = new URLSearchParams({ ...(name ? { name } : {}), ...(start ? { start } : {}) }).toString()
+  return `/icons/org/${encodeURIComponent(orgId)}/${slot}.webmanifest${query ? `?${query}` : ''}`
+}
+
 // This page, now that it knows its organisation: that org's icons (the
 // tab, and installing from here in Chrome, Edge or Android) — and its
 // manifest, where the page has one. Safari takes what the page was sent
@@ -47,8 +65,7 @@ export function iconSlot(role: Role, station?: { stationId?: string | null; view
 export function showOrgIcons(orgId: string, slot: string, name?: string) {
   setHead('link[rel="icon"]', 'href', orgIconUrl(orgId, slot, 96))
   setHead('link[rel="apple-touch-icon"]', 'href', orgIconUrl(orgId, slot, 180))
-  const manifest = new URLSearchParams(name ? { name } : {})
-  setHead('link[rel="manifest"][href^="/icons/"]', 'href', `/icons/org/${encodeURIComponent(orgId)}/${slot}.webmanifest${name ? `?${manifest}` : ''}`)
+  setHead('link[rel="manifest"][href^="/icons/"]', 'href', orgManifestUrl(orgId, slot, name))
 }
 
 // The pairing link's device: its icon, the name under it, and a manifest —
@@ -73,3 +90,19 @@ export function showAsDevice(role: Role, name: string, icon?: string | null) {
 // Set by the pairing page right after pairing in a browser that shares its
 // storage with an installed app: the screen then offers to install itself.
 export const OFFER_INSTALL_KEY = 'arcanum-offer-install'
+
+// "Installeer als app" (install-prompt.tsx) when the browser doesn't offer
+// itself: whose menu to explain.
+export type InstallMenu = 'edge' | 'chrome' | 'android'
+
+// The browser hasn't offered by then (it waits for a click and some time on
+// the page, or holds back): the steps to do it from its menu instead.
+export const MANUAL_AFTER_MS = 45_000
+
+// Which menu to explain; null where there's no install to explain (Firefox).
+export function browserFor(ua: string): InstallMenu | null {
+  if (/Android/.test(ua) && /Chrome\//.test(ua)) return 'android'
+  if (/Edg\//.test(ua)) return 'edge'
+  if (/Chrome\//.test(ua) && !/OPR\//.test(ua)) return 'chrome'
+  return null
+}

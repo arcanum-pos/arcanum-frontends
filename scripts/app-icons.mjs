@@ -27,11 +27,11 @@ const out = path.join(root, 'public/icons')
 // kassa, so it uses the kassa's.
 export const ICONS = [
   { key: 'arcanum', glyph: 'kabouter', colors: ['#3f3f46', '#09090b'], name: 'Arcanum', manifest: true },
-  { key: 'admin', glyph: 'layout-dashboard', colors: ['#6366f1', '#3730a3'], name: 'Console', manifest: true },
-  { key: 'kassa', glyph: 'receipt-euro', colors: ['#10b981', '#047857'], name: 'Kassa', manifest: true },
-  { key: 'waiter', glyph: 'hand-platter', colors: ['#f59e0b', '#b45309'], name: 'Bediening', manifest: true },
-  { key: 'station', glyph: 'chef-hat', colors: ['#ef4444', '#991b1b'], name: 'Station', manifest: true },
-  { key: 'display', glyph: 'monitor', colors: ['#0ea5e9', '#0369a1'], name: 'Klantscherm', manifest: true },
+  { key: 'admin', glyph: 'layout-dashboard', colors: ['#6366f1', '#3730a3'], name: 'Console', manifest: true, start: '/console' },
+  { key: 'kassa', glyph: 'receipt-euro', colors: ['#10b981', '#047857'], name: 'Kassa', manifest: true, start: '/kassa.html' },
+  { key: 'waiter', glyph: 'hand-platter', colors: ['#f59e0b', '#b45309'], name: 'Bediening', manifest: true, start: '/waiter.html' },
+  { key: 'station', glyph: 'chef-hat', colors: ['#ef4444', '#991b1b'], name: 'Station', manifest: true, start: '/station.html' },
+  { key: 'display', glyph: 'monitor', colors: ['#0ea5e9', '#0369a1'], name: 'Klantscherm', manifest: true, start: '/display.html' },
   { key: 'tap', glyph: 'smartphone-nfc', colors: ['#8b5cf6', '#5b21b6'], name: 'Tap to Pay', manifest: false },
   { key: 'selforder', glyph: 'utensils', colors: ['#ec4899', '#9d174d'], name: 'Bestellen', manifest: false },
 ]
@@ -67,12 +67,15 @@ async function render(icon, radius, size) {
 }
 
 function manifest(icon) {
-  // No start_url: the page it was added from (a kassa's ?terminal=…, a
-  // console's org). The scope the whole site: from it, a scope would be its
-  // folder (/console/org/…/), and the console's other pages outside it.
+  // start_url: the screen's own page - Chrome, Edge and Android offer to
+  // install a page only with one (the org's manifests: src/shared/install.ts
+  // startPageFor). None for 'arcanum' (pairing, the chooser): that app opens
+  // on the page it was added from, a pairing link. The scope the whole site:
+  // the console's pages are under /console/org/…/.
   return {
     name: icon.name,
     short_name: icon.name,
+    ...(icon.start ? { start_url: icon.start, id: icon.start } : {}),
     scope: '/',
     display: 'standalone',
     background_color: icon.colors[1],

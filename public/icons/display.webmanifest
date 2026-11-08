@@ -1,6 +1,8 @@
 {
   "name": "Klantscherm",
   "short_name": "Klantscherm",
+  "start_url": "/display.html",
+  "id": "/display.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0369a1",

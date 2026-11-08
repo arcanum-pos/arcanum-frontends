@@ -1,12 +1,13 @@
 import type { Onboarding } from './api'
 
 // "Aan de slag" (components/getting-started.tsx): shown on the dashboard
-// until the organisation has a menukaart and a kassa - the kassalade is
-// offered but optional (not every club takes cash) - or until it's hidden.
-// What counts as done comes from what exists (GET …/onboarding), so it
-// also works for organisations from before.
+// until all three are done - a menukaart, a kassa and a kassalade - or
+// until it's hidden with its X. The kassalade is optional (not every club
+// takes cash): a club without one closes the card. What counts as done
+// comes from what exists (GET …/onboarding), so it also works for
+// organisations from before.
 export function gettingStartedOpen(status: Onboarding | null, closed: boolean): boolean {
-  return !!status && !closed && !(status.menu && status.kassa)
+  return !!status && !closed && !(status.menu && status.kassa && status.register)
 }
 
 // Hidden per organisation, in this browser (README: localStorage keys).

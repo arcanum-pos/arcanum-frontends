@@ -2,7 +2,8 @@ import { expect, test } from './console-fixtures'
 
 // Easy onboarding: a new organisation starts with the example menukaart (on
 // by default), and the dashboard's "Aan de slag" leads to a kassa - this
-// browser, like the demo, or a device - until it's there, or hidden.
+// browser, like the demo, or a device - and a kassalade, until all three
+// are there, or it's hidden.
 
 test('the first organisation starts with the example menukaart unless unticked', async ({ console: open, page, orgTransfer }) => {
   orgTransfer.orgs = []
@@ -29,7 +30,7 @@ test('the first organisation starts with the example menukaart unless unticked',
   expect(orgTransfer.created.at(-1)).toEqual({ name: 'Leeg', exampleMenu: false, locale: 'nl' })
 })
 
-test('"Aan de slag": the example menukaart, then this browser as the kassa - and it is gone once both are there', async ({ console: open, page, catalogAdmin }) => {
+test('"Aan de slag": the example menukaart, then this browser as the kassa, then the kassalade - and it is gone once all three are there', async ({ console: open, page, catalogAdmin }) => {
   // The kassa tab: only that it opens the pairing page with a fresh code.
   await page.context().route(/\/pair\?/, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><title>pair</title>' }))
   await open('/dashboard')
@@ -52,10 +53,18 @@ test('"Aan de slag": the example menukaart, then this browser as the kassa - and
   expect(url.searchParams.get('code')).toBe(pairing.code.replace('-', ''))
   await expect(card.getByText('De kassa staat open in een nieuw tabblad.')).toBeVisible()
 
-  // The new tab claims the code; back in the console, the card has done its job.
+  // The new tab claims the code; back in the console, the kassa is done and
+  // the kassalade's step still in view.
   catalogAdmin.claimPairing(pairing.code)
   await tab.close()
   await page.bringToFront()
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await expect(card.getByTestId('getting-started-kassa')).toHaveAttribute('data-done', 'true')
+  await expect(card.getByTestId('getting-started-register')).toHaveAttribute('data-done', 'false')
+  await expect(card.getByRole('link', { name: 'Kassalades' })).toBeVisible()
+
+  // A kassalade too: the card has done its job.
+  catalogAdmin.registers.push({ id: 'r-1', name: 'Bar', archived: false, open: false })
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
   await expect(page.getByTestId('getting-started')).toHaveCount(0)
 })
@@ -77,6 +86,7 @@ test('hidden, it stays hidden for that organisation; done, it never shows', asyn
   await page.evaluate(() => localStorage.removeItem('arcanum-admin-getting-started-closed'))
   catalogAdmin.exampleMenu = 'nl'
   catalogAdmin.orgDevices = [{ terminal_id: 't-1', role: 'pos', name: 'Kassa 1' }]
+  catalogAdmin.registers.push({ id: 'r-1', name: 'Bar', archived: false, open: false })
   await page.reload()
   await expect(page.getByRole('heading', { level: 1, name: 'Overzicht' })).toBeVisible()
   await expect(page.getByTestId('getting-started')).toHaveCount(0)

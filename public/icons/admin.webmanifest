@@ -1,6 +1,8 @@
 {
   "name": "Console",
   "short_name": "Console",
+  "start_url": "/console",
+  "id": "/console",
   "scope": "/",
   "display": "standalone",
   "background_color": "#3730a3",

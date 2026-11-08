@@ -81,7 +81,7 @@ test('not an admin: the icons, not the buttons', async ({ console: open, page, c
 test("the console: its own organisation's icon here, and a cookie so arcanum-bff sends it with that icon next time", async ({ console: open, page, context }) => {
   await open('/settings/appearance')
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/org/org-e2e/console-180.png')
-  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/icons/org/org-e2e/console.webmanifest?name=Console')
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/icons/org/org-e2e/console.webmanifest?name=Console&start=%2Fconsole')
   const cookie = (await context.cookies()).find((c) => c.name === 'arcanum-console-org')
   expect(cookie).toMatchObject({ value: 'org-e2e', path: '/', sameSite: 'Lax' })
 })

@@ -1,6 +1,8 @@
 {
   "name": "Station",
   "short_name": "Station",
+  "start_url": "/station.html",
+  "id": "/station.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#991b1b",

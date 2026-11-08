@@ -300,13 +300,37 @@ test('just paired: "Installeer als app" when the browser can install it - once',
   await expect(page.getByTestId('install-prompt')).toHaveCount(0)
 })
 
+// The browser doesn't offer (Edge without a start_url, or before its click
+// and half a minute): after a while the card explains its menu instead.
+test('just paired, the browser holds back: after a while the steps in its menu', async ({ station: page, browserName }) => {
+  // Safari installs before pairing: no card there.
+  test.skip(browserName !== 'chromium', 'Chrome, Edge and Android only')
+  await page.clock.install()
+  await page.evaluate(() => sessionStorage.setItem('arcanum-offer-install', '1'))
+  await page.reload()
+  await expect(page.getByTestId('column-ordered')).toBeVisible()
+  await expect(page.getByTestId('install-prompt')).toHaveCount(0)
+  await page.clock.fastForward(46_000)
+  const prompt = page.getByTestId('install-prompt')
+  await expect(prompt.getByTestId('install-steps')).toContainText('Open het menu ⋮')
+  // The browser offers after all: its own install.
+  await page.evaluate(() => window.dispatchEvent(Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt: async () => {} })))
+  await expect(prompt.getByRole('button', { name: 'Installeren' })).toBeVisible()
+  await prompt.getByRole('button', { name: 'Sluiten' }).click()
+  await expect(prompt).toHaveCount(0)
+  await page.reload()
+  await expect(page.getByTestId('column-ordered')).toBeVisible()
+  await page.clock.fastForward(46_000)
+  await expect(page.getByTestId('install-prompt')).toHaveCount(0)
+})
+
 // Its organisation's own icon (Weergave → App-iconen), for the tab and for
 // installing from here: the prep station's — arcanum-bff serves it, or the default.
 test("the station's own icon, once it knows its station", async ({ station: page }) => {
   await expect(page.getByTestId('column-ordered')).toBeVisible()
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken-180.png')
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken-96.png')
-  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken.webmanifest?name=Keuken')
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/icons/org/org-1/station-st-keuken.webmanifest?name=Keuken&start=%2Fstation.html')
 })
 
 // --- Printing (arcanum/PRINTING.md) ---

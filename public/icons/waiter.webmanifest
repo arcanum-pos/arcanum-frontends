@@ -1,6 +1,8 @@
 {
   "name": "Bediening",
   "short_name": "Bediening",
+  "start_url": "/waiter.html",
+  "id": "/waiter.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#b45309",

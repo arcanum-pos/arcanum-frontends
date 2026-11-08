@@ -9,12 +9,14 @@ describe('"Aan de slag"', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  it('shows until there is a menukaart and a kassa - the kassalade is optional', () => {
+  it('shows until there is a menukaart, a kassa and a kassalade - or it is closed', () => {
     expect(gettingStartedOpen(null, false)).toBe(false)
     expect(gettingStartedOpen({ menu: false, kassa: false, register: false }, false)).toBe(true)
     expect(gettingStartedOpen({ menu: true, kassa: false, register: true }, false)).toBe(true)
     expect(gettingStartedOpen({ menu: false, kassa: true, register: false }, false)).toBe(true)
-    expect(gettingStartedOpen({ menu: true, kassa: true, register: false }, false)).toBe(false)
+    // The kassalade's step stays in view until it's done or the card is closed.
+    expect(gettingStartedOpen({ menu: true, kassa: true, register: false }, false)).toBe(true)
+    expect(gettingStartedOpen({ menu: true, kassa: true, register: true }, false)).toBe(false)
   })
 
   it('hidden stays hidden, per organisation', () => {

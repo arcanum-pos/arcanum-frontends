@@ -1,6 +1,8 @@
 {
   "name": "Kassa",
   "short_name": "Kassa",
+  "start_url": "/kassa.html",
+  "id": "/kassa.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#047857",
