@@ -37,6 +37,7 @@ export default {
   product_code_taken: 'Un code de ce produit est entre-temps utilisé par un autre produit',
   catalog_not_found: 'Carte introuvable',
   no_catalog: 'Aucune carte trouvée',
+  menu_not_empty: 'Cette organisation a déjà des produits ou des cartes - le menu d’exemple n’y trouve plus sa place',
   default_catalog_not_archivable: 'La carte par défaut ne peut pas être archivée - choisissez d’abord une autre carte par défaut',
   catalog_layout_changed: 'La mise en page a été modifiée entre-temps - rechargez et réessayez',
   section_not_found: 'Groupe introuvable',

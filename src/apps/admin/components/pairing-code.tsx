@@ -52,7 +52,7 @@ export function usePairingStatus(orgId: string, pairing: ShownPairing | null, on
 // What the QR and the link open: /pair with the code, the device's role and
 // name, and which of the organisation's icons it gets (Weergave → App-iconen);
 // a Tap to Pay phone its own page (/tap).
-function pairingUrl(orgId: string, pairing: ShownPairing): string {
+export function pairingUrl(orgId: string, pairing: ShownPairing): string {
   const code = pairing.code.replace('-', '')
   const icon = orgIconRef(orgId, iconSlot(pairing.role, pairing))
   if (pairing.role === 'tap') return `${window.location.origin}/tap?${new URLSearchParams({ code, icon })}`

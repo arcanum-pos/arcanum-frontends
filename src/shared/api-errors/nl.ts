@@ -38,6 +38,7 @@ const nl = {
   product_code_taken: 'Een code van dit product wordt intussen door een ander product gebruikt',
   catalog_not_found: 'Menukaart niet gevonden',
   no_catalog: 'Geen menukaart gevonden',
+  menu_not_empty: 'Er staan al producten of menukaarten in deze organisatie - het voorbeeldmenu past er niet meer bij',
   default_catalog_not_archivable: 'De standaardmenukaart kan niet gearchiveerd worden - maak eerst een andere standaard',
   catalog_layout_changed: 'De indeling is intussen gewijzigd - herlaad en probeer opnieuw',
   section_not_found: 'Groep niet gevonden',

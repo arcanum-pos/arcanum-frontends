@@ -92,6 +92,8 @@ export class FakeCatalogAdmin {
   blindCount = false
   shifts: any[] = []
   products: Product[] = []
+  // The example menukaart's language, once added ("Aan de slag").
+  exampleMenu: string | null = null
   variants: Variant[] = []
   catalogs: Catalog[] = []
   sections: Section[] = []
@@ -237,6 +239,19 @@ export class FakeCatalogAdmin {
       const existing = this.orgDevices.find((d) => d.terminal_id === decodeURIComponent(repair[1]))
       if (!existing) return { status: 404, body: { error: 'x', code: 'device_not_found' } }
       return this.pairingRoute('POST', '/device-pairings', { role: existing.role, name: existing.name, repairs: existing.terminal_id })
+    }
+    // "Aan de slag" (arcanum-backend organizations/onboarding.ts).
+    if (/^\/api\/organizations\/[^/]+\/onboarding$/.test(path) && method === 'GET') {
+      return ok({
+        menu: this.exampleMenu !== null || this.products.length > 0,
+        kassa: this.pairings.some((p) => p.role === 'pos' && p.claimedAt) || this.orgDevices.some((d) => d.role === 'pos'),
+        register: this.registers.some((r) => !r.archived),
+      })
+    }
+    if (/^\/api\/organizations\/[^/]+\/example-menu$/.test(path) && method === 'POST') {
+      if (this.exampleMenu !== null || this.products.length > 0) return { status: 409, body: { error: 'x', code: 'menu_not_empty' } }
+      this.exampleMenu = body?.locale ?? 'nl'
+      return { status: 201, body: { added: true } }
     }
     // Kassalades and shifts (arcanum-backend shifts.ts).
     if (/^\/api\/organizations\/[^/]+\/registers$/.test(path) && method === 'GET') return ok({ blindCount: this.blindCount, registers: this.registers })

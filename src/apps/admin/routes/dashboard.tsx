@@ -2,6 +2,7 @@ import { BarChart3 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useMessages } from '@/shared/i18n'
 import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
+import { GettingStarted } from '../components/getting-started'
 
 // Reserved space — a more elaborate sales-figures view than today's plain
 // transactions list (webapp/src/pages/transactions.astro), not implemented
@@ -15,6 +16,8 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-semibold tracking-tight">{m.nav.dashboard}</h1>
         <p className="text-muted-foreground">{m.dashboardSubtitle}</p>
       </div>
+
+      <GettingStarted />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Object.entries(m.kpis).map(([key, label]) => (

@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useMessages } from '@/shared/i18n'
+import { useLocale, useMessages } from '@/shared/i18n'
 import { useOrg } from '../lib/org-context'
 import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
+import { ExampleMenuOption } from './example-menu-option'
 import { OrgImportDialog } from './org-import-dialog'
 
 // A fresh own installation without an organization (see
@@ -19,6 +20,8 @@ export function FirstOrganization() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [exampleMenu, setExampleMenu] = useState(true)
+  const { locale } = useLocale()
 
   async function create(e: React.FormEvent) {
     e.preventDefault()
@@ -26,7 +29,7 @@ export function FirstOrganization() {
     setBusy(true)
     setError(null)
     try {
-      await addOrg(name.trim())
+      await addOrg(name.trim(), { exampleMenu, locale })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -49,6 +52,7 @@ export function FirstOrganization() {
             <form className="grid gap-3" onSubmit={create}>
               <Label htmlFor="first-org-name">{m.name}</Label>
               <Input id="first-org-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={m.orgNamePlaceholder} autoComplete="organization" autoFocus />
+              <ExampleMenuOption checked={exampleMenu} onChange={setExampleMenu} />
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" disabled={busy || !name.trim()}>
                 {busy ? m.busy : m.firstOrgCreate}

@@ -37,6 +37,7 @@ export default {
   product_code_taken: 'A code of this product is now used by another product',
   catalog_not_found: 'Menu not found',
   no_catalog: 'No menu found',
+  menu_not_empty: 'This organisation already has products or menus - the example menu no longer fits in',
   default_catalog_not_archivable: 'The default menu cannot be archived - make another one the default first',
   catalog_layout_changed: 'The layout has changed in the meantime - reload and try again',
   section_not_found: 'Group not found',

@@ -37,8 +37,13 @@ export function AddDeviceDialog({
   onPaired,
   onReaderPaired,
   onPrinterAdded,
+  triggerLabel,
+  triggerVariant,
 }: {
   orgId: string
+  // The button that opens it ("Aan de slag": "Koppel een iPad of tablet").
+  triggerLabel?: string
+  triggerVariant?: 'default' | 'outline'
   kassas: OrgDevice[]
   // The org has a SumUp account: readers can be paired here too.
   sumup?: boolean
@@ -125,9 +130,9 @@ export function AddDeviceDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button>
+        <Button variant={triggerVariant}>
           <Plus />
-          {m.addDevice}
+          {triggerLabel ?? m.addDevice}
         </Button>
       </DialogTrigger>
       <DialogContent>

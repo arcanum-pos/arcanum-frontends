@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { showOrgIcons } from '@/shared/install'
+import type { Locale } from '@/shared/i18n'
 import { createOrganization, getCapabilities, listMyOrganizations, type Capabilities, type Organization } from './api'
 
 const CURRENT_ORG_KEY = 'arcanum-admin-current-org'
@@ -19,7 +20,7 @@ interface OrgContextValue {
   loading: boolean
   error: string | null
   setCurrentOrgId: (id: string) => void
-  addOrg: (name: string) => Promise<void>
+  addOrg: (name: string, options?: { exampleMenu?: boolean; locale?: Locale }) => Promise<void>
   // Patches the current org's local copy in place — used after a save (e.g.
   // Preferences' org language) so the UI reflects it immediately without a
   // full org-list refetch.
@@ -63,8 +64,8 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     setCurrentOrgIdState(id)
   }
 
-  async function addOrg(name: string) {
-    const org = await createOrganization(name)
+  async function addOrg(name: string, options: { exampleMenu?: boolean; locale?: Locale } = {}) {
+    const org = await createOrganization(name, options)
     setOrgs((prev) => [...prev, org])
     setCurrentOrgId(org.id)
     // An own instance allows only its first org.

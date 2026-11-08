@@ -65,8 +65,26 @@ export function listMyOrganizations(): Promise<Organization[]> {
   return request('')
 }
 
-export function createOrganization(name: string): Promise<Organization> {
-  return request('', { method: 'POST', body: JSON.stringify({ name }) })
+// exampleMenu: start with the example menukaart (the demo's), in `locale` -
+// also the organisation's own language.
+export function createOrganization(name: string, options: { exampleMenu?: boolean; locale?: Locale } = {}): Promise<Organization> {
+  return request('', { method: 'POST', body: JSON.stringify({ name, ...options }) })
+}
+
+// "Aan de slag" (getting-started.tsx): how far the organisation is.
+export interface Onboarding {
+  menu: boolean
+  kassa: boolean
+  register: boolean
+}
+
+export function getOnboarding(orgId: string): Promise<Onboarding> {
+  return request(`/${encodeURIComponent(orgId)}/onboarding`)
+}
+
+// Only into an organisation without products or menukaarten (else menu_not_empty).
+export function addExampleMenu(orgId: string, locale: Locale): Promise<{ added: true }> {
+  return request(`/${encodeURIComponent(orgId)}/example-menu`, { method: 'POST', body: JSON.stringify({ locale }) })
 }
 
 export function getOrganization(orgId: string): Promise<Organization> {

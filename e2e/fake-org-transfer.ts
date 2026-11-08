@@ -70,6 +70,8 @@ export class FakeOrgTransfer {
     return res
   }
 
+  created: { name: string; exampleMenu: boolean | null; locale: string | null }[] = []
+
   // What GET /api/organizations/capabilities answers (the backend's ORG_CREATION).
   capabilities: { orgCreation: string; canCreateOrganization: boolean; canImportOrganization: boolean; instanceAdmin?: boolean } = { orgCreation: 'admins', canCreateOrganization: true, canImportOrganization: true, instanceAdmin: true }
 
@@ -77,6 +79,8 @@ export class FakeOrgTransfer {
     if (path === '/api/organizations/capabilities' && method === 'GET') return ok(this.capabilities)
     if (path === '/api/organizations' && method === 'POST') {
       const org: FakeOrg = { id: `org-${++this.seq}`, name: String(body?.name ?? ''), importStatus: null, counts: {}, rows: new Map() }
+      // What the create asked for (exampleMenu, locale).
+      this.created.push({ name: org.name, exampleMenu: body?.exampleMenu ?? null, locale: body?.locale ?? null })
       this.orgs.push(org)
       // An own instance allows only its first org (the backend's ORG_CREATION=single).
       if (this.capabilities.orgCreation === 'single') this.capabilities = { ...this.capabilities, canCreateOrganization: false, canImportOrganization: false }

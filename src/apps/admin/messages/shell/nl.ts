@@ -55,6 +55,9 @@ const nl = {
   firstOrgText: 'Geef je organisatie een naam om te beginnen - je vereniging, jeugdbeweging of evenement. Je wordt er de beheerder van.',
   firstOrgCreate: 'Organisatie aanmaken',
   firstOrgImport: 'of importeer een organisatie uit een exportbestand (bv. je demo)',
+  // Creating an organisation (example-menu-option.tsx).
+  exampleMenu: 'Start met een voorbeeldmenu',
+  exampleMenuHint: 'Drank, eten en bonnen met prijzen, meteen klaar voor de kassa. Aanpassen of weghalen kan altijd.',
   noMembershipTitle: 'Je bent geen lid van een organisatie',
   noMembershipText: (email: string) => `Je bent aangemeld als ${email}, maar dat adres hoort bij geen enkele organisatie op deze Arcanum.`,
   noMembershipInvite: 'Vraag een beheerder van je organisatie om je uit te nodigen op dit adres. Werd je al uitgenodigd? Meld je dan aan met precies het adres waarop de uitnodiging kwam - en op dezelfde manier (code per e-mail, Google of passkey).',
@@ -74,6 +77,30 @@ const nl = {
 
   // Dashboard
   dashboardSubtitle: 'Verkoopcijfers voor de huidige organisatie.',
+  // "Aan de slag" on the dashboard (getting-started.tsx).
+  gettingStarted: {
+    title: 'Aan de slag',
+    intro: 'Drie stappen en je kan verkopen.',
+    close: 'Verbergen',
+    done: 'Klaar',
+    menuTitle: 'Je menukaart',
+    menuText: 'Producten met prijzen, zoals ze op de kassa komen.',
+    menuExample: 'Voorbeeldmenu toevoegen',
+    menuOwn: 'Zelf producten maken',
+    menuDone: 'Je hebt producten.',
+    kassaTitle: 'Een kassa',
+    kassaText: 'Verkoop in deze browser, of koppel het toestel aan de toog - een iPad of tablet.',
+    kassaHere: 'Gebruik deze browser als kassa',
+    kassaDevice: 'Koppel een iPad of tablet',
+    kassaName: 'Kassa 1',
+    kassaOpened: 'De kassa staat open in een nieuw tabblad.',
+    kassaDone: 'Je hebt een kassa.',
+    registerTitle: 'Een kassalade (als je met cash werkt)',
+    registerText: 'Tel bij het openen en sluiten wat erin zit, en zie wat er verkocht werd.',
+    registerLink: 'Kassalades',
+    registerDone: 'Je hebt een kassalade.',
+    allDone: 'Alles staat klaar. Veel verkoop!',
+  },
   kpis: {
     revenueToday: 'Omzet vandaag',
     transactionsToday: 'Transacties vandaag',

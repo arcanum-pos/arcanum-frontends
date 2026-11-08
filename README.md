@@ -173,6 +173,16 @@ sets (the admin console: `src/apps/admin/messages/{shell,catalog,org}`).
   in every language so any file imports again. A charge's stored
   `error_message` (e.g. "Betaling verlopen (time-out)") is still Dutch.
 
+## Getting started (console)
+
+A new organisation starts with the example menukaart (the demo's, from
+arcanum-backend `organizations/example-menu.ts`) unless its creator unticks
+it. The dashboard's "Aan de slag" card (`admin/components/getting-started.tsx`)
+then offers the example menukaart, this browser as a kassa (a pairing code
+opened in a new tab, like the demo) or a device, and a kassalade, until the
+organisation has a menukaart and a kassa (`GET …/onboarding`). Hidden per
+organisation in `arcanum-admin-getting-started-closed` (localStorage).
+
 ## Light / dark
 
 Every screen follows a theme — light, dark, or the system's — as a `.dark`

@@ -19,9 +19,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useMessages } from '@/shared/i18n'
+import { useLocale, useMessages } from '@/shared/i18n'
 import { useOrg } from '../lib/org-context'
 import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
+import { ExampleMenuOption } from './example-menu-option'
 import { OrgImportDialog } from './org-import-dialog'
 
 export function TeamSwitcher() {
@@ -37,6 +38,8 @@ export function TeamSwitcher() {
   const [creating, setCreating] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [exampleMenu, setExampleMenu] = useState(true)
+  const { locale } = useLocale()
 
   async function handleCreate() {
     const name = newOrgName.trim()
@@ -44,7 +47,7 @@ export function TeamSwitcher() {
     setCreating(true)
     setCreateError(null)
     try {
-      await addOrg(name)
+      await addOrg(name, { exampleMenu, locale })
       setNewOrgName('')
       setCreateOpen(false)
     } catch (err) {
@@ -127,6 +130,7 @@ export function TeamSwitcher() {
               placeholder={m.orgNamePlaceholder}
               autoComplete="off"
             />
+            <ExampleMenuOption checked={exampleMenu} onChange={setExampleMenu} />
             {createError && <p className="text-sm text-destructive">{createError}</p>}
             {canImport && (
               <button
