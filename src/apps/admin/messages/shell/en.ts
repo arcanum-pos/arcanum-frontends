@@ -51,6 +51,7 @@ export default {
   firstOrgText: 'Give your organisation a name to begin - your club, youth movement or event. You become its administrator.',
   firstOrgCreate: 'Create organisation',
   firstOrgImport: 'or import an organisation from an export file (e.g. your demo)',
+  firstOrgBackup: 'or receive a backup of a local installation',
   exampleMenu: 'Start with an example menu',
   exampleMenuHint: 'Drinks, food and tokens with prices, ready for the till. You can always change or remove them.',
   noMembershipTitle: 'You’re not a member of an organisation',
@@ -114,6 +115,7 @@ export default {
     profile: 'Profile',
     paymentProviders: 'Payment providers',
     data: 'Data',
+    backup: 'Backup',
   },
 
   // Settings → Appearance

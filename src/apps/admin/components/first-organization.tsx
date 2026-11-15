@@ -9,6 +9,7 @@ import { useOrg } from '../lib/org-context'
 import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 import { ExampleMenuOption } from './example-menu-option'
 import { OrgImportDialog } from './org-import-dialog'
+import { InviteCard } from '../routes/settings/backup'
 
 // A fresh own installation without an organization (see
 // lib/first-organization.ts): ask for its first one right here, instead of
@@ -20,6 +21,7 @@ export function FirstOrganization() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
+  const [backupOpen, setBackupOpen] = useState(false)
   const [exampleMenu, setExampleMenu] = useState(true)
   const { locale } = useLocale()
 
@@ -64,8 +66,19 @@ export function FirstOrganization() {
               {m.firstOrgImport}
             </button>
           )}
+          {capabilities?.canCreateOrganization && (
+            <button type="button" className="mt-2 block text-sm text-muted-foreground underline-offset-4 hover:underline" onClick={() => setBackupOpen(true)}>
+              {m.firstOrgBackup}
+            </button>
+          )}
         </CardContent>
       </Card>
+      {/* A cloud installation as a local one's backup (OFFLINE.md): its org arrives with the first transfer. */}
+      {backupOpen && (
+        <div className="mt-6">
+          <InviteCard />
+        </div>
+      )}
       <OrgImportDialog open={importOpen} onOpenChange={setImportOpen} />
     </div>
   )

@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AppSidebar } from './app-sidebar'
 import { AppFooter } from './app-footer'
+import { BackupBanner } from './backup-banner'
 import { DemoBanner } from './demo-banner'
 import { FirstOrganization } from './first-organization'
 import { NoMembership } from './no-membership'
@@ -31,6 +32,7 @@ function MainContent() {
     <>
       <DemoBanner />
       <ImportBanner />
+      <BackupBanner />
       {/* Route components are lazy-loaded (see router.tsx) — this
           Suspense boundary covers the swap between them. */}
       <Suspense fallback={null}>

@@ -9,6 +9,7 @@ const SETTINGS_NAV = [
   { key: 'profile', to: '/settings/profile' },
   { key: 'paymentProviders', to: '/settings/payment-providers' },
   { key: 'data', to: '/settings/data' },
+  { key: 'backup', to: '/settings/backup' },
 ] as const
 
 export default function SettingsLayout() {

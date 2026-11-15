@@ -16,6 +16,7 @@ export default {
   close: 'Close',
   demoBar: (when: string) => `This is a demo - it disappears by itself at ${when}.`,
   demoConsole: 'Manage in the console (menu, devices, reports) →',
+  noInternet: 'No internet: card, Tap to Pay and Payconiq don’t work, cash does. Everything is kept.',
 
   quickSale: 'Counter',
   payDirectly: 'Pay directly',

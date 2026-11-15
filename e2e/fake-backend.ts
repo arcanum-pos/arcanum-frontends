@@ -404,6 +404,8 @@ export class FakeBackend {
   closedShifts: any[] = []
   // Set: org-e2e is a demo that disappears then (the kassa's demo bar).
   demoExpiresAt: string | null = null
+  // A local installation with a backup (OFFLINE.md): whether its sync reaches the cloud (null: no backup).
+  internetOnline: boolean | null = null
   deviceCalls: { method: string; id: string; action?: string; body?: any }[] = []
 
   private claim(code: string): FakeResponse {
@@ -472,6 +474,8 @@ export class FakeBackend {
       this.receipts.push({ printerId: receipt[1], tabId: body.tabId, chargeId: body.chargeId, chargeStatus: this.charges.find((c) => c.id === body.chargeId)?.status })
       return { status: 201, body: { id: `job-${this.receipts.length}` } }
     }
+    if (p === '/api/organizations/org-e2e/backup/connection' && method === 'GET')
+      return { status: 200, body: { linked: this.internetOnline !== null, online: this.internetOnline, lastSyncAt: null } }
     if (p === '/api/organizations' && method === 'GET')
       return { status: 200, body: [{ id: 'org-e2e', name: 'E2E', demo: this.demoExpiresAt ? { expiresAt: this.demoExpiresAt, installUrl: null } : null }] }
     if (p === '/api/organizations/memberships' && method === 'GET') return { status: 200, body: [{ orgId: 'org-e2e', orgName: 'E2E', role: this.memberRole }] }

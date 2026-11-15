@@ -10,6 +10,7 @@ const PAGES = [
   ['Profiel', '/settings/profile'],
   ['Betaalproviders', '/settings/payment-providers'],
   ['Gegevens', '/settings/data'],
+  ['Reservekopie', '/settings/backup'],
 ] as const
 
 test('the settings menu has no Huisstijl or Aanmelding anymore', async ({ console: open, page }) => {

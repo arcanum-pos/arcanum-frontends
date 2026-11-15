@@ -16,6 +16,7 @@ export default {
   close: 'Fermer',
   demoBar: (when: string) => `Ceci est une démo - elle disparaît d’elle-même à ${when}.`,
   demoConsole: 'Gestion dans la console (carte, appareils, rapports) →',
+  noInternet: 'Pas d’internet : carte, Tap to Pay et Payconiq ne fonctionnent pas, les espèces si. Tout est conservé.',
 
   quickSale: 'Comptoir',
   payDirectly: 'Payer directement',

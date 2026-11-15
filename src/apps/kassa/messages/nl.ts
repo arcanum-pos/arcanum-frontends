@@ -21,6 +21,7 @@ const nl = {
   close: 'Sluiten',
   demoBar: (when: string) => `Dit is een demo - ze verdwijnt vanzelf om ${when}.`,
   demoConsole: 'Beheer in de console (menukaart, toestellen, rapporten) →',
+  noInternet: 'Geen internet: kaart, Tap to Pay en Payconiq werken niet, cash wel. Alles blijft bewaard.',
 
   // Tab strip and ticket header. A Toog tab is stored as "Toog" whatever
   // the language (the customer display recognises it); `quickSale` is only

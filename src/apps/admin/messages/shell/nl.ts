@@ -55,6 +55,7 @@ const nl = {
   firstOrgText: 'Geef je organisatie een naam om te beginnen - je vereniging, jeugdbeweging of evenement. Je wordt er de beheerder van.',
   firstOrgCreate: 'Organisatie aanmaken',
   firstOrgImport: 'of importeer een organisatie uit een exportbestand (bv. je demo)',
+  firstOrgBackup: 'of ontvang een reservekopie van een lokale installatie',
   // Creating an organisation (example-menu-option.tsx).
   exampleMenu: 'Start met een voorbeeldmenu',
   exampleMenuHint: 'Drank, eten en bonnen met prijzen, meteen klaar voor de kassa. Aanpassen of weghalen kan altijd.',
@@ -120,6 +121,7 @@ const nl = {
     profile: 'Profiel',
     paymentProviders: 'Betaalproviders',
     data: 'Gegevens',
+    backup: 'Reservekopie',
   },
 
   // Settings → Appearance

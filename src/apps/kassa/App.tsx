@@ -15,6 +15,7 @@ import { usePrintRunner, useReceiptPrinter } from '@/shared/printing'
 import { ReceiptButton } from '@/shared/receipt-button'
 import { connectNotifications, getRegisteredTerminal, getStoredTerminalInfo, openCompanionDisplay, resetKassa } from '@/shared/terminal'
 import { DemoBar } from './DemoBar'
+import { InternetBar } from './InternetBar'
 import { getCurrentSlotId } from '@/shared/slots'
 import { apiErrorMessage } from '@/shared/api-errors'
 import { formatEuro } from '@/shared/format'
@@ -1300,6 +1301,7 @@ export default function App() {
       style={{ '--kassa-text': { small: 0.92, normal: 1, large: 1.14 }[prefs.text] } as React.CSSProperties}
     >
       {orgId && <DemoBar orgId={orgId} />}
+      {orgId && <InternetBar orgId={orgId} />}
       {/* Header: where this kassa is, the customer display, the rest under Meer, who's working. */}
       <header className="flex min-h-16 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b bg-card px-4 py-2">
         <div className="flex min-w-0 items-center gap-2.5">
