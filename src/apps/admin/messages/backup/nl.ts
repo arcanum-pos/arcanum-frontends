@@ -46,6 +46,11 @@ const nl = {
   copy: 'Kopiëren',
   copied: 'Gekopieerd',
 
+  promote: 'In gebruik nemen',
+  promoteTitle: 'Reservekopie in gebruik nemen',
+  promoteText: (org: string) => `Alleen als het lokale toestel stuk is. Daarna werk je hier verder: alles kan weer gewijzigd worden, en het oude toestel kan niets meer sturen. Wijs het adres van de kassa (DNS) naar deze installatie. Typ ${org} om te bevestigen.`,
+  promoteLabel: 'Naam van de organisatie',
+
   // The banner on every page of a backup
   bannerTitle: 'Reservekopie - alleen lezen',
   bannerText: 'Wijzigen kan alleen op de lokale installatie.',

@@ -23,6 +23,9 @@ export const linkBackup = (orgId: string, code: string) =>
 
 export const unlinkBackup = (orgId: string) => request<BackupStatus>(`/${orgId}/backup`, { method: 'DELETE' })
 
+export const promoteBackup = (orgId: string, confirm: string) =>
+  request<BackupStatus>(`/${orgId}/backup/promote`, { method: 'POST', body: JSON.stringify({ confirm }) })
+
 export const createBackupInvite = () => request<{ code: string; expiresAt: string }>('/backups', { method: 'POST' })
 
 // The kind of a recorded sync error, for its explanation: the box records

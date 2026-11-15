@@ -6,16 +6,23 @@ import { expect, test } from './console-fixtures'
 // a link code is made here. The backend's suite covers the sync itself.
 
 type Status = Record<string, unknown> & { role: 'none' | 'source' | 'replica' }
+const ORG_NAME = 'E2E'
 
 // The backup routes answered here, before the fixture's fakes.
 async function fakeBackup(page: Page, initial: Status) {
-  const state = { status: initial, posts: [] as unknown[], invites: 0 }
-  await page.route(/\/api\/organizations\/(backups|[^/]+\/backup)$/, async (route) => {
+  const state = { status: initial, posts: [] as unknown[], promotes: [] as unknown[], invites: 0 }
+  await page.route(/\/api\/organizations\/(backups|[^/]+\/backup(\/promote)?)$/, async (route) => {
     const req = route.request()
     const reply = (status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
     if (req.url().endsWith('/backups')) {
       state.invites++
       return reply(201, { code: 'arcanum-backup:eyJ1cmwiOiJodHRwczovL2Nsb3VkLnRlc3QiLCJrZXkiOiJ4In0', expiresAt: '2026-11-22T10:00:00Z' })
+    }
+    if (req.url().endsWith('/promote')) {
+      state.promotes.push(req.postDataJSON())
+      if (req.postDataJSON().confirm !== ORG_NAME) return reply(400, { error: 'Typ de naam van de organisatie precies over om te bevestigen', code: 'backup_confirm_name' })
+      state.status = { role: 'none', protocol: 1, schema: 'abcd1234' }
+      return reply(200, state.status)
     }
     if (req.method() === 'GET') return reply(200, state.status)
     if (req.method() === 'POST') {
@@ -73,4 +80,20 @@ test('an ordinary org: no banner; an admin of the installation makes a link code
   await expect(page.getByTestId('backup-invite-code')).toHaveText(/^arcanum-backup:/)
   await expect(page.getByText('Je ziet ze maar één keer')).toBeVisible()
   expect(backup.invites).toBe(1)
+})
+
+test('the box broke: take the backup into use, behind its name', async ({ page, console: open }) => {
+  const backup = await fakeBackup(page, { role: 'replica', lastSyncAt: null, protocol: 1, schema: 'abcd1234' })
+  await open('/settings/backup')
+  await page.getByTestId('backup-replica').getByRole('button', { name: 'In gebruik nemen' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Alleen als het lokale toestel stuk is')
+  await dialog.getByLabel('Naam van de organisatie').fill('verkeerd')
+  await dialog.getByRole('button', { name: 'In gebruik nemen' }).click()
+  await expect(dialog).toContainText('Typ de naam van de organisatie precies over')
+  await dialog.getByLabel('Naam van de organisatie').fill(ORG_NAME)
+  await dialog.getByRole('button', { name: 'In gebruik nemen' }).click()
+  await expect(page.getByTestId('backup-banner')).toHaveCount(0)
+  await expect(page.getByLabel('Koppelcode')).toBeVisible()
+  expect(backup.promotes).toEqual([{ confirm: 'verkeerd' }, { confirm: ORG_NAME }])
 })

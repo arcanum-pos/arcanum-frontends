@@ -41,6 +41,11 @@ export default {
   copy: 'Copy',
   copied: 'Copied',
 
+  promote: 'Take into use',
+  promoteTitle: 'Take the backup into use',
+  promoteText: (org: string) => `Only if the local device is broken. Afterwards you carry on here: everything can be changed again, and the old device can no longer send anything. Point the till's address (DNS) at this installation. Type ${org} to confirm.`,
+  promoteLabel: 'Name of the organisation',
+
   bannerTitle: 'Backup - read-only',
   bannerText: 'Changes can only be made on the local installation.',
 

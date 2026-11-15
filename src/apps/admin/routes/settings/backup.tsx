@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { INTL_LOCALES, useLocale, useMessages } from '@/shared/i18n'
-import { agoParts, createBackupInvite, errorKind, getBackupStatus, linkBackup, unlinkBackup, type BackupStatus } from '../../lib/backup-api'
+import { PromptDialog } from '../../components/prompt-dialog'
+import { agoParts, createBackupInvite, errorKind, getBackupStatus, linkBackup, promoteBackup, unlinkBackup, type BackupStatus } from '../../lib/backup-api'
 import { useOrg } from '../../lib/org-context'
 import { ADMIN_BACKUP_MESSAGES } from '../../messages/backup'
 
@@ -46,7 +47,7 @@ export default function BackupPage() {
       {error && <p className="text-sm text-destructive">{error}</p>}
       {status?.role === 'none' && currentOrg && <LinkCard orgId={currentOrg.id} onLinked={setStatus} />}
       {status?.role === 'source' && currentOrg && <SourceCard orgId={currentOrg.id} status={status} onUnlinked={setStatus} />}
-      {status?.role === 'replica' && <ReplicaCard status={status} />}
+      {status?.role === 'replica' && currentOrg && <ReplicaCard orgId={currentOrg.id} orgName={currentOrg.name} status={status} onPromoted={setStatus} />}
       {capabilities?.canCreateOrganization && <InviteCard />}
     </div>
   )
@@ -158,18 +159,40 @@ function SourceCard({ orgId, status, onUnlinked }: { orgId: string; status: Back
   )
 }
 
-function ReplicaCard({ status }: { status: BackupStatus }) {
+function ReplicaCard({ orgId, orgName, status, onPromoted }: { orgId: string; orgName: string; status: BackupStatus; onPromoted: (s: BackupStatus) => void }) {
   const m = useMessages(ADMIN_BACKUP_MESSAGES)
+  const [promoting, setPromoting] = useState(false)
   return (
     <Card data-testid="backup-replica">
       <CardHeader>
         <CardTitle>{m.replicaTitle}</CardTitle>
         <CardDescription>{m.replicaText}</CardDescription>
       </CardHeader>
-      <CardContent className="text-sm">
-        <span className="text-muted-foreground">{m.lastHeard}: </span>
-        <Ago iso={status.lastSyncAt} />
+      <CardContent className="flex flex-col gap-4 text-sm">
+        <p>
+          <span className="text-muted-foreground">{m.lastHeard}: </span>
+          <Ago iso={status.lastSyncAt} />
+        </p>
+        <div>
+          <Button variant="destructive" onClick={() => setPromoting(true)}>
+            {m.promote}
+          </Button>
+        </div>
       </CardContent>
+      {/* Disaster recovery (OFFLINE.md): deliberate, behind the org's name. */}
+      {promoting && (
+        <PromptDialog
+          title={m.promoteTitle}
+          description={m.promoteText(orgName)}
+          label={m.promoteLabel}
+          confirmLabel={m.promote}
+          onConfirm={async (confirm) => {
+            onPromoted(await promoteBackup(orgId, confirm))
+            window.location.reload()
+          }}
+          onClose={() => setPromoting(false)}
+        />
+      )}
     </Card>
   )
 }

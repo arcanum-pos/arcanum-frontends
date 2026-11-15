@@ -41,6 +41,11 @@ export default {
   copy: 'Copier',
   copied: 'Copié',
 
+  promote: 'Mettre en service',
+  promoteTitle: 'Mettre la sauvegarde en service',
+  promoteText: (org: string) => `Uniquement si l’appareil local est en panne. Ensuite, vous continuez ici : tout peut à nouveau être modifié, et l’ancien appareil ne peut plus rien envoyer. Faites pointer l’adresse de la caisse (DNS) vers cette installation. Tapez ${org} pour confirmer.`,
+  promoteLabel: 'Nom de l’organisation',
+
   bannerTitle: 'Sauvegarde - lecture seule',
   bannerText: 'Les modifications se font uniquement sur l’installation locale.',
 

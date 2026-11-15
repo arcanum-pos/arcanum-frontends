@@ -74,6 +74,8 @@ export default {
   backup_unreachable: 'The cloud installation cannot be reached',
   backup_version_mismatch: 'The cloud installation runs another version - update both to the same version',
   backup_org_exists: 'This organisation already exists on the cloud installation',
+  backup_not_replica: 'This organisation is not a backup',
+  backup_confirm_name: 'Type the name of the organisation exactly to confirm',
   org_creation_disabled: 'New organisations cannot be created on this installation',
   demo_limit_reached: 'Too many demos are running at once - please try again in a while',
   not_an_export: 'This is not an Arcanum export file',
