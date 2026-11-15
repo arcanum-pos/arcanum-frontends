@@ -19,11 +19,13 @@ export function useIsReplica(orgId: string | undefined): boolean {
 }
 
 // What a backup still shows (the rest is hidden, and disabled if opened
-// by its address): reading, the own profile, export and deleting, and the
-// way out (promote).
-export const NAV_ON_REPLICA = ['dashboard', 'reports', 'settings'] as const
+// by its address): its reports, the own profile, export and deleting, and
+// the way out (promote). Not the dashboard: its onboarding and today's
+// figures are for an org in use; a backup opens on its reports.
+export const NAV_ON_REPLICA = ['reports', 'settings'] as const
+export const REPLICA_HOME = '/reports'
 export const SETTINGS_ON_REPLICA = ['profile', 'data', 'backup'] as const
-const OPEN_ON_REPLICA = ['/dashboard', '/reports', '/settings/profile', '/settings/data', '/settings/backup']
+const OPEN_ON_REPLICA = ['/reports', '/settings/profile', '/settings/data', '/settings/backup']
 
 export function editableOnReplica(pathname: string): boolean {
   const path = pathname.replace(/^\/console(?=\/|$)/, '') || '/'

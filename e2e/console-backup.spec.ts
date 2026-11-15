@@ -68,11 +68,13 @@ test('a local org: paste the code, then how far the backup is, then unlink', asy
 
 test('a backup on the cloud: read-only banner on every page, its controls off, and its card', async ({ page, console: open }) => {
   await fakeBackup(page, { role: 'replica', sends: false, lastSyncAt: new Date(Date.now() - 5 * 60_000).toISOString(), protocol: 1, schema: 'abcd1234' })
+  // No dashboard (onboarding, today's figures): a backup opens on its reports.
   await open('/dashboard')
+  await expect(page).toHaveURL(/\/reports$/)
   await expect(page.getByTestId('backup-banner')).toContainText('Reservekopie - alleen lezen')
   // Only what still works is in the menu; its settings: profile, export, the backup.
   const sidebar = page.locator('[data-sidebar="content"] [data-sidebar="menu"]')
-  await expect(sidebar.getByRole('link')).toHaveText(['Overzicht', 'Rapporten', 'Instellingen'])
+  await expect(sidebar.getByRole('link')).toHaveText(['Rapporten', 'Instellingen'])
   await sidebar.getByRole('link', { name: 'Instellingen' }).click()
   await expect(page.getByTestId('backup-replica')).toBeVisible()
   await expect(page.locator('main nav').getByRole('link')).toHaveText(['Profiel', 'Gegevens', 'Reservekopie'])

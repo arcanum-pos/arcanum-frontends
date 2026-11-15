@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { Outlet, useRouterState } from '@tanstack/react-router'
+import { Navigate, Outlet, useRouterState } from '@tanstack/react-router'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -13,7 +13,7 @@ import { ImportBanner } from './import-banner'
 import { AppBrand } from '@/shared/app-brand'
 import { useNeedsFirstOrganization, useNoMembership } from '../lib/first-organization'
 import { OrgProvider, useOrg } from '../lib/org-context'
-import { editableOnReplica } from '../lib/replica'
+import { editableOnReplica, REPLICA_HOME } from '../lib/replica'
 import { useWaiterOnly, WaiterOnly } from '@/shared/waiter-only'
 import { ThemeProvider } from '../lib/theme'
 import { SupportButton } from '@/shared/support/support-button'
@@ -30,6 +30,8 @@ function MainContent() {
   if (needsFirst) return <FirstOrganization />
   if (noMembership) return <NoMembership />
   if (waiterOnly) return <WaiterOnly />
+  // A backup has no dashboard (lib/replica.ts): it opens on its reports.
+  if (replica && /^(\/console)?\/(dashboard)?$/.test(pathname)) return <Navigate to={REPLICA_HOME} />
   return (
     <>
       <DemoBanner />
