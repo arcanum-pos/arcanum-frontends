@@ -25,6 +25,7 @@ export default {
     sync_cloud_daily_limit: 'Le cloud a atteint sa limite quotidienne. Le transfert reprend demain (UTC).',
     sync_version_mismatch: 'Le cloud tourne sur une autre version. Mettez les deux à jour vers la même version.',
     sync_foreign_ids: 'Le cloud refuse ces données (elles appartiennent à une autre organisation là-bas). Contactez l’administrateur.',
+    sync_key_refused: 'Le cloud ne connaît plus cette sauvegarde : elle y a été supprimée ou mise en service. Déliez ici, puis liez de nouveau avec un nouveau code de liaison si vous voulez encore une sauvegarde.',
   } as Record<string, string>,
   versions: (protocol: number, schema: string) => `Protocole ${protocol}, schéma ${schema}`,
   unlink: 'Délier',

@@ -6,6 +6,9 @@ describe('the backup status words', () => {
     expect(errorKind('unreachable: connect ETIMEDOUT')).toBe('unreachable')
     expect(errorKind('sync_cloud_daily_limit')).toBe('sync_cloud_daily_limit')
     expect(errorKind('502: Unexpected worker error')).toBe('502')
+    // The backup is gone on the cloud: now its own code, before 0.1.96 a bare 401.
+    expect(errorKind('sync_key_refused')).toBe('sync_key_refused')
+    expect(errorKind('401: Unauthorized')).toBe('sync_key_refused')
   })
 
   it('says how long ago in the largest whole unit', () => {

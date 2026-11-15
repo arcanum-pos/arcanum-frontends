@@ -25,6 +25,7 @@ export default {
     sync_cloud_daily_limit: 'The cloud reached its daily limit. It carries on tomorrow (UTC).',
     sync_version_mismatch: 'The cloud runs another version. Update both to the same version.',
     sync_foreign_ids: 'The cloud refuses this data (it belongs to another organisation there). Contact the administrator.',
+    sync_key_refused: 'The cloud no longer knows this backup: it was deleted there or taken into use. Unlink here, and link again with a new link code if you want a backup again.',
   } as Record<string, string>,
   versions: (protocol: number, schema: string) => `Protocol ${protocol}, schema ${schema}`,
   unlink: 'Unlink',

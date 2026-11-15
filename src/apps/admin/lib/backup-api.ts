@@ -31,9 +31,12 @@ export const promoteBackup = (orgId: string, confirm: string) =>
 export const createBackupInvite = () => request<{ code: string; expiresAt: string }>('/backups', { method: 'POST' })
 
 // The kind of a recorded sync error, for its explanation: the box records
-// 'unreachable: <details>' or the cloud's code.
+// 'unreachable: <details>' or the cloud's code (a refused key: before
+// 0.1.96, '401: Unauthorized').
 export function errorKind(error: string): string {
-  return error.startsWith('unreachable') ? 'unreachable' : error.split(':')[0].trim()
+  if (error.startsWith('unreachable')) return 'unreachable'
+  if (error.startsWith('401')) return 'sync_key_refused'
+  return error.split(':')[0].trim()
 }
 
 // How long ago, in the largest whole unit: [unit, n].

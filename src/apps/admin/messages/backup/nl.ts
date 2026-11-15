@@ -28,6 +28,7 @@ const nl = {
     sync_cloud_daily_limit: 'De cloud heeft haar dagelijkse limiet bereikt. Morgen (UTC) gaat het verder.',
     sync_version_mismatch: 'De cloud draait een andere versie. Werk beide bij naar dezelfde versie.',
     sync_foreign_ids: 'De cloud weigert deze gegevens (ze horen bij een andere organisatie daar). Neem contact op met de beheerder.',
+    sync_key_refused: 'De cloud kent deze reservekopie niet meer: ze werd daar verwijderd of in gebruik genomen. Ontkoppel hier, en koppel opnieuw met een nieuwe koppelcode als je weer een reservekopie wil.',
   } as Record<string, string>,
   versions: (protocol: number, schema: string) => `Protocol ${protocol}, schema ${schema}`,
   unlink: 'Ontkoppelen',
