@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { Outlet } from '@tanstack/react-router'
+import { Outlet, useRouterState } from '@tanstack/react-router'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { Separator } from '@/components/ui/separator'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -13,6 +13,7 @@ import { ImportBanner } from './import-banner'
 import { AppBrand } from '@/shared/app-brand'
 import { useNeedsFirstOrganization, useNoMembership } from '../lib/first-organization'
 import { OrgProvider, useOrg } from '../lib/org-context'
+import { editableOnReplica, useIsReplica } from '../lib/replica'
 import { useWaiterOnly, WaiterOnly } from '@/shared/waiter-only'
 import { ThemeProvider } from '../lib/theme'
 import { SupportButton } from '@/shared/support/support-button'
@@ -25,6 +26,8 @@ function MainContent() {
   const noMembership = useNoMembership()
   const { currentOrg } = useOrg()
   const waiterOnly = useWaiterOnly(currentOrg?.id)
+  const replica = useIsReplica(currentOrg?.id)
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
   if (needsFirst) return <FirstOrganization />
   if (noMembership) return <NoMembership />
   if (waiterOnly) return <WaiterOnly />
@@ -32,12 +35,16 @@ function MainContent() {
     <>
       <DemoBanner />
       <ImportBanner />
-      <BackupBanner />
-      {/* Route components are lazy-loaded (see router.tsx) — this
-          Suspense boundary covers the swap between them. */}
-      <Suspense fallback={null}>
-        <Outlet />
-      </Suspense>
+      <BackupBanner replica={replica} />
+      {/* A backup is read-only: every control of a page that changes it is
+          disabled (a disabled fieldset), so nobody fills in a form for nothing.
+          Route components are lazy-loaded (see router.tsx) - this Suspense
+          boundary covers the swap between them. */}
+      <fieldset disabled={replica && !editableOnReplica(pathname)} className="contents">
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
+      </fieldset>
     </>
   )
 }

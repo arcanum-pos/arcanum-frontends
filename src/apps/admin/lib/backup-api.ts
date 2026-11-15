@@ -4,6 +4,8 @@ import { request } from './api'
 
 export interface BackupStatus {
   role: 'none' | 'source' | 'replica'
+  // This installation sends a backup (a box) or receives them (the cloud).
+  sends?: boolean
   remoteUrl?: string
   linkedAt?: string
   lastSyncAt?: string | null

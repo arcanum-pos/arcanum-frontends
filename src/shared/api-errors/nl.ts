@@ -76,6 +76,7 @@ const nl = {
   backup_version_mismatch: 'De cloudinstallatie draait een andere versie - werk beide bij naar dezelfde versie',
   backup_org_exists: 'Deze organisatie bestaat al op de cloudinstallatie',
   backup_not_replica: 'Deze organisatie is geen reservekopie',
+  backup_not_local: 'Alleen een lokale installatie stuurt een reservekopie',
   backup_confirm_name: 'Typ de naam van de organisatie precies over om te bevestigen',
   org_creation_disabled: 'Op deze installatie kunnen geen nieuwe organisaties aangemaakt worden',
   demo_limit_reached: 'Er lopen nu te veel demo\'s tegelijk - probeer het over een tijdje opnieuw',

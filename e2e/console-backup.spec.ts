@@ -21,18 +21,18 @@ async function fakeBackup(page: Page, initial: Status) {
     if (req.url().endsWith('/promote')) {
       state.promotes.push(req.postDataJSON())
       if (req.postDataJSON().confirm !== ORG_NAME) return reply(400, { error: 'Typ de naam van de organisatie precies over om te bevestigen', code: 'backup_confirm_name' })
-      state.status = { role: 'none', protocol: 1, schema: 'abcd1234' }
+      state.status = { role: 'none', sends: false, protocol: 1, schema: 'abcd1234' }
       return reply(200, state.status)
     }
     if (req.method() === 'GET') return reply(200, state.status)
     if (req.method() === 'POST') {
       state.posts.push(req.postDataJSON())
       if (req.postDataJSON().code === 'wrong') return reply(400, { error: 'Deze koppelcode klopt niet of is verlopen - maak een nieuwe op de cloudinstallatie', code: 'backup_code_invalid' })
-      state.status = { role: 'source', remoteUrl: 'https://cloud.test', lastSyncAt: null, lastError: 'unreachable: fetch failed', pending: 120, pendingFirstSync: 118, firstSyncDoneAt: null, protocol: 1, schema: 'abcd1234' }
+      state.status = { role: 'source', sends: true, remoteUrl: 'https://cloud.test', lastSyncAt: null, lastError: 'unreachable: fetch failed', pending: 120, pendingFirstSync: 118, firstSyncDoneAt: null, protocol: 1, schema: 'abcd1234' }
       return reply(201, state.status)
     }
     if (req.method() === 'DELETE') {
-      state.status = { role: 'none', protocol: 1, schema: 'abcd1234' }
+      state.status = { role: 'none', sends: true, protocol: 1, schema: 'abcd1234' }
       return reply(200, state.status)
     }
     return route.fallback()
@@ -41,9 +41,12 @@ async function fakeBackup(page: Page, initial: Status) {
 }
 
 test('a local org: paste the code, then how far the backup is, then unlink', async ({ page, console: open }) => {
-  const backup = await fakeBackup(page, { role: 'none', protocol: 1, schema: 'abcd1234' })
+  const backup = await fakeBackup(page, { role: 'none', sends: true, protocol: 1, schema: 'abcd1234' })
   await open('/settings/backup')
   await expect(page.getByRole('heading', { name: 'Reservekopie' })).toBeVisible()
+  // A box sends a backup; receiving them is the cloud's job.
+  await expect(page.getByLabel('Koppelcode')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Koppelcode maken' })).toHaveCount(0)
 
   await page.getByLabel('Koppelcode').fill('wrong')
   await page.getByRole('button', { name: 'Koppelen' }).click()
@@ -63,19 +66,25 @@ test('a local org: paste the code, then how far the backup is, then unlink', asy
   await expect(page.getByLabel('Koppelcode')).toBeVisible()
 })
 
-test('a backup on the cloud: read-only banner on every page, and its card', async ({ page, console: open }) => {
-  await fakeBackup(page, { role: 'replica', lastSyncAt: new Date(Date.now() - 5 * 60_000).toISOString(), protocol: 1, schema: 'abcd1234' })
+test('a backup on the cloud: read-only banner on every page, its controls off, and its card', async ({ page, console: open }) => {
+  await fakeBackup(page, { role: 'replica', sends: false, lastSyncAt: new Date(Date.now() - 5 * 60_000).toISOString(), protocol: 1, schema: 'abcd1234' })
   await open('/dashboard')
   await expect(page.getByTestId('backup-banner')).toContainText('Reservekopie - alleen lezen')
+  // A page that changes the org: nothing to fill in for nothing.
+  await open('/products')
+  await expect(page.getByTestId('backup-banner')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Nieuw product' })).toBeDisabled()
   await open('/settings/backup')
   await expect(page.getByTestId('backup-replica')).toContainText('5 minuten geleden')
   await expect(page.getByLabel('Koppelcode')).toHaveCount(0)
 })
 
-test('an ordinary org: no banner; an admin of the installation makes a link code, shown once', async ({ page, console: open }) => {
-  const backup = await fakeBackup(page, { role: 'none', protocol: 1, schema: 'abcd1234' })
+test('an ordinary org on the cloud: no banner, no linking; an admin of the installation makes a link code, shown once', async ({ page, console: open }) => {
+  const backup = await fakeBackup(page, { role: 'none', sends: false, protocol: 1, schema: 'abcd1234' })
   await open('/settings/backup')
   await expect(page.getByTestId('backup-banner')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Koppelcode maken' })).toBeVisible()
+  await expect(page.getByLabel('Koppelcode')).toHaveCount(0)
   await page.getByRole('button', { name: 'Koppelcode maken' }).click()
   await expect(page.getByTestId('backup-invite-code')).toHaveText(/^arcanum-backup:/)
   await expect(page.getByText('Je ziet ze maar één keer')).toBeVisible()
@@ -83,8 +92,10 @@ test('an ordinary org: no banner; an admin of the installation makes a link code
 })
 
 test('the box broke: take the backup into use, behind its name', async ({ page, console: open }) => {
-  const backup = await fakeBackup(page, { role: 'replica', lastSyncAt: null, protocol: 1, schema: 'abcd1234' })
+  const backup = await fakeBackup(page, { role: 'replica', sends: false, lastSyncAt: null, protocol: 1, schema: 'abcd1234' })
   await open('/settings/backup')
+  // The way out stays open on a read-only backup.
+  await expect(page.getByTestId('backup-replica').getByRole('button', { name: 'In gebruik nemen' })).toBeEnabled()
   await page.getByTestId('backup-replica').getByRole('button', { name: 'In gebruik nemen' }).click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toContainText('Alleen als het lokale toestel stuk is')
@@ -94,6 +105,6 @@ test('the box broke: take the backup into use, behind its name', async ({ page, 
   await dialog.getByLabel('Naam van de organisatie').fill(ORG_NAME)
   await dialog.getByRole('button', { name: 'In gebruik nemen' }).click()
   await expect(page.getByTestId('backup-banner')).toHaveCount(0)
-  await expect(page.getByLabel('Koppelcode')).toBeVisible()
+  await expect(page.getByTestId('backup-replica')).toHaveCount(0)
   expect(backup.promotes).toEqual([{ confirm: 'verkeerd' }, { confirm: ORG_NAME }])
 })

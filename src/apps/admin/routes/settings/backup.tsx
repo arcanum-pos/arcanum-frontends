@@ -45,10 +45,11 @@ export default function BackupPage() {
         <p className="text-sm text-muted-foreground">{m.subtitle}</p>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {status?.role === 'none' && currentOrg && <LinkCard orgId={currentOrg.id} onLinked={setStatus} />}
+      {/* A box sends a backup, a cloud receives them (status.sends; older backends don't say). */}
+      {status?.role === 'none' && status.sends !== false && currentOrg && <LinkCard orgId={currentOrg.id} onLinked={setStatus} />}
       {status?.role === 'source' && currentOrg && <SourceCard orgId={currentOrg.id} status={status} onUnlinked={setStatus} />}
       {status?.role === 'replica' && currentOrg && <ReplicaCard orgId={currentOrg.id} orgName={currentOrg.name} status={status} onPromoted={setStatus} />}
-      {capabilities?.canCreateOrganization && <InviteCard />}
+      {capabilities?.canCreateOrganization && status && status.sends !== true && <InviteCard />}
     </div>
   )
 }

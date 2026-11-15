@@ -75,6 +75,7 @@ export default {
   backup_version_mismatch: 'L’installation cloud tourne sur une autre version - mettez les deux à jour vers la même version',
   backup_org_exists: 'Cette organisation existe déjà sur l’installation cloud',
   backup_not_replica: 'Cette organisation n’est pas une sauvegarde',
+  backup_not_local: 'Seule une installation locale envoie une sauvegarde',
   backup_confirm_name: 'Tapez exactement le nom de l’organisation pour confirmer',
   org_creation_disabled: 'Impossible de créer de nouvelles organisations sur cette installation',
   demo_limit_reached: 'Trop de démos en cours en même temps - réessayez dans un moment',
