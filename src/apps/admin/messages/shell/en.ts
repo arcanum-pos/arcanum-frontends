@@ -245,4 +245,13 @@ export default {
   importDescription:
     'Creates a new organisation with all the data from an export file - from this or another Arcanum installation. The current organisation stays unchanged.',
   importFromFile: 'Import an organisation from an export file',
+  deleteTitle: 'Delete organisation',
+  deleteDescription: (org: string) =>
+    `Deletes ${org} with all its data: menus, bills, payments, reports, devices and who has access to it. This cannot be undone - export first if you want to keep a copy.`,
+  deleteBackupNote:
+    'With a backup: a copy in the cloud stays and is deleted there separately. Delete the copy in the cloud, and the local organisation stays.',
+  deleteButton: 'Delete organisation',
+  deleteDialogText: (org: string) => `Everything of ${org} is deleted, for everyone. Type the organisation's name to confirm.`,
+  deleteLabel: 'Organisation name',
+  deleteConfirm: 'Delete for good',
 } satisfies AdminShellMessages

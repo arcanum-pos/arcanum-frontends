@@ -587,3 +587,13 @@ export function setBrandingLogo(orgId: string, png: string): Promise<OrgBranding
 export function removeBrandingLogo(orgId: string): Promise<OrgBranding> {
   return request(`/${encodeURIComponent(orgId)}/branding/logo`, { method: 'DELETE' })
 }
+
+// Deletes an org in steps (arcanum-backend organizations/delete.ts): the
+// backend says when it is done.
+export async function deleteOrganization(orgId: string, confirm: string): Promise<void> {
+  for (let step = 0; step < 10; step++) {
+    const { done } = await request<{ done: boolean }>(`/${orgId}`, { method: 'DELETE', body: JSON.stringify({ confirm }) })
+    if (done) return
+  }
+  throw new Error('delete did not finish')
+}

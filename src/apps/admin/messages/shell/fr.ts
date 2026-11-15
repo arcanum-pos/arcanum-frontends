@@ -245,4 +245,13 @@ export default {
   importDescription:
     'Crée une nouvelle organisation avec toutes les données d’un fichier d’export - de cette installation Arcanum ou d’une autre. L’organisation actuelle reste inchangée.',
   importFromFile: 'Importer une organisation depuis un fichier d’export',
+  deleteTitle: 'Supprimer l’organisation',
+  deleteDescription: (org: string) =>
+    `Supprime ${org} avec toutes ses données : cartes, additions, paiements, rapports, appareils et qui y a accès. C’est irréversible - exportez d’abord si vous voulez garder une copie.`,
+  deleteBackupNote:
+    'Avec une sauvegarde : la copie dans le cloud reste et se supprime là-bas séparément. Si vous supprimez la copie dans le cloud, l’organisation locale reste.',
+  deleteButton: 'Supprimer l’organisation',
+  deleteDialogText: (org: string) => `Tout ce qui concerne ${org} sera supprimé, pour tout le monde. Tapez le nom de l’organisation pour confirmer.`,
+  deleteLabel: 'Nom de l’organisation',
+  deleteConfirm: 'Supprimer définitivement',
 } satisfies AdminShellMessages

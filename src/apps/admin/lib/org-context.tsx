@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { showOrgIcons } from '@/shared/install'
 import type { Locale } from '@/shared/i18n'
 import { createOrganization, getCapabilities, listMyOrganizations, type Capabilities, type Organization } from './api'
+import { useIsReplica } from './replica'
 
 const CURRENT_ORG_KEY = 'arcanum-admin-current-org'
 // The same, for arcanum-bff: it sends /console with this organisation's own
@@ -30,6 +31,9 @@ interface OrgContextValue {
   reloadOrgs: (selectId?: string) => Promise<void>
   // May the caller create / import an organization here (null = loading).
   capabilities: Capabilities | null
+  // The current org is a local installation's backup here (OFFLINE.md):
+  // read-only, the console shows only what still works.
+  isReplica: boolean
 }
 
 const OrgContext = createContext<OrgContextValue | null>(null)
@@ -87,6 +91,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   }
 
   const currentOrg = orgs.find((o) => o.id === currentOrgId) ?? orgs[0] ?? null
+  const isReplica = useIsReplica(currentOrg?.id)
 
   // The organisation's own console icon: here (the tab, installing from
   // Chrome or Edge), and the next time the console is sent (the cookie).
@@ -98,7 +103,7 @@ export function OrgProvider({ children }: { children: ReactNode }) {
   }, [shownOrgId])
 
   return (
-    <OrgContext.Provider value={{ orgs, currentOrg, loading, error, setCurrentOrgId, addOrg, updateCurrentOrg, reloadOrgs, capabilities }}>
+    <OrgContext.Provider value={{ orgs, currentOrg, loading, error, setCurrentOrgId, addOrg, updateCurrentOrg, reloadOrgs, capabilities, isReplica }}>
       {children}
     </OrgContext.Provider>
   )

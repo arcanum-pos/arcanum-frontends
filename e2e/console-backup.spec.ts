@@ -70,7 +70,13 @@ test('a backup on the cloud: read-only banner on every page, its controls off, a
   await fakeBackup(page, { role: 'replica', sends: false, lastSyncAt: new Date(Date.now() - 5 * 60_000).toISOString(), protocol: 1, schema: 'abcd1234' })
   await open('/dashboard')
   await expect(page.getByTestId('backup-banner')).toContainText('Reservekopie - alleen lezen')
-  // A page that changes the org: nothing to fill in for nothing.
+  // Only what still works is in the menu; its settings: profile, export, the backup.
+  const sidebar = page.locator('[data-sidebar="content"] [data-sidebar="menu"]')
+  await expect(sidebar.getByRole('link')).toHaveText(['Overzicht', 'Rapporten', 'Instellingen'])
+  await sidebar.getByRole('link', { name: 'Instellingen' }).click()
+  await expect(page.getByTestId('backup-replica')).toBeVisible()
+  await expect(page.locator('main nav').getByRole('link')).toHaveText(['Profiel', 'Gegevens', 'Reservekopie'])
+  // A page that changes the org, opened by its address: nothing to fill in for nothing.
   await open('/products')
   await expect(page.getByTestId('backup-banner')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Nieuw product' })).toBeDisabled()
@@ -107,4 +113,28 @@ test('the box broke: take the backup into use, behind its name', async ({ page, 
   await expect(page.getByTestId('backup-banner')).toHaveCount(0)
   await expect(page.getByTestId('backup-replica')).toHaveCount(0)
   expect(backup.promotes).toEqual([{ confirm: 'verkeerd' }, { confirm: ORG_NAME }])
+})
+
+test('deleting an org: behind its name, in steps until the backend is done', async ({ page, console: open }) => {
+  await fakeBackup(page, { role: 'none', sends: false, protocol: 1, schema: 'abcd1234' })
+  const calls: unknown[] = []
+  await page.route(/\/api\/organizations\/[^/]+$/, async (route) => {
+    const req = route.request()
+    if (req.method() !== 'DELETE') return route.fallback()
+    calls.push(req.postDataJSON())
+    const reply = (status: number, body: unknown) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
+    if (req.postDataJSON().confirm !== ORG_NAME) return reply(400, { error: 'Typ de naam van de organisatie precies over om ze te verwijderen', code: 'org_confirm_name' })
+    return reply(200, { done: calls.length >= 3 })
+  })
+  await open('/settings/data')
+  await expect(page.getByText('een kopie in de cloud blijft bestaan')).toBeVisible()
+  await page.getByRole('button', { name: 'Organisatie verwijderen' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByLabel('Naam van de organisatie').fill('verkeerd')
+  await dialog.getByRole('button', { name: 'Definitief verwijderen' }).click()
+  await expect(dialog).toContainText('Typ de naam van de organisatie precies over')
+  await dialog.getByLabel('Naam van de organisatie').fill(ORG_NAME)
+  await dialog.getByRole('button', { name: 'Definitief verwijderen' }).click()
+  await expect(page).toHaveURL(/\/dashboard$/)
+  expect(calls).toEqual([{ confirm: 'verkeerd' }, { confirm: ORG_NAME }, { confirm: ORG_NAME }])
 })

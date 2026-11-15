@@ -13,7 +13,7 @@ import { ImportBanner } from './import-banner'
 import { AppBrand } from '@/shared/app-brand'
 import { useNeedsFirstOrganization, useNoMembership } from '../lib/first-organization'
 import { OrgProvider, useOrg } from '../lib/org-context'
-import { editableOnReplica, useIsReplica } from '../lib/replica'
+import { editableOnReplica } from '../lib/replica'
 import { useWaiterOnly, WaiterOnly } from '@/shared/waiter-only'
 import { ThemeProvider } from '../lib/theme'
 import { SupportButton } from '@/shared/support/support-button'
@@ -24,9 +24,8 @@ import { SupportButton } from '@/shared/support/support-button'
 function MainContent() {
   const needsFirst = useNeedsFirstOrganization()
   const noMembership = useNoMembership()
-  const { currentOrg } = useOrg()
+  const { currentOrg, isReplica: replica } = useOrg()
   const waiterOnly = useWaiterOnly(currentOrg?.id)
-  const replica = useIsReplica(currentOrg?.id)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   if (needsFirst) return <FirstOrganization />
   if (noMembership) return <NoMembership />

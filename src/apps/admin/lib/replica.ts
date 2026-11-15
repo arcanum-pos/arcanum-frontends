@@ -18,9 +18,12 @@ export function useIsReplica(orgId: string | undefined): boolean {
   return !!orgId && replicaOf === orgId
 }
 
-// Pages that still work on a backup: they only read, or change what isn't
-// synced (who has access, the own profile), or are the way out (promote).
-const OPEN_ON_REPLICA = ['/dashboard', '/reports', '/users', '/settings/profile', '/settings/data', '/settings/backup']
+// What a backup still shows (the rest is hidden, and disabled if opened
+// by its address): reading, the own profile, export and deleting, and the
+// way out (promote).
+export const NAV_ON_REPLICA = ['dashboard', 'reports', 'settings'] as const
+export const SETTINGS_ON_REPLICA = ['profile', 'data', 'backup'] as const
+const OPEN_ON_REPLICA = ['/dashboard', '/reports', '/settings/profile', '/settings/data', '/settings/backup']
 
 export function editableOnReplica(pathname: string): boolean {
   const path = pathname.replace(/^\/console(?=\/|$)/, '') || '/'

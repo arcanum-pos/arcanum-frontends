@@ -252,6 +252,15 @@ const nl = {
   importDescription:
     'Maakt een nieuwe organisatie aan met alle gegevens uit een exportbestand - van deze of een andere Arcanum-installatie. De huidige organisatie blijft ongewijzigd.',
   importFromFile: 'Organisatie importeren uit exportbestand',
+  deleteTitle: 'Organisatie verwijderen',
+  deleteDescription: (org: string) =>
+    `Verwijdert ${org} met al zijn gegevens: menukaarten, rekeningen, betalingen, rapporten, toestellen en wie er toegang toe heeft. Dit kan niet ongedaan gemaakt worden - exporteer eerst als je een kopie wil houden.`,
+  deleteBackupNote:
+    'Met een reservekopie: een kopie in de cloud blijft bestaan en verwijder je daar apart. Verwijder je de kopie in de cloud, dan blijft de lokale organisatie.',
+  deleteButton: 'Organisatie verwijderen',
+  deleteDialogText: (org: string) => `Alles van ${org} wordt verwijderd, voor iedereen. Typ de naam van de organisatie om te bevestigen.`,
+  deleteLabel: 'Naam van de organisatie',
+  deleteConfirm: 'Definitief verwijderen',
 }
 
 export type AdminShellMessages = typeof nl

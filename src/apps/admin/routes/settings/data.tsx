@@ -1,17 +1,23 @@
 import { useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useMessages } from '@/shared/i18n'
 import { OrgImportDialog } from '../../components/org-import-dialog'
+import { PromptDialog } from '../../components/prompt-dialog'
+import { deleteOrganization } from '../../lib/api'
 import { useOrg } from '../../lib/org-context'
 import { downloadExport } from '../../lib/org-transfer'
 import { ADMIN_SHELL_MESSAGES } from '../../messages/shell'
 
 // Gegevens: export all of this org's data (to move it to its own
-// installation, or keep a copy), and import an export as a new org.
+// installation, or keep a copy), import an export as a new org, and delete
+// this org (admins, behind its name).
 export default function DataPage() {
   const m = useMessages(ADMIN_SHELL_MESSAGES)
-  const { currentOrg, capabilities } = useOrg()
+  const { currentOrg, capabilities, reloadOrgs } = useOrg()
+  const navigate = useNavigate()
+  const [deleting, setDeleting] = useState(false)
   const [includeSecrets, setIncludeSecrets] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
@@ -93,7 +99,38 @@ export default function DataPage() {
         </CardContent>
       </Card>
 
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle>{m.deleteTitle}</CardTitle>
+          <CardDescription>{m.deleteDescription(currentOrg?.name ?? m.thisOrg)}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">{m.deleteBackupNote}</p>
+          <div>
+            <Button variant="destructive" onClick={() => setDeleting(true)} disabled={!currentOrg}>
+              {m.deleteButton}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <OrgImportDialog open={importOpen} onOpenChange={setImportOpen} />
+      {deleting && currentOrg && (
+        <PromptDialog
+          title={m.deleteTitle}
+          description={m.deleteDialogText(currentOrg.name)}
+          label={m.deleteLabel}
+          confirmLabel={m.deleteConfirm}
+          onConfirm={async (confirm) => {
+            await deleteOrganization(currentOrg.id, confirm)
+            setDeleting(false)
+            // Another org of theirs, or the first-organization screen.
+            await reloadOrgs()
+            await navigate({ to: '/dashboard' })
+          }}
+          onClose={() => setDeleting(false)}
+        />
+      )}
     </div>
   )
 }

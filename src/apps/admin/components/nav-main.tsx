@@ -10,6 +10,7 @@ import { useMessages } from '@/shared/i18n'
 import { useVersionInfo } from '@/shared/source-url'
 import { ADMIN_SHELL_MESSAGES } from '../messages/shell'
 import { useOrg } from '../lib/org-context'
+import { NAV_ON_REPLICA } from '../lib/replica'
 
 const NAV_ITEMS = [
   { key: 'dashboard', to: '/dashboard', icon: LayoutDashboard },
@@ -29,7 +30,9 @@ export function NavMain() {
   const m = useMessages(ADMIN_SHELL_MESSAGES)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const { installer } = useVersionInfo()
-  const { capabilities } = useOrg()
+  const { capabilities, isReplica } = useOrg()
+  // A backup is read-only: only what still works (lib/replica.ts); its settings open on the backup page.
+  const items = isReplica ? NAV_ITEMS.filter((i) => (NAV_ON_REPLICA as readonly string[]).includes(i.key)) : NAV_ITEMS
   // The installer behind this installation, for its own admins only (a demo's
   // visitors never see it). A backend without `instanceAdmin` (older): as before.
   const showInstaller = installer && !!capabilities && capabilities.instanceAdmin !== false
@@ -37,10 +40,10 @@ export function NavMain() {
   return (
     <SidebarGroup>
       <SidebarMenu>
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <SidebarMenuItem key={item.to}>
             <SidebarMenuButton asChild isActive={pathname.startsWith(item.to)} tooltip={m.nav[item.key]}>
-              <Link to={item.to}>
+              <Link to={isReplica && item.key === 'settings' ? '/settings/backup' : item.to}>
                 <item.icon />
                 <span>{m.nav[item.key]}</span>
               </Link>

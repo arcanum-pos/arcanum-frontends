@@ -77,6 +77,7 @@ export default {
   backup_not_replica: 'Cette organisation n’est pas une sauvegarde',
   backup_not_local: 'Seule une installation locale envoie une sauvegarde',
   backup_confirm_name: 'Tapez exactement le nom de l’organisation pour confirmer',
+  org_confirm_name: 'Tapez exactement le nom de l’organisation pour la supprimer',
   org_creation_disabled: 'Impossible de créer de nouvelles organisations sur cette installation',
   demo_limit_reached: 'Trop de démos en cours en même temps - réessayez dans un moment',
   not_an_export: 'Ce n’est pas un fichier d’exportation Arcanum',
