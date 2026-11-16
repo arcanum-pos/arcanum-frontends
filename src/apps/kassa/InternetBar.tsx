@@ -18,7 +18,7 @@ export function InternetBar({ orgId }: { orgId: string }) {
     let timer: ReturnType<typeof setTimeout> | undefined
     const check = async () => {
       try {
-        const res = await fetch(`/api/organizations/${orgId}/backup/connection`)
+        const res = await fetch(`/api/organizations/${encodeURIComponent(orgId)}/backup/connection`)
         const body = res.ok ? ((await res.json()) as { linked: boolean; online: boolean | null }) : null
         if (cancelled) return
         setOffline(body?.online === false)
